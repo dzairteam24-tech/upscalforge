@@ -5,3 +5,10 @@ version = 4
 [[package]]
 name = "sf-core"
 version = "0.0.0"
+
+[[package]]
+name = "sf-graph"
+version = "0.0.0"
+dependencies = [
+ "sf-core",
+]
