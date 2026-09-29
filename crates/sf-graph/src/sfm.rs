@@ -202,7 +202,7 @@ pub fn write(model: &ModelFile) -> Result<Vec<u8>> {
         if w.len() as u64 != p.elements() {
             return Err(invalid(format!("tensor {:?} has {} values, dims {:?}", p.name, w.len(), p.dims)));
         }
-        while blob.len() % ALIGN != 0 {
+        while !blob.len().is_multiple_of(ALIGN) {
             blob.push(0);
         }
         let offset = blob.len();
@@ -228,7 +228,7 @@ pub fn write(model: &ModelFile) -> Result<Vec<u8>> {
     out.extend(FORMAT_VERSION.to_le_bytes());
     out.extend((text.len() as u64).to_le_bytes());
     out.extend(text.as_bytes());
-    while out.len() % ALIGN != 0 {
+    while !out.len().is_multiple_of(ALIGN) {
         out.push(0);
     }
     out.extend(blob);
@@ -449,7 +449,7 @@ pub fn read(bytes: &[u8], limits: &Limits) -> Result<ModelFile> {
         if len as u64 != graph.params[idx].elements() * 4 {
             return Err(invalid(format!("tensor {name:?} length {len} does not match its dimensions")));
         }
-        if off % ALIGN != 0 || off.checked_add(len).is_none_or(|end| end > blob.len()) {
+        if !off.is_multiple_of(ALIGN) || off.checked_add(len).is_none_or(|end| end > blob.len()) {
             return Err(invalid(format!("tensor {name:?} is misaligned or outside the data")));
         }
         ranges.push((off, off + len));
