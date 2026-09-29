@@ -120,6 +120,12 @@ Every phase ends with a self-review (§42), recorded in `CHANGELOG.md`.
   constraints, JPEG quality search under the size limit, the compliance check,
   and the AI-disclosure report.
 
+### Moved during Phase 7
+- **Required-region analysis and `crop` insertion** move from Phase 7 to
+  Phase 10. Their correctness criterion is the seam test, which belongs to
+  the tiling engine. Phase 7 already validates the locality analysis end to
+  end: a bit-exact tiled vs. whole-image test on the CPU backend.
+
 ### Notes on ordering (no silent changes)
 - **Estimators move into Phase 11.** The specification lists "image
   analysis" under the image engine (Phase 11) and "automation" in Phase 17.

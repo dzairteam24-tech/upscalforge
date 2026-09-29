@@ -24,8 +24,9 @@ enhancement and upscaling (1x/2x/4x/8x). It is planned around:
 | 3 Architecture | Complete — [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/adr/`](docs/adr/) |
 | 4 Critical review | Complete — [`docs/design/04-architecture-review.md`](docs/design/04-architecture-review.md) |
 | 5 Repository design and roadmap | Complete — [`docs/design/05-repository-and-roadmap.md`](docs/design/05-repository-and-roadmap.md) |
-| 6 Core foundation | **Implemented** — `crates/sf-core` (39 tests) |
-| 7+ | Not started |
+| 6 Core foundation | **Implemented** — `crates/sf-core`  |
+| 7 Tensor and compute system | **Implemented** — `crates/sf-graph`, `crates/sf-compute` (CPU backend) |
+| 8+ | Not started |
 
 No model weights exist. ScaleForge uses no external models or weights. Every
 model will be trained by ScaleForge's own training system.

@@ -3,6 +3,14 @@
 version = 4
 
 [[package]]
+name = "sf-compute"
+version = "0.0.0"
+dependencies = [
+ "sf-core",
+ "sf-graph",
+]
+
+[[package]]
 name = "sf-core"
 version = "0.0.0"
 

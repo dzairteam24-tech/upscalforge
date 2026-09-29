@@ -21,6 +21,8 @@ phase that fills them.
 | Crate | State |
 |-------|-------|
 | `crates/sf-core` | Foundation types, JSON, RNG (Phase 6) |
+| `crates/sf-graph` | Operators, graph IR, validation, shape inference, locality, memory planning (Phase 7) |
+| `crates/sf-compute` | Device abstraction and CPU reference backend (Phase 7) |
 
 ## Before every commit
 ```sh

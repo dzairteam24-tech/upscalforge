@@ -691,4 +691,6 @@ WebP output.
 |-----------|--------|
 | Requirements, feasibility, dependency audit, architecture, review, roadmap | Written |
 | `sf-core` (Phase 6) | **Implemented and tested** |
+| `sf-graph` (Phase 7): operator set v1, IR, validation, shape inference, locality, memory planning | **Implemented and tested.** Required-region analysis and crop insertion: moved to Phase 10 |
+| `sf-compute` (Phase 7): device abstraction, CPU backend (f32, strict mode, emulated capacity) | **Implemented and tested.** f16: not supported on CPU. GPU backends: Phase 8 |
 | Everything else | **Not started** |

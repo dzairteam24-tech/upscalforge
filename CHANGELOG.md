@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+### Phase 7 — Tensor and compute system (implemented)
+- `sf-graph`:
+  - operator set v1 (provisional);
+  - graph IR with builder;
+  - validation, including the Main-role rule that no spatial reduction may
+    reach a tensor output;
+  - shape inference;
+  - derived locality (receptive radius and alignment);
+  - liveness-based arena memory planner.
+- `sf-compute`:
+  - device abstraction separating device management, allocation and
+    buffers, compiled executables, transfers, execution and events;
+  - CPU reference backend: deterministic multithreaded kernels,
+    graph-level executor using the static memory plan, **strict mode**
+    detecting read-after-write, write-after-read and write-after-write
+    hazards between queues, and emulated device capacity with recoverable
+    out-of-memory errors.
+- Tests (28 new):
+  - every kernel against independently written naive references (120
+    convolution configurations);
+  - bit-identical results across thread counts;
+  - exact arena sizing;
+  - binding validation;
+  - hazard detection;
+  - OOM with accounting back to zero;
+  - **tiled execution with the derived halo is bit-identical to
+    whole-image execution** (a control case with an insufficient halo is
+    detected).
+- Self-review fixes: strict mode recorded accesses for submissions that
+  were later rejected by binding validation. Validation now happens first
+  (test added). Clippy suggestions applied. Minimum Rust raised to 1.88
+  (let-chains).
+- Known limitations (to be measured before optimising): no in-place
+  operator execution; graph outputs are copied out of the arena; small
+  element-wise kernels are single-threaded; convolution parallelises over
+  output planes only.
+- Scope move: required-region analysis and crop insertion → Phase 10.
+
 ### Owner request: Adobe Stock export profile (design, ADR-0016)
 - Export profiles designed, with rules as versioned data, a compliance check
   and an AI-disclosure report. The Adobe Stock photo rules (JPEG + sRGB,
