@@ -139,3 +139,14 @@ fn mutated_files_never_panic() {
         let _ = decode(&d, &Limits::default());
     }
 }
+
+#[test]
+fn quality_is_recovered_from_quantisation_tables() {
+    let img = test_image(16, 16, 3);
+    for q in [30u8, 60, 85, 95] {
+        let data = encode(&img, &EncodeOptions { quality: q, ..EncodeOptions::default() }).unwrap();
+        let info = decode(&data, &Limits::default()).unwrap().meta.jpeg.unwrap();
+        let (est, err) = estimate_quality(&info.quant_tables[0].1).unwrap();
+        assert!(est.abs_diff(q) <= 1 && err < 0.5, "q{q} -> {est} (err {err})");
+    }
+}

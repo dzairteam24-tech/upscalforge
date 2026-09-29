@@ -56,6 +56,29 @@ fn scaled_table(base: &[u16; 64], quality: u8) -> [u16; 64] {
     base.map(|b| ((u32::from(b) * s + 50) / 100).clamp(1, 255) as u16)
 }
 
+/// Estimates the quality setting (1–100) that would produce `table` from
+/// the Annex K luminance table under the usual scaling rule. The table is in
+/// zig-zag order, as stored in files. Returns the best fit and its mean
+/// absolute error per entry; encoders using other base tables fit poorly
+/// (large error), which the caller should treat as "unknown quality".
+pub fn estimate_quality(table: &[u16]) -> Option<(u8, f64)> {
+    if table.len() != 64 {
+        return None;
+    }
+    (1..=100u8)
+        .map(|q| {
+            let t = scaled_table(&LUMA_Q, q);
+            let err: f64 = ZIGZAG
+                .iter()
+                .enumerate()
+                .map(|(k, &n)| (f64::from(t[n]) - f64::from(table[k])).abs())
+                .sum::<f64>()
+                / 64.0;
+            (q, err)
+        })
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+}
+
 /// Magnitude category (number of bits) of a coefficient value.
 fn category(v: i32) -> u32 {
     32 - v.unsigned_abs().leading_zeros()
