@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Phase 6 — Core foundation (implemented)
+- Cargo workspace (edition 2024, `unsafe_code = "forbid"`, clippy clean);
+  zero third-party dependencies.
+- `sf-core`:
+  - error taxonomy with device error kinds;
+  - `Limits` with validation and image and decoded-size checks;
+  - overflow-checked `Size`/`Rect` and alignment helpers;
+  - `Scale` (1/2/4/8x) and `DType`;
+  - our own strict JSON reader/writer (UTF-8 validated, duplicate keys
+    rejected, size and depth limits, exact 64-bit integers);
+  - deterministic RNG with derivable streams;
+  - `CancelToken`, `ProgressSink`.
+- 39 tests: unit tests, seeded property tests (geometry, JSON round-trip), and
+  30,000 mutated-input robustness cases for the JSON parser.
+- Self-review: fixed two doc gaps (`Rect::relative_to` for empty rectangles;
+  the meaning of zero ICC/metadata limits). The logging trait is deferred
+  until a consumer exists, to avoid an unused abstraction. Known limitation:
+  the JSON *writer* recurses without a depth bound, which is safe for parsed
+  values (already depth-limited) but not for adversarially constructed
+  in-memory values (none exist in the codebase).
+- Added BUILD.md and DEVELOPMENT.md.
+
 ### Owner decision: classical engine + optional external models (ADR-0015)
 - The classical engine becomes the primary processing path (new `sf-classic`).
 - Openly licensed pretrained models are admitted as an optional, labelled

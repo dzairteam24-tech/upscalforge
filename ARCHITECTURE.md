@@ -81,7 +81,7 @@ The feasibility argument is in requirements §5.
 
 | Crate | Responsibility | Why it is a separate crate |
 |-------|----------------|---------------------------|
-| `sf-core` | Error taxonomy, `Limits`, checked geometry, dtypes, own strict JSON reader/writer, cancellation, progress, logging trait | Shared by every crate; no dependencies |
+| `sf-core` | Error taxonomy, `Limits`, checked geometry, dtypes, own strict JSON reader/writer, deterministic RNG, cancellation, progress (a logging trait is added when first needed) | Shared by every crate; no dependencies |
 | `sf-graph` | **Tensor and graph system**: tensor descriptors, operator set (forward and gradient), graph IR, role-based validation, shape inference, locality and required-region analysis, subgraph selection, memory planning, autodiff transform, `.sfm` model and `.sfck` checkpoint containers | Pure logic with no device. Used by the engine, backends and training |
 | `sf-compute` | Device abstraction + **CPU reference backend** (strict mode, f64 test path) | The CPU backend is not optional; it is the reference for every other backend |
 | `sf-compute-cuda`, `sf-compute-vulkan` | GPU backends | Optional features that isolate hardware interfaces |
@@ -690,4 +690,5 @@ WebP output.
 | Subsystem | Status |
 |-----------|--------|
 | Requirements, feasibility, dependency audit, architecture, review, roadmap | Written |
+| `sf-core` (Phase 6) | **Implemented and tested** |
 | Everything else | **Not started** |
