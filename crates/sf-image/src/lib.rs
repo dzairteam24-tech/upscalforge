@@ -3,7 +3,9 @@
 pub mod checksum;
 pub mod codec;
 pub mod exif;
+mod huffman;
 pub mod image;
+pub mod jpeg;
 pub mod png;
 pub mod zlib;
 

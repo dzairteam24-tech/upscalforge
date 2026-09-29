@@ -6,6 +6,7 @@
 //! `zlib.compress(data, level)`; only the compressed bytes are embedded.
 
 use super::*;
+use crate::huffman::huffman_lengths;
 use sf_core::{ErrorKind, Rng};
 
 fn hex(parts: &[&str]) -> Vec<u8> {
