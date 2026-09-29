@@ -3,6 +3,18 @@
 version = 4
 
 [[package]]
+name = "scaleforge"
+version = "0.0.0"
+dependencies = [
+ "sf-analysis",
+ "sf-classic",
+ "sf-compute",
+ "sf-core",
+ "sf-graph",
+ "sf-image",
+]
+
+[[package]]
 name = "sf-analysis"
 version = "0.0.0"
 dependencies = [
