@@ -20,3 +20,10 @@ version = "0.0.0"
 dependencies = [
  "sf-core",
 ]
+
+[[package]]
+name = "sf-image"
+version = "0.0.0"
+dependencies = [
+ "sf-core",
+]

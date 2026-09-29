@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/sf-core", "crates/sf-graph", "crates/sf-compute"]
+members = ["crates/sf-core", "crates/sf-graph", "crates/sf-compute", "crates/sf-image"]
 
 [workspace.package]
 version = "0.0.0"
