@@ -99,6 +99,20 @@ Every phase ends with a self-review (§42), recorded in `CHANGELOG.md`.
 | 22 Documentation | BUILD, DEVELOPMENT, CONTRIBUTING completed; all docs reconciled with code | Doc review against code |
 | 23 Final review | Architecture, code, security, dependencies, quality, performance, memory, tests, reproducibility, maintainability | Findings fixed or listed as open |
 
+### Owner decision ADR-0015 (2026-09-29): changes to the roadmap
+- **New crate `sf-classic`** (Phase 11, with the image engine): our own
+  classical restoration. It includes edge-aware windowed-sinc and
+  edge-directed upscaling, non-local-means and wavelet denoising, JPEG
+  deblocking, halo-limited sharpening, and tone/colour correction. It is the
+  **primary path**, and it gives the first usable product without any
+  training.
+- **External-model add-on** (Phase 12): a safe converter from `.pth` weights
+  to `.sfm` (restricted reader, no unpickling), `provenance: external`
+  metadata, and operators added for the admitted architectures (Real-ESRGAN
+  family first). Each model's tiling error is measured.
+- **Phases 13–14 (own model and training) wait for GPU hardware.** Their
+  design stands unchanged.
+
 ### Notes on ordering (no silent changes)
 - **Estimators move into Phase 11.** The specification lists "image
   analysis" under the image engine (Phase 11) and "automation" in Phase 17.

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Owner decision: classical engine + optional external models (ADR-0015)
+- The classical engine becomes the primary processing path (new `sf-classic`).
+- Openly licensed pretrained models are admitted as an optional, labelled
+  add-on running in our own engine. Licences were verified from source, and
+  the candidates are registered in `docs/design/06-external-models.md`.
+
 ### Design revision 2 — Master Specification (Phases 1–5)
 - Requirements re-analysed against the master specification: Balanced mode,
   analysis/strategy/QC, faces, 1x restoration, engine independence.

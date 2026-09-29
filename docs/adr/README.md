@@ -20,5 +20,6 @@ Proposed, Accepted, Superseded by ADR-XXXX.
 | [0012](0012-spatial-maps-for-local-variation.md) | Spatially varying behaviour through precomputed spatial maps | Proposed |
 | [0013](0013-explainable-rule-based-strategy.md) | Explainable, rule-based strategy over physical measurements | Proposed |
 | [0014](0014-reconstruction-modes.md) | Faithful, Balanced and Reconstruction as distinct computations | Proposed |
+| [0015](0015-classical-engine-and-optional-external-models.md) | Classical engine primary; external pretrained models as optional, labelled add-on | **Accepted** |
 
 All ADRs stay **Proposed** until the project owner accepts the architecture.
