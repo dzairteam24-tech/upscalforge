@@ -89,8 +89,26 @@ fn blocks(planes: &[Plane]) -> Vec<Block> {
                 if !n.is_multiple_of(step) {
                     continue;
                 }
-                let (mut g, mut l, mut sum, mut sq) = (0f32, 0f32, 0f32, 0f32);
+                let (mut l, mut sum, mut sq) = (0f32, 0f32, 0f32);
                 let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+                // Structure measure from 2×2 means: halves the noise's
+                // influence on which blocks count as flat, which otherwise
+                // biases the estimate low (blocks with luckily small noise
+                // would be preferred).
+                let mut means = [0f32; 16];
+                for (k, m) in means.iter_mut().enumerate() {
+                    let (sx, sy) = (bx + 1 + 2 * (k % 4), by + 1 + 2 * (k / 4));
+                    *m = 0.25 * (p.at(sx, sy) + p.at(sx + 1, sy) + p.at(sx, sy + 1) + p.at(sx + 1, sy + 1));
+                }
+                let mut g = 0f32;
+                for k in 0..16 {
+                    if k % 4 < 3 {
+                        g += (means[k + 1] - means[k]).abs();
+                    }
+                    if k < 12 {
+                        g += (means[k + 4] - means[k]).abs();
+                    }
+                }
                 for y in by + 1..by + 9 {
                     for x in bx + 1..bx + 9 {
                         let v = p.at(x, y);
@@ -98,7 +116,6 @@ fn blocks(planes: &[Plane]) -> Vec<Block> {
                         hi = hi.max(v);
                         sum += v;
                         sq += v * v;
-                        g += (p.at(x + 1, y) - v).abs() + (p.at(x, y + 1) - v).abs();
                         // Separable second difference: zero on planar
                         // trends; for white noise its std is 6σ.
                         let lap = p.at(x - 1, y - 1) - 2.0 * p.at(x, y - 1) + p.at(x + 1, y - 1)

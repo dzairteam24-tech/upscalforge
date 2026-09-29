@@ -31,13 +31,13 @@ fn grey_image(v: &[f64], w: usize, h: usize) -> Image {
 fn noise_estimate_tracks_known_sigma() {
     let (w, h) = (320, 240);
     let mut rng = Rng::seed_from_u64(1);
-    for sigma in [0.0, 2.0, 5.0, 10.0] {
+    for sigma in [0.0, 2.0, 5.0, 10.0, 20.0] {
         let v: Vec<f64> = smooth(w, h).iter().map(|&x| x + sigma * gaussian(&mut rng)).collect();
         let est = analyze(&grey_image(&v, w, h)).noise_sigma.value;
         if sigma == 0.0 {
             assert!(est < 0.8, "clean image: {est}");
         } else {
-            assert!((est - sigma).abs() <= 0.25 * sigma + 0.3, "sigma {sigma}: estimated {est}");
+            assert!((est - sigma).abs() <= 0.12 * sigma + 0.3, "sigma {sigma}: estimated {est}");
         }
     }
 }

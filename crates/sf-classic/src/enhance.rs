@@ -30,7 +30,8 @@ pub fn upscale(data: &[f32], w: usize, h: usize, channels: usize, factor: usize)
     out
 }
 
-fn gaussian(plane: &[f32], w: usize, h: usize, sigma: f32) -> Vec<f32> {
+/// Separable Gaussian blur of a single plane (edges clamped).
+pub fn gaussian(plane: &[f32], w: usize, h: usize, sigma: f32) -> Vec<f32> {
     let r = (3.0 * sigma).ceil().max(1.0) as isize;
     let k: Vec<f32> = (-r..=r).map(|i| (-(i * i) as f32 / (2.0 * sigma * sigma)).exp()).collect();
     let s: f32 = k.iter().sum();

@@ -22,7 +22,7 @@ mod denoise;
 mod enhance;
 
 pub use denoise::{deblock, denoise};
-pub use enhance::{Tone, sharpen, tone, upscale};
+pub use enhance::{Tone, gaussian, sharpen, tone, upscale};
 
 #[cfg(test)]
 mod tests;
