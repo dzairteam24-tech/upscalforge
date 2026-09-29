@@ -27,7 +27,7 @@ pub fn decode_any(data: &[u8], limits: &Limits) -> Result<Image> {
     match detect(data) {
         Some(FileFormat::Png) => crate::png::decode(data, limits),
         Some(FileFormat::Jpeg) => crate::jpeg::decode(data, limits),
-        Some(other) => Err(Error::unsupported(format!("{other:?} decoding is not available yet"))),
+        Some(FileFormat::Tiff) => crate::tiff::decode(data, limits),
         None => Err(Error::unsupported("unrecognised image format (supported: PNG, JPEG, TIFF)")),
     }
 }

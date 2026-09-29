@@ -7,6 +7,7 @@ mod huffman;
 pub mod image;
 pub mod jpeg;
 pub mod png;
+pub mod tiff;
 pub mod zlib;
 
 pub use codec::{decode_any, detect};
