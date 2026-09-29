@@ -17,6 +17,7 @@ mod infer;
 mod locality;
 mod memory;
 mod op;
+pub mod sfm;
 mod shape;
 
 pub use graph::{

@@ -16,7 +16,9 @@
 //!   conservative.
 //! - 2×2 average pool, space-to-depth: `r` (the window is exactly the new
 //!   footprint); spacing `2S`.
-//! - nearest ×2 upsample, depth-to-space: `r + S/2`; spacing `S/2`.
+//! - nearest ×2 upsample: `r + S/2`; spacing `S/2`. Depth-to-space by
+//!   `f`: `r + S·(f−1)/f`; spacing `S/f`. (The output pixel covers 1/f of
+//!   its source pixel, so the source reaches at most `S·(f−1)/f` beyond it.)
 //! - element-wise and channel ops: the maximum over operands, which must
 //!   share one spacing.
 
@@ -100,13 +102,25 @@ pub fn locality(graph: &Graph) -> Result<Locality> {
                     r: s.r + f64::from(kernel / 2) * spacing(s.e),
                 })
             }
-            Op::AvgPool2 | Op::PixelUnshuffle2 => {
+            Op::AvgPool2 => {
                 let s = first.ok_or_else(|| non_spatial(i))?;
                 Some(Spatial { e: s.e + 1, r: s.r })
             }
-            Op::UpsampleNearest2 | Op::PixelShuffle2 => {
+            Op::PixelUnshuffle { factor } => {
+                let s = first.ok_or_else(|| non_spatial(i))?;
+                Some(Spatial { e: s.e + factor.trailing_zeros() as i32, r: s.r })
+            }
+            Op::UpsampleNearest2 => {
                 let s = first.ok_or_else(|| non_spatial(i))?;
                 Some(Spatial { e: s.e - 1, r: s.r + spacing(s.e) / 2.0 })
+            }
+            Op::PixelShuffle { factor } => {
+                let s = first.ok_or_else(|| non_spatial(i))?;
+                let f = f64::from(*factor);
+                Some(Spatial {
+                    e: s.e - factor.trailing_zeros() as i32,
+                    r: s.r + spacing(s.e) * (f - 1.0) / f,
+                })
             }
             Op::GlobalMean | Op::Linear { .. } => None,
             _ => {

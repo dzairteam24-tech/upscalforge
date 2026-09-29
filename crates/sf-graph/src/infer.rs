@@ -135,24 +135,36 @@ pub fn infer_shapes(graph: &Graph, inputs: &[Shape]) -> Result<Shapes> {
                 even(h, w)?;
                 Shape::Spatial { n, c, h: h / 2, w: w / 2 }
             }
-            Op::PixelUnshuffle2 => {
+            Op::PixelUnshuffle { factor: r } => {
                 let (n, c, h, w) = spatial(0)?;
-                even(h, w)?;
-                let c4 = c.checked_mul(4).ok_or_else(|| bad(i, op, "channel overflow"))?;
-                Shape::Spatial { n, c: c4, h: h / 2, w: w / 2 }
+                if ![2, 4].contains(r) {
+                    return Err(bad(i, op, format!("factor {r} is not 2 or 4")));
+                }
+                if !h.is_multiple_of(*r) || !w.is_multiple_of(*r) {
+                    return Err(bad(i, op, format!("{w}x{h} is not divisible by {r}")));
+                }
+                let c2 = c.checked_mul(r * r).ok_or_else(|| bad(i, op, "channel overflow"))?;
+                Shape::Spatial { n, c: c2, h: h / r, w: w / r }
             }
-            Op::UpsampleNearest2 | Op::PixelShuffle2 => {
+            Op::UpsampleNearest2 | Op::PixelShuffle { .. } => {
                 let (n, c, h, w) = spatial(0)?;
-                let c = if matches!(op, Op::PixelShuffle2) {
-                    if !c.is_multiple_of(4) {
-                        return Err(bad(i, op, format!("channels {c} not divisible by 4")));
+                let r = match op {
+                    Op::PixelShuffle { factor } => *factor,
+                    _ => 2,
+                };
+                if ![2, 4].contains(&r) {
+                    return Err(bad(i, op, format!("factor {r} is not 2 or 4")));
+                }
+                let c = if matches!(op, Op::PixelShuffle { .. }) {
+                    if !c.is_multiple_of(r * r) {
+                        return Err(bad(i, op, format!("channels {c} not divisible by {}", r * r)));
                     }
-                    c / 4
+                    c / (r * r)
                 } else {
                     c
                 };
-                let h2 = h.checked_mul(2).ok_or_else(|| bad(i, op, "height overflow"))?;
-                let w2 = w.checked_mul(2).ok_or_else(|| bad(i, op, "width overflow"))?;
+                let h2 = h.checked_mul(r).ok_or_else(|| bad(i, op, "height overflow"))?;
+                let w2 = w.checked_mul(r).ok_or_else(|| bad(i, op, "width overflow"))?;
                 Shape::Spatial { n, c, h: h2, w: w2 }
             }
             Op::Add | Op::Sub | Op::Mul => {
@@ -174,7 +186,12 @@ pub fn infer_shapes(graph: &Graph, inputs: &[Shape]) -> Result<Shapes> {
                 }
                 Shape::Spatial { n, c, h, w }
             }
-            Op::Activation(_) | Op::Clamp { .. } => {
+            Op::Activation(_) | Op::Clamp { .. } | Op::ScaleConst { .. } => {
+                if let Op::ScaleConst { factor } = op
+                    && !factor.is_finite()
+                {
+                    return Err(bad(i, op, "non-finite factor"));
+                }
                 if let Op::Clamp { lo, hi } = op
                     && !(lo.is_finite() && hi.is_finite() && lo <= hi)
                 {

@@ -88,7 +88,7 @@ fn model(rng: &mut Rng, upscale: bool) -> Model {
     let a = g.node(Op::Activation(Activation::LeakyRelu(0.2)), &[a]);
     let d = conv(&mut g, a, 8, 16, 3, 2, &mut params);
     let d = conv(&mut g, d, 16, 32, 3, 1, &mut params);
-    let u = g.node(Op::PixelShuffle2, &[d]);
+    let u = g.node(Op::PixelShuffle { factor: 2 }, &[d]);
     let m = g.node(Op::Add, &[u, a]);
     let out = if upscale {
         let up = g.node(Op::UpsampleNearest2, &[m]);

@@ -18,6 +18,7 @@ pub mod limits;
 pub mod progress;
 pub mod rng;
 pub mod scale;
+pub mod sha256;
 
 pub use cancel::CancelToken;
 pub use dtype::DType;

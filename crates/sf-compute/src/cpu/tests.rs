@@ -219,7 +219,9 @@ fn resampling_ops_match_definitions() {
 
     let pool = run(&dev, &single_op_graph(Op::AvgPool2, c as u32, &[]), &input, &[]).unwrap().remove(0);
     let up = run(&dev, &single_op_graph(Op::UpsampleNearest2, c as u32, &[]), &input, &[]).unwrap().remove(0);
-    let shuf = run(&dev, &single_op_graph(Op::PixelShuffle2, c as u32, &[]), &input, &[]).unwrap().remove(0);
+    let shuf = run(&dev, &single_op_graph(Op::PixelShuffle { factor: 2 }, c as u32, &[]), &input, &[])
+        .unwrap()
+        .remove(0);
     for ni in 0..n {
         for ci in 0..c {
             for y in 0..h / 2 {
@@ -255,8 +257,8 @@ fn resampling_ops_match_definitions() {
     // Space-to-depth undoes depth-to-space exactly.
     let mut g = Graph::new(GraphRole::Main);
     let xi = g.input("x", InputKind::Spatial { channels: c as u32, spacing_log2: 0 });
-    let a = g.node(Op::PixelShuffle2, &[xi]);
-    let b = g.node(Op::PixelUnshuffle2, &[a]);
+    let a = g.node(Op::PixelShuffle { factor: 2 }, &[xi]);
+    let b = g.node(Op::PixelUnshuffle { factor: 2 }, &[a]);
     g.output("y", b, OutputKind::Tensor);
     assert_eq!(run(&dev, &g, &input, &[]).unwrap()[0], x);
 }
@@ -423,7 +425,7 @@ fn multi_node_graph_matches_composed_references() {
         Op::Conv2d { out_channels: 4 * c as u32, kernel: 3, stride: 2, depthwise: false, bias: false },
         &[r, p2],
     );
-    let y = g.node(Op::PixelShuffle2, &[d]);
+    let y = g.node(Op::PixelShuffle { factor: 2 }, &[d]);
     let y = g.node(Op::Add, &[y, r]);
     g.output("y", y, OutputKind::Tensor);
     let got = run(
@@ -605,7 +607,7 @@ fn tiled_execution_is_bit_exact_with_derived_halo() {
     let d = conv(&mut g, a, 8, 16, 3, 2, &mut params);
     let d = g.node(Op::Activation(Activation::Silu), &[d]);
     let u = conv(&mut g, d, 16, 32, 5, 1, &mut params);
-    let u = g.node(Op::PixelShuffle2, &[u]);
+    let u = g.node(Op::PixelShuffle { factor: 2 }, &[u]);
     let m = g.node(Op::Add, &[u, a]);
     let o = conv(&mut g, m, 8, c, 3, 1, &mut params);
     g.output("y", o, OutputKind::Tensor);

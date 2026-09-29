@@ -95,9 +95,9 @@ fn infers_convolution_and_resampling_shapes() {
     let mut g = Graph::new(GraphRole::Main);
     let x = g.input("x", img(3));
     let a = conv(&mut g, x, 3, 16, 3, 2);
-    let b = g.node(Op::PixelUnshuffle2, &[a]);
+    let b = g.node(Op::PixelUnshuffle { factor: 2 }, &[a]);
     let c = conv(&mut g, b, 64, 12, 1, 1);
-    let d = g.node(Op::PixelShuffle2, &[c]);
+    let d = g.node(Op::PixelShuffle { factor: 2 }, &[c]);
     let e = g.node(Op::UpsampleNearest2, &[d]);
     g.output("y", e, OutputKind::Tensor);
     let s = infer_shapes(&g, &[sp(2, 3, 32, 48)]).unwrap();
@@ -189,7 +189,7 @@ fn locality_through_strided_and_shuffled_paths() {
     let x = g.input("x", img(3));
     let a = conv(&mut g, x, 3, 8, 3, 2);
     let b = conv(&mut g, a, 8, 12, 3, 1);
-    let c = g.node(Op::PixelShuffle2, &[b]);
+    let c = g.node(Op::PixelShuffle { factor: 2 }, &[b]);
     g.output("y", c, OutputKind::Tensor);
     let l = locality(&g).unwrap();
     assert_eq!(l.outputs[0], Some(OutputLocality { spacing_log2: 0, radius: 4.0 }));

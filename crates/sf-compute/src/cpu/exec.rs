@@ -214,8 +214,11 @@ impl CpuExecutable {
             }
             Op::AvgPool2 => kernels::avg_pool2(x, dims(inputs[0])?, out),
             Op::UpsampleNearest2 => kernels::upsample_nearest2(x, dims(inputs[0])?, out),
-            Op::PixelShuffle2 => kernels::pixel_shuffle2(x, dims(inputs[0])?, out),
-            Op::PixelUnshuffle2 => kernels::pixel_unshuffle2(x, dims(inputs[0])?, out),
+            Op::PixelShuffle { factor } => kernels::pixel_shuffle(x, dims(inputs[0])?, *factor as usize, out),
+            Op::PixelUnshuffle { factor } => {
+                kernels::pixel_unshuffle(x, dims(inputs[0])?, *factor as usize, out)
+            }
+            Op::ScaleConst { factor } => kernels::unary(x, out, |v| v * factor),
             Op::Add => kernels::binary(x, value(inputs[1])?, out, |a, b| a + b),
             Op::Sub => kernels::binary(x, value(inputs[1])?, out, |a, b| a - b),
             Op::Mul => kernels::binary(x, value(inputs[1])?, out, |a, b| a * b),

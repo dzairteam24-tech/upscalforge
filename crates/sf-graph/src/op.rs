@@ -47,11 +47,18 @@ pub enum Op {
     AvgPool2,
     /// Nearest-neighbour ×2 upsampling.
     UpsampleNearest2,
-    /// Depth-to-space ×2: `[N, 4C, H, W] → [N, C, 2H, 2W]`, with source channel
-    /// `c·4 + dy·2 + dx` for output position offset `(dy, dx)`.
-    PixelShuffle2,
-    /// Space-to-depth ×2, the exact inverse of [`Op::PixelShuffle2`].
-    PixelUnshuffle2,
+    /// Depth-to-space by `factor` (2 or 4): `[N, C·r², H, W] → [N, C, rH, rW]`,
+    /// with source channel `c·r² + dy·r + dx` for output offset `(dy, dx)`.
+    PixelShuffle {
+        /// Factor r: 2 or 4.
+        factor: u32,
+    },
+    /// Space-to-depth by `factor`, the exact inverse of [`Op::PixelShuffle`].
+    /// Requires `H` and `W` divisible by the factor.
+    PixelUnshuffle {
+        /// Factor r: 2 or 4.
+        factor: u32,
+    },
     /// Element-wise `a + b` (same shape).
     Add,
     /// Element-wise `a − b` (same shape).
@@ -75,6 +82,11 @@ pub enum Op {
     },
     /// Multiplies `x` by a runtime scalar input.
     ScaleScalar,
+    /// Multiplies `x` by a constant.
+    ScaleConst {
+        /// The constant (finite).
+        factor: f32,
+    },
     /// Concatenates two or more spatial tensors along channels.
     Concat,
     /// Channels `[start, start + len)` of a spatial tensor.
@@ -116,8 +128,8 @@ impl Op {
             Op::Conv2d { .. } => "conv2d",
             Op::AvgPool2 => "avg_pool2",
             Op::UpsampleNearest2 => "upsample_nearest2",
-            Op::PixelShuffle2 => "pixel_shuffle2",
-            Op::PixelUnshuffle2 => "pixel_unshuffle2",
+            Op::PixelShuffle { .. } => "pixel_shuffle",
+            Op::PixelUnshuffle { .. } => "pixel_unshuffle",
             Op::Add => "add",
             Op::Sub => "sub",
             Op::Mul => "mul",
@@ -126,6 +138,7 @@ impl Op {
             Op::PRelu => "prelu",
             Op::Clamp { .. } => "clamp",
             Op::ScaleScalar => "scale_scalar",
+            Op::ScaleConst { .. } => "scale_const",
             Op::Concat => "concat",
             Op::SliceChannels { .. } => "slice_channels",
             Op::Crop { .. } => "crop",
@@ -143,8 +156,9 @@ impl Op {
             }
             Op::AvgPool2
             | Op::UpsampleNearest2
-            | Op::PixelShuffle2
-            | Op::PixelUnshuffle2
+            | Op::PixelShuffle { .. }
+            | Op::PixelUnshuffle { .. }
+            | Op::ScaleConst { .. }
             | Op::Activation(_)
             | Op::Clamp { .. }
             | Op::SliceChannels { .. }

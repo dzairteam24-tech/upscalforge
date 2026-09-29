@@ -148,34 +148,34 @@ pub(super) fn upsample_nearest2(x: &[f32], d: Dims, out: &mut [f32]) {
     }
 }
 
-/// `[N, 4C, H, W] → [N, C, 2H, 2W]`, source channel `c·4 + dy·2 + dx`.
-pub(super) fn pixel_shuffle2(x: &[f32], d: Dims, out: &mut [f32]) {
-    let c_out = d.c / 4;
-    let (ho, wo) = (d.h * 2, d.w * 2);
+/// `[N, C·r², H, W] → [N, C, rH, rW]`, source channel `c·r² + dy·r + dx`.
+pub(super) fn pixel_shuffle(x: &[f32], d: Dims, r: usize, out: &mut [f32]) {
+    let c_out = d.c / (r * r);
+    let (ho, wo) = (d.h * r, d.w * r);
     for n in 0..d.n {
         for c in 0..c_out {
             let dst = &mut out[(n * c_out + c) * ho * wo..][..ho * wo];
             for y in 0..ho {
                 for xo in 0..wo {
-                    let src_c = c * 4 + (y % 2) * 2 + (xo % 2);
-                    dst[y * wo + xo] = x[((n * d.c + src_c) * d.h + y / 2) * d.w + xo / 2];
+                    let src_c = c * r * r + (y % r) * r + (xo % r);
+                    dst[y * wo + xo] = x[((n * d.c + src_c) * d.h + y / r) * d.w + xo / r];
                 }
             }
         }
     }
 }
 
-/// Exact inverse of [`pixel_shuffle2`].
-pub(super) fn pixel_unshuffle2(x: &[f32], d: Dims, out: &mut [f32]) {
-    let (ho, wo) = (d.h / 2, d.w / 2);
-    let c_out = d.c * 4;
+/// Exact inverse of [`pixel_shuffle`].
+pub(super) fn pixel_unshuffle(x: &[f32], d: Dims, r: usize, out: &mut [f32]) {
+    let (ho, wo) = (d.h / r, d.w / r);
+    let c_out = d.c * r * r;
     for n in 0..d.n {
         for c in 0..c_out {
-            let (src_c, dy, dx) = (c / 4, (c % 4) / 2, c % 2);
+            let (src_c, dy, dx) = (c / (r * r), (c % (r * r)) / r, c % r);
             let dst = &mut out[(n * c_out + c) * ho * wo..][..ho * wo];
             for y in 0..ho {
                 for xo in 0..wo {
-                    dst[y * wo + xo] = x[((n * d.c + src_c) * d.h + 2 * y + dy) * d.w + 2 * xo + dx];
+                    dst[y * wo + xo] = x[((n * d.c + src_c) * d.h + r * y + dy) * d.w + r * xo + dx];
                 }
             }
         }
