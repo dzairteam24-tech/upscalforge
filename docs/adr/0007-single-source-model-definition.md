@@ -1,5 +1,9 @@
 # ADR-0007: Single-source model definition with parity tests
 
+**Status: Superseded by [ADR-0011](0011-own-training-framework.md).** With one
+runtime for training and inference, there is no second implementation to keep
+in parity.
+
 ## Context
 Training (PyTorch) and inference (Rust runtime) both need the architecture. Two
 hand-written definitions would drift apart.

@@ -6,8 +6,12 @@ Blending overlaps only hides seams approximately. Any global operation inside
 the network makes tile results depend on the tile.
 
 ## Decision
-- The per-tile graph (`main`) may contain only local operators. Its
-  receptive radius and alignment are derived by static analysis.
+- The per-tile graph (`main`) may have no spatial reduction on any path to a
+  spatial output. Reductions are allowed only on statistics branches (QC)
+  that start from a crop to the tile core. The receptive radius and alignment
+  are derived by static analysis.
+- Locally varying behaviour (strength, consistency weight, face regions) is
+  supplied as spatial maps computed before tiling (ADR-0012).
 - Global information comes from a separate analysis pass over a bounded
   summary (a native-resolution patch mosaic plus a thumbnail). The pass
   produces a condition vector that is identical for every tile.

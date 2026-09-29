@@ -1,5 +1,10 @@
 # ADR-0001: Rust engine, Python/PyTorch training
 
+**Status: Superseded by [ADR-0011](0011-own-training-framework.md).** The
+master specification (§31) requires that no AI framework be a product
+dependency, and a feasibility study showed that our own training framework is
+realistic.
+
 ## Context
 The engine parses untrusted images and model files, manages device memory,
 and must run on Linux, Windows and macOS. Training needs automatic

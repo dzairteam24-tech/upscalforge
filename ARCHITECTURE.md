@@ -1,731 +1,693 @@
-# ScaleForge Architecture
+# ScaleForge Architecture (revision 2)
 
-Status: **Phase 2 proposal, revised after the Phase 3 review.** The review and
-its resulting changes are in
-[`docs/design/03-architecture-review.md`](docs/design/03-architecture-review.md).
-Requirement IDs (F-1, Q-3, …) refer to
-[`docs/design/01-requirements.md`](docs/design/01-requirements.md).
-Major decisions are recorded as ADRs in [`docs/adr/`](docs/adr/).
+Status: **Phase 3 proposal, revised after the Phase 4 critical review**
+([`docs/design/04-architecture-review.md`](docs/design/04-architecture-review.md)).
+Requirement IDs refer to
+[`docs/design/01-requirements.md`](docs/design/01-requirements.md). Capability
+classifications are in
+[`docs/design/02-capability-feasibility.md`](docs/design/02-capability-feasibility.md).
+Dependency verdicts are in [`DEPENDENCIES.md`](DEPENDENCIES.md). Decisions
+are recorded in [`docs/adr/`](docs/adr/).
 
-Nothing described here is implemented yet, unless the implementation status
-table at the end says so.
+**Nothing described here is implemented.** See §27.
 
 ---
 
-## 1. Overview
+## 1. Invariants
+
+The whole design rests on four invariants.
+
+1. **Locality.** Everything computed per tile is local, with a receptive
+   field known before execution. Anything global is split into an *analysis*
+   step over a bounded summary, which produces parameters, vectors or
+   low-resolution spatial maps, followed by a local *application* step. This
+   gives exact seam-free tiling, streaming beyond RAM, exact memory
+   prediction, and region previews identical to the full render.
+2. **Model as data.** A model is a declarative graph over our small, versioned
+   operator set, plus weights. It is never code. The engine is therefore
+   model-agnostic, every backend only has to implement the operator set,
+   memory can be planned statically, and loading a model is safe.
+3. **Budgets.** Nothing large is allocated without first asking the host
+   memory manager or the VRAM manager. Plans are checked against budgets
+   before execution starts.
+4. **Explainability.** Every processing parameter has a recorded origin: a
+   user setting, a named policy rule with its evidence, or a documented
+   default. There are no hidden decisions (§14).
+
+---
+
+## 2. One language, one runtime (ADR-0011, supersedes ADR-0001/0007)
+
+Everything is written in **Rust**: engine, GPU backends, image engine,
+analysis, training framework, CLI. Training runs on the **same graph IR,
+operator set, backends and memory planner** as inference, extended with
+gradient operators. As a result:
+
+- no AI framework in any part of the product (D-3);
+- no second implementation of every operator, and no parity tests between
+  languages (this resolves revision-1 review item R-11);
+- training-time validation runs the real inference engine.
+
+The feasibility argument is in requirements §5.
+
+---
+
+## 3. System map
 
 ```
-             ┌──────────────┐   ┌──────────────┐   ┌─────────────────┐
-             │  scaleforge  │   │  future GUI  │   │ future C ABI /  │
-             │     CLI      │   │              │   │ other bindings  │
-             └──────┬───────┘   └──────┬───────┘   └───────┬─────────┘
-                    └──────────────────┼───────────────────┘
-                                       ▼
-┌──────────────────────────── Public API (crate `scaleforge`) ─────────────────────────┐
-│  Engine · ModelHandle · JobRequest · Progress · CancelToken · Report                  │
-├───────────────────────────────── Engine internals ────────────────────────────────────┤
-│  Job Planner ─► Auto-Tuner ─► Tile Planner ─► Scheduler ─► Region Executor            │
-│        │             │             │               │                                  │
-│        │       Tuning Cache   Memory Manager (host budget)   VRAM Manager (device)    │
-│        ▼                                                                              │
-│  Model Runtime: load/validate .sfm ─► select subgraph (mode, scale) ─► memory plan    │
-│                 ─► compile for device ─► execute                                      │
-├──────────────────────────────┬─────────────────────────────┬─────────────────────────┤
-│ sf-model                     │ sf-compute (abstraction)    │ sf-image                │
-│ .sfm format, graph IR,       │ Backend/Device/Buffer/Queue │ pixel buffers, region   │
-│ validation, shape inference, │ Event/Executable traits     │ sources and sinks,      │
-│ receptive-field analysis,    │ + CPU reference backend     │ codecs, colour mgmt,    │
-│ memory planner               ├─────────────┬───────────────┤ analytic resampling     │
-│                              │ sf-compute- │ sf-compute-   │                         │
-│                              │ cuda        │ vulkan        │                         │
-├──────────────────────────────┴─────────────┴───────────────┴─────────────────────────┤
-│ sf-core: errors, limits, geometry, dtypes, cancellation, progress, logging facade     │
-└───────────────────────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────── training/ (Python, separate process, not linked) ──────────────────┐
-│ manifests → validation → degradation programs → pairs → training loop → evaluation →  │
-│ export (.sfm) ── parity tests against the Rust runtime (via the CLI) ─────────────────│
-└───────────────────────────────────────────────────────────────────────────────────────┘
+     CLI            future GUI           future bindings (C ABI)
+      └────────────────┬───────────────────────┘
+                       ▼
+┌──────────────────────────── Public API (`scaleforge`) ───────────────────────────────┐
+│ Engine · Session(image) · JobRequest · Controls · Variants · Report · Progress · Cancel │
+├──────────────────────────────── Engine (`scaleforge`) ────────────────────────────────┤
+│ Summary pass ─► Analysis ─► Strategy (Auto/Manual) ─► Predictive QC ─► Plan            │
+│   ─► Tile scheduler ─► Region executor ─► QC accumulation ─► Post stages ─► Sink       │
+│ Model runtime · VRAM manager · Host memory manager · Auto-tuner · Tuning cache          │
+│ Instrumentation · Benchmark · Batch                                                     │
+├───────────────┬──────────────────┬──────────────────┬───────────────┬─────────────────┤
+│ sf-analysis   │ sf-image         │ sf-graph         │ sf-compute    │ sf-train        │
+│ estimators,   │ buffers, own     │ tensors, op set, │ device        │ datasets,       │
+│ QC detectors, │ codecs, colour,  │ IR, validation,  │ abstraction + │ training loop,  │
+│ full-ref      │ resampling,      │ analyses, memory │ CPU backend   │ losses, SF-Net  │
+│ metrics       │ summary builder  │ plan, autodiff,  ├───────┬───────┤ definition,     │
+│               │                  │ .sfm / .sfck     │ CUDA  │Vulkan │ export, eval    │
+│               │                  │                  │       │       ├─────────────────┤
+│               │                  │                  │       │       │ sf-degrade      │
+├───────────────┴──────────────────┴──────────────────┴───────┴───────┴─────────────────┤
+│ sf-core: errors, limits, geometry, dtypes, JSON, cancellation, progress, logging        │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key idea.** The system rests on three invariants. Most of the other design
-decisions follow from them.
-
-1. **Locality invariant.** Every operation that runs per tile is *local*, with
-   a receptive field known ahead of time. Every *global* operation is split
-   into a cheap analysis pass over a bounded-size summary of the image, which
-   produces parameters, and a local application step. This one rule makes three
-   things possible: exact seam-free tiling, streaming of images larger than
-   RAM, and exact memory prediction.
-2. **Model-as-data invariant.** A model is a declarative graph over a small,
-   versioned operator set, plus weights. It is never code. This makes the
-   engine model-agnostic (M-2), lets many backends execute models
-   (only the operator set has to be implemented per backend), makes memory
-   estimates exact (static planning), and makes model files safe to load.
-3. **Budget invariant.** Nothing large is allocated without first asking a
-   budget: the host memory manager or the VRAM manager. Plans are computed and
-   checked against the budgets before execution starts.
+| Crate | Responsibility | Why it is a separate crate |
+|-------|----------------|---------------------------|
+| `sf-core` | Error taxonomy, `Limits`, checked geometry, dtypes, own strict JSON reader/writer, cancellation, progress, logging trait | Shared by every crate; no dependencies |
+| `sf-graph` | **Tensor and graph system**: tensor descriptors, operator set (forward and gradient), graph IR, role-based validation, shape inference, locality and required-region analysis, subgraph selection, memory planning, autodiff transform, `.sfm` model and `.sfck` checkpoint containers | Pure logic with no device. Used by the engine, backends and training |
+| `sf-compute` | Device abstraction + **CPU reference backend** (strict mode, f64 test path) | The CPU backend is not optional; it is the reference for every other backend |
+| `sf-compute-cuda`, `sf-compute-vulkan` | GPU backends | Optional features that isolate hardware interfaces |
+| `sf-image` | Pixel buffers, region sources and sinks, own codecs, colour, resampling, analysis-summary builder | Used by the engine, analysis, training and evaluation |
+| `sf-analysis` | No-reference estimators (analysis), QC detectors, full-reference metrics | Shared measurement toolkit for runtime analysis, QC and evaluation |
+| `sf-degrade` | Degradation grammar and operators | Used by training, by evaluation-set generation, **and** by estimator calibration and tests |
+| `sf-train` | Dataset manifests and validation, SF-Net and discriminator definitions, losses, training loop, checkpoints, tracking, export, regression evaluation | Training is a separate product surface. The engine only reads `.sfm` files |
+| `scaleforge` | Engine and public API | One crate: its modules are coupled through plans and budgets and have one consumer |
+| `scaleforge-cli` | CLI | Presentation only |
 
 ---
 
-## 2. Language and process structure (ADR-0001)
-
-- **Engine, runtime, backends, CLI: Rust.** Reasons: memory safety for the
-  large attack surface of image decoding and model loading; no GC pauses;
-  zero-cost abstraction over backends; good C/C++ FFI for CUDA and Vulkan;
-  a single static binary; a strong test and fuzzing story.
-- **Training: Python + PyTorch.** Training needs automatic differentiation,
-  optimisers, mixed precision and multi-GPU data parallelism. Writing an
-  autodiff framework would take years and would be technically worse (N-6 says
-  independence must not be bought with inferior engineering). PyTorch is a
-  general tensor library, not an upscaling engine, so O-3 is not violated. It
-  is used **only** in the training process. The engine never links it.
-- The two sides share a **single-source model definition** (§7.4) and a
-  **file format** (`.sfm`), and are joined by **parity tests** (T-7).
-
----
-
-## 3. Crate and module responsibilities
-
-| Crate | Responsibility | Depends on |
-|-------|----------------|------------|
-| `sf-core` | Error taxonomy, resource limits, geometry (`Rect`, `Size`, `Scale`), dtypes, cancellation token, progress events, logging facade | — |
-| `sf-image` | `PixelBuffer`, `RegionSource`/`RegionSink` traits, codecs (feature-gated per format), colour management, analytic resampling | `sf-core`, codec crates |
-| `sf-model` | `.sfm` reader/writer, graph IR, operator set, validation, shape inference, receptive-field analysis, memory planner | `sf-core` |
-| `sf-compute` | Backend abstraction traits + CPU reference backend | `sf-core`, `sf-model` (operator definitions) |
-| `sf-compute-cuda` | CUDA backend (optional feature) | `sf-compute` |
-| `sf-compute-vulkan` | Vulkan backend (optional feature) | `sf-compute` |
-| `sf-quality` | Metrics (PSNR, SSIM, MS-SSIM, gradient fidelity), regression comparison | `sf-core`, `sf-image` |
-| `scaleforge` | **Public API** and engine: model runtime, VRAM and memory managers, tiling, scheduler, auto-tuner, pipeline, instrumentation | all of the above except backends (those are registered) |
-| `scaleforge-cli` | CLI binary: argument parsing and presentation only | `scaleforge`, `sf-quality` |
-
-Why these boundaries:
-
-- **Backends are separate crates** so that CUDA and Vulkan bindings and SDK
-  requirements are optional and isolated. A CPU-only build links neither. The
-  engine sees only the traits (G-1).
-- **The CPU backend lives inside `sf-compute`** because it is not optional: it
-  is the reference implementation that every other backend is tested against,
-  and the fallback of last resort.
-- **`sf-model` has no device dependency.** Validation, shape inference and
-  memory planning are pure functions. They are tested exhaustively on the host,
-  and tools like `scaleforge models inspect` use them without touching a
-  device.
-- **`sf-quality` is separate from the engine** because both the benchmark and
-  regression tools and the CLI `eval` command use it. It is the *canonical*
-  metric implementation. The Python training code computes metrics only for
-  monitoring (see review item R-12).
-- **The engine is one crate** (`scaleforge`), not split into
-  runtime/tiling/scheduler crates. Those parts are tightly coupled through
-  plans and budgets and have a single consumer. Splitting them would add
-  public interfaces with no second user. They are separate *modules* with
-  their own tests.
-
----
-
-## 4. Processing pipeline
-
-The pipeline from the brief, mapped onto concrete components:
+## 4. Processing pipeline (§4, §27)
 
 ```
-Input ─► Validation ─► Decode ─► Colour mgmt ─► Preprocess ─► Tiling ─► AI inference
-      ─► Reconstruction (tile assembly) ─► Postprocess ─► Colour conversion ─► Encode ─► Output
+Input ─► Validation ─► Decode ─► Colour mgmt ─► Summary pass ─► Analysis ─► Strategy
+      ─► Predictive QC ─► Preprocess ─► Tiling ─► AI inference ─► Reconstruction (core placement)
+      ─► QC accumulation ─► Post stages (tone/colour, sharpening) ─► Colour conversion ─► Encode ─► Output
 ```
 
-| Stage | Component | Local/global | Testable alone via |
-|-------|-----------|--------------|--------------------|
-| Validation | `sf-image::probe` + job planner | global (header only) | header fixtures, malformed files |
-| Decode | `RegionSource` implementation per codec | streaming where the format allows | codec round-trip and fuzz tests |
-| Colour management | `sf-image::color` | per-pixel (local, halo 0) | known-value transforms, round-trip ≤ 1 LSB |
-| Preprocess | pack to model tensor, alpha split, border padding | local | tensor fixtures |
-| Analysis pass | context graph on a downsampled summary | **global, bounded size** | deterministic outputs |
-| Tiling | tile planner | plan only | property tests on plans |
-| AI inference | model runtime, main graph | local, halo = receptive radius | parity tests vs. training |
-| Reconstruction | crop-and-place (exact mode) or weighted blend (bounded mode) | local | seam criterion Q-3 |
-| Postprocess | clamp, alpha merge, dither if reducing bit depth | local | fixtures |
-| Colour conversion | inverse of preprocess colour step | per-pixel | round-trip |
-| Encode | `RegionSink` implementation per codec | streaming where the format allows | round-trip |
-
-**Pipeline stages are not an arbitrary DAG.** Every extension stage must
-declare which kind it is (ADR-0004):
-
-- `LocalOp { halo, scale }` — applied per tile; the tile planner adds its halo.
-- `GlobalAnalysis { summary_size } → Params` followed by a `LocalOp` that
-  consumes those params.
-
-A stage that needs arbitrary access to the whole image cannot be expressed.
-That limit is deliberate: such a stage would break tiling and streaming.
+| Stage | Component | Kind (ADR-0004) | Independent test |
+|-------|-----------|-----------------|------------------|
+| Validation | `sf-image` probe, job planner | global, header only | malformed headers, limit tests |
+| Decode | `RegionSource` per codec | streaming where the format allows | round-trips, differential tests vs. oracles, fuzzing |
+| Colour mgmt | `sf-image::color` | local, halo 0 | round-trip ≤ 1 LSB |
+| Summary pass | `sf-image::summary` | one bounded streaming pass | deterministic summaries |
+| Analysis | `sf-analysis` | global over the summary | estimator accuracy on synthetic data |
+| Strategy | `scaleforge::strategy` | global, pure function | decision tables and provenance |
+| Predictive QC | engine + `sf-analysis::qc` | runs on summary patches | QC detector tests |
+| Preprocess | pack tensors, alpha split, canonical padding | local | fixtures |
+| Tiling | `scaleforge::tiling` | plan | property tests |
+| AI inference | runtime, `main` graph | local, halo = derived radius | seam criterion, reference outputs |
+| Reconstruction | core placement | local | seam criterion |
+| QC accumulation | `sf-analysis::qc` per tile | local, statistics merged | detector tests |
+| Post stages | tone/colour, sharpening | analysis → local | known-value tests |
+| Colour conversion | inverse working encoding | local | round-trip |
+| Encode | `RegionSink` | streaming where possible | round-trip |
 
 ---
 
-## 5. Image engine (`sf-image`)
+## 5. Tensor and graph system (`sf-graph`) (§17, D-1)
 
-### 5.1 Buffers
+### 5.1 Tensors
+`TensorDesc { shape: [N, C, H, W] or [N, C], dtype: F32 | F16 | F64 (CPU test only), layout }`.
+Storage belongs to backends (`sf-compute`). The graph layer handles only
+descriptors. The canonical layout is NCHW, and backends may choose internal
+layouts (§6).
 
-`PixelBuffer { width, height, channels, sample: U8|U16|F16|F32, stride, data }`
-with checked construction. Allocation goes through the host memory manager, so
-buffers count against the budget. Processing converts to f32 (or f16 on
-device) at the tensor boundary and converts back at the end.
+### 5.2 Operator set v1 (provisional; frozen at the end of Phase 13)
 
-### 5.2 Region sources and sinks (streaming)
+| Group | Operators |
+|-------|-----------|
+| Spatial, local | `conv2d` (k ∈ {1,3,5,7}; stride 1/2; groups 1 or C; zero padding) · `avg_pool2` · `upsample_nearest2` · `pixel_shuffle2` / `pixel_unshuffle2` · `fixed_filter` (separable kernel from a named, versioned **filter family** (`gaussian`, `windowed_sinc_lowpass`, `area`, `analytic_up2`) and a scalar parameter bound at plan time; optional ×2 up/down; the graph declares the maximum kernel radius) — the kernel is synthesised by the backend from family + parameter, so models stay pure data · `crop` (planner-inserted only) |
+| Element-wise | `add` `sub` `mul` `affine_channel` (per-channel scale/shift from vectors) · `activation` {GELU-tanh, SiLU, sigmoid, leaky-ReLU, identity} · `clamp` · `scale_scalar` |
+| Channel | `concat_channels` `slice_channels` |
+| Vector | `linear` · `global_mean` (spatial → vector) · `reduce_mean` / `reduce_sum` |
+| Training only | Gradient operators generated by autodiff (`conv2d_grad_input`, `conv2d_grad_weight`, activation gradients, and adjoints of pooling and resampling), losses built from the operators above, `adamw_update` |
+
+### 5.3 Graph roles and validation
+Every graph declares a role. The validator enforces:
+
+| Role | Rule |
+|------|------|
+| `main` (per tile) | **No spatial reduction on any path that reaches a spatial output.** Reductions are allowed only on branches that end in *statistics outputs* (used by QC, §11), and those branches must start from a `crop` to the tile core, so that overlapping windows are not counted twice. Vector inputs are allowed. |
+| `context` (analysis) | All inference operators, including spatial reductions. Input size is bounded. |
+| `training` | Everything |
+
+This path-based rule is exactly what tile exactness needs. A blanket ban on
+reductions would also forbid per-tile QC statistics, which do not affect
+pixels (review item R2-6).
+
+Further checks: acyclic; all inputs defined; attributes within the operator
+contract; shape inference succeeds; tensor and parameter limits respected.
+
+### 5.4 Static analyses
+- **Shape inference** for any conforming input.
+- **Locality**: the receptive radius *r* and alignment *a* are derived by
+  walking the graph. Kernel sizes set at plan time (e.g. the consistency
+  filter) enter through their declared upper bound, and the exact value is
+  computed at plan time.
+- **Required regions** + `crop` insertion: each tensor is computed only over
+  the region its consumers need. This keeps the halo cost in low-resolution
+  compute.
+- **Subgraph selection** for (scale, mode, enabled inputs). For example,
+  Faithful mode drops the synthesis path.
+- **Memory planning**: liveness analysis and offset assignment in one arena.
+  Exact peak bytes as a function of (H, W, N, precision), affine in H·W for
+  `main` graphs.
+- **Autodiff** (training): reverse-mode transformation of a `training` graph
+  into forward + backward + update graphs. It is checked by finite-difference
+  tests in f64 on the CPU backend.
+
+### 5.5 Containers (ADR-0002)
+`.sfm` (model) and `.sfck` (checkpoint) share one layout: magic, version, a
+length-prefixed JSON header parsed by our own strict parser (size and depth
+limits), and a 64-byte-aligned tensor blob with a SHA-256 per tensor and for
+the whole file. Everything is validated before any allocation proportional to
+declared sizes. No executable content of any kind.
+
+---
+
+## 6. GPU execution layer (`sf-compute`) (§22, ADR-0003)
+
+The abstraction sits at the **graph-execution level**. The engine hands a
+backend a planned graph; the backend compiles it (choosing kernels, fusions
+and layouts). The six concerns are separate:
 
 ```text
-trait RegionSource { fn info(&self) -> ImageInfo;
-                     fn access(&self) -> AccessPattern;   // Random | Sequential{band_rows}
-                     fn read(&mut self, rect, &mut PixelBuffer) -> Result<()>;
-                     fn rewind(&mut self) -> Result<()>; }
-trait RegionSink   { fn write(&mut self, rect, &PixelBuffer) -> Result<()>;
-                     fn finish(self) -> Result<()>; }
+Backend     enumerate() / open(device)                               — device management
+Device      info(), memory_status(), allocate(bytes, kind)           — memory allocation / buffers
+            memory_requirement(graph, shape, precision)  (pure)
+            compile(graph, precision) -> Executable                  — compute operations
+Queue       upload / download                                        — transfers
+            execute(executable, bindings)                            — execution
+            signal() -> Event, wait(event), synchronize()            — synchronisation
 ```
 
-- **Random access**: in-memory images, tiled TIFF.
-- **Sequential**: PNG (non-interlaced), baseline JPEG, and stripped TIFF can
-  decode row bands. A sequential source is wrapped in a **band cache** that
-  holds only the rows the current tile row needs (tile height + 2 × halo).
-- **Formats that need a full decode** (interlaced PNG, progressive JPEG, WebP)
-  decode fully into memory. The job planner checks the host memory budget
-  *before* decoding, using the dimensions from the header.
-- Sinks likewise stream (PNG, JPEG and TIFF write row bands; TIFF uses BigTIFF
-  above 4 GiB) or buffer (WebP). An output that would exceed the budget or
-  the format's limits is rejected during validation (I-7).
-- The tile planner orders tiles in **row-major bands**, which matches both
-  streaming sources and streaming sinks. Peak host memory is
-  O(width × band height), not O(width × height).
-
-### 5.3 Codecs
-
-Each format sits behind `trait Codec { probe, open_source, open_sink,
-capabilities }` and is registered in a `CodecRegistry`. The engine does not
-depend on any specific image library (I-2). Initial implementations wrap
-established, memory-safe, fuzzed Rust decoders and encoders (listed in
-`DEPENDENCIES.md`). Writing our own inflate/DCT/LZW decoders would add
-security-critical surface with no benefit to the product (ADR-0006).
-
-### 5.4 Colour management (ADR-0005)
-
-Principle: **process in the image's native encoded space whenever that is
-valid, and carry the profile through unchanged.**
-
-- The model is trained on gamma-encoded RGB (sRGB-like transfer). Its
-  behaviour does not depend strongly on the exact primaries. Processing a
-  Display P3 image in its own encoded values and re-attaching the P3 profile
-  therefore causes **no gamut clipping and no conversion error**. A convert →
-  process → convert back approach would clip wide-gamut colours at the sRGB
-  step.
-- A minimal ICC reader (header, tag table, `rXYZ/gXYZ/bXYZ`, `rTRC/gTRC/bTRC`,
-  `wtpt`, `desc`) *classifies* profiles (RGB/grey, transfer class: gamma-like,
-  linear, or unknown). Full LUT-based colour transforms are not needed on the
-  common path. Profiles are passed through byte for byte.
-- **Linear-light inputs** (linear TIFF, float, future EXR) are encoded with a
-  documented invertible transfer into the model's working range, and decoded
-  after processing.
-- **HDR (values > 1.0)**: an invertible range-compressing encoding (a
-  logarithmic curve with a known inverse) maps the values into the working
-  range. This path is marked **experimental** until it has been evaluated.
-- Grey images are processed as three identical channels and converted back
-  using the mean, so no colour is introduced. CMYK is rejected in v1 with a
-  clear error.
-- EXIF orientation is applied before processing, and the tag is reset in the
-  output. Associated (premultiplied) alpha is un-premultiplied only where
-  alpha exceeds a threshold, so near-zero alpha does not amplify quantisation
-  noise.
-- Alpha is split off before processing. It is upscaled with the analytic
-  resampler and merged back. Colour under fully transparent pixels is filled
-  from neighbours before inference, so garbage colour does not bleed into
-  visible edges.
-
-### 5.5 Analytic resampling
-
-A separable windowed-sinc resampler, together with area (box) downsampling.
-It is used for alpha, for the analysis-pass summary, as a comparison baseline
-(F-6), and for the fixed operators inside the consistency step. It is
-implemented in-house: the mathematics is standard, and we need exact control
-over kernel support to account for its receptive field.
+- Everything on a `Queue` is asynchronous by contract. The **CPU backend
+  follows the same contract**, with separate "device" allocations and
+  explicit copies. Its **strict mode** (on in tests) detects host access
+  before an event has signalled and freeing of in-flight buffers.
+- **CPU backend**: our own kernels (direct and blocked convolution,
+  depthwise, GEMM, element-wise), parallel over rows with `std::thread::scope`.
+  Deterministic. f64 support is used only for gradient checking.
+- **CUDA backend**: our own FFI to the **driver API** (loaded at run time),
+  and our own CUDA C kernels compiled to PTX at build time and JIT-loaded by
+  the driver. No CUDA runtime library, cuBLAS or cuDNN.
+- **Vulkan backend**: Vulkan 1.2 through generated bindings, our own GLSL
+  compute shaders compiled to SPIR-V at build time, and
+  `VK_EXT_memory_budget` for VRAM budgets.
+- GPU backends are **INCOMPLETE (unvalidated)** until run on hardware
+  (requirements X-9).
 
 ---
 
-## 6. GPU abstraction (`sf-compute`, ADR-0003)
+## 7. Memory and VRAM (§23, ADR-0009)
 
-### 6.1 Level of abstraction
+**VRAM manager (per device).**
+- Budget = min(device-reported budget, user limit) − safety reserve. The
+  reserve is provisional and later calibrated from measurements.
+- Tagged pools: `weights` (resident per model and precision), `activations`
+  (one arena sized from the plan), `io` (staging, doubled when pipelined),
+  `workspace` (reported by the executable), `training` (gradients and
+  optimiser state).
+- **Fragmentation** is prevented by design: a few large allocations
+  sub-allocated at planned offsets. Arenas only grow during a job and shrink
+  between jobs.
+- **Pre-flight** `fits(plan) -> Fit | Shortfall(bytes)` before allocating.
+  Runtime out-of-memory errors lead to a bounded shrink → re-plan → retry of
+  the current band. This is safe mid-image because tiling is exact.
 
-The abstraction sits **at the graph-execution level, not the kernel level.**
-The engine hands a backend a *memory-planned graph*. The backend compiles it
-into an `Executable`, choosing kernels, fusing element-wise ops and picking
-layouts. The engine never names a kernel. This keeps vendor-specific
-optimisation inside backends while keeping the interface small.
+**Host memory manager.** A process-wide budget charged by pixel buffers, band
+caches, spatial maps, variant caches and sink buffers. A job's peak host memory
+is computed from its plan *before* decoding.
+
+---
+
+## 8. Image engine (`sf-image`)
+
+### 8.1 Buffers, sources, sinks
+`PixelBuffer` has checked construction and is charged to the host memory
+manager. `RegionSource` (random access or sequential bands, `rewind`) and
+`RegionSink` (in-order bands) allow streaming. Sequential sources are wrapped
+in a band cache (tile height + 2 × halo rows). Formats that need a full decode
+are checked against the budget before decoding.
+
+### 8.2 Codecs (staged plan in `DEPENDENCIES.md`)
+Each codec sits behind `Codec { probe, open_source, open_sink, capabilities,
+limits }` in a `CodecRegistry`.
+
+| Format | Implementation | Streaming |
+|--------|---------------|-----------|
+| PNG | **Own** (DEFLATE/zlib, filters, chunks, Adam7 decode, ICC/`gAMA`/`cHRM`/`sRGB`/`cICP` chunks) | Rows (non-interlaced) |
+| TIFF | **Own** subset: strips and tiles; none/LZW/DEFLATE/PackBits; 8/16-bit integer and 32-bit float; BigTIFF write | Tiled: random access. Stripped: bands |
+| JPEG encode | **Own** baseline encoder (also used by `sf-degrade`) | Rows (MCU bands) |
+| JPEG decode | Own baseline first; progressive via the interim optional external decoder until our own reaches parity | Baseline: bands. Progressive: full |
+| WebP | Interim optional external decoder; lossless encode | Full buffer; size limit 16383 px checked at validation |
+| AVIF / JPEG XL / OpenEXR | Future `Codec` implementations | — |
+
+Limits (dimensions, pixels, decoded bytes, chunk sizes, ICC size) are enforced
+before any decoder allocates. All codecs are fuzzed and differentially tested
+against development-only oracles.
+
+### 8.3 Colour management (ADR-0005)
+- Gamma-encoded RGB and grey are processed in their **native encoding**, and
+  the ICC profile passes through byte for byte. This avoids gamut clipping.
+- A minimal ICC reader *classifies* profiles (transfer: gamma-like, linear or
+  unknown; primaries from `rXYZ/gXYZ/bXYZ`) for analysis and linear-light
+  operations.
+- Linear and HDR data (values > 1) go through a documented invertible
+  working encoding (a log-type curve). The HDR path is experimental until
+  evaluated.
+- Operations that must happen in linear light (white balance, exposure) use
+  the classified transfer function. If the transfer is unknown, those stages
+  are refused with an explanation. Nothing is silently guessed.
+- EXIF orientation is applied and then reset. Location metadata is stripped by
+  default (MR-1). Alpha is split off, upscaled with the analytic resampler, and
+  merged back. Colour under transparent pixels is filled before inference.
+  CMYK is rejected in v1.
+
+### 8.4 Resampling and filters
+Our own separable windowed-sinc, area and Gaussian filters. They are used for
+alpha, thumbnails, the analytic base upsample, consistency kernels, and the
+analysis filters.
+
+### 8.5 Summary pass (the only whole-image read before tiling)
+One streaming pass builds the `AnalysisSummary`:
+- a **patch mosaic**: K native-resolution patches on a deterministic grid (for
+  noise, compression, blur and predictive QC);
+- a **thumbnail**: area-downsampled to ≤ 512 px (for exposure, colour,
+  composition, face detection at coarse scale);
+- **exact whole-image statistics**: per-channel histograms, clipping counts,
+  gradient-magnitude histogram;
+- **format evidence**: JPEG quantisation tables, chroma subsampling, and
+  gamma/ICC chunks read from the file header.
+
+A sequential source is therefore decoded twice (summary pass, then tile
+pass). This cost is reported. Non-rewindable inputs are spooled to a
+temporary file, within the budget.
+
+---
+
+## 9. ScaleForge model: SF-Net (Phase 13; details in MODEL.md then)
+
+```
+AnalysisSummary.patches ─► context graph (learned degradation estimator) ─► d_learned
+AnalysisReport (classical) ─► d_classical        user overrides ─► d_user
+                    d = fuse(d_user ▷ d_classical, d_learned)   (fusion rule documented, reported)
+                    c_b = embed(d)                      c_s = embed(d, s)
+
+inputs per tile (all local): LR tile + halo · strength map m (Balanced/Reconstruction)
+                             · consistency weight map w · model-declared spatial conditions (none in v1)
+
+LR ─► stem ─► [Dual-Rate Block × N, modulated by c_b] ─► body features
+                  │
+     ┌────────────┴───────────────────────────────┐
+     ▼ base path (always)                          ▼ synthesis path (Balanced / Reconstruction)
+  ×1 head │ ×2 ─► ×2 ─► ×2 stages               texture trunk (modulated by c_s)
+  residuals on the fixed analytic upsample       ─► matching ×1 / ×2 stages ─► R
+     ▼                                              │
+     B_k (k = scale)          Y = B + s · m ⊙ R ◄───┘
+                                      ▼
+            consistency:  Y ← Y + w ⊙ U( LP_fc( x − D_d(Y) ) )
+   D_d = downsample ∘ blur(estimated blur width) · LP_fc = low-pass at cutoff fc · w = weight map ∈ [0,1]
+```
+
+- **The degradation descriptor `d` is physical** (U-3): noise σ and signal
+  dependence, chroma noise ratio, blur width, compression strength, ringing
+  and oversharpening amount, effective-resolution factor. During training the
+  network is conditioned on the **true** parameters from `sf-degrade`, with
+  controlled perturbation for robustness. So a user override such as "denoise
+  strength" is a real, trained control.
+- **Dual-Rate Block**: a full-rate local stream (depthwise 3×3 → gated
+  pointwise expansion → projection) and a half-rate context stream in
+  selected blocks, with pointwise exchange between them. Per-channel
+  modulation comes from `c_b`. The half-rate blocks let us enforce a
+  **receptive-radius budget**. The budget is provisional: ≤ 32 LR px for the
+  network plus ≤ 16 LR px for the consistency step, 48 in total. The build
+  fails if it is exceeded (R2-4).
+- **Spatial conditions are declared by the model**, not built into the engine.
+  SF-Net v1 declares none. A later face-aware version declares a `face_mask`
+  input, and the engine supplies it through the same spatial-map mechanism
+  used for `m` and `w` (R2-3).
+- **Scales**: one shared body, a ×1 head and three ×2 stages (F-1'). Channel
+  counts shrink at the higher-resolution stages. Lower scales skip the later
+  stages.
+- **Split conditioning**: `s` never reaches the body or the base path, so
+  Faithful output cannot depend on it.
+- **Staged training**: Stage A trains stem, body, base path and estimator
+  with distortion losses. Stage B **freezes Stage A** and trains the synthesis
+  path over a range of sampled `s`. Stage F (later) adds face conditioning.
+- **Consistency step**: fixed operators whose kernels are derived at plan
+  time from `d` and the mode. Its radius enters the locality analysis.
+  - `fc` = min(noise limit, blur-conditioning limit, mode limit). The **noise
+    limit** excludes bands where the measured noise dominates, so input noise
+    is not forced back into the output. The **blur-conditioning limit**
+    restricts correction to frequencies where the estimated blur's transfer is
+    ≥ 0.5. Below that, correcting would amplify errors in the blur estimate:
+    ringing when blur is overestimated, softening when it is underestimated
+    (R2-1).
+  - Correction is damped (`w ≤ 1`).
+  - **The consistency step is part of the training graph**, with `fc` and
+    `w` sampled over their ranges. The network therefore learns *with* it
+    rather than having it bolted on afterwards (R2-2).
+- **Unified vs. specialised (§7, MR-6)**: one conditioned architecture serves
+  general, noisy, compressed, blurred and low-resolution inputs. A specialised
+  model is created only if a defined experiment shows the unified model
+  falling short on a category's evaluation set at equal budget.
+
+---
+
+## 10. Reconstruction modes (§9, F-3'/F-4'/F-4''/F-7)
+
+| | Faithful | Balanced | Reconstruction |
+|--|----------|----------|----------------|
+| Synthesis path | **not executed** | executed | executed |
+| Strength `s` | 0 | from policy, **capped** (cap provisional, calibrated) | user, 0…1 |
+| Local strength map `m` | — | from predictive/per-tile QC | from QC (lenient thresholds) |
+| Consistency band `fc` | widest band the noise allows | same as Faithful | lower band (colour and large structure only) |
+| QC thresholds | strict | strict on consistency | lenient on detail, strict on colour shift |
+
+Each row is a real difference in computation, and each is covered by a test.
+
+---
+
+## 11. Quality control (§11)
+
+QC detectors are **graph branches** built by `sf-analysis::qc`. They are
+appended to the `main` graph as statistics outputs (§5.3), run on the same
+device as the model, and yield per-core statistics. The host merges these into
+a coarse QC map and a report. The full-resolution output is never re-scanned
+on the CPU (R2-6). Rule: **bounded-size data (the summary) is analysed on the
+host in Rust; full-resolution per-tile data is analysed as graph operators.**
+
+| Symptom | Detector |
+|---------|----------|
+| Hallucination / structure loss | Consistency residual ‖LP(x − D_d(Y))‖ at a band above `fc` |
+| Colour shift | Difference of low-pass channel means (in linear light where the transfer is known) |
+| Haloing / oversharpening | Overshoot beyond local extremes across strong edges, relative to the input's own overshoot |
+| Repeated textures | Peaks of normalised autocorrelation of `R` outside the origin. Runs **on the host, on predictive-QC patches only**: large-lag correlation is not a local operator (R2-7) |
+| Tile seams | Exact mode: guaranteed by construction and tested. Bounded mode: discontinuity statistics along core boundaries |
+| Unnatural edges | Edge-width distribution anomalies (RES) |
+| Facial distortion | Landmark drift between input and output (needs FA-1; INCOMPLETE until then) |
+
+Automatic adjustment (QC-3), in two steps that preserve locality:
+1. **Predictive QC**: before the full run, the planned configuration runs on
+   the summary's native-resolution patches. Their QC scores adjust the global
+   `s` (Balanced) and seed the strength map `m`.
+2. **Per-tile QC** during the run is recorded and reported.
+3. **Corrective re-render** of flagged regions (a locally lowered `m`, plus
+   re-rendering of tiles whose halo overlaps the change) is **postponed to
+   Phase 17 as an optional feature**. It works only with random-access sinks,
+   and its complexity must first be justified by evidence that predictive QC
+   is insufficient (R2-8).
+
+Every adjustment appears in the job report.
+
+---
+
+## 12. Tiling engine (§24, ADR-0004)
+
+- **Exact mode (default).** Halo = derived radius `r` (rounded up to the
+  alignment `a`), using the model's own border semantics. The image is padded
+  once, globally, to a multiple of `a`. The image is partitioned into
+  **non-overlapping cores**, each written once. Each core has a **uniform
+  compute window**, shifted inward at the edges. Tiles run in row-major band
+  order. Tiled output equals whole-image output to within floating-point
+  operation order. Seams cannot occur.
+- **Bounded-error mode** (opt-in, or chosen by the auto-tuner under
+  pressure): halo < `r` with cosine blending. The error is **measured** per
+  model and halo, never assumed.
+- Spatial maps (`m`, `w`, and model-declared conditions such as `face_mask`) are cropped per compute window, like the image.
+
+---
+
+## 13. Scheduler (§26, ADR-0010)
+
+- **The synchronous executor is the reference**: fetch → preprocess → upload
+  → execute → download → QC and post → write.
+- A **pipelined executor** (three threads, bounded channels of depth 2,
+  double-buffered staging, a reorder buffer before the sink) is enabled per
+  device only when calibration measures a gain.
+- One device executor per device. Jobs queue at tile granularity. Cancellation
+  is checked between tiles. Progress events are emitted per tile.
+
+---
+
+## 14. Analysis, strategy, Auto mode and manual control (§5, §6, §14, §15)
+
+**Analysis engine (`sf-analysis::estimate`)** produces an `AnalysisReport`.
+Each field has a value, an uncertainty, the estimator's name and version, and
+a validity flag. v1 estimators are classical and explainable:
+
+| Quantity | Estimator (v1) |
+|----------|----------------|
+| Noise σ, signal dependence, chroma ratio | Robust dispersion of a fine high-pass residual in low-texture patch blocks, binned by intensity |
+| Compression | JPEG quantisation tables when available; otherwise blockiness on the detected 8-px grid phase |
+| Blur / sharpness / edge quality | Edge-profile width along strong edges; radial spectral fall-off |
+| Effective resolution | Frequency at which the spectrum meets the noise floor → "already upsampled by ×k" |
+| Motion vs. defocus | Directional anisotropy of edge widths and spectrum (RES; `unavailable` until validated) |
+| Ringing / oversharpening | Overshoot and oscillation around edges |
+| Texture density | Share of blocks with variance above the noise-adjusted threshold |
+| Exposure / dynamic range / contrast | Exact histograms: percentiles, clipping, RMS contrast |
+| Colour characteristics | Grey-world and bright-region white estimates, saturation statistics |
+| Face presence | Our own detector (INCOMPLETE until trained) → `unavailable` |
+| Severity | Calibrated combination per category (calibrated on `sf-degrade` data) |
+
+The learned estimator (context graph) adds `d_learned`. Fusion is a documented
+rule, and both inputs are reported.
+
+**Strategy engine (`scaleforge::strategy`)** is a pure function:
+`(AnalysisReport, JobRequest, ModelCatalog, DeviceInfo) → ProcessingPlan`.
+Decisions follow a **versioned rule policy**. The rule logic is code; its
+thresholds live in a versioned calibration file produced from synthetic
+evaluations. Every decision records `{value, source, rule id, evidence}`.
+
+**Manual controls → real parameters (U-5)**:
+
+| Control | Parameter |
+|---------|-----------|
+| Model | model selection from the catalogue (validated against capabilities) |
+| Scale | subgraph selection (1/2/4/8; > 8 by composition) |
+| Mode | §10 |
+| Reconstruction strength / texture reconstruction | `s`, strength map `m` |
+| Denoise strength | noise components of `d` fed to `c_b` |
+| Deblur strength | blur component of `d` (conditioning, and `D_d` in consistency) |
+| Fidelity | consistency band `fc` and weight `w` |
+| Face enhancement | `face_mask` condition and consistency weight `w` in face regions (INCOMPLETE until FA-1 and a face-aware model exist) |
+| Sharpening | classical post-sharpening amount (with overshoot limit) |
+| Colour processing | tone/colour stage enable and parameters |
+| Precision / tile strategy | runtime and tiling overrides |
+
+---
+
+## 15. Auto-tuner (§25, ADR-0009)
+
+1. **Analytic**: for each allowed precision, query `memory_requirement` at two
+   shapes (memory is affine), solve for the largest tile that fits, compute the
+   halo overhead, and rank candidates with a FLOP-based cost model.
+2. **Measured**: `scaleforge benchmark --calibrate` times the candidates on the
+   device. Results go to the **tuning cache**, keyed by (backend, device,
+   driver, model hash, precision, scale, mode).
+3. Measured data takes precedence. The decision and its reason are recorded in
+   the report. All constants in step 1 are labelled provisional.
+
+---
+
+## 16. Region processing, previews and variants (§12)
+
+- `Session::open(input)` runs the summary pass and analysis once.
+  `Session::render(region, controls)` runs exact tiling restricted to the
+  region, using the **whole-image** analysis context, so previews match the
+  final render (P-1).
+- **Source access**: a session over a sequential source larger than the
+  budget spills decoded pixels once into a temporary raw tile cache, so that
+  repeated region renders do not re-decode from the start (R2-9).
+- **Variant cache**: for a region, `B` (base output) and `R` (synthesis
+  residual) are cached as f16, charged to the host budget. The region size is
+  limited so that the cache fits. Changing `s`, `m`, or switching between Balanced and
+  Reconstruction only recomputes `Y = B + s·m⊙R` and the consistency step
+  (cheap and local). Faithful ↔ Balanced reuses `B`. Changing the model or `d`
+  recomputes. Before/after is the source crop plus the output crop.
+- Face-region preview uses the face regions as preset regions (depends on
+  FA-1).
+
+---
+
+## 17. Face-aware subsystem (§10) — INCOMPLETE until trained
+
+- **Detection**: our own small convolutional detector, a `context`-role graph
+  run on the thumbnail pyramid and, when faces are small, on native patches.
+  Candidate boxes are merged by non-maximum suppression (global, over a sparse
+  list). This yields regions, confidence and landmarks.
+- **Integration**: regions become a smooth soft **face mask** at reduced
+  resolution. It is supplied to face-aware model versions as their declared
+  `face_mask` spatial condition (local, tile-exact), and it raises the
+  consistency weight `w` inside faces. There is no pasting and no reference
+  faces (FA-2, FA-3). No engine change is needed when the face-aware model
+  arrives; it is a new `.sfm` version.
+- **QC**: landmark drift between input and output crops (FA-4).
+- **Data and ethics**: consented, licensed face data only. Evaluation across
+  demographic groups is mandatory before release (FA-5).
+- The spatial-map mechanism is built with QC (§11) before any face model
+  exists. The detector and face training come after the core model
+  (feasibility #10).
+
+---
+
+## 18. Model ecosystem and runtime (§16)
+
+`.sfm` metadata: architecture ID and hash, version, capabilities (tasks),
+scales, modes, precisions with measured fp16 error bounds, **derived**
+receptive field and alignment (re-derived on load; a mismatch is rejected),
+memory coefficients per precision (re-derived on load), training run ID /
+steps / configuration hash, dataset-manifest hash and licence summary, model
+licence, and integrity hashes.
 
 ```text
-trait Backend      { fn id(); fn enumerate() -> Vec<DeviceInfo>; fn open(DeviceId) -> Box<dyn Device>; }
-trait Device       { fn info() -> DeviceInfo;               // name, vendor, driver, capabilities
-                     fn memory_status() -> MemoryStatus;     // total, budget, in-use (if queryable)
-                     fn allocate(bytes, MemoryKind) -> Result<Buffer>;   // Device | HostStaging
-                     fn create_queue() -> Box<dyn Queue>;
-                     fn memory_requirement(&PlannedGraph, Shape, Precision) -> MemoryRequirement; // pure, no allocation
-                     fn compile(&PlannedGraph, Precision) -> Result<Box<dyn Executable>>; }
-trait Queue        { fn upload(&HostSlice, &Buffer, offset) -> Result<()>;
-                     fn download(&Buffer, offset, &mut HostSlice) -> Result<()>;
-                     fn execute(&dyn Executable, &Bindings) -> Result<()>;
-                     fn signal() -> Event;  fn wait(&Event); fn synchronize(); }
-trait Executable   { fn workspace_bytes() -> u64; fn io_signature() -> IoSignature; }
+ModelCatalog::scan(dirs) → validated entries (bad files are reported, not fatal)
+ModelHandle::load(path, &Limits) · metadata() · capabilities()
+ModelHandle::prepare(&Device, Variant{scale, mode, precision, inputs}, TileShape) → PreparedModel
+PreparedModel::memory() · run(queue, bindings, scalars)
 ```
 
-- **Device management**: `Backend`/`Device`. **Memory allocation and
-  buffers**: `allocate`/`Buffer` (opaque, sized, typed by `MemoryKind`).
-  **Operations**: `compile`/`Executable`. **Transfers**: `upload`/`download`.
-  **Synchronisation**: `Event`. **Execution**: `Queue::execute`. These are the
-  six concerns G-3 requires to be separate.
-- Everything on a `Queue` is asynchronous by contract. Host memory used by an
-  `upload` must not be reused until its event has signalled.
-- **The CPU backend obeys the same contract.** It has its own "device"
-  allocations (distinct from host buffers) and explicit copies. In a
-  **strict mode** used in tests, it checks that no host access happens before
-  the corresponding event and that no buffer is freed while in flight. This
-  prevents the abstraction from quietly taking on CPU-only semantics before the
-  GPU backends exist (review item R-3).
-
-### 6.2 Backends
-
-| Backend | API access | Kernels | Status target |
-|---------|------------|---------|---------------|
-| CPU | — | Own Rust kernels: direct and blocked convolution, depthwise, GEMM, element-wise; multithreaded by rows | Reference; deterministic; CI-validated |
-| CUDA | Driver API loaded at run time (no link-time CUDA dependency); kernels compiled with NVRTC at first use and cached | Own CUDA C kernels | Written against the abstraction; **unvalidated until run on NVIDIA hardware** |
-| Vulkan | Vulkan 1.2 via a thin binding; `VK_EXT_memory_budget` for budgets | Own compute shaders, compiled to SPIR-V at build time | Same as CUDA |
-
-Vendor libraries (cuDNN, cuBLAS) are **not** used initially. If measurements
-later show that our kernels are far slower, their use will be proposed in an
-ADR with the measurements attached (N-5). They would be optional kernel
-providers inside the CUDA backend, never a requirement.
+Weights are uploaded once per (device, precision) and shared by variants. A
+new model version or family needs **no engine change** if it uses the
+operator set.
 
 ---
 
-## 7. Model system
-
-### 7.1 Model file format `.sfm` (ADR-0002)
+## 19. Training system (`sf-train`, `sf-degrade`) (§30, ADR-0011)
 
 ```
-[magic "SFMODEL\0"][format version u32][header length u64][header JSON (UTF-8)]
-[padding to 64-byte alignment][tensor data blob]
+manifest (JSONL: path, sha256, source, licence, attribution, consent (faces), split)
+ → validation (licence allow-list, decode, minimum size, exact and perceptual-hash
+   duplicates, evaluation-set exclusion MR-5)
+ → content-aware crop sampler inside a larger context window
+ → degradation program (sf-degrade; seeded; parameters logged)
+ → (LR, HR, true d) → training graph (SF-Net + losses) → autodiff → AdamW
+ → validation with the real inference engine → checkpoints (.sfck) → tracking → export (.sfm)
 ```
 
-The header holds `metadata` (name, version, architecture ID and hash,
-training-run ID, dataset-manifest hash, licence, scales, modes,
-precisions with their measured fp16 error bound, colour working space) plus
-`graphs` (`context`, `main`) and a `tensors` directory (name, dtype, shape,
-offset, length, SHA-256).
-
-Loading validates: the magic and version; header length ≤ 16 MiB; well-formed
-JSON; every tensor range in bounds, aligned and non-overlapping; hashes
-matching; every node's op in the operator-set version's whitelist; the graph
-acyclic; every input defined; shape inference succeeding for the declared
-input constraints; the parameter count and the largest tensor within limits.
-**No code, no pickle, no dynamic dispatch on strings beyond the whitelist.**
-
-### 7.2 Graph IR and operator set (versioned)
-
-Operator set v1 (deliberately small, so every backend can implement all of it):
-`conv2d` (k ∈ {1,3,5,7}, groups ∈ {1, C} (depthwise), stride ∈ {1,2}, zero
-padding), `add`, `mul`, `affine_channel` (per-channel scale and shift from a
-vector), `activation` (GELU-tanh, SiLU, sigmoid, identity), `pixel_shuffle`
-(r=2), `avg_pool` (2×2, stride 2), `upsample_nearest` (×2),
-`resample_fixed` (fixed separable kernel, used for the analytic base and
-consistency), `concat_channels`, `split_channels`, `global_mean` (context
-graph only), `linear` (context graph only), `scale_scalar` (runtime scalar
-such as the strength `s`).
-
-`global_mean` and `linear` over spatial dimensions are **forbidden in the
-`main` graph**. The validator enforces this, and this is what the locality
-invariant rests on.
-
-### 7.3 Static analyses in `sf-model`
-
-- **Shape inference** for any input (H, W) that meets the alignment
-  constraint.
-- **Receptive-field analysis**: walks the graph and computes, for each output,
-  the input halo radius (in LR pixels) and the **spatial alignment** (the
-  product of strides on the deepest path). These values are *derived* from the
-  graph, never hand-declared. A model's metadata is checked against them.
-- **Subgraph selection**: given (scale, mode), prunes the graph to the nodes
-  needed. For example, Faithful mode drops the synthesis path, and scale 2
-  drops the ×4 and ×8 stages.
-- **Required-region analysis and crop insertion**: a backward pass computes,
-  for every node, the spatial region actually needed to produce the tile core.
-  The planner then inserts internal `crop` nodes (a planner-only op that is
-  never stored in files) so that each tensor is computed only over its needed
-  region. Without this, the ×2/×4/×8 stages would process the body's full halo
-  at high resolution. The halo exists for the body's benefit, but the
-  high-resolution stages hold most of the pixels (review item R-4).
-- **Memory planning**: liveness analysis plus offset assignment in one arena,
-  giving `peak_activation_bytes(H, W, batch, precision)` exactly. For a
-  convolutional graph this is affine in H·W, so the auto-tuner can *solve*
-  for the largest tile that fits instead of searching for it. This generic
-  plan is the default. A backend that changes layouts or fuses ops reports its
-  own figures through `Device::memory_requirement` (§6.1). The VRAM manager
-  always uses the backend's figures (review item R-5).
-
-### 7.4 Single-source model definition (ADR-0007)
-
-The ScaleForge architecture is defined once, in Python, with a small builder
-DSL whose layers each know (a) their PyTorch implementation for training and
-(b) their IR emission for export. The exporter writes the IR and weights to
-`.sfm`. **Parity tests**: export with fixed random weights, run the same
-inputs through PyTorch and the Rust CPU runtime, and require a maximum
-absolute error ≤ 1e-4 (fp32). The operator set is the contract. Adding an op
-means implementing it in the DSL, in the CPU backend, and in each GPU backend,
-with parity tests for each.
+- **Degradation grammar (our own)**: *capture* (optical blur: defocus disc,
+  Gaussian, anisotropic, motion path; sensor-resolution sampling; Poisson–
+  Gaussian noise in linear light; optional mosaic and demosaic) →
+  *in-camera* (tone curve, noise reduction, sharpening and oversharpening,
+  quantisation) → *distribution* (one or more rounds of resize with various
+  kernels including aliasing ones, our own JPEG encoder with chroma
+  subsampling, re-sharpening, band-limit ringing). Every sampled parameter is
+  logged and becomes the true `d`.
+- **Context windows**: the summary operator runs on a degraded window larger
+  than the crop, which mirrors inference.
+- **Dataset paths** in manifests are resolved inside a declared dataset root.
+  Absolute paths and `..` segments are rejected.
+- **Losses**: Stage A uses Charbonnier, gradient, band-decomposition
+  (Laplacian-pyramid bands through fixed filters, so no FFT operator is
+  needed), consistency, and descriptor regression. Stage B uses our own
+  discriminator (trained from scratch), hinge adversarial loss, feature
+  matching and band statistics. **No pretrained networks anywhere.**
+- **Reproducibility**: seeds derive from (global seed, epoch, index). Each run
+  directory holds the resolved configuration, git commit, environment report,
+  manifest hash, JSONL metrics and checkpoints. The CPU backend is
+  deterministic.
+- **Versioning**: `sf-<size>-<major>.<minor>`; exports link to their run and
+  manifest.
+- Models trained without GPU compute are labelled **pipeline-validation only**
+  in their metadata.
 
 ---
 
-## 8. ScaleForge neural architecture ("SF-Net", details in MODEL.md at Phase 12)
+## 20. Quality evaluation (§32)
 
-Design goals, in order: tile-exact locality; a bounded receptive field;
-scale-flexible output; a clear faithful/synthesis separation; good use of
-compute at high output resolutions.
+- Full-reference metrics (`sf-analysis::metrics`): PSNR (RGB and Y), SSIM,
+  MS-SSIM, gradient fidelity, and the consistency residual. No single metric
+  decides.
+- Perceptual metric: a learned metric of our own needs human-judgement data
+  (RES). LPIPS is excluded (requirements X-1).
+- Human evaluation: `scaleforge eval ab` creates blinded, randomised pairs and
+  records ratings. The protocol is documented in BENCHMARKS.md.
+- **Regression**: governed evaluation sets (manifests plus fixed degradation
+  seeds) per capability category. Metrics are stored per model version, and
+  comparison uses per-metric tolerances.
 
-```
- analysis summary (streaming-compatible, bounded size):
-   • patch mosaic: K native-resolution patches (e.g. 64×64) on a deterministic grid
-   • thumbnail: area-downsampled whole image (≤ 256 px)
-                       ┌──────────────────────── context graph ─────────────────────────────────┐
- patch mosaic ────────►│ conv stem → blocks → global_mean → degradation descriptor d            │
- thumbnail    ────────►│ small conv net → global_mean → global colour/tone statistics g         │
-                       └───────────────────────────────┬────────────────────────────────────────┘
-                     user overrides (noise level, …) ──┤
-                                                       ▼
-                                 base condition  c_b = embed(d, g)      (never depends on s)
-LR tile (+halo) ─► stem conv ─► [Dual-Rate Block × N, modulated by c_b] ─► body features F
-                                              │
-                ┌─────────────────────────────┴──────────────────────────────┐
-                ▼  base path (always)                                          ▼ synthesis path (Reconstruction only)
-    ×2 stage ─► ×2 stage ─► ×2 stage                              c_s = embed(d, g, s)
-    each: conv→pixel_shuffle→refine; emits a residual on        texture trunk (modulated by c_s)
-    top of the fixed analytic upsample                             ─► ×2 stages ─► residual R
-                ▼                                                               │
-          base output B_k at scale 2^k                                           │
-                └─────────────────────── Y = B + s·R ◄───────────────────────────┘
-                                             ▼
-                         consistency step: Y ← Y + U(LP(x) − LP(D(Y)))
-                  (D: fixed area downsample, LP: fixed low-pass, U: fixed upsample)
-```
+## 21. Benchmarking (§33)
 
-Degradation evidence (noise grain, compression blocks, ringing) lives at
-native resolution and is destroyed by downscaling. So the degradation
-estimator sees **native-resolution patches**, and only the colour/tone
-statistics use the thumbnail (review item R-2).
+Warm-up plus N repetitions; medians and percentiles; per-stage timings from
+engine instrumentation; peak VRAM from tagged accounting plus the
+device-reported figure when available; transfer bytes and times from the
+`Queue`; CPU utilisation from process CPU time ÷ wall time; GPU utilisation
+from NVML when present, otherwise `null`. Reports are JSON and include the
+environment fingerprint. **Only measured values are reported.**
 
-The strength `s` enters **only** the synthesis path. The body and base path
-see only `c_b`, so Faithful output cannot depend on `s` (review item R-1).
-
-**Dual-Rate Block (DRB).** The block keeps a full-rate stream (LR resolution)
-and a half-rate stream. The full-rate stream does local detail work
-(depthwise 3×3 → pointwise expansion with a multiplicative gate → pointwise
-projection). The half-rate stream gives cheap context: a depthwise conv at half
-resolution doubles the effective radius for the same cost. At the end of each
-block the two streams exchange information (average-pool into half-rate,
-nearest-upsample into full-rate, each through a pointwise mix). Per-channel
-affine modulation from `c` conditions every block on the estimated degradation.
-Half-rate streams appear only in a configurable subset of blocks. This is how
-the **receptive-radius budget** is enforced: the build fails if the derived
-radius exceeds the configured budget (target ≤ 32 LR px for the base
-configuration; the final value will be measured and justified in Phase 12).
-
-**Scale flexibility.** The body is shared. There are three ×2 reconstruction
-stages, each emitting an output, so 2x, 4x and 8x come from one model and a
-lower scale simply skips the later stages (F-1). The channel count halves at
-each stage so that 8x memory stays bounded: most of the output pixels live in
-the cheapest stages.
-
-**Faithful vs. Reconstruction (F-3/F-4).** Training is staged. Stage A trains
-stem, body, base path and context graph with distortion losses only. Stage B
-**freezes all Stage-A weights** and trains the synthesis path with texture,
-frequency and adversarial objectives. Consequences: Faithful output is
-unaffected by synthesis training (this is tested); `s = 0` equals Faithful
-exactly; and the synthesis path is pruned at run time in Faithful mode.
-
-**Consistency step.** A fixed (non-learned) operator. It forces the low
-frequencies of the re-downsampled output to match the input, which bounds
-colour and brightness shifts and large-structure fabrication in both modes.
-The low-pass keeps input noise out of the output. Its kernel support counts
-towards the receptive radius, like any other op.
-
-**Deterministic synthesis.** If stochastic texture inputs are ever added, they
-will be generated from a hash of *absolute image coordinates* and a seed, so
-that they are tile-invariant.
-
----
-
-## 9. Model runtime (in `scaleforge::runtime`)
+## 22. Public API, CLI, future GUI (§36, §37)
 
 ```text
-ModelRuntime::load(path, &Limits) -> ModelHandle           // parse + validate, host only
-ModelHandle::metadata() / supported_scales() / modes() / precisions()
-ModelHandle::prepare(&Device, Variant{scale, mode, precision}, TileShape{h, w, batch})
-      -> PreparedModel                                      // subgraph, plan, compile, upload weights
-PreparedModel::memory() -> MemoryRequirement { weights, activations, workspace, io }
-PreparedModel::run(&Queue, inputs, outputs, scalars)
-ModelHandle::unload / drop                                  // releases device memory via VRAM manager
+Engine::new(EngineConfig) · devices() · models() · load_model(path)
+Session::open(input) → analysis report · render(region, controls) · variants(...)
+Engine::plan(JobRequest) → JobPlan (dry run: decisions, memory, estimated tiles)
+Engine::run(JobRequest, &ProgressSink, &CancelToken) → JobReport
 ```
 
-Weights are uploaded once per (device, precision) and shared by all prepared
-variants. Changing tile shape re-plans activations; it never re-uploads
-weights.
+The API is versioned with a stability policy (MR-3). CLI commands: `upscale`,
+`batch`, `analyze`, `models`, `devices`, `benchmark`, `doctor`, `eval`,
+`train`. Each is a thin client of the API. A GUI later uses the same API
+(`Session` covers previews and variants).
 
----
+## 23. Plugin system (§38, ADR-0008)
 
-## 10. VRAM manager and memory manager (ADR-0009)
+v1 uses compile-time registries (`CodecRegistry`, `BackendRegistry`,
+`StageRegistry`). An estimator registry was removed in review: there is no
+second provider to justify it (R2-10). Stages must declare `LocalOp{halo}` or
+`GlobalAnalysis → LocalOp`. Models are data plugins (validated `.sfm`). There
+is no native dynamic loading. The future path is out-of-process plugins with a
+versioned protocol.
 
-### 10.1 VRAM manager (per device)
+## 24. Errors, security, privacy (§35)
 
-- **Budget** = min(device-reported budget, user limit) − safety reserve. The
-  reserve starts conservative and is later calibrated from measurements
-  (reported vs. actually allocatable).
-- **Pools with ownership accounting**: `weights` (resident per loaded model),
-  `activations` (a single arena sized from the memory plan), `io` (input and
-  output staging, ×2 when double-buffered), `workspace` (reported by the
-  backend's `Executable`). Every allocation is tagged, so the peak for each
-  category is reported exactly.
-- **Fragmentation** is avoided by design. Each category is one or a few large
-  allocations, sub-allocated at statically planned offsets. Arenas grow
-  monotonically during a job (re-allocated only when a larger plan is needed)
-  and shrink between jobs on request.
-- **Pre-flight**: `fits(plan) -> Fit | Shortfall{bytes}` before any
-  allocation. The auto-tuner uses `Shortfall` to shrink the tile or batch.
-- **Runtime OOM** (the estimate was wrong, or another process took memory):
-  release arenas, shrink the tile shape by a factor, re-plan, retry the
-  current band. Bounded to N attempts. Because tiling is exact, a tile-size
-  change in the middle of an image cannot create seams (see §11).
+- Typed errors: `InvalidInput`, `Unsupported`, `LimitExceeded`, `Io`,
+  `ModelInvalid`, `Device{Oom, Lost, Other}`, `Cancelled`, `Internal`. The CLI
+  maps them to distinct exit codes.
+- One `Limits` configuration enforced by every parser: codecs, ICC, JSON,
+  `.sfm`, `.sfck`, manifests.
+- Fuzz targets for every parser. Codecs are also differentially tested against
+  development-only oracles.
+- Batch output confinement, no overwrite by default, sanitised names, explicit
+  symlink policy.
+- GPU failures: an out-of-memory error leads to shrink and retry. Device loss
+  gives a typed error, with optional CPU fallback.
+- Privacy: no telemetry; location metadata stripped by default; consent
+  tracking for face data (MR-1).
 
-### 10.2 Host memory manager
+## 25. Determinism statement (MR-4)
 
-A process-wide budget (default: a fraction of physical RAM, overridable) is
-charged by pixel buffers, band caches, tile staging and sink buffers. The job
-planner calculates a job's peak host memory from the tile plan *before*
-decoding and refuses or adapts (e.g. smaller bands, streaming sinks) if it
-will not fit.
+The CPU backend is bit-deterministic for a fixed thread count and plan. GPU
+backends use no atomics in reductions by default, so they are deterministic
+per device and driver. A documented fast mode may relax this.
 
----
+## 26. What is explicitly out of v1
 
-## 11. Tile engine (ADR-0004)
+Video; multi-GPU execution of a single image; generative "creative" models;
+scratch/dust inpainting; semantic segmentation; native dynamic plugins; lossy
+WebP output.
 
-**Exact mode (default).** Let `r` be the derived receptive radius and `a` the
-alignment. For each tile, the planner reads the core region plus a halo of `r`
-(rounded up to `a`), clamped to the image. It runs the main graph on this
-region with the model's own border semantics (zero padding at every conv),
-then crops the output to the core × scale. At the image border the tile's
-border *is* the image border, so the computation is identical to whole-image
-inference. Inside the image, the halo contains real pixels, so every output
-pixel sees exactly the inputs it would see in a whole-image run. **No blending
-is needed. Seams cannot exist**, up to floating-point operation order. This is
-verified by Q-3.
-
-- **Canonical padding**: an image whose size is not a multiple of `a` is padded
-  once, globally, to a multiple of `a` (reflection padding). Whole-image and
-  tiled runs use the same canonical image, and the output is cropped at the
-  end.
-- **Cores vs. compute windows**: the image is partitioned into
-  **non-overlapping core rectangles**. Each core is written exactly once. Its
-  *compute window* is the core, enlarged to the uniform tile shape by shifting
-  inward at image edges, plus the halo. Every compute window therefore has the
-  same shape: there is one compiled plan, tiles batch naturally, and no small
-  ragged tiles occur. The overlap between compute windows is redundant
-  computation of identical values. Only the core part of each window's output
-  is written (review item R-6).
-- **Ordering**: row-major bands, for streaming (§5.2).
-
-**Bounded-error mode (opt-in, or chosen by the auto-tuner under memory
-pressure).** Uses a halo `h < r`, with cosine-weighted blending in the overlap.
-Its maximum deviation from exact mode is **measured** per model and halo during
-calibration and reported, never assumed. This is useful because the
-*effective* receptive field of trained convolutional networks is much smaller
-than the theoretical one.
-
----
-
-## 12. Scheduler (ADR-0010)
-
-The per-tile path is **fetch → preprocess → upload → execute → download →
-postprocess → write**.
-
-- **v1: synchronous executor.** One thread drives the stages in order. This is
-  the correctness reference and the baseline for measurement.
-- **Pipelined executor**: three stages (CPU pre-work → device → CPU post-work)
-  on dedicated threads connected by bounded channels (depth 2), with double-
-  buffered staging. It is enabled **only when benchmarks on the target show a
-  measurable gain**. The auto-tuner records this per device in the tuning
-  cache.
-- There is no async runtime (tokio etc.). Plain threads and channels are
-  enough, and the concurrency is easy to reason about.
-- Sinks receive cores in plan order. The pipelined executor keeps a small
-  reorder buffer so that out-of-order completion (possible in future
-  multi-queue backends) never reaches a streaming encoder (review item R-7).
-- **Analysis pass first**: the summary (§8) is built in one pass over the
-  source before any tile runs. For a sequential streaming source this means
-  decoding it twice (`RegionSource::rewind`). This cost is accepted and
-  reported in the job timings. Non-rewindable inputs (stdin) are spooled to
-  a temporary file, within the budget (review item R-8).
-- **One device executor per device.** Multiple jobs (e.g. a batch, or a GUI
-  preview) queue on it. The job-level scheduler assigns files to devices.
-- Cancellation is checked between tiles. Progress events are emitted per tile.
-
----
-
-## 13. Auto-tuner (ADR-0009)
-
-Inputs: device info and memory status, model (receptive radius, alignment,
-memory function), image size, scale, mode, available precisions, and the
-tuning cache.
-
-1. **Analytic phase** (always): for each precision the model declares safe and
-   the device supports, solve the memory plan for the largest square tile that
-   fits the budget at batch 1. Then compute the halo overhead
-   `((T + 2r)/T)²` and a cost estimate from graph FLOPs, and generate candidate
-   (tile, batch, precision, executor) tuples. Small images get a single tile
-   covering the whole image (S-1).
-2. **Measured phase** (`scaleforge benchmark --calibrate`, or opportunistically
-   on first use if enabled): time each candidate on the real device and store
-   the medians in the **tuning cache**, keyed by (backend, device, driver,
-   model hash, precision, scale, mode).
-3. **Decision**: use measured data when present, otherwise the analytic
-   ranking. Every run records the decision and its reason in the job report.
-
-The fixed numbers in the analytic phase (safety reserve, default candidates)
-are starting points, labelled as such, and are superseded by measurements.
-
----
-
-## 14. Public API (`scaleforge` crate)
-
-```text
-Engine::new(EngineConfig) -> Engine                  // backends, budgets, tuning cache path
-Engine::devices() -> Vec<DeviceInfo>
-Engine::load_model(path) -> ModelHandle
-Engine::plan(&JobRequest) -> JobPlan                  // validation + tuning, no heavy work (dry run)
-Engine::run(JobRequest, &dyn ProgressSink, &CancelToken) -> JobReport
-Engine::run_region(...)                               // preview a crop for GUIs
-JobRequest { source: Input(path|memory), sink: Output(path|memory), model, scale,
-             mode: Faithful | Reconstruction{strength}, overrides, tiling, precision, device }
-JobReport  { timings per stage, memory peaks, tile plan, decisions, warnings }
-```
-
-The GUI (future) and the CLI are clients of exactly this surface. `plan()`
-gives front-ends a way to show memory and time expectations before a job is
-committed.
-
----
-
-## 15. Plugin system (ADR-0008)
-
-- **v1: compile-time registries** (`CodecRegistry`, `BackendRegistry`,
-  `StageRegistry`) populated by feature-gated crates. Extension traits carry
-  their validation contracts (e.g. `LocalOp` must declare a halo; codecs must
-  declare limits).
-- **Models are data plugins**: dropping a validated `.sfm` into a model
-  directory is enough (M-2).
-- **Not in v1: loading native dynamic libraries.** They run arbitrary code with
-  full privileges and have no stable Rust ABI. The future path for third-party
-  code is out-of-process plugins speaking a versioned message protocol, which
-  gives isolation and crash containment.
-
----
-
-## 16. Training system (`training/`, details in TRAINING.md at Phase 13)
-
-```
-manifest (JSONL: path, sha256, source, licence, attribution, split)
-  → validate (licence whitelist, decode, min size, exact and near-duplicate hashing, split leakage)
-  → crop sampler (content-aware: rejects flat crops)
-  → degradation program (sampled, seeded, parameters logged)
-  → (LR, HR, parameters) pairs → training loop → validation → checkpoints → export .sfm
-```
-
-**Degradation programs.** These are our own design, modelled on the physical
-life of an image rather than on a fixed operator list. A program is sampled
-from a grammar of three phases, each optional and randomised:
-
-1. **Capture**: optical blur (defocus disc, Gaussian, anisotropic, motion
-   path) → sensor sampling at a lower resolution → **sensor noise in linear
-   light** (signal-dependent shot noise + read noise, Poisson-Gaussian) →
-   optional colour-filter mosaic and a simple demosaic.
-2. **In-camera processing**: tone curve / gamma → noise reduction (smoothing)
-   → sharpening (unsharp mask, including **oversharpening** with halos) →
-   quantisation.
-3. **Distribution**: one or more rounds of resize (various kernels, including
-   ones that alias), JPEG/WebP-style compression (optionally with chroma
-   subsampling), re-sharpening, and ringing from band-limiting filters.
-
-**Context without whole images.** At inference, the context graph sees a
-summary of the *whole* image. At training time, the degradation program is
-applied to a **context window** several times larger than the training crop.
-The analysis summary is built from that window using the same summary
-operator as inference, and the training crop is taken from inside it. The
-descriptor `d` describes largely stationary properties (noise level,
-compression strength), so a large window approximates the whole image. The
-remaining gap is measured by an evaluation of `d`'s sensitivity to the
-summary's source region (review item R-9).
-
-The LR/HR relationship is fixed by the total resize factor. Every sampled
-parameter is logged and also used as a *supervised target* for the context
-graph's degradation estimator. Seeds derive from (global seed, epoch, sample
-index) (T-4).
-
-**Losses.** Stage A: Charbonnier pixel loss, gradient loss, frequency-magnitude
-loss, consistency loss, and degradation-estimation loss. Stage B: our own
-discriminator (trained from scratch), adversarial and feature-matching losses,
-and frequency/texture statistics. **No pretrained perceptual networks** are
-used in training, which keeps O-2 intact without special pleading.
-
-**Tracking and reproducibility.** Each run directory holds the resolved config,
-git commit, environment report, seeds, manifest hash, JSONL metrics, and
-checkpoints. Checkpoints contain weights in our format plus optimizer state
-loaded with safe (weights-only) deserialisation. Exported `.sfm` files record
-the run ID and manifest hash. Model versions follow
-`sf-<size>-<major>.<minor>`.
-
-**Dataset licensing.** No dataset ships with the repository. The manifest
-requires a licence identifier per image, and the validator enforces a
-configurable allow-list. TRAINING.md will document sourcing guidance and warn
-that many common super-resolution research datasets are licensed for
-non-commercial research only.
-
----
-
-## 17. Quality evaluation and benchmarking
-
-- **`sf-quality`** (canonical): PSNR (RGB and Y), SSIM, MS-SSIM, and a gradient
-  fidelity metric. LPIPS is available only through an **optional external
-  evaluator script** that the user runs with separately obtained weights. It is
-  never a dependency and never used in training.
-- **Human evaluation**: `scaleforge eval ab` builds randomised, blinded pairs
-  and a simple rating record (CSV). The protocol is documented in BENCHMARKS.md.
-- **Regression**: a fixed evaluation set (defined by a manifest) with fixed
-  degradation seeds. Metrics are stored per model version, and new versions
-  are compared with per-metric tolerances. No single metric decides a release.
-- **Benchmark harness**: warm-up runs, N repetitions, medians and percentiles.
-  Per-stage timings come from the engine's own instrumentation. Peak VRAM
-  comes from the VRAM manager's tagged accounting, plus device-reported usage
-  when available. Transfer bytes and times come from the `Queue` API. CPU
-  utilisation is process CPU time ÷ wall time. GPU utilisation comes from
-  vendor telemetry if it is present at run time, otherwise it is `null`.
-  Reports are JSON and include the full environment fingerprint (Q-5, Q-6).
-
----
-
-## 18. Error handling and security (details in SECURITY.md at Phase 16)
-
-- A typed error taxonomy in `sf-core`: `InvalidInput`, `Unsupported`,
-  `LimitExceeded`, `Io`, `ModelInvalid`, `Device{Oom, Lost, Other}`,
-  `Cancelled`, `Internal`. The CLI maps these to distinct exit codes.
-- `Limits` (max dimensions, pixels, decoded bytes, ICC size, header size,
-  tensor count and size) are configured once and enforced in every parser.
-- Fuzz targets for: every codec wrapper, the ICC reader, and the `.sfm`
-  parser and validator.
-- Output path policy for batches (confinement, no overwrite by default,
-  sanitised derived names, explicit symlink handling).
-
----
-
-## 19. Implementation status
+## 27. Implementation status
 
 | Subsystem | Status |
 |-----------|--------|
-| Requirements, architecture, review, plan | Written (this document and `docs/`) |
+| Requirements, feasibility, dependency audit, architecture, review, roadmap | Written |
 | Everything else | **Not started** |

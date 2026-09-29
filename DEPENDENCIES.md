@@ -1,62 +1,98 @@
-# Dependencies
+# Dependency Audit and Register (Phase 2)
 
-Policy: no dependency is added before it is documented here **and approved by
-the project owner**. For each one we ask whether an in-house implementation is
-realistic, and use the dependency only when writing our own would be
-technically worse or would add security risk without a benefit.
+Policy (§18–20): no dependency is added until it is audited here and approved
+by the project owner. Versions are the latest stable releases on crates.io as
+of 2026-09-29. Licences were read from crates.io metadata. Everything must be
+compatible with the project's Apache-2.0 licence.
 
-Versions are the latest stable releases on crates.io as of 2026-09-29. Licences
-were read from crates.io metadata. Every licence must be compatible with the
-project's Apache-2.0 licence.
+**Nothing listed here is installed. No dependency is approved yet.**
 
-**Status of every entry below: PROPOSED, not approved, not installed.**
+## 1. Classification scheme
 
-## Rust — runtime
+Category (§19):
+1. **CORE** — implements ScaleForge product logic. The target is zero
+   external CORE dependencies.
+2. **HW/SYS** — hardware or system interface (OS APIs, GPU driver APIs).
+3. **BUILD** — development and build tooling, never shipped in the runtime.
+4. **OPTIONAL** — feature-gated, and the product works without it.
 
-| Name | Version | Purpose | Licence | Class | Security | Performance | In-house realistic? |
-|------|---------|---------|---------|-------|----------|-------------|---------------------|
-| `png` | 0.18.1 | PNG decode/encode, row streaming | MIT OR Apache-2.0 | runtime (`sf-image`, feature `png`) | Parses untrusted input. Memory-safe Rust, widely fuzzed. We add our own limits in front. | Good; streaming rows | Technically yes (inflate + filters), but it adds security-critical parsing surface for no product benefit. **Use the dependency.** |
-| `zune-jpeg` | 0.5.15 | JPEG decode | MIT OR Apache-2.0 OR Zlib | runtime (feature `jpeg`) | Untrusted input; memory-safe, fuzzed | Fast (SIMD) | Same reasoning as `png`. **Use the dependency.** |
-| `jpeg-encoder` | 0.7.1 | JPEG encode | (MIT OR Apache-2.0) AND IJG | runtime (feature `jpeg`) | Encodes our own data only (low risk) | Adequate | Realistic (baseline JPEG encode is well specified). **Decide in Phase 6** after comparing output quality. The IJG term requires an attribution notice. |
-| `image-webp` | 0.2.4 | WebP decode; lossless encode | MIT OR Apache-2.0 | runtime (feature `webp`) | Untrusted input; memory-safe | Adequate | Not realistic for lossy VP8 decoding. Note: **lossy WebP encoding is not available** in pure Rust. Encoding a lossy WebP would need libwebp (C); not proposed. |
-| `tiff` | 0.11.3 | TIFF decode/encode, including BigTIFF | MIT | runtime (feature `tiff`) | Untrusted input; memory-safe | Adequate; random access for tiled TIFF | Same reasoning as `png` |
-| `serde` + `serde_json` | 1.0.229 / 1.0.151 | `.sfm` header, reports, tuning cache, manifests | MIT OR Apache-2.0 | runtime | JSON parsing of untrusted model headers. Mature and fuzzed. Size-limited before parsing. | Headers are small; negligible | A minimal JSON parser is realistic (~600 lines). The dependency is preferred for its robustness on a security-relevant parser. **Open for owner decision.** |
-| `clap` | 4.6.7 | CLI argument parsing, help, validation | MIT OR Apache-2.0 | runtime (CLI crate only) | Low | Negligible | Realistic but tedious. It would give an inferior user experience (help output, suggestions). **Use the dependency.** |
-| `ash` | 0.38.0+1.3.281 | Vulkan API bindings | MIT OR Apache-2.0 | runtime, optional (`sf-compute-vulkan`) | FFI boundary; loads the system Vulkan loader | None (thin bindings) | Hand-written Vulkan bindings are not realistic at this API size. Needed in Phase 14b. |
-| CUDA driver access | — | CUDA backend | — | runtime, optional | FFI | — | **Planned in-house**: a small, hand-written FFI to about 30 driver API and NVRTC functions, loaded at run time. Needs one dynamic-loading helper: `libloading` 0.9.0 (ISC) or a direct platform call. Decided in Phase 14b. `cudarc` 0.19.10 (MIT OR Apache-2.0) is the alternative if the hand-written FFI proves error-prone. |
+Audit verdict (Phase 2 labels): **MUST REMOVE** · **MUST REPLACE WITH OUR OWN
+IMPLEMENTATION** · **ACCEPTABLE LOW-LEVEL SYSTEM/HARDWARE INTERFACE** ·
+**OPTIONAL** · **NEEDS TECHNICAL REVIEW**.
 
-## Rust — in-house by decision (no dependency)
+"Introduces external product logic?" asks whether the dependency would carry
+out something that is ScaleForge's job: image enhancement, AI, analysis,
+tiling, memory management, or anything similar.
 
-| Capability | Why in-house |
-|------------|--------------|
-| SHA-256 (model integrity) | Small, standard algorithm, verifiable against NIST test vectors. It checks integrity, not authenticity. |
-| Thread pool / parallel loops | `std::thread::scope` covers our row-parallel kernels. `rayon` 1.12.0 would be proposed only if measurements show a benefit. |
-| ICC profile classification | Only the header and a few tags are needed (ARCHITECTURE §5.4). |
-| Resampling, colour transfer functions | Core to image quality; we need exact control of kernel support. |
-| Benchmark harness | Required as a product feature. `criterion` would not measure the metrics we need (VRAM, transfers). |
-| Tensor kernels (CPU) | The operator set is small, and the kernels are the reference implementation. |
+---
 
-## Rust — development only
+## 2. Audit of everything proposed in revision 1
 
-| Name | Version | Purpose | Licence | Notes |
-|------|---------|---------|---------|-------|
-| `cargo-fuzz` (tool) | pending | Fuzzing codecs, ICC, `.sfm` | MIT OR Apache-2.0 | Phase 16; needs a nightly toolchain |
-| `proptest` | 1.11.0 | Property tests with shrinking | MIT OR Apache-2.0 | **Optional.** The default plan is our own seeded generators. Proposed only if shrinking proves necessary. |
+| Dependency | Version / licence | Rev-1 purpose | External product logic? | Verdict | Reasoning |
+|------------|------------------|---------------|-------------------------|---------|-----------|
+| PyTorch | — / BSD-3-Clause | Training | **Yes** (AI framework) | **MUST REMOVE** | §31. Our own training framework is feasible (requirements §5, ADR-0011). |
+| NumPy | — / BSD-3-Clause | Training arrays | Yes (numerics in the training path) | **MUST REMOVE** | Follows from removing Python training. |
+| Pillow | — / HPND | Training image decode | No (format interface) | **MUST REMOVE** | Training uses our own image engine. |
+| `cudarc` | 0.19.10 / MIT OR Apache-2.0 | CUDA access | Partly (a wrapper layer; also exposes cuBLAS/cuDNN wrappers) | **MUST REMOVE** | Replaced by our own FFI to the **CUDA driver API**. |
+| `libloading` | 0.9.0 / ISC | Dynamic library loading | No | **MUST REPLACE WITH OUR OWN** | Three platform calls (`dlopen`/`dlsym`/`dlclose`, `LoadLibraryW`/`GetProcAddress`). Trivial. |
+| `rayon` | 1.12.0 / MIT OR Apache-2.0 | Parallel loops | Yes (scheduling) | **MUST REMOVE** | Scheduling is ours (§17). `std::thread::scope` plus our own work splitting. |
+| `serde` + `serde_json` | 1.0.229 / 1.0.151, MIT OR Apache-2.0 | JSON (model header, reports, manifests) | No | **MUST REPLACE WITH OUR OWN** | A strict JSON reader/writer is about 600–800 lines, can be fuzzed, and has size and depth limits built in. Parsing untrusted headers in safe Rust has bounded risk. |
+| `clap` | 4.6.7 / MIT OR Apache-2.0 | CLI parsing | No | **MUST REPLACE WITH OUR OWN** | The CLI grammar is small (subcommands, typed flags, help). An own parser is realistic and keeps the binary dependency-free. |
+| `proptest` | 1.11.0 / MIT OR Apache-2.0 | Property tests | No | **MUST REMOVE** | Our own seeded generators; shrinking is not essential. |
+| `criterion` | 0.8.2 / MIT OR Apache-2.0 | Micro-benchmarks | No | **MUST REMOVE** | The benchmark system is a product feature (§33) and is ours. |
+| `jpeg-encoder` | 0.7.1 / (MIT OR Apache-2.0) AND IJG | JPEG output | No (format interface) | **MUST REPLACE WITH OUR OWN** | We need our own baseline JPEG encoder anyway, to synthesise compression degradations for training. One implementation serves both. |
+| `png` | 0.18.1 / MIT OR Apache-2.0 | PNG decode/encode | No (format interface) | **MUST REPLACE WITH OUR OWN** (runtime); **BUILD** as test oracle | PNG = zlib/DEFLATE + filters + chunks. Realistic in safe Rust. The crate stays a **dev-only differential-testing oracle**. |
+| `tiff` | 0.11.3 / MIT | TIFF decode/encode | No (format interface) | **MUST REPLACE WITH OUR OWN** (runtime); **BUILD** as test oracle | We support a defined subset: strips and tiles, uncompressed/LZW/DEFLATE/PackBits, 8/16/32-bit float, BigTIFF. Realistic. Oracle as above. |
+| `zune-jpeg` | 0.5.15 / MIT OR Apache-2.0 OR Zlib | JPEG decode | No (format interface) | **OPTIONAL (interim)** → planned replacement | Baseline decode is realistic now. Progressive and arithmetic-coded variants take more work. Interim feature `jpeg-decode-external` until our decoder reaches differential parity on a fuzz corpus; then it becomes a dev-only oracle. |
+| `image-webp` | 0.2.4 / MIT OR Apache-2.0 | WebP decode, lossless encode | No (format interface) | **OPTIONAL (interim)** → **NEEDS TECHNICAL REVIEW** | Lossless (VP8L) decode/encode is realistic in-house. Lossy VP8 decode is a substantial codec. Interim optional feature. Lossy WebP *encode* is not offered by pure-Rust crates, so there is no lossy WebP output in v1. |
+| `sha2` | 0.11.0 / MIT OR Apache-2.0 | Model and checkpoint integrity | No | **NEEDS TECHNICAL REVIEW** → recommended **keep** | A security primitive. §35 says not to rewrite mature primitives without need, and a future signature scheme (MR-2) will depend on correct hashing. Our own version would be small, but the specification's security rule outweighs that. |
+| `ash` | 0.38.0+1.3.281 / MIT OR Apache-2.0 | Vulkan bindings | No (generated declarations only) | **ACCEPTABLE LOW-LEVEL SYSTEM/HARDWARE INTERFACE** | Mechanically generated from the Vulkan registry. Contains no logic. Hand-writing the subset we use is possible, but struct-layout mistakes cause undefined behaviour, so generated bindings are the safer choice. Vulkan backend only (OPTIONAL feature). |
+| `cargo-fuzz` / libFuzzer | tool / MIT OR Apache-2.0 (+ LLVM licence) | Fuzzing | No | **BUILD** | Needs a nightly toolchain for fuzz runs only. |
 
-## Python — training only (never linked into the engine)
+---
 
-| Name | Version | Purpose | Licence | Notes |
-|------|---------|---------|---------|-------|
-| PyTorch | pinned at approval time | Autodiff, optimisers, GPU training | BSD-3-Clause | Building autodiff in-house is not realistic (ADR-0001). Checkpoints are loaded only with weights-only deserialisation. |
-| NumPy | pinned at approval time | Array utilities | BSD-3-Clause | |
-| Pillow | pinned at approval time | Decoding dataset images | HPND (MIT-CMU) | Parses untrusted dataset files. Size limits are enforced before decoding. |
+## 3. Hardware and system interfaces (not crates)
 
-## Explicitly rejected
+| Interface | Purpose | Verdict | Notes |
+|-----------|---------|---------|-------|
+| OS APIs through Rust `std` (files, threads, time) | Everything | ACCEPTABLE | |
+| Memory size query (`/proc/meminfo`, `sysctl`, `GlobalMemoryStatusEx`) | Host memory budget | ACCEPTABLE | Called directly through our own small FFI |
+| `getrusage` / `GetProcessTimes` | CPU utilisation in benchmarks | ACCEPTABLE | |
+| CUDA **driver API** (`libcuda`, loaded at run time) | Device, memory, streams, events, module loading | ACCEPTABLE LOW-LEVEL HW INTERFACE | The lowest supported interface. No CUDA runtime library, cuBLAS or cuDNN. |
+| PTX generation for our CUDA kernels | Compiling our own kernels | **NEEDS TECHNICAL REVIEW** | Option A: `nvcc` at build time (BUILD), with PTX embedded and JIT-compiled by the driver. Option B: NVRTC at run time (a runtime compiler library). **Recommended: A** — no extra runtime library. |
+| Vulkan loader (`libvulkan` / `vulkan-1.dll`) | Vulkan backend | ACCEPTABLE LOW-LEVEL HW INTERFACE | Uses `VK_EXT_memory_budget` for VRAM budgets |
+| GLSL → SPIR-V compiler (`glslc` or `glslangValidator`) | Compiling our own compute shaders | BUILD | SPIR-V is generated at build time. We do not commit generated binaries without their source. |
+| NVML (loaded at run time if present) | GPU utilisation in benchmarks | OPTIONAL HW INTERFACE | When it is absent, the field is reported as `null` (§33) |
 
-| Candidate | Reason |
-|-----------|--------|
-| The `image` umbrella crate | Pulls in many formats; ties the engine to one library's abstractions (conflicts with I-2) |
-| `tokio` / async runtimes | Not needed; the scheduler uses threads and channels (ADR-0010) |
-| ONNX Runtime, TensorRT, ncnn, etc. | These are inference engines. Using one would make ScaleForge a wrapper (O-3). |
-| Pretrained perceptual networks (VGG, LPIPS weights) in training | Violates the spirit of O-2. LPIPS is allowed only as an optional, external *evaluation* script with user-supplied weights. |
-| Python pickle-based model files | Unsafe deserialisation |
+## 4. Excluded outright (§18)
+
+External upscaling engines and super-resolution implementations; ONNX
+Runtime, TensorRT, OpenVINO and other inference engines; cuDNN and cuBLAS; any
+external model architecture or weights. **LPIPS** as normally used depends on
+pretrained networks, so it is excluded from the system (requirements X-1).
+The `image` umbrella crate is excluded because it couples the engine to one
+library's abstractions.
+
+## 5. Resulting runtime dependency set, if approved
+
+| Build | Third-party runtime crates |
+|-------|----------------------------|
+| Default CPU build | `sha2` (pending review) |
+| + `jpeg-decode-external` (interim) | `zune-jpeg` |
+| + `webp-external` (interim) | `image-webp` |
+| + `vulkan` | `ash` |
+| + `cuda` | none (driver API through our own FFI) |
+
+Development-only: `png`, `tiff`, `zune-jpeg`, `image-webp` (as differential
+test oracles) and `cargo-fuzz`.
+
+## 6. Decisions requested from the owner
+
+1. Approve the verdicts above, in particular the **staged codec plan**
+   (our own PNG/TIFF/JPEG-encode now; interim external JPEG and WebP decoders
+   as optional features).
+2. Approve `sha2` as a kept security primitive, or require our own
+   implementation.
+3. Approve the use of external codec crates as **development-only test
+   oracles**.
+4. Choose the PTX strategy (recommended: build-time `nvcc`).

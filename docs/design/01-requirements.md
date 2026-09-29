@@ -1,216 +1,199 @@
-# Phase 1 — Requirements Analysis
+# Phase 1 — Requirements Analysis (revision 2)
 
-Status: **complete (design phase)**. No production code exists yet.
+Status: **complete (design phase)**. No production code exists.
 
-This document turns the ScaleForge brief into requirements that can be
-tested. Each requirement has an ID so that later design documents, tests and
-reviews can refer to it.
+Source: the *ScaleForge Master Specification* (sections referenced as §N).
+It supersedes the first brief. Revision 1 of this document analysed that
+brief; its requirement IDs are kept where they still apply, and new ones are
+added.
 
----
-
-## 1. Product definition
-
-ScaleForge is an independently designed platform for AI image upscaling and
-restoration. It has four parts:
-
-1. **Inference engine** — a native library that upscales and restores images
-   of any size on CPUs and GPUs.
-2. **ScaleForge model family** — our own neural architecture, trained by our
-   own training system on data with documented provenance.
-3. **Training system** — dataset ingestion, synthetic degradation, training,
-   evaluation, versioning and export.
-4. **Tooling** — CLI, benchmark harness, quality evaluation, and a public API
-   that a future GUI will use.
-
-### 1.1 Originality constraint (applies to everything)
-
-| ID | Requirement |
-|----|-------------|
-| O-1 | No source code, snippets, tests, docs or comments copied or translated from other projects. |
-| O-2 | No external pretrained weights used as, or used to initialise, a ScaleForge model. |
-| O-3 | No external upscaling engine used as a backend. |
-| O-4 | The model architecture, degradation pipeline, tiling scheme and runtime are designed from general principles. Well-known general building blocks (convolution, residual connections, gating, pixel shuffle, feature modulation) are used; published architectures are not reproduced. |
-| O-5 | A third-party library may be used only for well-scoped infrastructure (e.g. a PNG decoder or a GPU API binding). It must first be documented in `DEPENDENCIES.md`. |
+On the product reference (§2): the capability list in §3 is the only input
+taken from it. No attempt was made to learn how any existing product works
+internally, and none will be.
 
 ---
 
-## 2. Functional requirements
+## 1. What changed from revision 1
 
-### 2.1 Upscaling and restoration
+| Area | Revision 1 | Master specification | Effect |
+|------|-----------|----------------------|--------|
+| Modes | Faithful, Reconstruction | Faithful, **Balanced**, Reconstruction (§9) | A third mode with its own processing behaviour |
+| Intelligence | Degradation estimate only | Analysis → strategy → reconstruction → **quality control** (§4–6, §11, §14) | New subsystems: analysis engine, strategy engine, QC engine |
+| Faces | Non-goal | Dedicated face-aware subsystem (§10) | New subsystem, with data, privacy and compute implications |
+| Scope | Upscaling + restoration | Also colour/exposure/contrast correction, old-photo restoration, deblurring, extreme upscaling (§3) | Feasibility matrix required (§43) |
+| API | Full image + region preview | Also crop, face-region preview, before/after, strength and strategy variants (§12) | Variant-evaluation API |
+| Training framework | PyTorch (research only) | Runtime must not depend on it; **feasibility of our own tensor/autodiff system** required (§31) | Re-decided: see §5 and ADR-0011 |
+| Dependencies | Mature codec crates, serde, clap | Minimal core dependencies; four-way classification; no cuDNN/cuBLAS (§18–20) | Dependency audit redone (`DEPENDENCIES.md`) |
+
+---
+
+## 2. Requirements
+
+IDs from revision 1 (F-, I-, C-, S-, E-, G-, M-, T-, A-, Q-, N-) remain valid
+unless listed as changed. The full revision-1 list is in git history
+(commit `cf50ab6`). New and changed requirements:
+
+### 2.1 Unified image intelligence (§4–6, §14)
 
 | ID | Requirement | Acceptance criterion |
 |----|-------------|----------------------|
-| F-1 | Native scale factors 2x, 4x and 8x | One model file can serve all three; the scale is chosen at run time. |
-| F-2 | Restoration of blur, noise, compression artefacts, ringing and oversharpening | Measured on synthetic and real evaluation sets (see Q-*). |
-| F-3 | **Faithful** mode | Output is produced only by the model path trained with distortion losses. The detail-synthesis path is not executed (§2.2). |
-| F-4 | **Reconstruction** mode with a user-controlled strength `s ∈ [0, 1]` | `s = 0` gives output identical to Faithful mode. Larger `s` monotonically increases the contribution of the synthesis path. |
-| F-5 | Degradation-aware processing | The model estimates the input's degradation. The user may override the estimate (e.g. with a noise level). |
-| F-6 | Baseline, non-AI resampling | A high-quality analytic resampler is used for alpha channels, as a comparison baseline, and for diagnostics. |
+| U-1 | The pipeline analyses the image before choosing how to process it | Every job report contains an `AnalysisReport`. Processing parameters are traceable to it. |
+| U-2 | The analysis engine estimates: resolution and effective resolution, noise (level and signal dependence), compression, blur, motion vs. defocus, sharpness, edge quality, texture density, dynamic range, exposure, contrast, colour cast, face presence, subject characteristics, overall severity | Each estimator has a documented algorithm, an accuracy test on synthetic degradations with known parameters, and a stated validity range. Estimators that do not exist yet are reported as `unavailable`, never guessed. |
+| U-3 | Degradation analysis produces a descriptor in **physical units** (e.g. noise σ in code values, blur width in pixels, compression quality) | The same quantities are used as training conditions, so analysis results genuinely drive the network (§6). |
+| U-4 | Auto mode chooses the processing path, model, scale (when a target size is given), mode, strength, precision, tiling, face processing and colour processing | Each decision in the report records its value, its source (`user`, `auto`, `default`), the rule that produced it, and the evidence used (§14). |
+| U-5 | Manual control over model, scale, strength, denoise, deblur, face enhancement, texture reconstruction, fidelity, sharpening, colour processing, precision and tile strategy | Each control maps to a documented parameter of the model or pipeline. A test checks that changing each control changes the computation (§15). |
 
-### 2.2 What "Faithful" means (made precise)
-
-"Invents no detail" cannot be guaranteed absolutely, so Faithful mode is defined
-by three structural properties:
-
-1. The output comes only from the **base path**, which is trained only with
-   distortion losses (pixel, gradient and frequency fidelity). Such losses push
-   the output towards the conditional mean rather than towards a plausible
-   sample.
-2. A **consistency operator** makes the low-frequency content of the output,
-   re-degraded to the input resolution, match the input. This bounds colour
-   and brightness shifts and large-scale fabrication.
-3. The synthesis path does not run, so its weights cannot affect the output.
-   This is checked by a test: changing the synthesis weights must leave the
-   Faithful output unchanged, bit for bit.
-
-Reconstruction mode adds a learned **synthesis residual** scaled by `s`. This
-residual is trained with texture and adversarial objectives. So the difference
-between the modes is a difference in computation, not a label.
-
-### 2.3 Image handling
+### 2.2 Modes (§9) — replaces F-3/F-4
 
 | ID | Requirement |
 |----|-------------|
-| I-1 | Decode and encode PNG, JPEG, WebP and TIFF. |
-| I-2 | The codec layer is pluggable, so AVIF, JPEG XL and OpenEXR can be added without changing the engine. |
-| I-3 | 8-bit, 16-bit and 32-bit-float samples; grey, grey+alpha, RGB and RGBA. |
-| I-4 | Output bit depth defaults to the input bit depth. |
-| I-5 | Alpha channels are preserved and upscaled. |
-| I-6 | ICC profiles are preserved. There is no unintended colour shift; see C-*. |
-| I-7 | Format limits are checked **before** processing starts. For example, WebP cannot exceed 16383 px per side and JPEG cannot exceed 65535 px. |
-| I-8 | Metadata policy is explicit: ICC is kept; EXIF orientation is applied or kept as the user chooses; other metadata is dropped by default. |
+| F-3' | **Faithful**: the synthesis path is not executed. Consistency with the source is enforced over the widest frequency band the measured noise allows. |
+| F-4' | **Balanced**: the synthesis path runs at a strength chosen by analysis and capped. Consistency is as strict as in Faithful. QC can reduce strength locally. |
+| F-4'' | **Reconstruction**: the synthesis path runs at a user strength `s ∈ [0,1]`. Consistency is limited to a lower frequency band. Colour consistency is still enforced. |
+| F-7 | The modes differ in executed subgraph, synthesis strength, consistency band and QC thresholds. A test proves each difference. |
 
-### 2.4 Colour management
+### 2.3 Face-aware processing (§10)
 
 | ID | Requirement |
 |----|-------------|
-| C-1 | sRGB input comes out as sRGB with the same encoding. Round-tripping an image through the pipeline with an identity model changes it by at most 1 LSB. |
-| C-2 | Images with other RGB profiles (Display P3, Adobe RGB, …) are not clipped to sRGB. |
-| C-3 | Linear-light and HDR (float) inputs go through a documented, invertible encoding into the model's working range. |
-| C-4 | An unparseable or unsupported profile triggers a warning and a documented fallback. It is never silently misinterpreted. |
+| FA-1 | Detect face regions (bounding box, confidence, landmarks where available) with our own trained detector. |
+| FA-2 | Face regions receive specialised processing *inside* the main reconstruction, through spatial conditioning. They are not pasted in from a separate generator. |
+| FA-3 | No generic face replacement. There are no reference-face dictionaries and no identity-agnostic face priors that overwrite the input. Consistency is enforced more strongly inside face regions. |
+| FA-4 | Identity drift is measured by QC. The measurement method must itself be our own; see feasibility. |
+| FA-5 | Face data is biometric data. Dataset consent and licensing, and the handling of processed user images, must be documented (privacy). |
 
-### 2.5 Scale of inputs
-
-| ID | Requirement |
-|----|-------------|
-| S-1 | Small images (e.g. 64×64) are handled without tiling overhead. |
-| S-2 | Large images: the whole image does not need to fit in GPU memory. |
-| S-3 | Very large images: when the source format allows streaming, the whole image **and the whole output** do not need to fit in host RAM (e.g. 20k×20k in, 8x out = 160k×160k, 25.6 Gpx). |
-| S-4 | Host RAM and VRAM use are bounded by budgets that are known before execution. |
-
-### 2.6 Execution
+### 2.4 Quality control (§11)
 
 | ID | Requirement |
 |----|-------------|
-| E-1 | Single-image and batch (many files) processing. |
-| E-2 | Tiled inference with **no visible seams**. Defined numerically in Q-3. |
-| E-3 | Tile size, overlap, batch size, precision and execution strategy are chosen automatically, and can be overridden. |
-| E-4 | Memory needs are estimated before expensive work. If the configuration does not fit, the engine adapts automatically. |
-| E-5 | Recovery from out-of-memory: shrink and retry. From device loss: report the error, and fall back to CPU if the user allows it. |
-| E-6 | Cancellation and progress reporting through the public API. |
-| E-7 | In batch mode, a failure in one file does not abort the batch unless requested. |
+| QC-1 | Output is checked for: consistency loss (hallucination or structure loss), colour shift, haloing, oversharpening, repeated textures, tile seams, unnatural edges, and facial distortion (when faces are processed). |
+| QC-2 | QC results are reported per job and as a coarse spatial map. |
+| QC-3 | In Balanced and Reconstruction modes, QC findings can **automatically lower the local synthesis strength**. Every such adjustment is reported. |
+| QC-4 | QC does not break tiling exactness or streaming. |
 
-### 2.7 GPU
+### 2.5 Preview and region processing (§12)
 
 | ID | Requirement |
 |----|-------------|
-| G-1 | The engine talks only to a backend abstraction. It contains no vendor-specific code. |
-| G-2 | Backends are planned for CPU (reference, always available), CUDA and Vulkan. |
-| G-3 | The abstraction separates device management, memory allocation, buffers, operations, synchronisation, transfers and execution. |
-| G-4 | Devices can be enumerated and selected, and their capabilities queried (memory budget, fp16 support, limits). |
+| P-1 | Process a full image, a region, or a crop. A region's output equals the corresponding region of the full-image output, because it uses the full-image analysis context. |
+| P-2 | Face-region preview (depends on FA-1). |
+| P-3 | Before/after and variant comparison (strengths, modes, models) without recomputing shared work. |
 
-### 2.8 Model runtime
-
-| ID | Requirement |
-|----|-------------|
-| M-1 | Load, unload, validate and inspect models (metadata). |
-| M-2 | Adding a new model version or variant needs no engine code change, as long as it uses the supported operator set. |
-| M-3 | Exact memory estimate for a given input shape, batch size and precision. |
-| M-4 | Precision selection (fp32, fp16), limited by what the model declares is safe. |
-| M-5 | Scale selection within the scales the model declares. |
-
-### 2.9 Training
+### 2.6 Scales
 
 | ID | Requirement |
 |----|-------------|
-| T-1 | A dataset manifest records, for every image, its source, licence and hash. Images without an acceptable licence are rejected. |
-| T-2 | Dataset validation: decodability, minimum size, duplicate detection, split leakage. |
-| T-3 | Synthetic degradation covering blur, noise (including sensor-realistic noise), compression, ringing, oversharpening, resolution loss, and mixed or repeated chains. Parameters are logged per sample. |
-| T-4 | Deterministic, seeded data generation. The same seed and config give the same pairs. |
-| T-5 | Losses, validation, checkpoints, resumable training and experiment tracking, with no mandatory external service. |
-| T-6 | Export to the ScaleForge model format, with metadata that links back to the training run and dataset manifest. |
-| T-7 | Numerical parity between the training implementation and the inference runtime is tested. |
+| F-1' | Native 1x (restoration without upscaling), 2x, 4x and 8x. Revision 1 missed 1x, but denoising, deblurring and artefact removal at the original size are listed capabilities. |
+| F-8 | Extreme upscaling (> 8x) is done by composing passes. The quality of composed passes is a research item. |
 
-### 2.10 CLI, API, GUI readiness, plugins
+### 2.7 Engine independence (§17–19, §22, §31)
 
 | ID | Requirement |
 |----|-------------|
-| A-1 | Commands: `upscale`, `batch`, `models`, `devices`, `benchmark`, `doctor`, plus `eval` for quality evaluation. |
-| A-2 | The CLI is a thin client of the public API and contains no processing logic. |
-| A-3 | The public API is complete enough that a GUI needs nothing else. This includes progress, cancellation, previews (running on a region), and device and model queries. |
-| A-4 | Extension points exist for models, processing stages, backends and codecs, behind validated interfaces. |
+| D-1 | Our own tensor representation, operators, graph execution, memory planning, serialisation and validation. |
+| D-2 | Our own GPU compute kernels. The lowest reasonable interface to the hardware: the CUDA driver API and the Vulkan API. No cuDNN, cuBLAS, TensorRT, ONNX Runtime, OpenVINO or similar. |
+| D-3 | The production runtime has no dependency on any AI framework. |
+| D-4 | Every dependency is classified (core / hardware-system interface / build tooling / optional) and audited before use (§19–20). |
+| D-5 | Mature security primitives are not rewritten without need (§35). |
 
-### 2.11 Quality and benchmarking
+### 2.8 Model metadata (§16) — extends M-*
 
-| ID | Requirement |
-|----|-------------|
-| Q-1 | Full-reference metrics: PSNR (RGB and luma), SSIM, MS-SSIM, and gradient-based fidelity. LPIPS is optional and external, because it needs third-party weights. |
-| Q-2 | A documented protocol for blind human A/B evaluation, with a tool that supports it. |
-| Q-3 | **Seam criterion:** in exact tiling mode, tiled output equals whole-image output within 1e-5 in fp32 on the CPU backend. In bounded-error mode, the maximum deviation is measured and reported. |
-| Q-4 | Regression: each model version has stored metrics on a fixed evaluation set. A new version is compared automatically, with tolerances. |
-| Q-5 | The benchmark measures model load time, per-stage time, total time, peak VRAM, transfer bytes and time, throughput, CPU utilisation, and GPU utilisation where it can be measured. Anything that cannot be measured is reported as `null`, never estimated silently. |
-| Q-6 | Benchmark reports record the environment: hardware, driver, backend, versions, commit, and configuration. |
+Every `.sfm` declares its architecture ID and hash, version, capabilities
+(tasks), scales, modes, precisions (with measured error bounds), receptive
+field (derived and verified), memory-requirement coefficients, training
+information (run ID, steps, configuration hash), dataset provenance (manifest
+hash and licence summary), licence, and an integrity hash.
+
+### 2.9 Testing additions (§34)
+
+Large-image tests and failure-recovery tests are required categories, alongside
+those already listed.
 
 ---
 
-## 3. Non-functional requirements
+## 3. Contradictions and tensions in the specification
 
-Priority order, as given in the brief: **correctness > image quality >
-stability > memory efficiency > performance > maintainability > extensibility.**
+Each tension is stated with the resolution that the architecture adopts.
 
-| ID | Requirement |
-|----|-------------|
-| N-1 | CPU backend: deterministic output for identical inputs and configuration. GPU backends: deterministic kernels (no atomics in reductions) unless a documented fast mode is chosen. |
-| N-2 | Security: the malformed input, malicious model and resource exhaustion threats in §5 are mitigated. |
-| N-3 | Portability: the engine runs on Linux, Windows and macOS (CPU). GPU backends run where their APIs exist. |
-| N-4 | Every major stage can be tested on its own. |
-| N-5 | Optimisations are accepted only with before/after measurements. |
-| N-6 | Minimal dependency footprint. Each dependency is justified (O-5). |
-
----
-
-## 4. Constraints and facts about the current environment
-
-These facts limit what can be **validated** in this repository today, and they
-shape the plan.
-
-| Fact | Consequence |
-|------|-------------|
-| No GPU in the development container. | The CUDA and Vulkan backends can be written but **cannot be executed or validated here**. They stay marked *unvalidated* until run on real hardware. The CPU backend is the reference, and every test that must pass in CI runs on it. |
-| PyTorch is not installed, and dependencies must not be installed automatically. | The training system cannot run until the user approves its dependencies. |
-| No pretrained weights are allowed (O-2). | Model quality depends entirely on our own training compute and data. A model trained on CPU in this environment can **only validate the pipeline**; it will not be a production-quality model. This will be stated plainly wherever the model is described. |
-| Dataset licensing. | Many widely used super-resolution research datasets are licensed for non-commercial research only. No dataset is bundled. The manifest system (T-1) makes licensing explicit and enforced. |
-| Toolchain present: Rust 1.94, GCC 13, CMake 3.28, Python 3.11. | This informs the language choice (ADR-0001). |
+| # | Tension | Resolution |
+|---|---------|------------|
+| X-1 | "No external model weights" (§8), but face detection, identity checks and perceptual metrics usually rely on pretrained networks. | Every learned component (face detector, landmarks, any identity or perceptual measure) must be trained by us. Where no licensed data exists, the capability is marked INCOMPLETE rather than filled with external weights. LPIPS as usually defined depends on pretrained networks, so it is **excluded**. A perceptual metric of our own needs human-judgement data (research item). |
+| X-2 | "Our own autodiff/training framework" (§31) vs. "do not produce technically inferior code" (§19, §41). | A feasibility study (§5 below) concludes that our own framework is feasible **because our operator set is small and static**. It is adopted (ADR-0011). The cost is recorded: training throughput will lag vendor-library frameworks until our kernels are optimised. |
+| X-3 | Minimal external dependencies (§18, §21) vs. "do not sacrifice security" and "do not rewrite mature security primitives" (§35). | Codecs are *format interfaces* (§21 category B), not product logic. In **safe Rust**, a decoder bug is a denial-of-service risk rather than a memory-corruption risk, and our resource limits bound that. So our own codecs are acceptable where fuzzing and differential testing against mature implementations (as development-only test oracles) are in place. Cryptographic hashing (SHA-256) stays a mature dependency (D-5). |
+| X-4 | "Creative reconstruction" and "extreme upscaling" (§3) are capabilities typically served by large generative models, but the model must be trained from scratch by us. | Reconstruction mode covers controlled detail synthesis. A large generative model trained from scratch needs data and compute far beyond this project's current means. It is classified *requires significant GPU compute; postponed*. |
+| X-5 | "Every automatic decision explainable" (§14) vs. learned estimators, which are opaque. | Decisions are made by a documented rule policy over **physical measurements**. Learned estimators contribute measurements whose values are reported. They never make decisions directly. |
+| X-6 | Face-specific processing and QC-driven local corrections vs. seam-free tiling. | Both are expressed as **spatial maps** (face mask, strength map) that are local inputs to the per-tile computation. Maps are computed from global analysis *before* tiling, so all tiles see consistent values (ADR-0012). |
+| X-7 | "Remove external dependencies" vs. "PNG/JPEG/WebP/TIFF support now". | Our own PNG, TIFF and baseline-JPEG encoder come first. JPEG decoding (progressive included) and WebP decoding start as optional, feature-gated external crates. They are replaced by our own implementations once differential fuzzing shows parity. This is a staged plan; the decision is the owner's (DEPENDENCIES.md). |
+| X-8 | The phase order puts GPU execution (Phase 8) before the model (Phase 13), but the operator set is only final once the model exists. | Phase 8 builds the GPU execution layer and kernels for the operator set known by then. Kernels for operators added in Phase 13 are added in Phase 13, each with parity tests. |
+| X-9 | GPU execution and GPU tests are required, but the development environment has **no GPU**. | GPU code can be written but not validated here. It remains **INCOMPLETE (unvalidated)** until GPU hardware is available. See open question Q-A. |
 
 ---
 
-## 5. Threat model summary (security requirements)
+## 4. Unrealistic assumptions (made explicit)
 
-| Threat | Requirement |
-|--------|-------------|
-| Malformed or malicious image files (decoder bugs, decompression bombs) | Memory-safe decoders. Dimension, pixel-count and allocation limits are checked before allocating. Decoders are fuzzed. |
-| Malicious model files | The model format is pure data (no pickle, no code). Every offset and size is bounds-checked. There is an operator whitelist, and the graph is validated (acyclic, shapes inferable, tensor sizes limited). Hashes are verified. |
-| Path traversal in batch mode | Output names are derived, never taken raw from untrusted metadata. Outputs are confined to the output directory. No overwriting unless explicitly allowed. Symlink policy is explicit. |
-| Resource exhaustion | Host and device memory budgets; optional wall-time limits; bounded queues. |
-| GPU failures (OOM, device lost, driver timeout) | Typed errors; bounded retry with smaller work units; optional CPU fallback; no undefined state after an error. |
-| Untrusted plugins | No dynamic loading of native code in v1 (see ADR-0008). |
+1. **"Professional quality" for every §3 capability.** Quality comes from
+   training data and compute. With no pretrained weights and no GPU in this
+   environment, models trained here can only **validate pipelines**. The
+   capability-feasibility matrix
+   (`docs/design/02-capability-feasibility.md`) classifies each capability
+   honestly.
+2. **Face processing without external models.** It needs our own face
+   detector and a face-aware restoration model trained on consented, licensed
+   face data. Such datasets exist but are rarer. Many common face datasets
+   were scraped without consent or carry non-commercial terms.
+3. **Automatic QC that "fixes" problems.** QC can detect measurable
+   symptoms (consistency loss, colour shift, overshoot, periodicity) and reduce
+   synthesis strength. It cannot guarantee aesthetic correctness. Human
+   evaluation remains necessary.
+4. **Our own GPU kernels competitive with vendor libraries immediately.**
+   This is realistic only after focused optimisation, and it must be measured
+   (§41).
 
 ---
 
-## 6. Explicit non-goals for v1
+## 5. Feasibility analysis: our own tensor, autodiff and training system (§31)
 
-- Video upscaling (temporal consistency is a different problem).
-- Face-specific or text-specific restoration models.
-- Arbitrary non-integer scale factors (these can later be done by native upscaling followed by analytic downscaling).
-- Distributed or multi-GPU execution of a single image. Using several GPUs for several images in a batch can come later.
-- Cloud service or web UI.
+| Component | Work | Risk | Verdict |
+|-----------|------|------|---------|
+| Tensor representation and graph IR | Already required by the inference runtime | Low | Shared with inference |
+| Reverse-mode autodiff | A transformation on our **static** graph IR: for each op, emit its gradient ops. About 20 ops, each needing derivative rules. | Medium. Checked mechanically with finite-difference gradient tests in f64 on the CPU backend. | **Feasible** |
+| Backward kernels | For convolution: the input gradient is a transposed correlation, and the weight gradient is a correlation of input and output gradient. The others are element-wise or data movement. Needed on CPU and later GPU. | Medium. GPU performance is the main cost. | Feasible; performance tuned in Phase 21 |
+| Optimiser (AdamW), schedules, gradient clipping | Element-wise update ops | Low | Feasible |
+| Memory for training | The static planner handles forward + backward graphs. Rematerialisation can be added if needed. | Medium | Feasible |
+| Mixed precision | fp16/bf16 compute with fp32 master weights and loss scaling | Medium | Later optimisation |
+| Multi-GPU data parallelism | Gradient all-reduce between devices | High | Postponed |
+| Data pipeline | Our own decoders, our own degradation library, worker threads | Low–medium | Feasible |
+| Checkpoints | Our own container (same parser infrastructure as `.sfm`) | Low | Feasible |
+
+**Conclusion.** A complete, general-purpose deep-learning framework would be
+unrealistic. A framework restricted to **our** static graphs and **our** small
+operator set is realistic. It also removes a structural weakness of
+revision 1: training and inference implementing every operator twice (review
+item R-11). Training and inference now run the same operators on the same
+runtime. Accepted cost: GPU training throughput will be lower than with
+vendor-optimised frameworks until our kernels mature. More GPU time is
+therefore needed per experiment. Decision recorded in ADR-0011.
+
+---
+
+## 6. Missing requirements (added)
+
+| ID | Requirement | Reason |
+|----|-------------|--------|
+| MR-1 | Privacy: no telemetry. Metadata policy strips location data by default. Face data in datasets is documented with consent status. | Faces and user photos are personal data |
+| MR-2 | Model authenticity (signatures) in addition to integrity (hashes) | Model files are distributed; a hash inside the file proves nothing about who made it. Postponed; would use a mature signature primitive (D-5). |
+| MR-3 | Public API versioning and stability policy | Needed by the GUI and future bindings |
+| MR-4 | Determinism statement per backend | Needed for regression testing and reproducibility |
+| MR-5 | Evaluation-set governance: evaluation images must never enter training (hash-checked) | Metric validity |
+| MR-6 | Unified-vs-specialised model experiment defined before any specialised model is built (§7) | Avoids unnecessary model duplication |
+
+---
+
+## 7. Open questions for the project owner
+
+| ID | Question |
+|----|----------|
+| Q-A | Can a GPU environment (NVIDIA and/or Vulkan-capable) be made available for validation? Without one, Phase 8 stays unvalidated. |
+| Q-B | Approve the staged codec plan and each dependency in `DEPENDENCIES.md`. |
+| Q-C | Training data: which sources, with which licences, can be used? Any face data must have documented consent. |
+| Q-D | Is training compute planned (GPU hours)? This determines whether production-quality models are achievable at all. |
