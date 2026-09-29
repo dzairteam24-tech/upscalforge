@@ -1,0 +1,19 @@
+[package]
+name = "sf-import"
+description = "Import of external pretrained weights into ScaleForge models (ADR-0015)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sf-core = { path = "../sf-core" }
+sf-graph = { path = "../sf-graph" }
+sf-image = { path = "../sf-image" }
+
+[dev-dependencies]
+sf-compute = { path = "../sf-compute" }
+
+[lints]
+workspace = true
