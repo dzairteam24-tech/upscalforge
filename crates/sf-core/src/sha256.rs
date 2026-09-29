@@ -16,7 +16,7 @@ fn primes(n: usize) -> Vec<u64> {
     let mut out = Vec::with_capacity(n);
     let mut c = 2u64;
     while out.len() < n {
-        if out.iter().take_while(|&&p| p * p <= c).all(|&p| c % p != 0) {
+        if out.iter().take_while(|&&p| p * p <= c).all(|&p| !c.is_multiple_of(p)) {
             out.push(c);
         }
         c += 1;
