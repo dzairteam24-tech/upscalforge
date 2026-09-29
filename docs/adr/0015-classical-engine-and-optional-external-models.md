@@ -29,7 +29,9 @@ stronger one.
   - **usage scope: personal, local use by the owner only.** Therefore models
     licensed for **non-commercial** use are admitted, tagged
     `licence_scope: non-commercial`. They must be removed before any
-    distribution or commercial use (see `docs/design/06-external-models.md`);
+    distribution or commercial use, and they are never used for images
+    that will be sold (e.g. Adobe Stock); the export profile enforces this
+    (ADR-0016, `docs/design/06-external-models.md`);
   - they are replaced by ScaleForge-trained models once training hardware
     exists. The engine does not depend on them.
 - Weight files (PyTorch `.pth`, a pickle format) are **never unpickled**. The

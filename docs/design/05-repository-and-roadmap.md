@@ -113,6 +113,13 @@ Every phase ends with a self-review (§42), recorded in `CHANGELOG.md`.
 - **Phases 13–14 (own model and training) wait for GPU hardware.** Their
   design stands unchanged.
 
+### Owner request ADR-0016 (2026-09-29): export profiles
+- Phase 11 adds sRGB conversion (matrix/TRC profiles) and generation of our
+  own sRGB ICC profile.
+- Phase 17 adds export profiles (the Adobe Stock photo profile first): strategy
+  constraints, JPEG quality search under the size limit, the compliance check,
+  and the AI-disclosure report.
+
 ### Notes on ordering (no silent changes)
 - **Estimators move into Phase 11.** The specification lists "image
   analysis" under the image engine (Phase 11) and "automation" in Phase 17.

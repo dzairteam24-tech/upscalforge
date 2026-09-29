@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Owner request: Adobe Stock export profile (design, ADR-0016)
+- Export profiles designed, with rules as versioned data, a compliance check
+  and an AI-disclosure report. The Adobe Stock photo rules (JPEG + sRGB,
+  4–100 MP, ≤ 45 MB, no enlargement degradation, AI labelling, rights to AI
+  output) come from Adobe help pages via search results. They must be
+  re-verified against the live pages.
+- `non-commercial` models are blocked for images that will be sold.
+
 ### Phase 6 — Core foundation (implemented)
 - Cargo workspace (edition 2024, `unsafe_code = "forbid"`, clippy clean);
   zero third-party dependencies.

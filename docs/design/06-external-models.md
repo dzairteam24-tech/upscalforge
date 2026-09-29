@@ -10,6 +10,11 @@ permit **non-commercial** use are acceptable too. Each model is tagged
 (distribution, commercial use), every `non-commercial` model must be removed
 first. The engine lists this tag in `scaleforge models`.
 
+**Clarification (2026-09-29):** outputs may be sold on Adobe Stock, which is
+commercial use of the output. `non-commercial` models may therefore only be
+used for images that will not be sold. The Adobe Stock export profile blocks
+them automatically (ADR-0016, `07-export-profiles.md`).
+
 **Common caveat.** These weights were trained on public research datasets.
 Some of those datasets carry non-commercial or research-only terms. For
 personal, non-commercial use this is not an obstacle. It would matter again
