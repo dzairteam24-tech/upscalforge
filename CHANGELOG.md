@@ -7,6 +7,8 @@
 - Openly licensed pretrained models are admitted as an optional, labelled
   add-on running in our own engine. Licences were verified from source, and
   the candidates are registered in `docs/design/06-external-models.md`.
+- Usage scope set by the owner: local, personal use only. Non-commercial
+  licences (CodeFormer, GFPGAN) are admitted with a `non-commercial` tag.
 
 ### Design revision 2 — Master Specification (Phases 1–5)
 - Requirements re-analysed against the master specification: Balanced mode,

@@ -26,8 +26,10 @@ stronger one.
     their original licence, source and attribution in the metadata;
   - they are never called "ScaleForge models". Reports and the CLI show their
     origin;
-  - only models whose licence **permits commercial use** are admitted (see
-    `docs/design/06-external-models.md`);
+  - **usage scope: personal, local use by the owner only.** Therefore models
+    licensed for **non-commercial** use are admitted, tagged
+    `licence_scope: non-commercial`. They must be removed before any
+    distribution or commercial use (see `docs/design/06-external-models.md`);
   - they are replaced by ScaleForge-trained models once training hardware
     exists. The engine does not depend on them.
 - Weight files (PyTorch `.pth`, a pickle format) are **never unpickled**. The
@@ -41,7 +43,6 @@ stronger one.
 - Architectures with very large theoretical receptive fields run in
   **bounded-error tiling** mode. The error is measured per model, never
   assumed.
-- Residual legal risk: most published super-resolution weights were trained
-  on research datasets whose own terms are restrictive. A permissive *code*
-  licence does not settle the status of the *weights*. The owner accepts and
-  reviews this risk per model before distribution.
+- Residual legal risk: most published weights were trained on research
+  datasets with restrictive terms. Under personal non-commercial use this is
+  acceptable. It must be re-assessed if the usage scope changes.
