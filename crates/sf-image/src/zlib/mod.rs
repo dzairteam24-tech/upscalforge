@@ -431,8 +431,13 @@ fn distance_symbol(dist: u16) -> (usize, u32, u32) {
     (i, u32::from(dist - DIST_BASE[i]), u32::from(DIST_EXTRA[i]))
 }
 
-fn lz77(data: &[u8], level: Level) -> Vec<Token> {
-    const WINDOW: usize = 32_768;
+/// Match-search window (the DEFLATE maximum distance).
+const WINDOW: usize = 32_768;
+
+/// Tokens for `data[start..end]`. Matches may refer back into the window
+/// before `start` (which primes the hash chains) but never extend past
+/// `end`, so independent ranges can be searched in parallel.
+fn lz77(data: &[u8], start: usize, end: usize, level: Level) -> Vec<Token> {
     const HASH_BITS: u32 = 15;
     let chain_limit = level.chain();
     let mut head = vec![usize::MAX; 1 << HASH_BITS];
@@ -448,13 +453,16 @@ fn lz77(data: &[u8], level: Level) -> Vec<Token> {
             head[h] = p;
         }
     };
-    let mut tokens = Vec::with_capacity(data.len() / 2);
-    let mut i = 0;
-    while i < data.len() {
+    for p in start.saturating_sub(WINDOW)..start {
+        insert(p, &mut head, &mut prev);
+    }
+    let mut tokens = Vec::with_capacity((end - start) / 2);
+    let mut i = start;
+    while i < end {
         let mut best_len = 0usize;
         let mut best_dist = 0usize;
-        if i + 3 <= data.len() {
-            let max = (data.len() - i).min(258);
+        if i + 3 <= end {
+            let max = (end - i).min(258);
             let mut cand = head[hash(i)];
             let mut steps = 0;
             while cand != usize::MAX && i - cand <= WINDOW && steps < chain_limit {
@@ -630,15 +638,25 @@ fn write_block(w: &mut BitWriter, tokens: &[Token], raw: &[u8], last: bool) {
     }
 }
 
-/// Compresses to a raw DEFLATE stream.
-pub fn deflate(data: &[u8], level: Level) -> Vec<u8> {
+/// Input bytes per independently searched segment. It is a constant, not
+/// derived from the thread count, so the output is the same on every
+/// machine.
+const SEGMENT: usize = 1 << 18;
+
+/// Compresses `data[start..end]` into complete blocks; only the segment
+/// that ends the input carries the final-block flag. Every other segment
+/// ends with an empty stored block, which pads it to a whole byte: segments
+/// then start byte-aligned in the stream, as the stored blocks inside them
+/// assume, and can simply be concatenated.
+fn deflate_segment(data: &[u8], start: usize, end: usize, level: Level) -> Vec<u8> {
     const BLOCK_TOKENS: usize = 1 << 15;
-    let tokens = lz77(data, level);
-    let mut w = BitWriter { out: Vec::with_capacity(data.len() / 2 + 64), buf: 0, count: 0 };
+    let tokens = lz77(data, start, end, level);
+    let last_segment = end == data.len();
+    let mut w = BitWriter { out: Vec::with_capacity((end - start) / 2 + 64), buf: 0, count: 0 };
     if tokens.is_empty() {
-        write_block(&mut w, &[], &[], true);
+        write_block(&mut w, &[], &[], last_segment);
     }
-    let mut pos = 0usize;
+    let mut pos = start;
     let chunks: Vec<&[Token]> = tokens.chunks(BLOCK_TOKENS).collect();
     for (k, chunk) in chunks.iter().enumerate() {
         let span: usize = chunk
@@ -648,11 +666,71 @@ pub fn deflate(data: &[u8], level: Level) -> Vec<u8> {
                 Token::Match { len, .. } => *len as usize,
             })
             .sum();
-        write_block(&mut w, chunk, &data[pos..pos + span], k + 1 == chunks.len());
+        write_block(&mut w, chunk, &data[pos..pos + span], last_segment && k + 1 == chunks.len());
         pos += span;
+    }
+    if !last_segment {
+        w.put(0, 3); // not final, stored
+        w.align();
+        w.put(0, 16);
+        w.put(0xFFFF, 16);
     }
     w.align();
     w.out
+}
+
+/// Compresses to a raw DEFLATE stream.
+///
+/// The input is cut into 256 KiB segments that are searched and
+/// encoded on separate threads. Each segment's search is primed with the
+/// preceding 32 KiB, so matches still cross segment boundaries; the only
+/// cost is that no match extends past a boundary, that a segment starts
+/// new blocks, and 5 bytes of padding per segment.
+pub fn deflate(data: &[u8], level: Level) -> Vec<u8> {
+    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+    deflate_with(data, level, cores)
+}
+
+/// [`deflate`] on at most `threads` threads.
+fn deflate_with(data: &[u8], level: Level, threads: usize) -> Vec<u8> {
+    let bounds: Vec<(usize, usize)> = if data.is_empty() {
+        vec![(0, 0)]
+    } else {
+        (0..data.len()).step_by(SEGMENT).map(|s| (s, (s + SEGMENT).min(data.len()))).collect()
+    };
+    let workers = threads.min(bounds.len()).max(1);
+    let mut parts: Vec<Option<Vec<u8>>> = (0..bounds.len()).map(|_| None).collect();
+    if workers == 1 {
+        for (part, &(s, e)) in parts.iter_mut().zip(&bounds) {
+            *part = Some(deflate_segment(data, s, e, level));
+        }
+    } else {
+        // Segments are dealt out round-robin: neighbouring segments cost about
+        // the same, so this balances the work without a shared queue.
+        std::thread::scope(|sc| {
+            let handles: Vec<_> = (0..workers)
+                .map(|t| {
+                    let bounds = &bounds;
+                    sc.spawn(move || {
+                        (t..bounds.len())
+                            .step_by(workers)
+                            .map(|k| (k, deflate_segment(data, bounds[k].0, bounds[k].1, level)))
+                            .collect::<Vec<_>>()
+                    })
+                })
+                .collect();
+            for h in handles {
+                for (k, w) in h.join().expect("deflate worker panicked") {
+                    parts[k] = Some(w);
+                }
+            }
+        });
+    }
+    let mut out = Vec::with_capacity(data.len() / 2 + 64);
+    for part in parts {
+        out.extend(part.expect("every segment is compressed"));
+    }
+    out
 }
 
 /// Compresses to a zlib stream.

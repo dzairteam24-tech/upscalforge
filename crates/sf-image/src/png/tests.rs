@@ -155,6 +155,25 @@ fn round_trip_all_layouts() {
 }
 
 #[test]
+fn large_images_round_trip_across_filter_bands_and_deflate_segments() {
+    // Tall enough for many filter bands; more than one DEFLATE segment of
+    // filtered data. A wrong "previous row" at a band start, or a broken
+    // segment join, would change the decoded pixels.
+    let mut rng = Rng::seed_from_u64(0x7a11);
+    for (w, h, sixteen) in [(700u32, 500u32, false), (300, 211, true)] {
+        let n = (w * h * 3) as usize;
+        let samples = if sixteen {
+            Samples::U16((0..n).map(|i| ((i * 31) % 65_536) as u16 ^ (rng.below(64) as u16)).collect())
+        } else {
+            Samples::U8((0..n).map(|i| ((i / 5) as u8).wrapping_add(rng.below(6) as u8)).collect())
+        };
+        let buf = ImageBuffer::new(w, h, 3, samples).unwrap();
+        let png = encode(&buf, &EncodeOptions::default()).unwrap();
+        assert_eq!(decode(&png, &lim()).unwrap().buffer, buf, "{w}x{h}");
+    }
+}
+
+#[test]
 fn metadata_chunks() {
     let mut exif = b"MM\0\x2a\0\0\0\x08\0\x01\x01\x12\0\x03\0\0\0\x01\0\x06\0\0\0\0\0\0".to_vec();
     exif.truncate(26);

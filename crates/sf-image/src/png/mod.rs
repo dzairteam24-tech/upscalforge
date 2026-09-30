@@ -399,37 +399,49 @@ pub fn encode(image: &ImageBuffer, options: &EncodeOptions) -> Result<Vec<u8>> {
             Samples::F32(_) => unreachable!("rejected above"),
         }
     };
-    let mut filtered = Vec::with_capacity(h * (row_bytes + 1));
-    let mut prev = vec![0u8; row_bytes];
-    let mut candidate = vec![0u8; row_bytes];
-    for y in 0..h {
-        let cur = row(y);
-        let mut best: (u64, u8) = (u64::MAX, 0);
-        let mut best_row = Vec::new();
-        for kind in 0..5u8 {
-            for i in 0..row_bytes {
-                let (a, b) = (if i >= bpp { cur[i - bpp] } else { 0 }, prev[i]);
-                let c = if i >= bpp { prev[i - bpp] } else { 0 };
-                let pred = match kind {
-                    0 => 0,
-                    1 => a,
-                    2 => b,
-                    3 => ((u16::from(a) + u16::from(b)) / 2) as u8,
-                    _ => paeth(a, b, c),
-                };
-                candidate[i] = cur[i].wrapping_sub(pred);
+    // Each band of rows is filtered independently, starting from the
+    // unfiltered row before it, so the result equals sequential filtering.
+    let filter_rows = |rows: std::ops::Range<usize>| -> Vec<u8> {
+        let mut filtered = Vec::with_capacity(rows.len() * (row_bytes + 1));
+        let mut prev = if rows.start == 0 { vec![0u8; row_bytes] } else { row(rows.start - 1) };
+        let mut candidate = vec![0u8; row_bytes];
+        for y in rows {
+            let cur = row(y);
+            let mut best: (u64, u8) = (u64::MAX, 0);
+            let mut best_row = Vec::new();
+            for kind in 0..5u8 {
+                for i in 0..row_bytes {
+                    let (a, b) = (if i >= bpp { cur[i - bpp] } else { 0 }, prev[i]);
+                    let c = if i >= bpp { prev[i - bpp] } else { 0 };
+                    let pred = match kind {
+                        0 => 0,
+                        1 => a,
+                        2 => b,
+                        3 => ((u16::from(a) + u16::from(b)) / 2) as u8,
+                        _ => paeth(a, b, c),
+                    };
+                    candidate[i] = cur[i].wrapping_sub(pred);
+                }
+                // Heuristic: minimise the sum of absolute signed residuals.
+                let cost: u64 = candidate.iter().map(|&v| u64::from((v as i8).unsigned_abs())).sum();
+                if cost < best.0 {
+                    best = (cost, kind);
+                    best_row.clone_from(&candidate);
+                }
             }
-            // Heuristic: minimise the sum of absolute signed residuals.
-            let cost: u64 = candidate.iter().map(|&v| u64::from((v as i8).unsigned_abs())).sum();
-            if cost < best.0 {
-                best = (cost, kind);
-                best_row.clone_from(&candidate);
-            }
+            filtered.push(best.1);
+            filtered.extend_from_slice(&best_row);
+            prev = cur;
         }
-        filtered.push(best.1);
-        filtered.extend_from_slice(&best_row);
-        prev = cur;
-    }
+        filtered
+    };
+    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+    let per = h.div_ceil(cores.min(h / 16).max(1)).max(1);
+    let filtered: Vec<u8> = std::thread::scope(|sc| {
+        let bands: Vec<_> =
+            (0..h).step_by(per).map(|y0| sc.spawn(move || filter_rows(y0..(y0 + per).min(h)))).collect();
+        bands.into_iter().flat_map(|b| b.join().expect("PNG filter worker panicked")).collect()
+    });
     let compressed = zlib::zlib_compress(&filtered, options.level);
     for chunk in compressed.chunks(1 << 20) {
         write_chunk(&mut out, b"IDAT", chunk);

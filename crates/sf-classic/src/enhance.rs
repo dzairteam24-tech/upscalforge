@@ -3,6 +3,8 @@
 use sf_image::color::{linear_to_srgb, srgb_to_linear};
 use sf_image::resample::{Filter, resize};
 
+use crate::par;
+
 /// Upscales by `factor` with Lanczos-3, then clamps each output sample to
 /// the range of the 2×2 source neighbourhood it lies in (plus a small
 /// tolerance). The clamp removes the ringing halos that sinc-type filters
@@ -11,7 +13,7 @@ pub fn upscale(data: &[f32], w: usize, h: usize, channels: usize, factor: usize)
     let (nw, nh) = (w * factor, h * factor);
     let mut out = resize(data, w, h, channels, nw, nh, Filter::Lanczos3);
     let tolerance = 1.0 / 255.0;
-    for y in 0..nh {
+    par::rows(&mut out, nw * channels, |y, row| {
         let sy = ((y as f32 + 0.5) / factor as f32 - 0.5).max(0.0);
         let (y0, y1) = (sy.floor() as usize, (sy.floor() as usize + 1).min(h - 1));
         for x in 0..nw {
@@ -22,11 +24,11 @@ pub fn upscale(data: &[f32], w: usize, h: usize, channels: usize, factor: usize)
                 let (a, b, cc, d) = (s(x0, y0), s(x1, y0), s(x0, y1), s(x1, y1));
                 let lo = a.min(b).min(cc).min(d) - tolerance;
                 let hi = a.max(b).max(cc).max(d) + tolerance;
-                let o = &mut out[(y * nw + x) * channels + c];
+                let o = &mut row[x * channels + c];
                 *o = o.clamp(lo, hi);
             }
         }
-    }
+    });
     out
 }
 
@@ -38,18 +40,17 @@ pub fn gaussian(plane: &[f32], w: usize, h: usize, sigma: f32) -> Vec<f32> {
     let k: Vec<f32> = k.iter().map(|v| v / s).collect();
     let cl = |v: isize, n: usize| v.clamp(0, n as isize - 1) as usize;
     let mut tmp = vec![0f32; w * h];
-    for y in 0..h {
-        for x in 0..w {
-            tmp[y * w + x] =
-                (-r..=r).map(|i| k[(i + r) as usize] * plane[y * w + cl(x as isize + i, w)]).sum();
+    par::rows(&mut tmp, w, |y, row| {
+        for (x, t) in row.iter_mut().enumerate() {
+            *t = (-r..=r).map(|i| k[(i + r) as usize] * plane[y * w + cl(x as isize + i, w)]).sum();
         }
-    }
+    });
     let mut out = vec![0f32; w * h];
-    for y in 0..h {
-        for x in 0..w {
-            out[y * w + x] = (-r..=r).map(|i| k[(i + r) as usize] * tmp[cl(y as isize + i, h) * w + x]).sum();
+    par::rows(&mut out, w, |y, row| {
+        for (x, o) in row.iter_mut().enumerate() {
+            *o = (-r..=r).map(|i| k[(i + r) as usize] * tmp[cl(y as isize + i, h) * w + x]).sum();
         }
-    }
+    });
     out
 }
 
@@ -76,21 +77,23 @@ pub fn sharpen(
         data.chunks(channels).map(|p| 0.299 * p[0] + 0.587 * p[1] + 0.114 * p[2]).collect()
     };
     let blur = gaussian(&luma, w, h, radius.max(0.3));
-    for i in 0..n {
-        let (x, y) = (i % w, i / w);
-        let (mut lo, mut hi) = (f32::MAX, f32::MIN);
-        for yy in y.saturating_sub(1)..=(y + 1).min(h - 1) {
-            for xx in x.saturating_sub(1)..=(x + 1).min(w - 1) {
-                lo = lo.min(luma[yy * w + xx]);
-                hi = hi.max(luma[yy * w + xx]);
+    par::rows(&mut data[..n * channels], w * channels, |y, row| {
+        for x in 0..w {
+            let i = y * w + x;
+            let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+            for yy in y.saturating_sub(1)..=(y + 1).min(h - 1) {
+                for xx in x.saturating_sub(1)..=(x + 1).min(w - 1) {
+                    lo = lo.min(luma[yy * w + xx]);
+                    hi = hi.max(luma[yy * w + xx]);
+                }
+            }
+            let target = (luma[i] + 2.0 * amount * (luma[i] - blur[i])).clamp(lo - overshoot, hi + overshoot);
+            let delta = target - luma[i];
+            for v in &mut row[x * channels..(x + 1) * channels] {
+                *v += delta;
             }
         }
-        let target = (luma[i] + 2.0 * amount * (luma[i] - blur[i])).clamp(lo - overshoot, hi + overshoot);
-        let delta = target - luma[i];
-        for c in 0..channels {
-            data[i * channels + c] += delta;
-        }
-    }
+    });
 }
 
 /// Tone adjustments, applied in this order: white balance, then exposure

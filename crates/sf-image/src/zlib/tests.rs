@@ -103,6 +103,52 @@ fn compresses_redundant_data_and_bounds_incompressible_growth() {
     assert!(z.len() <= random.len() + random.len() / 1000 + 64, "stored fallback keeps growth small");
 }
 
+/// Inputs longer than one segment: mixed content so that stored blocks
+/// (random runs) land at arbitrary bit offsets inside segments, plus
+/// lengths exactly at segment boundaries.
+fn multi_segment_corpus() -> Vec<Vec<u8>> {
+    let mut rng = Rng::seed_from_u64(0x5e6);
+    let mut mixed = b"segment boundary test ".repeat(5_000);
+    mixed.extend((0..300_000).map(|_| rng.next_u64() as u8));
+    mixed.extend(vec![7u8; 150_000]);
+    mixed.extend((0..400_000u32).map(|i| ((i % 900) / 4) as u8));
+    mixed.extend((0..90_000).map(|_| rng.next_u64() as u8));
+    let at = |n: usize| (0..n as u32).map(|i| (i % 251) as u8 ^ (i / 7_000) as u8).collect::<Vec<u8>>();
+    vec![mixed, at(SEGMENT), at(SEGMENT + 1), at(2 * SEGMENT - 1), at(3 * SEGMENT)]
+}
+
+#[test]
+fn multi_segment_streams_round_trip() {
+    for data in multi_segment_corpus() {
+        for level in [Level::Fast, Level::Default] {
+            let z = zlib_compress(&data, level);
+            assert_eq!(zlib_decompress(&z, data.len()).unwrap(), data, "{level:?}, {} bytes", data.len());
+        }
+    }
+}
+
+#[test]
+fn output_does_not_depend_on_the_thread_count() {
+    for data in multi_segment_corpus() {
+        let one = deflate_with(&data, Level::Default, 1);
+        assert_eq!(deflate_with(&data, Level::Default, 3), one);
+        assert_eq!(deflate_with(&data, Level::Default, 64), one);
+    }
+}
+
+#[test]
+fn matches_reach_back_across_segment_boundaries() {
+    // A 20 000-byte random pattern repeated over 1 MB. Only matches that
+    // reach into the previous segment avoid re-sending the pattern as
+    // literals at the start of every segment (4 segments ≈ 80 KB).
+    let mut rng = Rng::seed_from_u64(0xb0);
+    let pattern: Vec<u8> = (0..20_000).map(|_| rng.next_u64() as u8).collect();
+    let data: Vec<u8> = pattern.iter().copied().cycle().take(1 << 20).collect();
+    let z = zlib_compress(&data, Level::Default);
+    assert!(z.len() < 30_000, "{} bytes", z.len());
+    assert_eq!(zlib_decompress(&z, data.len()).unwrap(), data);
+}
+
 #[test]
 fn rejects_corruption() {
     let data = b"corruption detection test ".repeat(20);

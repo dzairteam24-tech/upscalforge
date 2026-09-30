@@ -117,17 +117,48 @@ For comparison on the same machine, whole-image inference only:
 
 Our CPU convolution is about 3–4x slower than PyTorch's on this model.
 
+### 2026-09-30 — Phase 21: parallel PNG encoding and postprocess, CPU
+
+Same machine as above (Ryzen 9 5900X, 24 threads, Windows 11, rustc
+1.98.1). "Before" is the build just before this change, run on the same
+machine in the same session.
+
+`scaleforge benchmark --size 1024x768 --scale 2 --repeat 5`:
+
+| | Before | After |
+|---|---|---|
+| Total (median of 5) | **951 ms** (949, 938, 973, 951, 988) | **321 ms** (324, 314, 321, 335, 298) |
+| Throughput | 3.31 output MP/s | 9.79 output MP/s |
+
+| Stage (ms) | decode | analysis | restore | enlarge | postprocess | encode | write |
+|------------|--------|----------|---------|---------|-------------|--------|-------|
+| Before | 23.2 | 39.2 | 4.2 | 69.5 | 227.8 | 577.6 | 8.7 |
+| After | 24.7 | 40.0 | 4.5 | 17.6 | 103.9 | 113.1 | 11.8 |
+
+`scaleforge benchmark --size 2048x1536 --scale 2 --repeat 3`:
+
+| | Before | After |
+|---|---|---|
+| Total (median of 3) | **3772 ms** | **1044 ms** |
+| Throughput | 3.34 output MP/s | 12.05 output MP/s |
+| postprocess / encode (ms) | 914 / 2300 | 282 / 386 |
+
+Output: decoded pixels are bit-identical to the previous build on three
+real jobs (x2 PNG; x4 PNG with sharpening and auto-tone; x1 17 MP TIFF with
+sharpening). PNG files differ in bytes only, and their size changed by less
+than 0.1 % (for example 6 278 141 → 6 280 033 bytes for a 2048x1536 PNG).
+
 ### Observations
 
-These are measurements, not yet optimisations:
-
-- Encoding the PNG output (our own DEFLATE, single-threaded) takes half the
-  time.
-- Postprocessing (QC and consistency) is single-threaded.
-- CPU utilisation of 1.37 on 4 threads shows that most stages do not run in
-  parallel yet.
-
-Phase 21 should start with these stages.
+- The first classical measurement found PNG encoding and postprocessing
+  single-threaded. Both are now parallel (see Phase 21 above).
+- Remaining sequential parts of the classical path: analysis, decoding,
+  the consistency residual's per-channel steps, JPEG encoding, and the TIFF
+  strip loop (a TIFF Deflate strip larger than 256 KiB does use the
+  parallel DEFLATE).
+- With a model, inference dominates everything (99 % of the time); the CPU
+  convolution is 3–4x slower than PyTorch on CPU. That is the next target,
+  before or together with the GPU backend.
 
 ## Not measured
 

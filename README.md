@@ -31,6 +31,7 @@ model are **INCOMPLETE**.
 | Own model SF-Net and training (13–14) | **INCOMPLETE — planned for later** (see [`training/`](training/README.md)) |
 | Modes, strategy, QC, Adobe Stock export (15, 17) | Implemented (policy thresholds provisional) |
 | CLI and benchmark (18, 20) | Implemented |
+| Optimisation (21) | Started: PNG encoding and postprocessing are parallel (about 3x faster end to end, see [BENCHMARKS.md](BENCHMARKS.md)) |
 | Not yet supported | WebP, face restoration, SwinIR/HAT, images larger than RAM (streaming) |
 
 Zero third-party crates; see [`DEPENDENCIES.md`](DEPENDENCIES.md).

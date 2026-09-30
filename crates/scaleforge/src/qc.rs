@@ -108,25 +108,39 @@ pub fn check(input: &Pixels, output: &Pixels, mode: Mode, tiling_note: &str) -> 
     // neighbourhood by more than 8 levels.
     let s = output.width as f32 / input.width as f32;
     let c = input.channels;
-    let mut over = 0usize;
-    for y in 0..output.height {
-        let sy = ((y as f32 + 0.5) / s - 0.5).max(0.0);
-        let (y0, y1) = (sy.floor() as usize, (sy.floor() as usize + 1).min(input.height - 1));
-        for x in 0..output.width {
-            let sx = ((x as f32 + 0.5) / s - 0.5).max(0.0);
-            let (x0, x1) = (sx.floor() as usize, (sx.floor() as usize + 1).min(input.width - 1));
-            for ch in 0..c {
-                let v = |xx: usize, yy: usize| input.data[(yy * input.width + xx) * c + ch];
-                let (a, b, cc, d) = (v(x0, y0), v(x1, y0), v(x0, y1), v(x1, y1));
-                let lo = a.min(b).min(cc).min(d) - 8.0 / 255.0;
-                let hi = a.max(b).max(cc).max(d) + 8.0 / 255.0;
-                let o = output.data[(y * output.width + x) * c + ch];
-                if o < lo || o > hi {
-                    over += 1;
+    let count_rows = |rows: std::ops::Range<usize>| -> usize {
+        let mut over = 0usize;
+        for y in rows {
+            let sy = ((y as f32 + 0.5) / s - 0.5).max(0.0);
+            let (y0, y1) = (sy.floor() as usize, (sy.floor() as usize + 1).min(input.height - 1));
+            for x in 0..output.width {
+                let sx = ((x as f32 + 0.5) / s - 0.5).max(0.0);
+                let (x0, x1) = (sx.floor() as usize, (sx.floor() as usize + 1).min(input.width - 1));
+                for ch in 0..c {
+                    let v = |xx: usize, yy: usize| input.data[(yy * input.width + xx) * c + ch];
+                    let (a, b, cc, d) = (v(x0, y0), v(x1, y0), v(x0, y1), v(x1, y1));
+                    let lo = a.min(b).min(cc).min(d) - 8.0 / 255.0;
+                    let hi = a.max(b).max(cc).max(d) + 8.0 / 255.0;
+                    let o = output.data[(y * output.width + x) * c + ch];
+                    if o < lo || o > hi {
+                        over += 1;
+                    }
                 }
             }
         }
-    }
+        over
+    };
+    // Bands of at least 16 rows; the count is an exact integer sum, so the
+    // result does not depend on the number of threads.
+    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+    let per = output.height.div_ceil(cores.min(output.height / 16).max(1)).max(1);
+    let over: usize = std::thread::scope(|sc| {
+        let bands: Vec<_> = (0..output.height)
+            .step_by(per)
+            .map(|y0| sc.spawn(move || count_rows(y0..(y0 + per).min(output.height))))
+            .collect();
+        bands.into_iter().map(|b| b.join().expect("halo check worker panicked")).sum()
+    });
     let overshoot = over as f64 / output.data.len() as f64;
     let (rms_limit, halo_limit) = match mode {
         Mode::Faithful => (2.0, 0.005),

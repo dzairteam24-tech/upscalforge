@@ -254,7 +254,7 @@ limits }` in a `CodecRegistry`.
 
 | Format | Implementation | Streaming |
 |--------|---------------|-----------|
-| PNG | **Own** (DEFLATE/zlib, filters, chunks, Adam7 decode, ICC/`gAMA`/`cHRM`/`sRGB`/`cICP` chunks) | Rows (non-interlaced) |
+| PNG | **Own** (DEFLATE/zlib, filters, chunks, Adam7 decode, ICC/`gAMA`/`cHRM`/`sRGB`/`cICP` chunks). Encoding is parallel: 256 KiB DEFLATE segments, each primed with the previous 32 KiB; output independent of the thread count | Rows (non-interlaced) |
 | TIFF | **Own** subset: strips and tiles; none/LZW/DEFLATE/PackBits; 8/16-bit integer and 32-bit float; BigTIFF write | Tiled: random access. Stripped: bands |
 | JPEG encode | **Own** baseline encoder (also used by `sf-degrade`) | Rows (MCU bands) |
 | JPEG decode | Own baseline first; progressive via the interim optional external decoder until our own reaches parity | Baseline: bands. Progressive: full |
@@ -702,3 +702,4 @@ WebP output.
 | Modes, strategy policy/1, QC, Adobe Stock export (Phases 15, 17, ADR-0016) | **Implemented.** Thresholds provisional. QC runs on the host (not as graph branches). No learned descriptor, predictive QC or variant cache yet |
 | Faces, old-photo repair (Phase 16) | **INCOMPLETE** |
 | CLI, benchmark (Phases 18, 20) | **Implemented** |
+| Optimisation (Phase 21) | **Started.** Measured and parallelised: PNG encoding (segment-parallel DEFLATE, banded row filtering), postprocess (Gaussian, sharpen, halo check) and the classical upscale clamp. Pixels bit-identical to the sequential code. Not yet optimised: CPU convolution (3–4x slower than PyTorch on CPU), JPEG encoding, analysis |

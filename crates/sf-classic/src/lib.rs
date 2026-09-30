@@ -20,6 +20,7 @@
 
 mod denoise;
 mod enhance;
+mod par;
 
 pub use denoise::{deblock, denoise};
 pub use enhance::{Tone, gaussian, sharpen, tone, upscale};

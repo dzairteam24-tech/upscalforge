@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Phase 21 — first measured optimisation
+- PNG encoding is parallel:
+  - DEFLATE cuts the data into fixed 256 KiB segments and compresses them
+    on separate threads. Each segment's match search is primed with the
+    previous 32 KiB. Non-final segments end with an empty stored block, so
+    every segment starts byte-aligned. The output does not depend on the
+    thread count (tested). The size changes by less than 0.1 %.
+  - Row filtering runs in bands of rows.
+- Postprocessing is parallel: the Gaussian blur, sharpening, the QC halo
+  check and the classical upscale clamp run over row bands.
+- All of these give bit-identical pixels. This was checked against the
+  previous build on three real jobs, including a 17 MP TIFF.
+- Measured on a Ryzen 9 5900X (`BENCHMARKS.md`):
+  - 1024x768 → x2: 951 → 321 ms;
+  - 2048x1536 → x2: 3772 → 1044 ms.
+- 5 new tests: multi-segment DEFLATE round trips, matches across segment
+  boundaries, identical output for 1/3/64 threads, large PNG round trips,
+  row-band coverage. Test count: 184.
+
 ### Phase 12 — first real model validation
 - `scaleforge convert-model` on the real `RealESRGAN_x4plus.pth` works
   without changes (rrdbnet x4, 16 697 987 parameters).
