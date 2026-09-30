@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+### Phase 11/10 — images larger than memory (band-by-band processing)
+- zlib:
+  - the DEFLATE decoder is now a resumable state machine (`Inflater`,
+    `ZlibReader`) reading from any `Read`. Memory holds the 32 KiB window
+    and the bytes asked for. The one-shot `inflate` uses the same code and
+    passes all previous tests;
+  - `ZlibWriter` streams compression in the same 256 KiB segments as
+    `zlib_compress`, so its output is byte-for-byte identical (tested).
+- `sf_image::stream`:
+  - `RowSource` and `RowSink`;
+  - `PngSource`: non-interlaced PNG, decoded band by band from the file,
+    identical rows to a whole decode for every colour type and depth
+    (tested);
+  - `MemorySource`: any format, decoded once at native precision, with
+    orientation;
+  - `PngSink` and `TiffSink`: byte-for-byte identical to `png::encode` and
+    `tiff::encode` (tested). TIFF strips are now compressed in parallel.
+- Engine:
+  - band-by-band processing when the whole image does not fit the host
+    budget, or with `--stream`;
+  - 64-row restoration and 24-row enlargement margins: the output is
+    **bit-identical** to whole-image processing, tested at x1/x2/x4/x8 with
+    denoising, deblocking, sharpening, tone, alpha and 16-bit;
+  - QC is accumulated per band;
+  - a PNG too large to decode whole is read in bands, and its analysis uses
+    a 2048x2048 region at the centre. A patch mosaic was tried first and
+    rejected: its seams read as JPEG block edges (measured, see
+    ARCHITECTURE §8.5).
+- CLI: `--stream`, `--band-rows N`, `--memory MB`. The Windows default
+  budget is the 4 GiB fallback: no OS call reads the memory size.
+- Measured (`BENCHMARKS.md`):
+  - x4 of a 17 MP photo: 14.3 s and 8.9 GB whole, 13.3 s and 1.9 GB in
+    bands, with identical output files;
+  - x8 (1.08 GP): 50.6 s, 1.65 GB.
+- INCOMPLETE: band-by-band AI models, export profiles and JPEG output (a
+  clear error explains); streaming TIFF/JPEG decode; thumbnail and
+  whole-image statistics for regional analysis.
+- 14 new tests (207 total).
+
 ### Phase 11 (continued) — own WebP decoder
 - `sf_image::webp`, written from RFC 9649 (container, lossless) and
   RFC 6386 (VP8 lossy):

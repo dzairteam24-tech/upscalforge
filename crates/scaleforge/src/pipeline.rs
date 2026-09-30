@@ -5,6 +5,7 @@
 //! → sharpening/tone → quality control → export profile → encode → output.
 
 use std::collections::HashMap;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -17,13 +18,15 @@ use sf_core::{
 };
 use sf_graph::Shape;
 use sf_image::color::{IccProfile, ToSrgb, TransferClass, srgb_profile};
+use sf_image::png::{PngSink, PngSource};
 use sf_image::resample::{Filter, resize};
+use sf_image::stream::{MemorySource, RowSink, RowSource, SourceInfo};
 use sf_image::{FileFormat, Image, SampleFormat, jpeg, png, tiff};
 
 use crate::export::{Compliance, ExportRules};
 use crate::hostmem::HostBudget;
 use crate::imageops::Pixels;
-use crate::qc::{self, QcReport};
+use crate::qc::{self, QcAccumulator, QcReport};
 use crate::runtime::{ModelHandle, ResidentModel};
 use crate::strategy::{self, Controls, Decision, Mode, Plan, Source, UpscalePath};
 use crate::tiling::{self, Planar, TileGeometry, TileMode};
@@ -80,6 +83,11 @@ pub struct JobRequest {
     pub jpeg_quality: Option<u8>,
     /// Tile core size for model inference (`None` = choose from memory).
     pub tile: Option<u32>,
+    /// Process in bands of rows even when the whole image fits in memory.
+    /// Banding is chosen automatically when it does not fit.
+    pub stream: bool,
+    /// Input rows per band (`None` = choose from the memory budget).
+    pub band_rows: Option<u32>,
 }
 
 impl JobRequest {
@@ -96,6 +104,8 @@ impl JobRequest {
             overwrite: false,
             jpeg_quality: None,
             tile: None,
+            stream: false,
+            band_rows: None,
         }
     }
 }
@@ -244,16 +254,25 @@ impl Engine {
             None => None,
         };
 
-        // Decode and orient.
-        let image = self.decode(&req.input)?;
-        let source_format = image.buffer.format();
-        let pixels = Pixels::from_buffer(&image.buffer).oriented(image.meta.orientation.unwrap_or(1));
-        let (w, h) = (pixels.width, pixels.height);
-        stage("decode", &mut t);
-        cancel.check()?;
-
-        // Analysis.
-        let analysis = sf_analysis::analyze(&image);
+        // Decode (or open for band-by-band reading) and analyse.
+        let mut input = self.open_input(&req.input)?;
+        let (analysis, info, region_note) = match &mut input {
+            Input::Decoded(image) => {
+                let info = oriented_info(image);
+                stage("decode", &mut t);
+                cancel.check()?;
+                (sf_analysis::analyze(image), info, None)
+            }
+            Input::Bands(src) => {
+                let (region, note) = analysis_region(src.as_mut())?;
+                stage("decode", &mut t);
+                cancel.check()?;
+                (sf_analysis::analyze(&region), src.info().clone(), Some(note))
+            }
+        };
+        let source_format = info.sample;
+        let (w, h) = (info.width as usize, info.height as usize);
+        let channels = info.channels as usize;
         stage("analysis", &mut t);
         progress.report(&ProgressEvent { stage: "analysis", completed: 1, total: 1 });
 
@@ -299,36 +318,86 @@ impl Engine {
             return Err(Error::unsupported(format!("scale {scale} (supported: 1, 2, 4, 8)")));
         }
         let (out_w, out_h) = (w * scale as usize, h * scale as usize);
-        let working =
-            (out_w * out_h * pixels.channels) as u64 * 4 * 4 + (w * h * pixels.channels) as u64 * 4 * 4;
-        let _reservation = self.host.reserve(working, "image processing")?;
 
         let mut plan =
             strategy::plan(&analysis, req.mode, scale, &req.controls, model.as_ref().map(|m| &m.0.info));
         plan.decisions.extend(profile_decisions);
+        if let Some(note) = &region_note {
+            plan.decisions.push(Decision {
+                parameter: "analysis",
+                value: note.clone(),
+                source: Source::Auto,
+                rule: "image-larger-than-memory",
+                evidence: format!("{w}x{h} input"),
+            });
+        }
         stage("strategy", &mut t);
+
+        // Whole image in memory, or band by band.
+        let working = (out_w * out_h * channels) as u64 * 4 * 4 + (w * h * channels) as u64 * 4 * 4;
+        let reservation = match (&input, req.stream) {
+            (Input::Decoded(_), false) => match self.host.reserve(working, "image processing") {
+                Ok(r) => Some(r),
+                Err(e) if e.kind() == ErrorKind::LimitExceeded => None,
+                Err(e) => return Err(e),
+            },
+            _ => None,
+        };
+        let Some(_reservation) = reservation else {
+            let why = if req.stream {
+                "requested".to_string()
+            } else {
+                format!(
+                    "the whole image needs {} MB, the memory budget is {} MB",
+                    working >> 20,
+                    self.host.limit() >> 20
+                )
+            };
+            let blocker = if rules.is_some() {
+                Some("export profiles")
+            } else if !matches!(plan.upscale, UpscalePath::Classical(_)) {
+                Some("AI models")
+            } else if !matches!(out_format, FileFormat::Png | FileFormat::Tiff) {
+                Some("this output format (use .png or .tif)")
+            } else {
+                None
+            };
+            if let Some(b) = blocker {
+                return Err(Error::limit_exceeded(format!(
+                    "band-by-band processing ({why}) does not support {b} yet (INCOMPLETE)"
+                )));
+            }
+            let source: Box<dyn RowSource> = match input {
+                Input::Decoded(image) => Box::new(MemorySource::new(image)),
+                Input::Bands(src) => src,
+            };
+            return self.run_banded(
+                req,
+                source,
+                BandJob {
+                    scale,
+                    plan,
+                    analysis,
+                    out_format,
+                    why,
+                    timings,
+                    warnings,
+                    started: t,
+                    progress,
+                    cancel,
+                },
+            );
+        };
+        let Input::Decoded(image) = input else { unreachable!("band sources are processed above") };
+        let pixels = Pixels::from_buffer(&image.buffer).oriented(image.meta.orientation.unwrap_or(1));
 
         // Restoration and enlargement of colour.
         let (colour, alpha) = pixels.split_alpha();
         let mut lr = colour.clone();
-        if let Some((sigma, strength)) = plan.denoise {
-            sf_classic::denoise(&mut lr.data, w, h, lr.channels, sigma, strength);
-        }
-        if let Some(step) = plan.deblock {
-            sf_classic::deblock(&mut lr.data, w, h, lr.channels, step, 0);
-        }
+        restore(&mut lr, &plan);
         stage("restore", &mut t);
         cancel.check()?;
-        let classical = if scale > 1 {
-            Pixels {
-                width: out_w,
-                height: out_h,
-                channels: lr.channels,
-                data: sf_classic::upscale(&lr.data, w, h, lr.channels, scale as usize),
-            }
-        } else {
-            lr.clone()
-        };
+        let classical = enlarge(&lr, scale);
         let mut tiling_note =
             "no tiling (classical processing is local and runs on the whole image)".to_string();
         let upscale_path = plan.upscale.clone();
@@ -373,20 +442,12 @@ impl Engine {
         };
         stage("enlarge", &mut t);
         cancel.check()?;
-        qc::consistency_correct(&lr, &mut hr, plan.consistency);
-        if plan.sharpen > 0.0 {
-            sf_classic::sharpen(&mut hr.data, out_w, out_h, hr.channels, plan.sharpen, 1.0, 2.0 / 255.0);
-        }
-        if let Some(tone) = plan.tone {
-            sf_classic::tone(&mut hr.data, hr.channels, tone);
-        }
-        hr.data.iter_mut().for_each(|v| *v = v.clamp(0.0, 1.0));
+        finish_colour(&lr, &mut hr, &plan);
         let qc_report = qc::check(&lr, &hr, req.mode, &tiling_note);
         if !qc_report.passed() {
             warnings.push("quality control flagged the output; see the qc section".into());
         }
         stage("postprocess", &mut t);
-
         // Alpha.
         let mut out = match alpha {
             Some(a) => {
@@ -493,6 +554,226 @@ impl Engine {
         })
     }
 
+    /// Opens the input: a PNG whose decoded pixels would take more than a
+    /// quarter of the memory budget is read band by band; everything else
+    /// is decoded whole.
+    fn open_input(&self, path: &Path) -> Result<Input> {
+        let mut head = [0u8; 8];
+        let is_png = std::fs::File::open(path).and_then(|mut f| f.read_exact(&mut head)).is_ok()
+            && head == png::SIGNATURE;
+        if is_png
+            && let Ok(src) = PngSource::open(path, &self.config.limits)
+            && src.info().decoded_bytes() > self.host.limit() / 4
+            && src.info().meta.orientation.unwrap_or(1) <= 1
+        {
+            return Ok(Input::Bands(Box::new(src)));
+        }
+        Ok(Input::Decoded(self.decode(path)?))
+    }
+
+    /// Processes an image band by band (ARCHITECTURE §8.1): each band of
+    /// input rows is processed with margins of `BAND_MARGIN` rows, which
+    /// every classical stage needs less than, and only its own rows are
+    /// written. The output is therefore the same as whole-image processing
+    /// (checked by tests), while memory holds one band.
+    fn run_banded(
+        &self,
+        req: &JobRequest,
+        mut src: Box<dyn RowSource>,
+        job: BandJob<'_>,
+    ) -> Result<JobReport> {
+        let BandJob {
+            scale,
+            mut plan,
+            analysis,
+            out_format,
+            why,
+            mut timings,
+            mut warnings,
+            started,
+            progress,
+            cancel,
+        } = job;
+        let mut t = started;
+        let mut stage = |name: &'static str, t: &mut Instant| {
+            timings.push((name, t.elapsed().as_secs_f64() * 1e3));
+            *t = Instant::now();
+        };
+        let info = src.info().clone();
+        let (w, h, c, s) = (info.width, info.height, info.channels as usize, scale as usize);
+        let (ow, oh) = (w as usize * s, h as usize * s);
+        // Memory per input row: about 6 input-sized f32 copies (window,
+        // crop, restoration temporaries) and 5 enlarged ones (enlargement,
+        // consistency, sharpening, output conversion).
+        let lr_row = u64::from(w) * c as u64 * 4;
+        let (lr_cost, hr_cost) = (6 * lr_row, 5 * lr_row * (s * s) as u64);
+        let margins = 2 * u64::from(BAND_MARGIN) * lr_cost + 2 * u64::from(ENLARGE_MARGIN) * hr_cost;
+        let fixed = src.resident_bytes() + margins;
+        let band = match req.band_rows {
+            Some(b) => b.max(8) / 8 * 8,
+            None => {
+                let available = self.host.limit().saturating_sub(self.host.used()) / 5 * 4;
+                let fit = available.saturating_sub(fixed) / (lr_cost + hr_cost).max(1);
+                (fit.min(2048) as u32) / 8 * 8
+            }
+        };
+        if band < 8 {
+            return Err(Error::limit_exceeded(format!(
+                "a {w} px wide image does not fit the memory budget of {} MB even in bands of 8 rows",
+                self.host.limit() >> 20
+            )));
+        }
+        let _reservation =
+            self.host.reserve(u64::from(band) * (lr_cost + hr_cost) + fixed, "band processing")?;
+        plan.decisions.push(Decision {
+            parameter: "processing",
+            value: format!("band by band: {band} input rows per band ({BAND_MARGIN}-row restoration and {ENLARGE_MARGIN}-row enlargement margins)"),
+            source: if req.stream || req.band_rows.is_some() { Source::User } else { Source::Auto },
+            rule: "whole-image-exceeds-memory",
+            evidence: why,
+        });
+        let out_sample = match (out_format, info.sample) {
+            (FileFormat::Png, SampleFormat::U8) => SampleFormat::U8,
+            (FileFormat::Png, _) => SampleFormat::U16,
+            (_, sample) => sample,
+        };
+        let icc = info.meta.icc_profile.clone();
+        let tmp = temp_path(&req.output)?;
+        let result = (|| -> Result<QcAccumulator> {
+            let file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&tmp)
+                .map_err(|e| Error::from(e).context(tmp.display()))?;
+            let out = std::io::BufWriter::with_capacity(1 << 20, file);
+            let (ow32, oh32) = (ow as u32, oh as u32);
+            let mut sink: Box<dyn RowSink> = match out_format {
+                FileFormat::Png => Box::new(PngSink::new(
+                    out,
+                    ow32,
+                    oh32,
+                    c as u8,
+                    out_sample,
+                    &png::EncodeOptions { icc_profile: icc.clone(), ..png::EncodeOptions::default() },
+                )?),
+                _ => Box::new(tiff::TiffSink::new(
+                    out,
+                    ow32,
+                    oh32,
+                    c as u8,
+                    out_sample,
+                    &tiff::EncodeOptions { icc_profile: icc.clone(), ..tiff::EncodeOptions::default() },
+                )?),
+            };
+            let row_len = w as usize * c;
+            let mut window: Vec<f32> = Vec::new();
+            let (mut win_y0, mut win_rows) = (0u32, 0u32);
+            let mut qc_acc = QcAccumulator::default();
+            let total = u64::from(h.div_ceil(band));
+            for (k, y0) in (0..h).step_by(band as usize).enumerate() {
+                cancel.check()?;
+                let y1 = (y0 + band).min(h);
+                // Margins are multiples of 8, so every band starts on the
+                // 8-pixel JPEG grid, as deblocking requires.
+                let (a, b) = (y0.saturating_sub(BAND_MARGIN), (y1 + BAND_MARGIN).min(h));
+                if a > win_y0 {
+                    window.drain(..(a - win_y0) as usize * row_len);
+                    win_rows -= a - win_y0;
+                    win_y0 = a;
+                }
+                while win_y0 + win_rows < b {
+                    let rows = src.read_rows(b - win_y0 - win_rows)?;
+                    win_rows += rows.height();
+                    window.extend(rows.to_f32());
+                }
+                let crop = Pixels {
+                    width: w as usize,
+                    height: (b - a) as usize,
+                    channels: c,
+                    data: window[..(b - a) as usize * row_len].to_vec(),
+                };
+                let (colour, alpha) = crop.split_alpha();
+                let mut restored = colour;
+                restore(&mut restored, &plan);
+                // Only the band and a narrower margin are enlarged.
+                let (ea, eb) = (y0.saturating_sub(ENLARGE_MARGIN), (y1 + ENLARGE_MARGIN).min(h));
+                let rows_of = |p: &[f32], ch: usize| {
+                    p[(ea - a) as usize * w as usize * ch..(eb - a) as usize * w as usize * ch].to_vec()
+                };
+                let lr = Pixels {
+                    width: w as usize,
+                    height: (eb - ea) as usize,
+                    channels: restored.channels,
+                    data: rows_of(&restored.data, restored.channels),
+                };
+                let alpha = alpha.map(|al| rows_of(&al, 1));
+                let mut hr = enlarge(&lr, scale);
+                finish_colour(&lr, &mut hr, &plan);
+                let core = (y0 - ea) as usize..(y1 - ea) as usize;
+                qc_acc.add(&lr, &hr, core.clone());
+                let hr_rows = core.start * s * ow * hr.channels..core.end * s * ow * hr.channels;
+                let hr_core = Pixels {
+                    width: ow,
+                    height: core.len() * s,
+                    channels: hr.channels,
+                    data: hr.data[hr_rows].to_vec(),
+                };
+                let band_out = match alpha {
+                    Some(al) => {
+                        let a_hr = if s > 1 {
+                            sf_classic::upscale(&al, w as usize, (eb - ea) as usize, 1, s)
+                        } else {
+                            al
+                        };
+                        let a_core: Vec<f32> = a_hr[core.start * s * ow..core.end * s * ow]
+                            .iter()
+                            .map(|v| v.clamp(0.0, 1.0))
+                            .collect();
+                        hr_core.with_alpha(&a_core)
+                    }
+                    None => hr_core,
+                };
+                sink.write_rows(&band_out.to_buffer(out_sample)?)?;
+                progress.report(&ProgressEvent { stage: "bands", completed: k as u64 + 1, total });
+            }
+            sink.finish()?;
+            Ok(qc_acc)
+        })();
+        let qc_acc = match result {
+            Ok(q) => q,
+            Err(e) => {
+                let _ = std::fs::remove_file(&tmp);
+                return Err(e);
+            }
+        };
+        stage("process", &mut t);
+        commit(&tmp, &req.output, req.overwrite)?;
+        stage("write", &mut t);
+        let qc_report = qc_acc.report(
+            req.mode,
+            &format!(
+                "banded processing ({band} rows per band): every stage is local and the margins exceed its reach, so the output equals whole-image processing"
+            ),
+        );
+        if !qc_report.passed() {
+            warnings.push("quality control flagged the output; see the qc section".into());
+        }
+        Ok(JobReport {
+            input: req.input.clone(),
+            output: req.output.clone(),
+            input_size: (w, h),
+            output_size: (ow as u32, oh as u32),
+            output_bytes: std::fs::metadata(&req.output).map(|m| m.len()).unwrap_or(0),
+            analysis,
+            decisions: plan.decisions,
+            qc: qc_report,
+            compliance: None,
+            timings_ms: timings,
+            peak_device_bytes: self.vram.usage().peak_total,
+            model: None,
+            warnings,
+        })
+    }
     /// Runs a model over the colour image, tiled, with out-of-memory
     /// recovery. Returns the model output and a tiling note.
     fn run_model(
@@ -735,34 +1016,171 @@ fn flatten_on_white(p: &Pixels) -> Pixels {
     Pixels { width: p.width, height: p.height, channels: c, data: data.collect() }
 }
 
+/// A temporary file name next to `path`.
+fn temp_path(path: &Path) -> Result<PathBuf> {
+    let dir = path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or(Path::new("."));
+    let name = path.file_name().ok_or_else(|| Error::invalid_input("output path has no file name"))?;
+    Ok(dir.join(format!(".{}.sf-tmp-{}", name.to_string_lossy(), std::process::id())))
+}
+
 /// Writes via a temporary file in the same directory, then renames, so a
 /// failure never leaves a truncated output. Without `overwrite`, an
 /// existing target is never replaced.
 fn write_atomically(path: &Path, bytes: &[u8], overwrite: bool) -> Result<()> {
     use std::io::Write;
-    let dir = path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or(Path::new("."));
-    let name = path.file_name().ok_or_else(|| Error::invalid_input("output path has no file name"))?;
-    let tmp = dir.join(format!(".{}.sf-tmp-{}", name.to_string_lossy(), std::process::id()));
+    let tmp = temp_path(path)?;
     let mut f = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&tmp)
         .map_err(|e| Error::from(e).context(tmp.display()))?;
-    let result = f.write_all(bytes).and_then(|_| f.sync_all());
+    let result = f.write_all(bytes);
     drop(f);
     if let Err(e) = result {
         let _ = std::fs::remove_file(&tmp);
         return Err(Error::from(e).context(path.display()));
     }
+    commit(&tmp, path, overwrite)
+}
+
+/// Flushes a completed temporary file to disk and renames it to `path`.
+fn commit(tmp: &Path, path: &Path, overwrite: bool) -> Result<()> {
+    let synced = std::fs::OpenOptions::new().write(true).open(tmp).and_then(|f| f.sync_all());
+    if let Err(e) = synced {
+        let _ = std::fs::remove_file(tmp);
+        return Err(Error::from(e).context(path.display()));
+    }
     if !overwrite && path.exists() {
-        let _ = std::fs::remove_file(&tmp);
+        let _ = std::fs::remove_file(tmp);
         return Err(Error::invalid_input(format!(
             "{} appeared during processing; not overwritten",
             path.display()
         )));
     }
-    std::fs::rename(&tmp, path).map_err(|e| {
-        let _ = std::fs::remove_file(&tmp);
+    std::fs::rename(tmp, path).map_err(|e| {
+        let _ = std::fs::remove_file(tmp);
         Error::from(e).context(path.display())
     })
+}
+
+/// Input rows restored around each band. Restoration reaches 33 rows
+/// (denoising 30, deblocking 3); the rows then enlarged lie at least
+/// `BAND_MARGIN - ENLARGE_MARGIN` = 40 rows inside, so they are exactly
+/// the whole-image values. A multiple of 8 keeps bands on the 8-pixel JPEG
+/// grid.
+const BAND_MARGIN: u32 = 64;
+
+/// Input rows enlarged around each band. The enlargement and finishing
+/// stages reach about 12 input rows (enlargement 4, consistency 7,
+/// sharpening 1–4, and the QC low-pass 4 more).
+const ENLARGE_MARGIN: u32 = 24;
+
+/// The decoded input, or a source read band by band.
+enum Input {
+    Decoded(Image),
+    Bands(Box<dyn RowSource>),
+}
+
+/// What `run` hands to `run_banded`.
+struct BandJob<'a> {
+    scale: u32,
+    plan: Plan,
+    analysis: AnalysisReport,
+    out_format: FileFormat,
+    why: String,
+    timings: Vec<(&'static str, f64)>,
+    warnings: Vec<String>,
+    started: Instant,
+    progress: &'a dyn ProgressSink,
+    cancel: &'a CancelToken,
+}
+
+/// Size and format of a decoded image after its EXIF orientation.
+fn oriented_info(image: &Image) -> SourceInfo {
+    let (w, h) = (image.buffer.width(), image.buffer.height());
+    let swap = image.meta.orientation.is_some_and(|o| (5..=8).contains(&o));
+    SourceInfo {
+        width: if swap { h } else { w },
+        height: if swap { w } else { h },
+        channels: image.buffer.channels(),
+        sample: image.buffer.format(),
+        meta: image.meta.clone(),
+        format: image.format,
+    }
+}
+
+/// For an image read band by band: a contiguous region of up to
+/// 2048×2048 native pixels at the centre, for the analysis. One pass over
+/// the source, which is then rewound.
+///
+/// A mosaic of patches from the whole image was tried first and rejected:
+/// the seams between patches lie on the 8-pixel grid and read as JPEG
+/// block edges (blockiness 7.6 instead of 1.2 on a real photo), which
+/// switched deblocking on wrongly. A single region has no seams; it does
+/// not see the rest of the image, which the report states.
+fn analysis_region(src: &mut dyn RowSource) -> Result<(Image, String)> {
+    const SIDE: u32 = 2048;
+    let info = src.info().clone();
+    let (w, h, c) = (info.width, info.height, info.channels as usize);
+    let (rw, rh) = (w.min(SIDE), h.min(SIDE));
+    // Origin on the 8-pixel grid so JPEG block statistics are unaffected.
+    let (ox, oy) = ((w - rw) / 2 / 8 * 8, (h - rh) / 2 / 8 * 8);
+    let mut region = Vec::with_capacity(rw as usize * rh as usize * c);
+    let mut y = 0u32;
+    while y < oy + rh {
+        let band = src.read_rows(256.min(oy + rh - y))?;
+        let px = band.to_f32();
+        for r in 0..band.height() {
+            if (oy..oy + rh).contains(&(y + r)) {
+                let at = (r as usize * w as usize + ox as usize) * c;
+                region.extend_from_slice(&px[at..at + rw as usize * c]);
+            }
+        }
+        y += band.height();
+    }
+    src.rewind()?;
+    let pixels = Pixels { width: rw as usize, height: rh as usize, channels: c, data: region };
+    let buffer = pixels.to_buffer(info.sample)?;
+    let note = if (rw, rh) == (w, h) {
+        "whole image".to_string()
+    } else {
+        format!("{rw}x{rh} region at the centre only (the image does not fit in memory)")
+    };
+    Ok((Image { buffer, meta: info.meta, format: info.format }, note))
+}
+/// Restoration of the input colour: denoising, then deblocking.
+fn restore(lr: &mut Pixels, plan: &Plan) {
+    let (w, h, c) = (lr.width, lr.height, lr.channels);
+    if let Some((sigma, strength)) = plan.denoise {
+        sf_classic::denoise(&mut lr.data, w, h, c, sigma, strength);
+    }
+    if let Some(step) = plan.deblock {
+        sf_classic::deblock(&mut lr.data, w, h, c, step, 0);
+    }
+}
+
+/// Classical enlargement by an integer scale.
+fn enlarge(lr: &Pixels, scale: u32) -> Pixels {
+    if scale <= 1 {
+        return lr.clone();
+    }
+    let s = scale as usize;
+    Pixels {
+        width: lr.width * s,
+        height: lr.height * s,
+        channels: lr.channels,
+        data: sf_classic::upscale(&lr.data, lr.width, lr.height, lr.channels, s),
+    }
+}
+
+/// Consistency correction, sharpening, tone and the final clamp.
+fn finish_colour(lr: &Pixels, hr: &mut Pixels, plan: &Plan) {
+    qc::consistency_correct(lr, hr, plan.consistency);
+    if plan.sharpen > 0.0 {
+        sf_classic::sharpen(&mut hr.data, hr.width, hr.height, hr.channels, plan.sharpen, 1.0, 2.0 / 255.0);
+    }
+    if let Some(tone) = plan.tone {
+        sf_classic::tone(&mut hr.data, hr.channels, tone);
+    }
+    hr.data.iter_mut().for_each(|v| *v = v.clamp(0.0, 1.0));
 }

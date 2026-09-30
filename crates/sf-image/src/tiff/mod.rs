@@ -15,9 +15,12 @@
 
 mod lzw;
 
+use std::io::{Seek, SeekFrom, Write};
+
 use sf_core::{Error, Limits, Result};
 
 use crate::image::{FileFormat, Image, ImageBuffer, ImageMeta, SampleFormat, Samples};
+use crate::stream::{RowSink, check_band};
 use crate::zlib;
 
 fn bad(what: impl std::fmt::Display) -> Error {
@@ -433,36 +436,65 @@ impl Default for EncodeOptions {
 
 /// Encodes an image as a little-endian TIFF (BigTIFF when needed).
 pub fn encode(image: &ImageBuffer, options: &EncodeOptions) -> Result<Vec<u8>> {
-    let (w, h, c) = (image.width() as usize, image.height() as usize, image.channels() as usize);
-    let bytes = image.format().bytes() as usize;
-    let row_bytes = w * c * bytes;
-    let rows_per_strip = (65_536 / row_bytes.max(1)).clamp(1, h);
-    let predict = options.compression == Compression::Deflate && image.format() != SampleFormat::F32;
-    let mut strips: Vec<Vec<u8>> = Vec::new();
-    for y0 in (0..h).step_by(rows_per_strip) {
-        let rows = rows_per_strip.min(h - y0);
-        let mut strip = Vec::with_capacity(rows * row_bytes);
-        for y in y0..y0 + rows {
-            let start = y * w * c;
-            let mut row: Vec<u8> = match image.samples() {
-                Samples::U8(v) => v[start..start + w * c].to_vec(),
-                Samples::U16(v) => v[start..start + w * c].iter().flat_map(|s| s.to_le_bytes()).collect(),
-                Samples::F32(v) => v[start..start + w * c].iter().flat_map(|s| s.to_le_bytes()).collect(),
-            };
-            if predict {
-                predict_row(&mut row, c, bytes);
-            }
-            strip.extend(row);
-        }
-        strips.push(match options.compression {
-            Compression::None => strip,
-            Compression::Deflate => zlib::zlib_compress(&strip, zlib::Level::Default),
-        });
-    }
+    let l = TiffLayout::of(image);
+    let (h, rows_per_strip) = (image.height() as usize, l.rows_per_strip());
+    let raw: Vec<Vec<u8>> = (0..h)
+        .step_by(rows_per_strip)
+        .map(|y0| l.strip(image.samples(), y0, rows_per_strip.min(h - y0), options))
+        .collect();
+    let strips = compress_strips(raw, options.compression);
     let data_len: u64 = strips.iter().map(|s| s.len() as u64).sum::<u64>()
         + options.icc_profile.as_ref().map_or(0, |p| p.len() as u64);
     let big = data_len + (1 << 20) > u64::from(u32::MAX);
-    write_file(image, options, &strips, rows_per_strip, predict, big)
+    let mut out = header_placeholder(big);
+    let (mut offsets, mut counts) = (Vec::with_capacity(strips.len()), Vec::with_capacity(strips.len()));
+    for s in &strips {
+        offsets.push(out.len() as u64);
+        counts.push(s.len() as u64);
+        out.extend_from_slice(s);
+        if out.len() % 2 == 1 {
+            out.push(0);
+        }
+    }
+    let (tail, ifd) = l.tail(options, offsets, counts, big, out.len() as u64)?;
+    out.extend(tail);
+    patch_header(&mut out, ifd, big);
+    Ok(out)
+}
+
+/// Compresses strips, several at a time on separate threads.
+fn compress_strips(strips: Vec<Vec<u8>>, compression: Compression) -> Vec<Vec<u8>> {
+    if compression == Compression::None {
+        return strips;
+    }
+    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+    let per = strips.len().div_ceil(cores).max(1);
+    std::thread::scope(|sc| {
+        let parts: Vec<_> = strips
+            .chunks(per)
+            .map(|group| {
+                sc.spawn(move || {
+                    group.iter().map(|s| zlib::zlib_compress(s, zlib::Level::Default)).collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        parts.into_iter().flat_map(|p| p.join().expect("TIFF strip worker panicked")).collect()
+    })
+}
+
+fn header_placeholder(big: bool) -> Vec<u8> {
+    let mut out: Vec<u8> = if big { vec![b'I', b'I', 43, 0, 8, 0, 0, 0] } else { vec![b'I', b'I', 42, 0] };
+    out.resize(if big { 16 } else { 8 }, 0);
+    out
+}
+
+/// Writes the first-IDF offset into the header bytes.
+fn patch_header(head: &mut [u8], ifd: u64, big: bool) {
+    if big {
+        head[8..16].copy_from_slice(&ifd.to_le_bytes());
+    } else {
+        head[4..8].copy_from_slice(&(ifd as u32).to_le_bytes());
+    }
 }
 
 fn predict_row(row: &mut [u8], c: usize, bytes: usize) {
@@ -480,134 +512,320 @@ fn predict_row(row: &mut [u8], c: usize, bytes: usize) {
     }
 }
 
-fn write_file(
-    image: &ImageBuffer,
-    options: &EncodeOptions,
-    strips: &[Vec<u8>],
-    rows_per_strip: usize,
-    predict: bool,
-    big: bool,
-) -> Result<Vec<u8>> {
-    let c = image.channels() as u64;
-    let bits = u64::from(image.format().bytes()) * 8;
-    let mut out: Vec<u8> = if big { vec![b'I', b'I', 43, 0, 8, 0, 0, 0] } else { vec![b'I', b'I', 42, 0] };
-    let header_len = if big { 16 } else { 8 };
-    out.resize(header_len, 0);
-    // Pixel data and out-of-line values first, then the IFD.
-    let mut offsets = Vec::with_capacity(strips.len());
-    for s in strips {
-        offsets.push(out.len() as u64);
-        out.extend_from_slice(s);
-        if out.len() % 2 == 1 {
-            out.push(0);
-        }
-    }
-    // Entry: (tag, type, values). Types: 3 SHORT, 4 LONG, 16 LONG8, 7 UNDEFINED.
-    let long = if big { 16u16 } else { 4u16 };
-    let mut entries: Vec<(u16, u16, Vec<u64>)> = vec![
-        (256, long, vec![u64::from(image.width())]),
-        (257, long, vec![u64::from(image.height())]),
-        (258, 3, vec![bits; c as usize]),
-        (259, 3, vec![if options.compression == Compression::Deflate { 8 } else { 1 }]),
-        (262, 3, vec![if c >= 3 { 2 } else { 1 }]),
-        (273, long, offsets),
-        (277, 3, vec![c]),
-        (278, long, vec![rows_per_strip as u64]),
-        (279, long, strips.iter().map(|s| s.len() as u64).collect()),
-        (284, 3, vec![1]),
-    ];
-    if predict {
-        entries.push((317, 3, vec![2]));
-    }
-    if image.has_alpha() {
-        entries.push((338, 3, vec![2])); // unassociated alpha
-    }
-    entries.push((339, 3, vec![if image.format() == SampleFormat::F32 { 3 } else { 1 }; c as usize]));
-    let mut icc_at = None;
-    if let Some(icc) = &options.icc_profile {
-        icc_at = Some(out.len() as u64);
-        out.extend_from_slice(icc);
-        if out.len() % 2 == 1 {
-            out.push(0);
-        }
-    }
-    entries.sort_by_key(|e| e.0);
-    let inline = if big { 8 } else { 4 };
-    let size_of = |t: u16| type_size(t).expect("known type");
-    // Out-of-line arrays.
-    let mut value_pos: Vec<Option<u64>> = Vec::new();
-    for (_, t, vals) in &entries {
-        let total = size_of(*t) * vals.len() as u64;
-        if total > inline {
-            value_pos.push(Some(out.len() as u64));
-            for &v in vals {
-                push_value(&mut out, *t, v);
-            }
-        } else {
-            value_pos.push(None);
-        }
-    }
-    let mut n_entries = entries.len() as u64;
-    if icc_at.is_some() {
-        n_entries += 1;
-    }
-    if out.len() % 2 == 1 {
-        out.push(0);
-    }
-    let ifd = out.len() as u64;
-    if !big && ifd > u64::from(u32::MAX) {
-        return Err(Error::internal("tiff: classic offsets overflow; BigTIFF should have been chosen"));
-    }
-    if big {
-        out.extend(n_entries.to_le_bytes());
-    } else {
-        out.extend((n_entries as u16).to_le_bytes());
-    }
-    let write_entry =
-        |out: &mut Vec<u8>, tag: u16, t: u16, count: u64, inline_bytes: &[u8], pos: Option<u64>| {
-            out.extend(tag.to_le_bytes());
-            out.extend(t.to_le_bytes());
-            if big {
-                out.extend(count.to_le_bytes());
-            } else {
-                out.extend((count as u32).to_le_bytes());
-            }
-            let start = out.len();
-            match pos {
-                Some(p) if big => out.extend(p.to_le_bytes()),
-                Some(p) => out.extend((p as u32).to_le_bytes()),
-                None => out.extend_from_slice(inline_bytes),
-            }
-            out.resize(start + inline as usize, 0);
-        };
-    for ((tag, t, vals), pos) in entries.iter().zip(&value_pos) {
-        let mut inline_bytes = Vec::new();
-        if pos.is_none() {
-            for &v in vals {
-                push_value(&mut inline_bytes, *t, v);
-            }
-        }
-        write_entry(&mut out, *tag, *t, vals.len() as u64, &inline_bytes, *pos);
-    }
-    // The ICC tag (34675) has the highest number, so it goes last.
-    if let (Some(at), Some(icc)) = (icc_at, &options.icc_profile) {
-        let pos = (icc.len() as u64 > inline).then_some(at);
-        write_entry(&mut out, 34675, 7, icc.len() as u64, icc, pos);
-    }
-    if big {
-        out.extend(0u64.to_le_bytes());
-    } else {
-        out.extend(0u32.to_le_bytes());
-    }
-    // Patch the first-IFD offset.
-    if big {
-        out[8..16].copy_from_slice(&ifd.to_le_bytes());
-    } else {
-        out[4..8].copy_from_slice(&(ifd as u32).to_le_bytes());
-    }
-    Ok(out)
+/// The written layout of an image.
+#[derive(Clone, Copy)]
+struct TiffLayout {
+    width: u32,
+    height: u32,
+    channels: u8,
+    format: SampleFormat,
 }
 
+impl TiffLayout {
+    fn of(image: &ImageBuffer) -> TiffLayout {
+        TiffLayout {
+            width: image.width(),
+            height: image.height(),
+            channels: image.channels(),
+            format: image.format(),
+        }
+    }
+
+    fn row_bytes(&self) -> usize {
+        self.width as usize * self.channels as usize * self.format.bytes() as usize
+    }
+
+    fn rows_per_strip(&self) -> usize {
+        (65_536 / self.row_bytes().max(1)).clamp(1, self.height as usize)
+    }
+
+    fn predict(&self, options: &EncodeOptions) -> bool {
+        options.compression == Compression::Deflate && self.format != SampleFormat::F32
+    }
+
+    /// Rows `y0..y0 + rows` of `samples`, serialised (and predicted) but
+    /// not yet compressed.
+    fn strip(&self, samples: &Samples, y0: usize, rows: usize, options: &EncodeOptions) -> Vec<u8> {
+        let (per_row, c, bytes) = (
+            self.width as usize * self.channels as usize,
+            self.channels as usize,
+            self.format.bytes() as usize,
+        );
+        let mut strip = Vec::with_capacity(rows * self.row_bytes());
+        for y in y0..y0 + rows {
+            let r = y * per_row..(y + 1) * per_row;
+            let mut row: Vec<u8> = match samples {
+                Samples::U8(v) => v[r].to_vec(),
+                Samples::U16(v) => v[r].iter().flat_map(|s| s.to_le_bytes()).collect(),
+                Samples::F32(v) => v[r].iter().flat_map(|s| s.to_le_bytes()).collect(),
+            };
+            if self.predict(options) {
+                predict_row(&mut row, c, bytes);
+            }
+            strip.extend(row);
+        }
+        strip
+    }
+
+    /// Everything after the pixel data: the ICC profile, out-of-line
+    /// arrays and the IFD. `start` is the file offset where the tail
+    /// begins. Returns the tail and the IFD offset.
+    fn tail(
+        &self,
+        options: &EncodeOptions,
+        offsets: Vec<u64>,
+        counts: Vec<u64>,
+        big: bool,
+        start: u64,
+    ) -> Result<(Vec<u8>, u64)> {
+        let c = u64::from(self.channels);
+        let bits = u64::from(self.format.bytes()) * 8;
+        let mut out: Vec<u8> = Vec::new();
+        let pos = |out: &Vec<u8>| start + out.len() as u64;
+        // Entry: (tag, type, values). Types: 3 SHORT, 4 LONG, 16 LONG8, 7 UNDEFINED.
+        let long = if big { 16u16 } else { 4u16 };
+        let mut entries: Vec<(u16, u16, Vec<u64>)> = vec![
+            (256, long, vec![u64::from(self.width)]),
+            (257, long, vec![u64::from(self.height)]),
+            (258, 3, vec![bits; c as usize]),
+            (259, 3, vec![if options.compression == Compression::Deflate { 8 } else { 1 }]),
+            (262, 3, vec![if c >= 3 { 2 } else { 1 }]),
+            (273, long, offsets),
+            (277, 3, vec![c]),
+            (278, long, vec![self.rows_per_strip() as u64]),
+            (279, long, counts),
+            (284, 3, vec![1]),
+        ];
+        if self.predict(options) {
+            entries.push((317, 3, vec![2]));
+        }
+        if self.channels == 2 || self.channels == 4 {
+            entries.push((338, 3, vec![2])); // unassociated alpha
+        }
+        entries.push((339, 3, vec![if self.format == SampleFormat::F32 { 3 } else { 1 }; c as usize]));
+        let mut icc_at = None;
+        if let Some(icc) = &options.icc_profile {
+            icc_at = Some(pos(&out));
+            out.extend_from_slice(icc);
+            if pos(&out) % 2 == 1 {
+                out.push(0);
+            }
+        }
+        entries.sort_by_key(|e| e.0);
+        let inline = if big { 8 } else { 4 };
+        let size_of = |t: u16| type_size(t).expect("known type");
+        // Out-of-line arrays.
+        let mut value_pos: Vec<Option<u64>> = Vec::new();
+        for (_, t, vals) in &entries {
+            let total = size_of(*t) * vals.len() as u64;
+            if total > inline {
+                value_pos.push(Some(pos(&out)));
+                for &v in vals {
+                    push_value(&mut out, *t, v);
+                }
+            } else {
+                value_pos.push(None);
+            }
+        }
+        let mut n_entries = entries.len() as u64;
+        if icc_at.is_some() {
+            n_entries += 1;
+        }
+        if pos(&out) % 2 == 1 {
+            out.push(0);
+        }
+        let ifd = pos(&out);
+        if !big && ifd > u64::from(u32::MAX) {
+            return Err(Error::internal("tiff: classic offsets overflow; BigTIFF should have been chosen"));
+        }
+        if big {
+            out.extend(n_entries.to_le_bytes());
+        } else {
+            out.extend((n_entries as u16).to_le_bytes());
+        }
+        let write_entry =
+            |out: &mut Vec<u8>, tag: u16, t: u16, count: u64, inline_bytes: &[u8], at: Option<u64>| {
+                out.extend(tag.to_le_bytes());
+                out.extend(t.to_le_bytes());
+                if big {
+                    out.extend(count.to_le_bytes());
+                } else {
+                    out.extend((count as u32).to_le_bytes());
+                }
+                let s = out.len();
+                match at {
+                    Some(p) if big => out.extend(p.to_le_bytes()),
+                    Some(p) => out.extend((p as u32).to_le_bytes()),
+                    None => out.extend_from_slice(inline_bytes),
+                }
+                out.resize(s + inline as usize, 0);
+            };
+        for ((tag, t, vals), at) in entries.iter().zip(&value_pos) {
+            let mut inline_bytes = Vec::new();
+            if at.is_none() {
+                for &v in vals {
+                    push_value(&mut inline_bytes, *t, v);
+                }
+            }
+            write_entry(&mut out, *tag, *t, vals.len() as u64, &inline_bytes, *at);
+        }
+        // The ICC tag (34675) has the highest number, so it goes last.
+        if let (Some(at), Some(icc)) = (icc_at, &options.icc_profile) {
+            let at = (icc.len() as u64 > inline).then_some(at);
+            write_entry(&mut out, 34675, 7, icc.len() as u64, icc, at);
+        }
+        if big {
+            out.extend(0u64.to_le_bytes());
+        } else {
+            out.extend(0u32.to_le_bytes());
+        }
+        Ok((out, ifd))
+    }
+}
+
+/// Writes a TIFF band by band. Strips are compressed in parallel batches
+/// as rows arrive. For images below 4 GiB uncompressed the file is
+/// byte-for-byte what [`encode`] produces; larger ones are always written
+/// as BigTIFF, because the final size is not known in advance.
+pub struct TiffSink<W: Write + Seek> {
+    w: W,
+    layout: TiffLayout,
+    options: EncodeOptions,
+    big: bool,
+    /// Uncompressed rows of the strip being filled.
+    rows: Option<ImageBuffer>,
+    /// Filled strips waiting to be compressed together.
+    ready: Vec<Vec<u8>>,
+    offsets: Vec<u64>,
+    counts: Vec<u64>,
+    pos: u64,
+    rows_done: u32,
+}
+
+impl<W: Write + Seek> TiffSink<W> {
+    /// Starts a file of the given layout.
+    pub fn new(
+        mut w: W,
+        width: u32,
+        height: u32,
+        channels: u8,
+        format: SampleFormat,
+        options: &EncodeOptions,
+    ) -> Result<Self> {
+        if !(1..=4).contains(&channels) || width == 0 || height == 0 {
+            return Err(Error::invalid_input("tiff: invalid image layout"));
+        }
+        let layout = TiffLayout { width, height, channels, format };
+        let bound = layout.row_bytes() as u64 * u64::from(height)
+            + options.icc_profile.as_ref().map_or(0, |p| p.len() as u64);
+        let big = bound + (1 << 20) > u64::from(u32::MAX);
+        let head = header_placeholder(big);
+        w.write_all(&head)?;
+        Ok(TiffSink {
+            w,
+            layout,
+            options: options.clone(),
+            big,
+            rows: None,
+            ready: Vec::new(),
+            offsets: Vec::new(),
+            counts: Vec::new(),
+            pos: head.len() as u64,
+            rows_done: 0,
+        })
+    }
+
+    /// Compresses and writes the strips waiting in `ready`.
+    fn flush_ready(&mut self) -> Result<()> {
+        for s in compress_strips(std::mem::take(&mut self.ready), self.options.compression) {
+            self.offsets.push(self.pos);
+            self.counts.push(s.len() as u64);
+            self.w.write_all(&s)?;
+            self.pos += s.len() as u64;
+            if self.pos % 2 == 1 {
+                self.w.write_all(&[0])?;
+                self.pos += 1;
+            }
+        }
+        Ok(())
+    }
+
+    /// Appends a band of rows.
+    pub fn write_band(&mut self, band: &ImageBuffer) -> Result<()> {
+        let l = self.layout;
+        let n = check_band(band, (l.width, l.height, l.channels, l.format), self.rows_done)?;
+        let rps = l.rows_per_strip() as u32;
+        let mut y = 0;
+        while y < n {
+            let have = self.rows.as_ref().map_or(0, ImageBuffer::height);
+            let take = (rps - have).min(n - y);
+            let part = band.rows(y, take)?;
+            let joined = match self.rows.take() {
+                None => part,
+                Some(prev) => append_rows(&prev, &part)?,
+            };
+            y += take;
+            self.rows_done += take;
+            if joined.height() == rps || self.rows_done == l.height {
+                let rows = joined.height() as usize;
+                self.ready.push(l.strip(joined.samples(), 0, rows, &self.options));
+            } else {
+                self.rows = Some(joined);
+            }
+        }
+        let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+        if self.ready.len() >= 4 * cores {
+            self.flush_ready()?;
+        }
+        Ok(())
+    }
+
+    /// Writes the IFD, patches the header and returns the writer.
+    pub fn finish_file(mut self) -> Result<W> {
+        if self.rows_done != self.layout.height {
+            return Err(Error::invalid_input(format!(
+                "tiff: {} of {} rows written",
+                self.rows_done, self.layout.height
+            )));
+        }
+        self.flush_ready()?;
+        let (tail, ifd) = self.layout.tail(
+            &self.options,
+            std::mem::take(&mut self.offsets),
+            std::mem::take(&mut self.counts),
+            self.big,
+            self.pos,
+        )?;
+        self.w.write_all(&tail)?;
+        let mut head = header_placeholder(self.big);
+        patch_header(&mut head, ifd, self.big);
+        self.w.seek(SeekFrom::Start(0))?;
+        self.w.write_all(&head)?;
+        self.w.flush()?;
+        Ok(self.w)
+    }
+}
+
+/// Rows of `b` appended below those of `a` (same width and format).
+fn append_rows(a: &ImageBuffer, b: &ImageBuffer) -> Result<ImageBuffer> {
+    let samples = match (a.samples(), b.samples()) {
+        (Samples::U8(x), Samples::U8(y)) => Samples::U8([x.as_slice(), y].concat()),
+        (Samples::U16(x), Samples::U16(y)) => Samples::U16([x.as_slice(), y].concat()),
+        (Samples::F32(x), Samples::F32(y)) => Samples::F32([x.as_slice(), y].concat()),
+        _ => return Err(Error::internal("tiff: bands of different sample formats")),
+    };
+    ImageBuffer::new(a.width(), a.height() + b.height(), a.channels(), samples)
+}
+
+impl<W: Write + Seek> RowSink for TiffSink<W> {
+    fn write_rows(&mut self, rows: &ImageBuffer) -> Result<()> {
+        self.write_band(rows)
+    }
+
+    fn finish(self: Box<Self>) -> Result<()> {
+        self.finish_file().map(|_| ())
+    }
+}
 fn push_value(out: &mut Vec<u8>, t: u16, v: u64) {
     match t {
         3 => out.extend((v as u16).to_le_bytes()),
@@ -619,3 +837,14 @@ fn push_value(out: &mut Vec<u8>, t: u16, v: u64) {
 
 #[cfg(test)]
 mod tests;
+
+/// Test helpers shared with the stream tests.
+#[cfg(test)]
+pub(crate) mod tests_support {
+    use crate::image::ImageBuffer;
+
+    /// `b`'s rows appended below `a`'s.
+    pub(crate) fn append(a: &ImageBuffer, b: &ImageBuffer) -> ImageBuffer {
+        super::append_rows(a, b).unwrap()
+    }
+}

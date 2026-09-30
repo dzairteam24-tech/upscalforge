@@ -136,6 +136,95 @@ fn output_does_not_depend_on_the_thread_count() {
     }
 }
 
+/// A reader that hands out data in irregular small pieces, like a file
+/// read through chunk boundaries.
+struct Trickle<'a> {
+    data: &'a [u8],
+    rng: Rng,
+}
+
+impl std::io::Read for Trickle<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let n = (1 + self.rng.below(700) as usize).min(buf.len()).min(self.data.len());
+        buf[..n].copy_from_slice(&self.data[..n]);
+        self.data = &self.data[n..];
+        Ok(n)
+    }
+}
+
+#[test]
+fn streaming_writer_matches_one_shot_compression_byte_for_byte() {
+    let mut rng = Rng::seed_from_u64(0x77);
+    let mut corpus = multi_segment_corpus();
+    corpus.push(Vec::new());
+    corpus.push(b"short".to_vec());
+    for data in corpus {
+        let expected = zlib_compress(&data, Level::Default);
+        for threads in [1, 3] {
+            let mut w = ZlibWriter::with_threads(Level::Default, threads);
+            let mut got = Vec::new();
+            let mut rest = &data[..];
+            while !rest.is_empty() {
+                let n = (1 + rng.below(90_000) as usize).min(rest.len());
+                w.write(&rest[..n]);
+                rest = &rest[n..];
+                got.extend(w.take_output());
+                // Memory stays bounded: history plus about one batch.
+                assert!(w.buf.len() <= WINDOW + SEGMENT * (threads + 1) + 90_000);
+            }
+            got.extend(w.finish());
+            assert!(got == expected, "{} bytes, {threads} threads", data.len());
+        }
+    }
+}
+
+#[test]
+fn streaming_reader_decodes_in_pieces_and_checks_the_trailer() {
+    let mut rng = Rng::seed_from_u64(0x99);
+    for data in multi_segment_corpus() {
+        let z = zlib_compress(&data, Level::Default);
+        let mut r = ZlibReader::new(Trickle { data: &z, rng: Rng::seed_from_u64(1) }, u64::MAX).unwrap();
+        let mut out = Vec::new();
+        loop {
+            let want = 1 + rng.below(50_000) as usize;
+            let got = r.read_into(want, &mut out).unwrap();
+            // Only the history window and the requested bytes are held.
+            assert!(r.inf.win.len() <= 5 * WINDOW + want);
+            if got < want {
+                break;
+            }
+        }
+        assert!(out == data);
+        let mut bad = z.clone();
+        let last = bad.len() - 1;
+        bad[last] ^= 1;
+        let mut r = ZlibReader::new(&bad[..], u64::MAX).unwrap();
+        let mut sink = Vec::new();
+        let err = loop {
+            match r.read_into(1 << 20, &mut sink) {
+                Ok(n) if n == 1 << 20 => continue,
+                Ok(_) => panic!("corrupt trailer accepted"),
+                Err(e) => break e,
+            }
+        };
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
+    }
+}
+
+#[test]
+fn streaming_reader_enforces_the_output_limit() {
+    let z = zlib_compress(&vec![0u8; 3 << 20], Level::Default);
+    let mut r = ZlibReader::new(&z[..], 1 << 20).unwrap();
+    let mut out = Vec::new();
+    let err = loop {
+        match r.read_into(1 << 16, &mut out) {
+            Ok(_) => continue,
+            Err(e) => break e,
+        }
+    };
+    assert_eq!(err.kind(), ErrorKind::LimitExceeded);
+}
+
 #[test]
 fn matches_reach_back_across_segment_boundaries() {
     // A 20 000-byte random pattern repeated over 1 MB. Only matches that

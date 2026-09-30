@@ -97,87 +97,129 @@ impl QcReport {
 
 /// Runs the output checks. Values are in 8-bit code levels unless stated.
 pub fn check(input: &Pixels, output: &Pixels, mode: Mode, tiling_note: &str) -> QcReport {
-    let r = residual(input, output);
-    let n = (input.width * input.height * input.channels) as f64;
-    let rms = (r.iter().flatten().map(|&v| f64::from(v).powi(2)).sum::<f64>() / n).sqrt() * 255.0;
-    let color = r
-        .iter()
-        .map(|plane| (plane.iter().map(|&v| f64::from(v)).sum::<f64>() / plane.len() as f64).abs() * 255.0)
-        .fold(0.0, f64::max);
-    // Halo overshoot: output samples beyond the range of the 2×2 source
-    // neighbourhood by more than 8 levels.
-    let s = output.width as f32 / input.width as f32;
-    let c = input.channels;
-    let count_rows = |rows: std::ops::Range<usize>| -> usize {
-        let mut over = 0usize;
-        for y in rows {
-            let sy = ((y as f32 + 0.5) / s - 0.5).max(0.0);
-            let (y0, y1) = (sy.floor() as usize, (sy.floor() as usize + 1).min(input.height - 1));
-            for x in 0..output.width {
-                let sx = ((x as f32 + 0.5) / s - 0.5).max(0.0);
-                let (x0, x1) = (sx.floor() as usize, (sx.floor() as usize + 1).min(input.width - 1));
-                for ch in 0..c {
-                    let v = |xx: usize, yy: usize| input.data[(yy * input.width + xx) * c + ch];
-                    let (a, b, cc, d) = (v(x0, y0), v(x1, y0), v(x0, y1), v(x1, y1));
-                    let lo = a.min(b).min(cc).min(d) - 8.0 / 255.0;
-                    let hi = a.max(b).max(cc).max(d) + 8.0 / 255.0;
-                    let o = output.data[(y * output.width + x) * c + ch];
-                    if o < lo || o > hi {
-                        over += 1;
+    let mut acc = QcAccumulator::default();
+    acc.add(input, output, 0..input.height);
+    acc.report(mode, tiling_note)
+}
+
+/// Quality-control statistics gathered band by band. Every statistic is a
+/// sum, so bands can be added in any grouping; `check` is the one-band
+/// case.
+#[derive(Debug, Clone, Default)]
+pub struct QcAccumulator {
+    /// Per channel: sum of residuals and of squared residuals.
+    sums: Vec<(f64, f64)>,
+    /// Input pixels counted.
+    pixels: u64,
+    /// Output samples outside the halo tolerance, and samples checked.
+    over: u64,
+    samples: u64,
+}
+
+impl QcAccumulator {
+    /// Adds the rows `core` (input rows, relative to the band) of a band.
+    /// `input` and `output` cover the same region, with margins around the
+    /// core so that the low-pass filters see the same data as for the whole
+    /// image.
+    pub fn add(&mut self, input: &Pixels, output: &Pixels, core: std::ops::Range<usize>) {
+        let r = residual(input, output);
+        let w = input.width;
+        if self.sums.len() < r.len() {
+            self.sums.resize(r.len(), (0.0, 0.0));
+        }
+        for (plane, acc) in r.iter().zip(&mut self.sums) {
+            let rows = &plane[core.start * w..core.end * w];
+            acc.0 += rows.iter().map(|&v| f64::from(v)).sum::<f64>();
+            acc.1 += rows.iter().map(|&v| f64::from(v).powi(2)).sum::<f64>();
+        }
+        self.pixels += (core.len() * w) as u64;
+        // Halo overshoot: output samples beyond the range of the 2×2 source
+        // neighbourhood by more than 8 levels.
+        let s = output.width as f32 / input.width as f32;
+        let c = input.channels;
+        let count_rows = |rows: std::ops::Range<usize>| -> usize {
+            let mut over = 0usize;
+            for y in rows {
+                let sy = ((y as f32 + 0.5) / s - 0.5).max(0.0);
+                let (y0, y1) = (sy.floor() as usize, (sy.floor() as usize + 1).min(input.height - 1));
+                for x in 0..output.width {
+                    let sx = ((x as f32 + 0.5) / s - 0.5).max(0.0);
+                    let (x0, x1) = (sx.floor() as usize, (sx.floor() as usize + 1).min(input.width - 1));
+                    for ch in 0..c {
+                        let v = |xx: usize, yy: usize| input.data[(yy * input.width + xx) * c + ch];
+                        let (a, b, cc, d) = (v(x0, y0), v(x1, y0), v(x0, y1), v(x1, y1));
+                        let lo = a.min(b).min(cc).min(d) - 8.0 / 255.0;
+                        let hi = a.max(b).max(cc).max(d) + 8.0 / 255.0;
+                        let o = output.data[(y * output.width + x) * c + ch];
+                        if o < lo || o > hi {
+                            over += 1;
+                        }
                     }
                 }
             }
-        }
-        over
-    };
-    // Bands of at least 16 rows; the count is an exact integer sum, so the
-    // result does not depend on the number of threads.
-    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
-    let per = output.height.div_ceil(cores.min(output.height / 16).max(1)).max(1);
-    let over: usize = std::thread::scope(|sc| {
-        let bands: Vec<_> = (0..output.height)
-            .step_by(per)
-            .map(|y0| sc.spawn(move || count_rows(y0..(y0 + per).min(output.height))))
-            .collect();
-        bands.into_iter().map(|b| b.join().expect("halo check worker panicked")).sum()
-    });
-    let overshoot = over as f64 / output.data.len() as f64;
-    let (rms_limit, halo_limit) = match mode {
-        Mode::Faithful => (2.0, 0.005),
-        Mode::Balanced => (3.0, 0.02),
-        Mode::Reconstruction { .. } => (6.0, 0.08),
-    };
-    let checks = vec![
-        Check {
-            name: "consistency_rms",
-            value: rms,
-            limit: rms_limit,
-            pass: rms <= rms_limit,
-            unit: "8-bit levels (low-pass residual)",
-        },
-        Check {
-            name: "colour_shift",
-            value: color,
-            limit: 1.5,
-            pass: color <= 1.5,
-            unit: "8-bit levels (max channel mean offset)",
-        },
-        Check {
-            name: "halo_overshoot",
-            value: overshoot,
-            limit: halo_limit,
-            pass: overshoot <= halo_limit,
-            unit: "fraction of samples",
-        },
-    ];
-    let notes = vec![
-        tiling_note.to_string(),
-        "facial distortion: not measured (face detection INCOMPLETE)".into(),
-        "repeated textures: not measured in v1".into(),
-    ];
-    QcReport { checks, notes }
-}
+            over
+        };
+        // Output rows of the core; bands of at least 16 rows. The count is
+        // an exact integer sum, so it does not depend on the thread count.
+        let scale = (output.height / input.height).max(1);
+        let (oy0, oy1) = (core.start * scale, core.end * scale);
+        let rows = oy1 - oy0;
+        let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+        let per = rows.div_ceil(cores.min(rows / 16).max(1)).max(1);
+        let over: usize = std::thread::scope(|sc| {
+            let bands: Vec<_> = (oy0..oy1)
+                .step_by(per)
+                .map(|y0| sc.spawn(move || count_rows(y0..(y0 + per).min(oy1))))
+                .collect();
+            bands.into_iter().map(|b| b.join().expect("halo check worker panicked")).sum()
+        });
+        self.over += over as u64;
+        self.samples += (rows * output.width * c) as u64;
+    }
 
+    /// The checks for everything added so far.
+    pub fn report(&self, mode: Mode, tiling_note: &str) -> QcReport {
+        let px = self.pixels.max(1) as f64;
+        let n = px * self.sums.len().max(1) as f64;
+        let rms = (self.sums.iter().map(|s| s.1).sum::<f64>() / n).sqrt() * 255.0;
+        let color = self.sums.iter().map(|s| (s.0 / px).abs() * 255.0).fold(0.0, f64::max);
+        let overshoot = self.over as f64 / self.samples.max(1) as f64;
+        let (rms_limit, halo_limit) = match mode {
+            Mode::Faithful => (2.0, 0.005),
+            Mode::Balanced => (3.0, 0.02),
+            Mode::Reconstruction { .. } => (6.0, 0.08),
+        };
+        let checks = vec![
+            Check {
+                name: "consistency_rms",
+                value: rms,
+                limit: rms_limit,
+                pass: rms <= rms_limit,
+                unit: "8-bit levels (low-pass residual)",
+            },
+            Check {
+                name: "colour_shift",
+                value: color,
+                limit: 1.5,
+                pass: color <= 1.5,
+                unit: "8-bit levels (max channel mean offset)",
+            },
+            Check {
+                name: "halo_overshoot",
+                value: overshoot,
+                limit: halo_limit,
+                pass: overshoot <= halo_limit,
+                unit: "fraction of samples",
+            },
+        ];
+        let notes = vec![
+            tiling_note.to_string(),
+            "facial distortion: not measured (face detection INCOMPLETE)".into(),
+            "repeated textures: not measured in v1".into(),
+        ];
+        QcReport { checks, notes }
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

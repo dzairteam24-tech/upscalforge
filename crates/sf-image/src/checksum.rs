@@ -51,20 +51,45 @@ pub fn crc32(data: &[u8]) -> u32 {
     c.finish()
 }
 
-/// Adler-32 as used by zlib.
-pub fn adler32(data: &[u8]) -> u32 {
-    const MOD: u32 = 65_521;
-    let (mut a, mut b) = (1u32, 0u32);
-    // 5552 is the largest block length for which the sums cannot overflow.
-    for chunk in data.chunks(5552) {
-        for &x in chunk {
-            a += u32::from(x);
-            b += a;
-        }
-        a %= MOD;
-        b %= MOD;
+/// Incremental Adler-32 as used by zlib.
+#[derive(Debug, Clone, Copy)]
+pub struct Adler32 {
+    a: u32,
+    b: u32,
+}
+
+impl Default for Adler32 {
+    fn default() -> Self {
+        Adler32 { a: 1, b: 0 }
     }
-    (b << 16) | a
+}
+
+impl Adler32 {
+    /// Feeds bytes.
+    pub fn update(&mut self, data: &[u8]) {
+        const MOD: u32 = 65_521;
+        // 5552 is the largest block length for which the sums cannot overflow.
+        for chunk in data.chunks(5552) {
+            for &x in chunk {
+                self.a += u32::from(x);
+                self.b += self.a;
+            }
+            self.a %= MOD;
+            self.b %= MOD;
+        }
+    }
+
+    /// Final checksum.
+    pub fn finish(self) -> u32 {
+        (self.b << 16) | self.a
+    }
+}
+
+/// One-shot Adler-32.
+pub fn adler32(data: &[u8]) -> u32 {
+    let mut s = Adler32::default();
+    s.update(data);
+    s.finish()
 }
 
 #[cfg(test)]

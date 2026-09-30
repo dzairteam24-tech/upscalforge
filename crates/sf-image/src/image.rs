@@ -136,6 +136,58 @@ impl ImageBuffer {
             Samples::F32(v) => v.clone(),
         }
     }
+
+    /// A copy of `n` rows starting at row `y0`.
+    pub fn rows(&self, y0: u32, n: u32) -> Result<ImageBuffer> {
+        if n == 0 || y0.checked_add(n).is_none_or(|end| end > self.height) {
+            return Err(Error::invalid_input("row range outside the image"));
+        }
+        let per_row = self.width as usize * self.channels as usize;
+        let r = y0 as usize * per_row..(y0 + n) as usize * per_row;
+        let samples = match &self.samples {
+            Samples::U8(v) => Samples::U8(v[r].to_vec()),
+            Samples::U16(v) => Samples::U16(v[r].to_vec()),
+            Samples::F32(v) => Samples::F32(v[r].to_vec()),
+        };
+        ImageBuffer::new(self.width, n, self.channels, samples)
+    }
+
+    /// Applies an EXIF orientation (1–8) so the result is upright. Pixels
+    /// are only moved, never changed.
+    pub fn oriented(&self, orientation: u8) -> ImageBuffer {
+        fn permute<T: Copy>(v: &[T], w: usize, h: usize, c: usize, o: u8) -> Vec<T> {
+            let (nw, nh) = if o >= 5 { (h, w) } else { (w, h) };
+            let mut out = Vec::with_capacity(v.len());
+            for ny in 0..nh {
+                for nx in 0..nw {
+                    // Map each destination pixel back to its source position.
+                    let (sx, sy) = match o {
+                        2 => (w - 1 - nx, ny),
+                        3 => (w - 1 - nx, h - 1 - ny),
+                        4 => (nx, h - 1 - ny),
+                        5 => (ny, nx),
+                        6 => (ny, h - 1 - nx),
+                        7 => (w - 1 - ny, h - 1 - nx),
+                        _ => (w - 1 - ny, nx), // 8
+                    };
+                    let src = (sy * w + sx) * c;
+                    out.extend_from_slice(&v[src..src + c]);
+                }
+            }
+            out
+        }
+        if !(2..=8).contains(&orientation) {
+            return self.clone();
+        }
+        let (w, h, c) = (self.width as usize, self.height as usize, self.channels as usize);
+        let samples = match &self.samples {
+            Samples::U8(v) => Samples::U8(permute(v, w, h, c, orientation)),
+            Samples::U16(v) => Samples::U16(permute(v, w, h, c, orientation)),
+            Samples::F32(v) => Samples::F32(permute(v, w, h, c, orientation)),
+        };
+        let (nw, nh) = if orientation >= 5 { (self.height, self.width) } else { (self.width, self.height) };
+        ImageBuffer { width: nw, height: nh, channels: self.channels, samples }
+    }
 }
 
 /// Sample formats.

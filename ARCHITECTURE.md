@@ -248,6 +248,18 @@ manager. `RegionSource` (random access or sequential bands, `rewind`) and
 in a band cache (tile height + 2 × halo rows). Formats that need a full decode
 are checked against the budget before decoding.
 
+**Implemented (2026-09-30)** as `sf_image::stream`: `RowSource` (sequential
+bands, `rewind`) with `PngSource` (non-interlaced PNG, incremental inflate)
+and `MemorySource` (any format decoded once at native precision, orientation
+applied); `RowSink` with `PngSink` and `TiffSink`, byte-identical to the
+whole-image encoders. The engine chooses band-by-band processing when the
+whole image does not fit the host budget (or on request). Each band is
+restored with 64-row margins and enlarged with 24-row margins; every classical
+stage reaches less far and the scales are powers of two, so the output is
+**bit-identical** to whole-image processing (tested). Not yet banded: AI
+models, export profiles, JPEG output, streaming TIFF/JPEG decode
+(INCOMPLETE).
+
 ### 8.2 Codecs (staged plan in `DEPENDENCIES.md`)
 Each codec sits behind `Codec { probe, open_source, open_sink, capabilities,
 limits }` in a `CodecRegistry`.
@@ -301,6 +313,13 @@ One streaming pass builds the `AnalysisSummary`:
 A sequential source is therefore decoded twice (summary pass, then tile
 pass). This cost is reported. Non-rewindable inputs are spooled to a
 temporary file, within the budget.
+
+**As implemented:** only an input read band by band (a PNG too large to
+decode whole) uses a summary; it is a contiguous region of up to 2048×2048
+native pixels at the centre. A patch mosaic was tried and rejected: its seams
+lie on the 8-pixel grid and were measured as JPEG block edges (blockiness 7.6
+instead of 1.2 on a real photo). Thumbnail and whole-image statistics are
+INCOMPLETE; the report says when the analysis saw only a region.
 
 ---
 
@@ -695,7 +714,7 @@ WebP output.
 | `sf-compute` (Phase 7): device abstraction, CPU backend (f32, strict mode, emulated capacity) | **Implemented and tested.** f16: not supported on CPU |
 | GPU backends, CUDA and Vulkan (Phase 8) | **INCOMPLETE** — postponed until hardware is installed |
 | `vram`, `hostmem`, tiling (Phases 9–10) | **Implemented and tested.** Exact tiling bit-identical to whole-image execution. Required-region cropping: not done |
-| `sf-image`, `sf-analysis` (Phase 11) | **Implemented and tested.** WebP decoding implemented (own). Missing: WebP encoding, streaming sources and sinks for images larger than RAM, fuzz campaigns |
+| `sf-image`, `sf-analysis` (Phase 11) | **Implemented and tested.** WebP decoding implemented (own). Band-by-band processing implemented (PNG source; PNG/TIFF sinks; classical path, bit-identical to whole-image processing). Missing: WebP encoding, streaming TIFF/JPEG decode, banded model inference, fuzz campaigns |
 | `sf-classic` (ADR-0015 primary path) | **Implemented and tested** |
 | `.sfm` runtime and `sf-import` (Phase 12, ADR-0015) | **Implemented and tested.** Validated on the real `RealESRGAN_x4plus.pth` (matches a reference to 6.9e-6, see BENCHMARKS.md). SRVGG: synthetic files only |
 | SF-Net and training (Phases 13–14) | **INCOMPLETE — deliberately postponed** (see `training/`) |

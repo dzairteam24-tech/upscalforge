@@ -269,20 +269,17 @@ fn bigtiff_writer_path_round_trips() {
     // BigTIFF is chosen automatically only above 4 GiB; force it here.
     let buf = ImageBuffer::new(5, 3, 3, Samples::U16((0..45).map(|i| i * 1000).collect())).unwrap();
     let opts = EncodeOptions { compression: Compression::Deflate, icc_profile: Some(vec![1, 2, 3]) };
-    let strips = vec![zlib::zlib_compress(
-        &{
-            let mut raw = Vec::new();
-            for y in 0..3 {
-                let mut row: Vec<u8> =
-                    (0..15).flat_map(|i| (((y * 15 + i) * 1000) as u16).to_le_bytes()).collect();
-                predict_row(&mut row, 3, 2);
-                raw.extend(row);
-            }
-            raw
-        },
-        zlib::Level::Default,
-    )];
-    let f = write_file(&buf, &opts, &strips, 3, true, true).unwrap();
+    let l = TiffLayout::of(&buf);
+    let strip = zlib::zlib_compress(&l.strip(buf.samples(), 0, 3, &opts), zlib::Level::Default);
+    let mut f = header_placeholder(true);
+    let offset = f.len() as u64;
+    f.extend(&strip);
+    if f.len() % 2 == 1 {
+        f.push(0);
+    }
+    let (tail, ifd) = l.tail(&opts, vec![offset], vec![strip.len() as u64], true, f.len() as u64).unwrap();
+    f.extend(tail);
+    patch_header(&mut f, ifd, true);
     assert_eq!(&f[2..4], &[43, 0]);
     let back = decode(&f, &lim()).unwrap();
     assert_eq!(back.buffer, buf);

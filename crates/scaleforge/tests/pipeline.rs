@@ -298,3 +298,143 @@ fn cancellation_stops_a_job() {
     assert!(!dir.path("o.png").exists());
     let _ = Controls::default();
 }
+
+/// Runs `req` whole and band by band (bands of 16 rows, so there are many)
+/// and checks that the two output files are byte-for-byte identical.
+fn assert_banded_matches_whole(
+    e: &Engine,
+    dir: &TempDir,
+    input: &str,
+    out: &str,
+    set: impl Fn(&mut JobRequest),
+) {
+    let mut whole = JobRequest::new(dir.path(input), dir.path(&format!("whole-{out}")));
+    set(&mut whole);
+    let rep_whole = run(e, &whole).unwrap();
+    let mut banded = JobRequest::new(dir.path(input), dir.path(&format!("banded-{out}")));
+    set(&mut banded);
+    banded.stream = true;
+    banded.band_rows = Some(16);
+    let rep = run(e, &banded).unwrap();
+    assert!(decision(&rep, "processing").value.starts_with("band by band: 16 input rows"));
+    let a = std::fs::read(dir.path(&format!("whole-{out}"))).unwrap();
+    let b = std::fs::read(dir.path(&format!("banded-{out}"))).unwrap();
+    assert!(a == b, "{input} → {out}: banded output differs from whole-image output");
+    // QC statistics are sums over bands: equal up to summation order.
+    for (x, y) in rep_whole.qc.checks.iter().zip(&rep.qc.checks) {
+        assert!(
+            (x.value - y.value).abs() <= 1e-9 * x.value.abs().max(1.0),
+            "{}: {} vs {}",
+            x.name,
+            x.value,
+            y.value
+        );
+    }
+}
+
+#[test]
+fn banded_processing_is_bit_identical_to_whole_image_processing() {
+    let dir = TempDir::new("banded");
+    let e = engine();
+    // Noisy RGB (denoising active), 300 rows: interior bands see full margins.
+    let (w, h) = (48, 300);
+    let mut rng = Rng::seed_from_u64(21);
+    let noisy: Vec<f64> = scene(w, h).iter().map(|v| v + 6.0 * gaussian(&mut rng)).collect();
+    write_png(&dir.path("noisy.png"), w, h, 3, Samples::U8(to_u8(&noisy)));
+    for scale in [1, 2, 4] {
+        assert_banded_matches_whole(&e, &dir, "noisy.png", &format!("x{scale}.png"), |r| {
+            r.scale = Some(scale);
+            r.controls = Controls { sharpen: Some(0.6), auto_tone: true, ..Controls::default() };
+        });
+    }
+    // JPEG blocks (deblocking active), TIFF output.
+    let b = ImageBuffer::new(40, 264, 3, Samples::U8(to_u8(&scene(40, 264)))).unwrap();
+    std::fs::write(
+        dir.path("blocky.jpg"),
+        jpeg::encode(&b, &jpeg::EncodeOptions { quality: 20, ..Default::default() }).unwrap(),
+    )
+    .unwrap();
+    assert_banded_matches_whole(&e, &dir, "blocky.jpg", "x2.tif", |r| r.scale = Some(2));
+    // 16-bit RGBA: alpha is enlarged separately and re-attached.
+    let px: Vec<u16> = (0..36 * 200u32)
+        .flat_map(|i| [(i * 97 % 65_536) as u16, 20_000, (i * 13 % 65_536) as u16, (i % 36 * 1800) as u16])
+        .collect();
+    write_png(&dir.path("rgba16.png"), 36, 200, 4, Samples::U16(px));
+    assert_banded_matches_whole(&e, &dir, "rgba16.png", "x8.png", |r| r.scale = Some(8));
+}
+
+#[test]
+fn banding_is_chosen_automatically_when_the_image_does_not_fit() {
+    let dir = TempDir::new("auto-band");
+    let (w, h) = (160, 120);
+    write_png(&dir.path("in.png"), w, h, 3, Samples::U8(to_u8(&scene(w, h))));
+    // x8 needs 1280×960×3×16 B ≈ 59 MB whole; the budget is 56 MB.
+    let small =
+        Engine::new(EngineConfig { threads: 2, host_budget: Some(56 << 20), ..EngineConfig::default() })
+            .unwrap();
+    let mut req = JobRequest::new(dir.path("in.png"), dir.path("small.png"));
+    req.scale = Some(8);
+    let rep = run(&small, &req).unwrap();
+    let d = decision(&rep, "processing");
+    assert_eq!(d.source.name(), "auto");
+    assert!(d.evidence.contains("memory budget is 56 MB"), "{}", d.evidence);
+    // Same bytes as with enough memory.
+    let mut big_req = JobRequest::new(dir.path("in.png"), dir.path("big.png"));
+    big_req.scale = Some(8);
+    run(&engine(), &big_req).unwrap();
+    assert!(std::fs::read(dir.path("small.png")).unwrap() == std::fs::read(dir.path("big.png")).unwrap());
+}
+
+#[test]
+fn a_png_larger_than_the_budget_is_read_band_by_band() {
+    let dir = TempDir::new("png-bands");
+    // 2400×1600 RGB decodes to 11.5 MB, more than a quarter of the 40 MB
+    // budget: the file is never decoded whole, and the analysis sees a
+    // region at the centre.
+    let (w, h) = (2400, 1600);
+    // Smooth gradients with mild noise and no edges on the 8-pixel grid.
+    let mut rng = Rng::seed_from_u64(33);
+    let smooth: Vec<f64> = (0..w * h)
+        .flat_map(|i| {
+            let (x, y) = ((i % w) as f64, (i / w) as f64);
+            [40.0 + 0.07 * x, 60.0 + 0.1 * y, 200.0 - 0.05 * x - 0.03 * y]
+        })
+        .map(|v| v + 1.5 * gaussian(&mut rng))
+        .collect();
+    write_png(&dir.path("in.png"), w, h, 3, Samples::U8(to_u8(&smooth)));
+    let e = Engine::new(EngineConfig { threads: 2, host_budget: Some(40 << 20), ..EngineConfig::default() })
+        .unwrap();
+    let rep = run(&e, &JobRequest::new(dir.path("in.png"), dir.path("out.png"))).unwrap();
+    assert_eq!(decision(&rep, "analysis").rule, "image-larger-than-memory");
+    // Regression: the seams of a patch mosaic once read as JPEG block edges.
+    // The region analysis must decide like a whole-image analysis.
+    let whole = run(&engine(), &JobRequest::new(dir.path("in.png"), dir.path("whole.png"))).unwrap();
+    for p in ["deblock", "denoise"] {
+        assert_eq!(decision(&rep, p).value, decision(&whole, p).value, "{p}");
+    }
+    assert_eq!(decision(&rep, "deblock").value, "off");
+    assert!(decision(&rep, "processing").value.starts_with("band by band"));
+    let out = sf_image::decode_any(&std::fs::read(dir.path("out.png")).unwrap(), &Limits::default()).unwrap();
+    assert_eq!((out.buffer.width(), out.buffer.height()), (2400, 1600));
+    assert!(rep.qc.passed(), "{:?}", rep.qc);
+}
+
+#[test]
+fn banding_refuses_what_it_does_not_support_yet() {
+    let dir = TempDir::new("band-limits");
+    write_png(&dir.path("in.png"), 64, 48, 3, Samples::U8(to_u8(&scene(64, 48))));
+    let e = engine();
+    let mut jpg = JobRequest::new(dir.path("in.png"), dir.path("out.jpg"));
+    jpg.stream = true;
+    let err = run(&e, &jpg).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::LimitExceeded);
+    assert!(err.to_string().contains("INCOMPLETE"), "{err}");
+    let mut with_model = JobRequest::new(dir.path("in.png"), dir.path("m.png"));
+    with_model.stream = true;
+    with_model.model = Some(tiny_model(&dir, "commercial"));
+    with_model.mode = Mode::Reconstruction { strength: 1.0 };
+    with_model.scale = Some(2);
+    let err = run(&e, &with_model).unwrap_err();
+    assert!(err.to_string().contains("AI models"), "{err}");
+    assert!(!dir.path("m.png").exists());
+}

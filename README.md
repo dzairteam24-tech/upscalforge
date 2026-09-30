@@ -33,7 +33,8 @@ model are **INCOMPLETE**.
 | CLI and benchmark (18, 20) | Implemented |
 | Optimisation (21) | Started: PNG encoding and postprocessing are parallel (about 3x faster end to end, see [BENCHMARKS.md](BENCHMARKS.md)) |
 | WebP input (4) | Implemented: own lossless and lossy decoder; WebP output is INCOMPLETE |
-| Not yet supported | WebP output, animated WebP, face restoration, SwinIR/HAT, images larger than RAM (streaming) |
+| Images larger than memory (4) | Classical path processed band by band, bit-identical to whole-image processing; PNG read in bands; PNG/TIFF written in bands. `--stream`, `--band-rows`, `--memory` |
+| Not yet supported | WebP output, animated WebP, face restoration, SwinIR/HAT; band-by-band processing with AI models, export profiles or JPEG output |
 
 Zero third-party crates; see [`DEPENDENCIES.md`](DEPENDENCIES.md).
 

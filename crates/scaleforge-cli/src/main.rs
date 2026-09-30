@@ -42,6 +42,11 @@ PROCESSING OPTIONS (upscale, batch):
   --export adobe-stock     Apply the Adobe Stock photo rules (JPEG output)
   --quality Q              JPEG quality (default 95)
   --tile N                 Tile size for model inference
+  --stream                 Process in bands of rows (automatic when the image
+                           does not fit in memory; classical path, PNG/TIFF output)
+  --band-rows N            Input rows per band (default: from the memory budget)
+  --memory MB              Host memory budget (default: half of physical memory
+                           where the OS reports it; otherwise 4096)
   --overwrite              Replace existing outputs
   --report FILE.json       Write the job report (upscale)
   --ext png|jpg|tif        Output format for batch (default: same as input)
@@ -66,6 +71,9 @@ const PROCESS: Spec = &[
     ("export", true),
     ("quality", true),
     ("tile", true),
+    ("stream", false),
+    ("band-rows", true),
+    ("memory", true),
     ("overwrite", false),
     ("report", true),
     ("ext", true),
@@ -90,13 +98,13 @@ struct Progress(AtomicU64);
 
 impl ProgressSink for Progress {
     fn report(&self, e: &ProgressEvent) {
-        if e.stage != "tiles" || e.total < 2 {
+        if !matches!(e.stage, "tiles" | "bands") || e.total < 2 {
             return;
         }
         let pct = e.completed * 100 / e.total;
         let step = pct / 10;
         if self.0.swap(step, Ordering::Relaxed) != step {
-            eprintln!("  tiles: {}/{} ({pct}%)", e.completed, e.total);
+            eprintln!("  {}: {}/{} ({pct}%)", e.stage, e.completed, e.total);
         }
     }
 }
@@ -140,6 +148,8 @@ fn request(a: &Args, input: PathBuf, output: PathBuf) -> Result<JobRequest> {
     r.overwrite = a.has("overwrite");
     r.jpeg_quality = a.number::<u8>("quality")?;
     r.tile = a.number::<u32>("tile")?;
+    r.stream = a.has("stream");
+    r.band_rows = a.number::<u32>("band-rows")?;
     Ok(r)
 }
 
@@ -187,6 +197,16 @@ fn engine() -> Result<Engine> {
     Engine::new(EngineConfig::default())
 }
 
+/// The engine for processing commands: `--memory MB` sets the host memory
+/// budget (default: half of physical memory where it can be read, else 4 GiB).
+fn processing_engine(a: &Args) -> Result<Engine> {
+    let host_budget = a.number::<u64>("memory")?.map(|mb| mb << 20);
+    if host_budget == Some(0) {
+        return Err(Error::invalid_input("--memory must be greater than zero"));
+    }
+    Engine::new(EngineConfig { host_budget, ..EngineConfig::default() })
+}
+
 fn cmd_upscale(raw: &[String]) -> Result<()> {
     let a = Args::parse(raw, PROCESS)?;
     let [input] = a.positional.as_slice() else {
@@ -194,7 +214,7 @@ fn cmd_upscale(raw: &[String]) -> Result<()> {
     };
     let output = a.value("output").ok_or_else(|| Error::invalid_input("-o <output> is required"))?;
     let req = request(&a, input.into(), output.into())?;
-    let rep = engine()?.run(&req, &Progress(AtomicU64::new(u64::MAX)), &CancelToken::new())?;
+    let rep = processing_engine(&a)?.run(&req, &Progress(AtomicU64::new(u64::MAX)), &CancelToken::new())?;
     print_report(&rep);
     if let Some(p) = a.value("report") {
         std::fs::write(p, sf_core::json::to_string_pretty(&report::job_json(&rep))?)?;
@@ -225,7 +245,7 @@ fn cmd_batch(raw: &[String]) -> Result<()> {
     let mut files: Vec<PathBuf> =
         std::fs::read_dir(input)?.filter_map(|e| e.ok()).map(|e| e.path()).collect();
     files.sort();
-    let engine = engine()?;
+    let engine = processing_engine(&a)?;
     let (mut ok, mut failed, mut skipped) = (0, 0, 0);
     for f in files {
         // Symlinks are skipped so a batch cannot be redirected elsewhere.

@@ -9,6 +9,7 @@ pub mod image;
 pub mod jpeg;
 pub mod png;
 pub mod resample;
+pub mod stream;
 pub mod tiff;
 pub mod webp;
 pub mod zlib;

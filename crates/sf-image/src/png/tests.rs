@@ -28,6 +28,40 @@ fn build(
     out
 }
 
+/// Files of every kind the decoder handles, for the band-source tests.
+pub(crate) fn sample_files() -> Vec<Vec<u8>> {
+    let plte = vec![10, 20, 30, 40, 50, 60, 70, 80, 90];
+    let palette_rows: Vec<u8> = (0..6).flat_map(|y| [0u8, (y % 3) as u8, 1, 2, 0]).collect();
+    let grey2: Vec<u8> = (0..4).flat_map(|_| [0u8, 0b0001_1011, 0b0100_0000]).collect();
+    let grey1: Vec<u8> = (0..3).flat_map(|_| [0u8, 0b1010_1010, 0b1000_0000]).collect();
+    let keyed: Vec<u8> = (0..5).flat_map(|y| [0u8, 1, 2, 3, 9, 9, y]).collect();
+    let short_key: Vec<u8> = (0..2).flat_map(|_| [0u8, 7, 8, 9]).collect();
+    let adam7: Vec<u8> = {
+        let mut raw = Vec::new();
+        for &(x0, y0, dx, dy) in &ADAM7 {
+            let xs: Vec<usize> = (x0..5).step_by(dx).collect();
+            if xs.is_empty() {
+                continue;
+            }
+            for y in (y0..5).step_by(dy) {
+                raw.push(0);
+                raw.extend(xs.iter().map(|&x| (y * 5 + x) as u8));
+            }
+        }
+        raw
+    };
+    vec![
+        build(4, 6, 8, 3, 0, &[(b"PLTE", plte.clone()), (b"tRNS", vec![0, 128])], &palette_rows),
+        build(4, 6, 8, 3, 0, &[(b"PLTE", plte)], &palette_rows),
+        build(5, 4, 2, 0, 0, &[], &grey2),
+        build(9, 3, 1, 0, 0, &[], &grey1),
+        build(2, 5, 8, 2, 0, &[(b"tRNS", vec![0, 1, 0, 2, 0, 3])], &keyed),
+        // A colour key too short for RGB is ignored by both decoders.
+        build(1, 2, 8, 2, 0, &[(b"tRNS", vec![0, 1])], &short_key),
+        build(5, 5, 8, 0, 1, &[], &adam7),
+    ]
+}
+
 fn u8s(img: &Image) -> &[u8] {
     match img.buffer.samples() {
         Samples::U8(v) => v,

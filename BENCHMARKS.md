@@ -167,6 +167,28 @@ Differences are in 8-bit levels. For lossy files they come from converting
 Y'CbCr to RGB (floating-point Rec. 601 here, libwebp's fixed-point
 formula there): at most 0.003 % of samples differ by more than 1.
 
+### 2026-09-30 — band-by-band processing (images larger than memory), CPU
+
+Same machine. Input: one of the owner's photos, 5504x3072 JPEG. Faithful
+mode, PNG output. Peak memory is the process's peak working set, sampled
+every 100 ms by an outside script.
+
+| Job | Path | Wall time | Peak memory | Output |
+|-----|------|-----------|-------------|--------|
+| x4 → 22016x12288 (270 MP) | whole image (`--memory 30000`) | 14.3 s | 8 892 MB | 113.7 MB PNG |
+| x4 → 22016x12288 (270 MP) | bands (4 GB budget, 536 rows) | 13.3 s | 1 902 MB | identical file (SHA-256) |
+| x8 → 44032x24576 (1.08 GP) | bands (4 GB budget) | 50.6 s | 1 651 MB | 308.7 MB PNG |
+| 270 MP PNG read in bands → TIFF, x1 | bands (`--memory 2000`, 480 rows) | 37.4 s | 1 497 MB | 123.8 MB TIFF |
+
+The whole-image x8 job would need about 52 GB. In the last job the
+812 MB-decoded PNG was never held in memory; its analysis ran on a
+2048x2048 region at the centre (blockiness 1.17; the whole original photo
+measures 1.24).
+
+Note: on Windows the engine cannot read the physical memory size without an
+OS call (our code has no FFI outside the planned GPU crate), so the default
+budget is the 4 GiB fallback. `--memory MB` sets it.
+
 ### Observations
 
 - The first classical measurement found PNG encoding and postprocessing
