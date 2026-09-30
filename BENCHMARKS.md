@@ -148,6 +148,25 @@ real jobs (x2 PNG; x4 PNG with sharpening and auto-tone; x1 17 MP TIFF with
 sharpening). PNG files differ in bytes only, and their size changed by less
 than 0.1 % (for example 6 278 141 → 6 280 033 bytes for a 2048x1536 PNG).
 
+### 2026-09-30 — WebP decoder vs libwebp, CPU
+
+Same machine. Two of the owner's photos were encoded with libwebp 1.6.0
+(through Pillow). Each file was decoded by libwebp and by ScaleForge, and
+the outputs compared. Times are one run each, decode only. ScaleForge's
+decoder is single-threaded and uses no SIMD.
+
+| File | Size | ScaleForge | libwebp | Max diff | Mean diff |
+|------|------|-----------|---------|----------|-----------|
+| lossy q80 (photo 1) | 5504x3072 | 487 ms | 195 ms | 2 | 0.113 |
+| lossy q80 (photo 2) | 5504x3072 | 477 ms | 196 ms | 2 | 0.113 |
+| lossy q30 | 1834x1024 | 54 ms | 28 ms | 2 | 0.125 / 0.160 |
+| lossy q75 + alpha | 1834x1024 | 60 ms | 30 ms | 2 (alpha exact) | 0.129 / 0.165 |
+| lossless | 1376x768 | 25–28 ms | 20 ms | **0** | 0 |
+
+Differences are in 8-bit levels. For lossy files they come from converting
+Y'CbCr to RGB (floating-point Rec. 601 here, libwebp's fixed-point
+formula there): at most 0.003 % of samples differ by more than 1.
+
 ### Observations
 
 - The first classical measurement found PNG encoding and postprocessing

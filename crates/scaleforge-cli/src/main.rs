@@ -209,7 +209,7 @@ fn cmd_upscale(raw: &[String]) -> Result<()> {
 fn is_image(p: &Path) -> bool {
     matches!(
         p.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase).as_deref(),
-        Some("png" | "jpg" | "jpeg" | "tif" | "tiff")
+        Some("png" | "jpg" | "jpeg" | "tif" | "tiff" | "webp")
     )
 }
 
@@ -240,7 +240,11 @@ fn cmd_batch(raw: &[String]) -> Result<()> {
         let ext = match a.value("ext") {
             Some(e) => e.to_string(),
             None if a.value("export").is_some() => "jpg".into(),
-            None => f.extension().and_then(|e| e.to_str()).unwrap_or("png").to_ascii_lowercase(),
+            // WebP can be read but not yet written: such outputs become PNG.
+            None => match f.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase) {
+                Some(e) if e != "webp" => e,
+                _ => "png".into(),
+            },
         };
         let out = out_dir.join(format!("{stem}.{ext}"));
         if out.parent() != Some(out_dir.as_path()) {

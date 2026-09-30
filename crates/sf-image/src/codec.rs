@@ -16,6 +16,8 @@ pub fn detect(data: &[u8]) -> Option<FileFormat> {
         || data.starts_with(b"MM\0+")
     {
         Some(FileFormat::Tiff)
+    } else if crate::webp::is_webp(data) {
+        Some(FileFormat::WebP)
     } else {
         None
     }
@@ -28,6 +30,7 @@ pub fn decode_any(data: &[u8], limits: &Limits) -> Result<Image> {
         Some(FileFormat::Png) => crate::png::decode(data, limits),
         Some(FileFormat::Jpeg) => crate::jpeg::decode(data, limits),
         Some(FileFormat::Tiff) => crate::tiff::decode(data, limits),
-        None => Err(Error::unsupported("unrecognised image format (supported: PNG, JPEG, TIFF)")),
+        Some(FileFormat::WebP) => crate::webp::decode(data, limits),
+        None => Err(Error::unsupported("unrecognised image format (supported: PNG, JPEG, TIFF, WebP)")),
     }
 }

@@ -11,7 +11,9 @@ our own crates. Every "MUST REPLACE WITH OUR OWN" item below has been replaced:
 our own JSON, PNG, JPEG (encoder and decoder), TIFF, argument parser and
 benchmark. **`sha2` was not adopted** either: SHA-256 is our own
 implementation (`sf_core::sha256`), checked against the FIPS 180-4 test
-vectors. `zune-jpeg` and `image-webp` were not needed as interim decoders.
+vectors. `zune-jpeg` and `image-webp` were not needed as interim decoders:
+WebP decoding (lossless VP8L and lossy VP8, RFC 9649 / RFC 6386) is our own
+(`sf_image::webp`, 2026-09-30).
 Differential checks against independent decoders ran locally with tools
 outside the repository. Nothing is installed automatically.
 

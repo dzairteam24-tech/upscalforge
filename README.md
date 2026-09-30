@@ -32,7 +32,8 @@ model are **INCOMPLETE**.
 | Modes, strategy, QC, Adobe Stock export (15, 17) | Implemented (policy thresholds provisional) |
 | CLI and benchmark (18, 20) | Implemented |
 | Optimisation (21) | Started: PNG encoding and postprocessing are parallel (about 3x faster end to end, see [BENCHMARKS.md](BENCHMARKS.md)) |
-| Not yet supported | WebP, face restoration, SwinIR/HAT, images larger than RAM (streaming) |
+| WebP input (4) | Implemented: own lossless and lossy decoder; WebP output is INCOMPLETE |
+| Not yet supported | WebP output, animated WebP, face restoration, SwinIR/HAT, images larger than RAM (streaming) |
 
 Zero third-party crates; see [`DEPENDENCIES.md`](DEPENDENCIES.md).
 

@@ -26,3 +26,9 @@ Our own limits run before any decoder allocates.
 ## Consequences
 Lossy WebP *encoding* is unavailable without a C dependency. v1 offers
 lossless WebP output and states this limitation.
+
+## Update (2026-09-30)
+No interim external decoder was needed. WebP decoding (lossless VP8L and
+lossy VP8 key frames, with alpha) is our own, written from RFC 9649 and
+RFC 6386 and compared with libwebp outside the repository. WebP output,
+including the lossless output planned above, is still INCOMPLETE.

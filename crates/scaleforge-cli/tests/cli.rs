@@ -101,6 +101,36 @@ fn batch_confines_outputs_and_counts_failures() {
 }
 
 #[test]
+fn webp_inputs_are_read_and_webp_outputs_refused() {
+    let d = tmp("webp");
+    let input = d.join("in");
+    std::fs::create_dir_all(&input).unwrap();
+    // A libwebp-encoded lossy file from the sf-image test data.
+    let webp = include_bytes!("../../sf-image/src/webp/testdata/lossy_q80.webp");
+    std::fs::write(input.join("photo.webp"), webp).unwrap();
+    let out = bin()
+        .args(["batch", input.to_str().unwrap(), "-o", d.join("out").to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stdout));
+    // Without --ext, a WebP input becomes a PNG output.
+    let png = std::fs::read(d.join("out/photo.png")).unwrap();
+    let img = sf_image::decode_any(&png, &Default::default()).unwrap();
+    assert_eq!((img.buffer.width(), img.buffer.height()), (83, 59));
+    let out = bin()
+        .args([
+            "upscale",
+            input.join("photo.webp").to_str().unwrap(),
+            "-o",
+            d.join("x.webp").to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(3), "WebP output is unsupported");
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+#[test]
 fn doctor_passes() {
     let out = bin().arg("doctor").output().unwrap();
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stdout));

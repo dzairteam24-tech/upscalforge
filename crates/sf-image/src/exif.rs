@@ -32,11 +32,20 @@ pub fn orientation(tiff: &[u8]) -> Option<u8> {
     None
 }
 
+/// Test helpers shared with other codecs' tests.
+#[cfg(test)]
+pub(crate) mod tests_support {
+    /// A little-endian EXIF block holding only an orientation tag.
+    pub(crate) fn orientation_block(orient: u16) -> Vec<u8> {
+        super::tests::block(true, orient)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn block(le: bool, orient: u16) -> Vec<u8> {
+    pub(super) fn block(le: bool, orient: u16) -> Vec<u8> {
         let mut v = Vec::new();
         let p16 = |v: &mut Vec<u8>, x: u16| v.extend(if le { x.to_le_bytes() } else { x.to_be_bytes() });
         let p32 = |v: &mut Vec<u8>, x: u32| v.extend(if le { x.to_le_bytes() } else { x.to_be_bytes() });

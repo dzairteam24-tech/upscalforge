@@ -258,7 +258,7 @@ limits }` in a `CodecRegistry`.
 | TIFF | **Own** subset: strips and tiles; none/LZW/DEFLATE/PackBits; 8/16-bit integer and 32-bit float; BigTIFF write | Tiled: random access. Stripped: bands |
 | JPEG encode | **Own** baseline encoder (also used by `sf-degrade`) | Rows (MCU bands) |
 | JPEG decode | Own baseline first; progressive via the interim optional external decoder until our own reaches parity | Baseline: bands. Progressive: full |
-| WebP | Interim optional external decoder; lossless encode | Full buffer; size limit 16383 px checked at validation |
+| WebP | **Own decoder** (RFC 9649 container, VP8L lossless, VP8 lossy key frames, `ALPH`). Animation: unsupported. Encoding: INCOMPLETE | Full buffer; size limit 16383 px |
 | AVIF / JPEG XL / OpenEXR | Future `Codec` implementations | — |
 
 Limits (dimensions, pixels, decoded bytes, chunk sizes, ICC size) are enforced
@@ -695,7 +695,7 @@ WebP output.
 | `sf-compute` (Phase 7): device abstraction, CPU backend (f32, strict mode, emulated capacity) | **Implemented and tested.** f16: not supported on CPU |
 | GPU backends, CUDA and Vulkan (Phase 8) | **INCOMPLETE** — postponed until hardware is installed |
 | `vram`, `hostmem`, tiling (Phases 9–10) | **Implemented and tested.** Exact tiling bit-identical to whole-image execution. Required-region cropping: not done |
-| `sf-image`, `sf-analysis` (Phase 11) | **Implemented and tested.** Missing: WebP, streaming sources and sinks for images larger than RAM, fuzz campaigns |
+| `sf-image`, `sf-analysis` (Phase 11) | **Implemented and tested.** WebP decoding implemented (own). Missing: WebP encoding, streaming sources and sinks for images larger than RAM, fuzz campaigns |
 | `sf-classic` (ADR-0015 primary path) | **Implemented and tested** |
 | `.sfm` runtime and `sf-import` (Phase 12, ADR-0015) | **Implemented and tested.** Validated on the real `RealESRGAN_x4plus.pth` (matches a reference to 6.9e-6, see BENCHMARKS.md). SRVGG: synthetic files only |
 | SF-Net and training (Phases 13–14) | **INCOMPLETE — deliberately postponed** (see `training/`) |

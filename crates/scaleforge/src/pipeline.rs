@@ -669,6 +669,9 @@ impl Engine {
         rules: Option<&ExportRules>,
     ) -> Result<(Vec<u8>, u8)> {
         match format {
+            FileFormat::WebP => {
+                Err(Error::unsupported("WebP output is INCOMPLETE (no own WebP encoder yet)"))
+            }
             FileFormat::Png => {
                 let fmt = if source == SampleFormat::U8 { SampleFormat::U8 } else { SampleFormat::U16 };
                 let buf = out.to_buffer(fmt)?;

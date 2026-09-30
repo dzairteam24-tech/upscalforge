@@ -169,6 +169,8 @@ pub enum FileFormat {
     Jpeg,
     /// TIFF / BigTIFF.
     Tiff,
+    /// WebP (decoding only; encoding is INCOMPLETE).
+    WebP,
 }
 
 /// Evidence about JPEG compression, kept for analysis.

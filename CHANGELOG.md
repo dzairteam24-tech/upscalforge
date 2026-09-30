@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+### Phase 11 (continued) — own WebP decoder
+- `sf_image::webp`, written from RFC 9649 (container, lossless) and
+  RFC 6386 (VP8 lossy):
+  - RIFF container, simple and extended (`VP8X`) layouts, `ICCP` and
+    `EXIF` orientation;
+  - lossless VP8L: all four transforms, colour cache, meta prefix codes,
+    LZ77 with the 2-D distance map;
+  - lossy VP8 key frames: boolean decoder, segmentation, all intra modes,
+    token partitions, both loop filters;
+  - `ALPH` alpha: raw or lossless-compressed, all prediction filters.
+- VP8 constant tables were extracted from the RFC text by a script (they
+  are normative data). Where RFC 6386 contradicts itself
+  (`segment_feature_mode`, the §13.3 pseudocode), the annex and prose are
+  followed; this is documented in the code.
+- Animated WebP is refused (`unsupported`). WebP *output* is INCOMPLETE:
+  `batch` writes PNG for WebP inputs unless `--ext` says otherwise.
+- Checked against libwebp 1.6.0:
+  - lossless: identical pixels;
+  - lossy: at most 2 levels difference, coming from the RGB conversion;
+  - alpha: identical;
+  - a 17 MP photo decodes in 480 ms (libwebp 195 ms). See `BENCHMARKS.md`.
+- 9 new tests: 11 reference files from libwebp (lossless incl. palettes
+  of 2/3/12/200 colours; lossy q10/q80/q98; alpha), truncation and
+  bit-flip robustness, extended format, animation and size-limit
+  rejection, raw alpha with every filter, CLI end to end. Test count: 193.
+- Not covered by reference files: the simple loop filter and multiple
+  token partitions (Pillow cannot request them). They follow the RFC but
+  are not yet verified against libwebp.
+
 ### Phase 21 — first measured optimisation
 - PNG encoding is parallel:
   - DEFLATE cuts the data into fixed 256 KiB segments and compresses them
