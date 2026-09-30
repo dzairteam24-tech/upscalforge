@@ -2,6 +2,103 @@
 
 ## Unreleased
 
+### Owner decision: own-model training postponed
+- `training/` is an empty placeholder with a note: ScaleForge's own model
+  (SF-Net) and its training system will be built later, once the GPUs are
+  installed and a dataset is assembled. `TRAINING.md` and `MODEL.md` say
+  INCOMPLETE.
+
+### Phase 18/20 — CLI and benchmark (implemented)
+- `scaleforge` commands: `upscale`, `batch`, `analyze`, `models`,
+  `convert-model`, `devices`, `doctor`, `benchmark`, `help`, `version`.
+- Our own strict argument parser.
+- Stable exit codes (9 = export profile not met).
+- Batch mode:
+  - skips symbolic links;
+  - keeps outputs inside the chosen directory;
+  - continues past failures unless `--fail-fast` is given.
+- The benchmark reports the median, all runs, per-stage times, MP/s and CPU
+  utilisation. GPU utilisation is `null`. Results are in `BENCHMARKS.md`.
+- The Adobe Stock profile refuses inputs that cannot reach 4 MP even at x8
+  before doing any work.
+- New docs: `SECURITY.md`, `BENCHMARKS.md`, `MODEL.md`, `TRAINING.md`,
+  `CONTRIBUTING.md`. README, BUILD, DEVELOPMENT, ARCHITECTURE and
+  DEPENDENCIES are reconciled with the code.
+- CLI integration tests run the real binary. Test count: 179 in total.
+
+### Engine pipeline (Phases 15/17 partial, ADR-0015/0016)
+- Engine, job requests and reports:
+  - EXIF orientation, alpha handling, bit-depth preservation;
+  - atomic writes that never overwrite silently;
+  - tiled model enlargement with an out-of-memory retry at smaller tiles.
+- Strategy policy/1 (provisional thresholds). Each decision records its
+  source, rule and evidence.
+- Modes:
+  - Faithful is classical only;
+  - Balanced blends the model at 0.5;
+  - Reconstruction uses the requested strength.
+- QC: consistency correction; checks for consistency residual, colour shift
+  and halo overshoot.
+- Adobe Stock export (ADR-0016):
+  - the rules are data;
+  - scale choice;
+  - JPEG quality search under the size limit;
+  - sRGB conversion;
+  - non-commercial models blocked;
+  - compliance verdict and AI disclosure.
+- Fix: the noise estimator was biased about 20 % low. It is now within 12 %
+  for σ 2–20.
+
+### Phase 12 — Model runtime and external model import
+- Our own SHA-256 (FIPS vectors); `sha2` is not needed.
+- `.sfm` container:
+  - data only;
+  - whitelisted operators;
+  - SHA-256 per tensor and for the whole blob;
+  - locality and scale re-derived on load.
+- `sf-import`:
+  - ZIP reader;
+  - restricted pickle interpreter (an `os.system` payload is refused);
+  - `.pth` loader (f32/f16/bf16/f64);
+  - graph builders for RRDBNet (x4/x2/x1) and SRVGG.
+- Tested with synthetic files only; no real weights were available.
+
+### Phases 9–10 — Memory and tiling
+- VRAM manager:
+  - pools and pre-flight checks;
+  - current and peak accounting;
+  - release on drop.
+- Host memory budget.
+- Tiling:
+  - planner with disjoint cores, aligned windows and a guaranteed halo;
+  - exact mode, bit-identical to whole-image execution;
+  - cross-faded bounded-error mode;
+  - out-of-memory recovery with smaller tiles.
+- Strict mode caught a missing upload → execute dependency. The API now
+  requires ready events.
+
+### Phase 11 — Image engine, analysis, classical engine
+- Our own zlib/DEFLATE and PNG. Checked against independent decoders
+  outside the repository: bit-exact with Go on 49 files.
+- JPEG:
+  - baseline and progressive decoding;
+  - baseline encoding with optimised Huffman tables;
+  - within 3 levels of Go on 25 files.
+- TIFF and BigTIFF: LZW, Deflate and PackBits; strips and tiles; 8/16/32f.
+- ICC → sRGB (Bradford), with our own sRGB profile.
+- Lanczos, area, bilinear and nearest resampling.
+- Analysis:
+  - noise;
+  - blockiness and JPEG quality taken from the quantisation tables;
+  - edge width;
+  - exposure, contrast and colour balance;
+  - texture;
+  - PSNR/SSIM.
+- Classical engine: wavelet denoise, deblock, anti-ringing upscale,
+  halo-limited sharpen, tone.
+
+### Phase 8 — GPU execution: INCOMPLETE (postponed by the owner until the GPUs are installed)
+
 ### Phase 7 — Tensor and compute system (implemented)
 - `sf-graph`:
   - operator set v1 (provisional);

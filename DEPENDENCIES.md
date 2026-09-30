@@ -5,7 +5,15 @@ by the project owner. Versions are the latest stable releases on crates.io as
 of 2026-09-29. Licences were read from crates.io metadata. Everything must be
 compatible with the project's Apache-2.0 licence.
 
-**Nothing listed here is installed. No dependency is approved yet.**
+**Current state (2026-09-30): zero third-party crates.** The whole
+workspace builds from the Rust standard library alone; `Cargo.lock` lists only
+our own crates. Every "MUST REPLACE WITH OUR OWN" item below has been replaced:
+our own JSON, PNG, JPEG (encoder and decoder), TIFF, argument parser and
+benchmark. **`sha2` was not adopted** either: SHA-256 is our own
+implementation (`sf_core::sha256`), checked against the FIPS 180-4 test
+vectors. `zune-jpeg` and `image-webp` were not needed as interim decoders.
+Differential checks against independent decoders ran locally with tools
+outside the repository. Nothing is installed automatically.
 
 ## 1. Classification scheme
 
@@ -77,7 +85,7 @@ library's abstractions.
 
 | Build | Third-party runtime crates |
 |-------|----------------------------|
-| Default CPU build | `sha2` (pending review) |
+| Default CPU build | none (as built today) |
 | + `jpeg-decode-external` (interim) | `zune-jpeg` |
 | + `webp-external` (interim) | `image-webp` |
 | + `vulkan` | `ash` |

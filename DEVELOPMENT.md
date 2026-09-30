@@ -23,20 +23,29 @@ phase that fills them.
 | `crates/sf-core` | Foundation types, JSON, RNG (Phase 6) |
 | `crates/sf-graph` | Operators, graph IR, validation, shape inference, locality, memory planning (Phase 7) |
 | `crates/sf-compute` | Device abstraction and CPU reference backend (Phase 7) |
+| `crates/sf-image` | Own zlib/DEFLATE, PNG, JPEG, TIFF/BigTIFF, EXIF, ICC/sRGB, resampling (Phase 11) |
+| `crates/sf-analysis` | Degradation estimators, PSNR/SSIM (Phase 11) |
+| `crates/sf-classic` | Classical restoration: denoise, deblock, upscale, sharpen, tone (ADR-0015) |
+| `crates/sf-import` | ZIP, restricted pickle, `.pth` → `.sfm` for Real-ESRGAN architectures (ADR-0015) |
+| `crates/scaleforge` | Engine: VRAM/host memory, tiling, runtime, strategy, QC, export, pipeline, reports |
+| `crates/scaleforge-cli` | The `scaleforge` command (argument parsing and printing only) |
+| `training/` | **Empty placeholder**: own-model training comes later |
 
 ## Before every commit
 ```sh
 cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-cargo test
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace --release
 ```
 
 ## Tests
 - Unit tests live next to the code (`#[cfg(test)]`).
 - Property tests use `sf_core::Rng` with a fixed seed, so failures reproduce
   exactly.
-- Robustness tests feed mutated input to parsers. Coverage-guided fuzz
-  targets are added with the first binary parsers (Phase 11).
+- Robustness tests feed mutated and hand-built malformed input to parsers.
+  Coverage-guided fuzzing is not set up yet (needs nightly + cargo-fuzz).
+- End-to-end tests: `crates/scaleforge/tests/pipeline.rs` (engine) and
+  `crates/scaleforge-cli/tests/cli.rs` (runs the real binary).
 
 ## Phase workflow
 Each phase ends with a self-review (§42 of the specification) and a

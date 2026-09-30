@@ -692,5 +692,13 @@ WebP output.
 | Requirements, feasibility, dependency audit, architecture, review, roadmap | Written |
 | `sf-core` (Phase 6) | **Implemented and tested** |
 | `sf-graph` (Phase 7): operator set v1, IR, validation, shape inference, locality, memory planning | **Implemented and tested.** Required-region analysis and crop insertion: moved to Phase 10 |
-| `sf-compute` (Phase 7): device abstraction, CPU backend (f32, strict mode, emulated capacity) | **Implemented and tested.** f16: not supported on CPU. GPU backends: Phase 8 |
-| Everything else | **Not started** |
+| `sf-compute` (Phase 7): device abstraction, CPU backend (f32, strict mode, emulated capacity) | **Implemented and tested.** f16: not supported on CPU |
+| GPU backends, CUDA and Vulkan (Phase 8) | **INCOMPLETE** — postponed until hardware is installed |
+| `vram`, `hostmem`, tiling (Phases 9–10) | **Implemented and tested.** Exact tiling bit-identical to whole-image execution. Required-region cropping: not done |
+| `sf-image`, `sf-analysis` (Phase 11) | **Implemented and tested.** Missing: WebP, streaming sources and sinks for images larger than RAM, fuzz campaigns |
+| `sf-classic` (ADR-0015 primary path) | **Implemented and tested** |
+| `.sfm` runtime and `sf-import` (Phase 12, ADR-0015) | **Implemented and tested** with synthetic files. Not yet validated on a real `.pth` |
+| SF-Net and training (Phases 13–14) | **INCOMPLETE — deliberately postponed** (see `training/`) |
+| Modes, strategy policy/1, QC, Adobe Stock export (Phases 15, 17, ADR-0016) | **Implemented.** Thresholds provisional. QC runs on the host (not as graph branches). No learned descriptor, predictive QC or variant cache yet |
+| Faces, old-photo repair (Phase 16) | **INCOMPLETE** |
+| CLI, benchmark (Phases 18, 20) | **Implemented** |

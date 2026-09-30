@@ -6,8 +6,9 @@
 |------|---------|------------|
 | Rust toolchain (`rustc`, `cargo`, `clippy`, `rustfmt`) | stable ≥ 1.88 (edition 2024); developed with 1.94 | everything |
 
-No third-party crates are used yet. The GPU toolchains (CUDA toolkit,
-Vulkan SDK) will be listed here when the GPU backends arrive (Phase 8).
+No third-party crates are used. Building needs no network access after the
+toolchain is installed. The GPU toolchains (CUDA toolkit, Vulkan SDK) will be
+listed here when the GPU backends arrive (Phase 8, INCOMPLETE).
 
 ## Commands
 
@@ -20,4 +21,13 @@ cargo fmt --check
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 ```
 
-There is no executable yet. The CLI arrives in Phase 18.
+## Running
+
+The executable is `target/release/scaleforge`. Run `scaleforge help` for all
+commands, or see README.md. `scaleforge doctor` checks the installation.
+
+Install it with:
+
+```sh
+cargo install --path crates/scaleforge-cli
+```
