@@ -1,0 +1,19 @@
+{
+  "profile": "adobe-stock-photo",
+  "version": 1,
+  "source": "Adobe Stock contributor help pages (photo requirements, generative-AI guidelines, quality standards) as returned by web search on 2026-09-29; the pages could not be fetched directly. Re-verify against the live pages before relying on these values.",
+  "format": "jpeg",
+  "color_space": "srgb",
+  "min_megapixels": 4.0,
+  "max_megapixels": 100.0,
+  "max_file_bytes": 45000000,
+  "jpeg_quality_start": 98,
+  "jpeg_quality_floor": 90,
+  "blocked_licence_scopes": ["non-commercial"],
+  "notes": [
+    "45 MB is interpreted conservatively as 45,000,000 bytes.",
+    "Adobe asks contributors not to enlarge files in a way that degrades quality: every enlargement produces a warning.",
+    "Content changed by generative AI must be labelled by the contributor; the report provides a disclosure to support that decision.",
+    "Contributors must hold the rights to submit output of the AI tools used: non-commercial models are blocked."
+  ]
+}

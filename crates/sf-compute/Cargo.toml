@@ -1,0 +1,15 @@
+[package]
+name = "sf-compute"
+description = "ScaleForge device abstraction and the CPU reference backend"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sf-core = { path = "../sf-core" }
+sf-graph = { path = "../sf-graph" }
+
+[lints]
+workspace = true

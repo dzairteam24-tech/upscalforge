@@ -1,0 +1,17 @@
+[workspace]
+resolver = "3"
+members = ["crates/sf-core", "crates/sf-graph", "crates/sf-compute", "crates/sf-image", "crates/sf-analysis", "crates/sf-classic", "crates/scaleforge", "crates/sf-import", "crates/scaleforge-cli"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.88"
+license = "Apache-2.0"
+publish = false
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

@@ -1,0 +1,15 @@
+[package]
+name = "sf-analysis"
+description = "ScaleForge image analysis: degradation estimators and quality metrics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sf-core = { path = "../sf-core" }
+sf-image = { path = "../sf-image" }
+
+[lints]
+workspace = true

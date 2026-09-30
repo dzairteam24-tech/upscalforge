@@ -1,0 +1,18 @@
+[package]
+name = "sf-classic"
+description = "ScaleForge classical (non-learned) restoration and upscaling"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sf-image = { path = "../sf-image" }
+
+[dev-dependencies]
+sf-core = { path = "../sf-core" }
+sf-analysis = { path = "../sf-analysis" }
+
+[lints]
+workspace = true

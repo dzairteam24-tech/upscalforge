@@ -1,0 +1,19 @@
+[package]
+name = "scaleforge"
+description = "ScaleForge engine and public API"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sf-core = { path = "../sf-core" }
+sf-graph = { path = "../sf-graph" }
+sf-compute = { path = "../sf-compute" }
+sf-image = { path = "../sf-image" }
+sf-analysis = { path = "../sf-analysis" }
+sf-classic = { path = "../sf-classic" }
+
+[lints]
+workspace = true
