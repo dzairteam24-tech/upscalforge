@@ -1,0 +1,22 @@
+[package]
+name = "scaleforge-cli"
+description = "ScaleForge command-line interface"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "scaleforge"
+path = "src/main.rs"
+
+[dependencies]
+scaleforge = { path = "../scaleforge" }
+sf-core = { path = "../sf-core" }
+sf-image = { path = "../sf-image" }
+sf-import = { path = "../sf-import" }
+sf-graph = { path = "../sf-graph" }
+
+[lints]
+workspace = true

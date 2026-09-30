@@ -277,6 +277,13 @@ impl Engine {
             (Some(s), _) => (s, None),
             (None, Some(r)) => {
                 let (s, down) = r.choose_scale(w as u32, h as u32);
+                let best = (w * h) as f64 * f64::from(s * s) / 1e6;
+                if best < r.min_megapixels {
+                    return Err(Error::invalid_input(format!(
+                        "{w}x{h} is too small for {}: even x{s} gives {best:.2} MP, below the {} MP minimum",
+                        r.id, r.min_megapixels
+                    )));
+                }
                 profile_decisions.push(Decision {
                     parameter: "scale",
                     value: format!("x{s}"),

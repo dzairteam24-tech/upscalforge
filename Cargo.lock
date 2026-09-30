@@ -15,6 +15,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "scaleforge-cli"
+version = "0.0.0"
+dependencies = [
+ "scaleforge",
+ "sf-core",
+ "sf-graph",
+ "sf-image",
+ "sf-import",
+]
+
+[[package]]
 name = "sf-analysis"
 version = "0.0.0"
 dependencies = [

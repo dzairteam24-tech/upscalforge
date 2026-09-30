@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/sf-core", "crates/sf-graph", "crates/sf-compute", "crates/sf-image", "crates/sf-analysis", "crates/sf-classic", "crates/scaleforge", "crates/sf-import"]
+members = ["crates/sf-core", "crates/sf-graph", "crates/sf-compute", "crates/sf-image", "crates/sf-analysis", "crates/sf-classic", "crates/scaleforge", "crates/sf-import", "crates/scaleforge-cli"]
 
 [workspace.package]
 version = "0.0.0"

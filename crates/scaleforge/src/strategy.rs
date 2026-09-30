@@ -260,7 +260,10 @@ pub fn plan(
                     format!("step {step:.3}"),
                     if user.is_some() { Source::User } else { Source::Auto },
                     "jpeg-evidence",
-                    format!("JPEG quality {jpeg_q:?}, blockiness {blocky:.2}"),
+                    format!(
+                        "JPEG quality {}, blockiness {blocky:.2}",
+                        jpeg_q.map_or("unknown".to_string(), |q| format!("{q:.0}"))
+                    ),
                 );
                 Some(step)
             } else {
