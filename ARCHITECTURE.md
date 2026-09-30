@@ -697,7 +697,7 @@ WebP output.
 | `vram`, `hostmem`, tiling (Phases 9–10) | **Implemented and tested.** Exact tiling bit-identical to whole-image execution. Required-region cropping: not done |
 | `sf-image`, `sf-analysis` (Phase 11) | **Implemented and tested.** Missing: WebP, streaming sources and sinks for images larger than RAM, fuzz campaigns |
 | `sf-classic` (ADR-0015 primary path) | **Implemented and tested** |
-| `.sfm` runtime and `sf-import` (Phase 12, ADR-0015) | **Implemented and tested** with synthetic files. Not yet validated on a real `.pth` |
+| `.sfm` runtime and `sf-import` (Phase 12, ADR-0015) | **Implemented and tested.** Validated on the real `RealESRGAN_x4plus.pth` (matches a reference to 6.9e-6, see BENCHMARKS.md). SRVGG: synthetic files only |
 | SF-Net and training (Phases 13–14) | **INCOMPLETE — deliberately postponed** (see `training/`) |
 | Modes, strategy policy/1, QC, Adobe Stock export (Phases 15, 17, ADR-0016) | **Implemented.** Thresholds provisional. QC runs on the host (not as graph branches). No learned descriptor, predictive QC or variant cache yet |
 | Faces, old-photo repair (Phase 16) | **INCOMPLETE** |

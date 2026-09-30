@@ -27,7 +27,7 @@ model are **INCOMPLETE**.
 | GPU backends (8) | **INCOMPLETE** — postponed until the GPUs are installed |
 | Memory, VRAM accounting, exact tiling (9–10) | Implemented and tested |
 | Image engine: own PNG, JPEG, TIFF/BigTIFF, ICC→sRGB, resampling, analysis (11) | Implemented and tested |
-| Model runtime (`.sfm`) and safe `.pth` import (12) | Implemented; not yet tried on a real downloaded `.pth` |
+| Model runtime (`.sfm`) and safe `.pth` import (12) | Implemented; validated on the real `RealESRGAN_x4plus.pth` (SRVGG not yet on a real file) |
 | Own model SF-Net and training (13–14) | **INCOMPLETE — planned for later** (see [`training/`](training/README.md)) |
 | Modes, strategy, QC, Adobe Stock export (15, 17) | Implemented (policy thresholds provisional) |
 | CLI and benchmark (18, 20) | Implemented |

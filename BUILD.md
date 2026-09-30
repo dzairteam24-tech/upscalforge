@@ -4,7 +4,7 @@
 
 | Tool | Version | Needed for |
 |------|---------|------------|
-| Rust toolchain (`rustc`, `cargo`, `clippy`, `rustfmt`) | stable ≥ 1.88 (edition 2024); developed with 1.94 | everything |
+| Rust toolchain (`rustc`, `cargo`, `clippy`, `rustfmt`) | stable ≥ 1.88 (edition 2024); developed with 1.94, also checked with 1.98.1 | everything |
 
 No third-party crates are used. Building needs no network access after the
 toolchain is installed. The GPU toolchains (CUDA toolkit, Vulkan SDK) will be

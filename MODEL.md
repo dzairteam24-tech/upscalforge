@@ -52,10 +52,14 @@ The converter:
 - writes a `.sfm` recording `provenance: "external"`, the licence, the
   `licence_scope`, and the SHA-256 of the source file.
 
-**Validation status:** the converter is tested on format-conformant
-synthetic files. It has not yet been run on a real downloaded `.pth` in the
-development environment, so the first real conversion is also its first
-real validation. Please report the result of `scaleforge convert-model`.
+**Validation status:**
+
+- `RealESRGAN_x4plus.pth` (RRDBNet): converted unchanged on 2026-09-30.
+  Output matches an independent PyTorch reference to 6.9e-6 (after our
+  output clamp to [0, 1]). Blended-tiling error and speed are measured in
+  [BENCHMARKS.md](BENCHMARKS.md).
+- `realesr-general-x4v3.pth` (SRVGG): **not yet validated** on a real file;
+  only format-conformant synthetic files are tested.
 
 ### Rules
 

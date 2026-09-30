@@ -457,7 +457,7 @@ pub fn read(bytes: &[u8], limits: &Limits) -> Result<ModelFile> {
         if str_field(e, "sha256")? != sha256_hex(data) {
             return Err(invalid(format!("tensor {name:?} hash mismatch")));
         }
-        weights[idx] = data.chunks_exact(4).map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]])).collect();
+        weights[idx] = data.as_chunks::<4>().0.iter().map(|b| f32::from_le_bytes(*b)).collect();
         if weights[idx].iter().any(|v| !v.is_finite()) {
             return Err(invalid(format!("tensor {name:?} contains non-finite values")));
         }

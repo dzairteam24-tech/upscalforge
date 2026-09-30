@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Phase 12 — first real model validation
+- `scaleforge convert-model` on the real `RealESRGAN_x4plus.pth` works
+  without changes (rrdbnet x4, 16 697 987 parameters).
+- Our engine's output matches an independent PyTorch reference to 6.9e-6.
+  Our graph clamps its output to [0, 1]; the reference does not.
+- Measured and added to `BENCHMARKS.md`:
+  - blended-tiling error: 44.9 dB (64 px tiles) and 53.2 dB (128 px tiles)
+    PSNR against a whole-image run;
+  - PSNR/SSIM against a ground truth;
+  - speed on a Ryzen 9 5900X. Our CPU convolution is about 3–4x slower
+    than PyTorch on CPU.
+- `realesr-general-x4v3.pth` (SRVGG) was not available: still validated
+  only on synthetic files.
+- Toolchain: code adjusted for clippy 1.98 (`as_chunks`, `checked_div`), no
+  behaviour change. `models/` is git-ignored (weights are never committed).
+
 ### Owner decision: own-model training postponed
 - `training/` is an empty placeholder with a note: ScaleForge's own model
   (SF-Net) and its training system will be built later, once the GPUs are

@@ -377,9 +377,9 @@ fn unpremultiply(buffer: &mut ImageBuffer) {
         Samples::U8(v) => {
             for px in v.chunks_mut(c) {
                 let a = u32::from(px[c - 1]);
-                if a > 0 {
-                    for s in &mut px[..c - 1] {
-                        *s = ((u32::from(*s) * 255 + a / 2) / a).min(255) as u8;
+                for s in &mut px[..c - 1] {
+                    if let Some(v) = (u32::from(*s) * 255 + a / 2).checked_div(a) {
+                        *s = v.min(255) as u8;
                     }
                 }
             }
@@ -387,9 +387,9 @@ fn unpremultiply(buffer: &mut ImageBuffer) {
         Samples::U16(v) => {
             for px in v.chunks_mut(c) {
                 let a = u64::from(px[c - 1]);
-                if a > 0 {
-                    for s in &mut px[..c - 1] {
-                        *s = ((u64::from(*s) * 65_535 + a / 2) / a).min(65_535) as u16;
+                for s in &mut px[..c - 1] {
+                    if let Some(v) = (u64::from(*s) * 65_535 + a / 2).checked_div(a) {
+                        *s = v.min(65_535) as u16;
                     }
                 }
             }
