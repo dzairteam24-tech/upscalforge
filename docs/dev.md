@@ -18,7 +18,7 @@
 3. كل تعديل في الملفات يبان في Studio دركا.
 
 ### قبل النشر
-1. **حفظ البيانات:** في Studio، **Game Settings ← Security ← Enable Studio Access to API Services**. بلا هذا، اللعبة تخدم لكن ما تحفظش، وتكتب تحذير في الـ Output.
+1. **حفظ البيانات:** في Studio، **Game Settings ← Security ← Enable Studio Access to API Services**. بلا هذا، اللعبة تخدم لكن ما تحفظش، وتكتب تحذير في الـ Output. لوحات الترتيب تاني يحتاجو هذا.
 2. **منتجات Robux:** صنع في Creator Dashboard:
    - **Game Pass:** VIP
    - **Developer Products:** Supporter Title، Battle Pass Premium
@@ -68,6 +68,8 @@ roblox/
       ExpeditionService    الرحلات: تبعث المخلوقات وتستلم المكافآت
       ReloadService        Reload: تعاود العالم بمضاعف دائم
       AchievementService   Achievements، Rank، وسجل المخلوقات (Index)
+      TutorialService      الشرح للاعبين الجداد
+      LeaderboardService   لوحات الترتيب في المدينة (OrderedDataStore)
   client/                  StarterPlayerScripts.Client
     Controllers/           حركة المخلوقات، البوابات، الألوان، المؤثرات
     UI/                    الواجهة: HUD، المخلوقات، المتجر، التبادل، البيض، الأدوات، الرحلات، Reload، الإعدادات
@@ -188,6 +190,15 @@ tests/                     اختبارات Lune
   - كل 3 ⭐ = Rank، والـ Rank يبان فوق راس اللاعب للكل
   - مكافآت دائمة: مخزن +25/+50/+100، +2 أماكن رحلات، +2 أماكن كاسيطات، وألقاب (Explorer، Veteran، Cube Legend)
   - النافذة: Quests ← Awards
+- **لوحات الترتيب (Leaderboards):**
+  - 4 لوحات في المدينة: أقوى فريق، أكثر عملات، أكثر Titans، أعلى Rank
+  - عالمية (كل السيرفرات)، تتحدث كل دقيقتين
+  - الأرقام الكبار تتحفظ بـ log10 باش ما يكونش حد
+- **الشرح للاعبين الجداد (Tutorial):**
+  - 3 خطوات: كسّر مصدر، فقّس بيضة، افتح منطقة جديدة
+  - شعاع ذهبي من اللاعب للهدف وسهم فوقو، وزر Skip
+  - في الأخير: 💎 25 وإكسير
+  - اللاعبين القدام ما يشوفوهش
 - **هدايا وقت اللعب:**
   - هدية كل 15 دقيقة لعب في النهار، 8 هدايا (ساعتين)
   - تكبر كل ما تلعب أكثر: عملات، إكسيرات، جواهر، أنصاص مفاتيح، بيض، وكاسيطة في الأخير

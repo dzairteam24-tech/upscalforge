@@ -36,6 +36,7 @@ local EVENTS = {
 	"StartExpedition",
 	"ClaimExpedition",
 	"ClaimGift",
+	"SkipTutorial",
 	-- server -> client
 	"Data",
 	"Currency",

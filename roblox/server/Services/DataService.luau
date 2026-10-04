@@ -78,6 +78,7 @@ local function template(): PlayerData
 		playtime = { day = 0, seconds = 0, claimed = 0 },
 		achievements = {},
 		index = {},
+		tutorial = 1,
 	}
 end
 

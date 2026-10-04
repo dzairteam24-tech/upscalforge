@@ -21,6 +21,7 @@ local ReloadPanel = require(UI.ReloadPanel)
 local SettingsPanel = require(UI.SettingsPanel)
 local WorldClient = require(Controllers.WorldClient)
 local PetFollow = require(Controllers.PetFollow)
+local TutorialClient = require(Controllers.TutorialClient)
 
 Store.init()
 
@@ -46,3 +47,4 @@ Notify.mount(gui)
 
 WorldClient.init()
 PetFollow.init()
+TutorialClient.init(gui)

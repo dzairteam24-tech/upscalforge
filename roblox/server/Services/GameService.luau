@@ -790,6 +790,7 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		achievements = data.achievements,
 		index = data.index,
 		rank = rank,
+		tutorial = data.tutorial,
 		ads = data.ads,
 		playtime = data.playtime,
 		maxSlots = GameService.maxSlots(player),

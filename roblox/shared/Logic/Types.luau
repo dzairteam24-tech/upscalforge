@@ -45,6 +45,7 @@ export type PlayerData = {
 	playtime: Playtime,
 	achievements: { [string]: number }, -- achievement id -> tiers completed
 	index: { [string]: boolean }, -- "species|variant" ever owned
+	tutorial: number, -- current guide step, 0 when finished or skipped
 }
 
 -- Rewarded ad limits: watches per UTC day and per-reward cooldowns.
