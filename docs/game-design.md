@@ -375,7 +375,7 @@
 | | Godot (Android) | Roblox |
 |-|------------------|--------|
 | **الجمهور** | لازم نجيبوه بالإشهار | موجود: نفس جمهور Pet Simulator 99 |
-| **الربح** | AdMob + مشتريات Google Play | Robux: Game Passes، Developer Products، Premium Payouts. Roblox بدات تعطي إعلانات فيديو بمكافأة، **لازم نتأكدو من الشروط** |
+| **الربح** | AdMob + مشتريات Google Play | Robux: Game Passes، Developer Products، Premium Payouts، وإعلانات فيديو بمكافأة (الشروط في [research.md](research.md#6-معلومات-على-roblox)) |
 | **اللعب الجماعي والتبادل** | صعب (يحتاج سيرفر) | موجود مجاناً |
 | **اللغة** | GDScript | Luau |
 | **الرسومات** | 2D ولا 3D | 3D |
