@@ -8,6 +8,7 @@
 
 - **[وثيقة تصميم اللعبة](docs/game-design.md):** الفكرة كاملة
 - **[العالم الأول](docs/world-1.md):** الخريطة، المناطق، البيض، الأنواع ومهاراتهم
+- **[العوالم الـ 15](docs/worlds.md):** الموضوع، الميكانيكية، المناطق والحراس
 - **[الأدوات والأنظمة](docs/items.md):** Cartridges، Elixirs، Keys، Stickers، Expeditions، Arcade، Reload...
 - **[البحث](docs/research.md):** آراء اللاعبين في Pet Simulator 99، واقتراحات
 
