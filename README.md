@@ -1,4 +1,6 @@
-# Upscalforge Games
+# Cubelings
+
+لعبة جمع مخلوقات مكعبة. المشروع: Upscalforge Games.
 
 المرحلة الحالية: **كتابة الفكرة بكل التفاصيل**، بلا نموذج أولي ولا برمجة.
 
@@ -6,6 +8,7 @@
 
 - **[وثيقة تصميم اللعبة](docs/game-design.md):** الفكرة كاملة
 - **[العالم الأول](docs/world-1.md):** الخريطة، المناطق، البيض، الأنواع ومهاراتهم
+- **[الأدوات والأنظمة](docs/items.md):** Cartridges، Elixirs، Keys، Stickers، Expeditions، Arcade، Reload...
 - **[البحث](docs/research.md):** آراء اللاعبين في Pet Simulator 99، واقتراحات
 
 ## القرارات الأساسية
