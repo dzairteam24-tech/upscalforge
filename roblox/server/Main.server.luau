@@ -21,6 +21,7 @@ local ReloadService = require(Services.ReloadService)
 local AchievementService = require(Services.AchievementService)
 local TutorialService = require(Services.TutorialService)
 local LeaderboardService = require(Services.LeaderboardService)
+local ArcadeService = require(Services.ArcadeService)
 local DataService = require(Services.DataService)
 
 Net.init()
@@ -40,6 +41,7 @@ ReloadService.init()
 AchievementService.init()
 TutorialService.init()
 LeaderboardService.init()
+ArcadeService.init()
 
 DataService.init()
 

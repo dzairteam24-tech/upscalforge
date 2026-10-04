@@ -10,6 +10,8 @@ export type Reward = {
 	freeEggLuck: number?,
 	title: string?,
 	trail: string?,
+	ride: string?,
+	tickets: number?,
 	xp: number?,
 }
 
@@ -40,8 +42,8 @@ local DAILY: { Reward } = {
 
 local DAILY_QUESTS = 3
 local WEEKLY_QUESTS = 5
-local DAILY_QUEST_REWARD: Reward = { xp = 100, coinsInEggs = 5 }
-local WEEKLY_QUEST_REWARD: Reward = { xp = 400, gems = 60 }
+local DAILY_QUEST_REWARD: Reward = { xp = 100, coinsInEggs = 5, tickets = 1 }
+local WEEKLY_QUEST_REWARD: Reward = { xp = 400, gems = 60, tickets = 5 }
 
 local DAILY_TEMPLATES: { QuestTemplate } = {
 	{ id = "d_coins", event = "Coins", text = "Collect {goal} coins", goal = 150, scaleWithEgg = true },
@@ -71,20 +73,20 @@ local PASS_XP_PER_LEVEL = 300
 local SEASON_DAYS = 30
 local SEASON_START_DAY = 20730 -- UTC day number of season 1's first day (2026-10-04)
 
--- Free track: something every level. Premium track: cosmetics every 5 levels (titles and trails only).
+-- Free track: something every level. Premium track: cosmetics every 5 levels (titles, trails and rides only).
 local function passReward(level: number, premium: boolean): Reward?
 	if premium then
 		local cosmetics: { [number]: Reward } = {
 			[5] = { title = "S1_Rookie" },
 			[10] = { trail = "S1_Sky" },
 			[15] = { title = "S1_Collector" },
-			[20] = { trail = "S1_Lava" },
+			[20] = { trail = "S1_Lava", ride = "S1_Hoverboard" },
 			[25] = { title = "S1_Hunter" },
 			[30] = { trail = "S1_Neon" },
 			[35] = { title = "S1_Tamer" },
 			[40] = { trail = "S1_Pixel" },
 			[45] = { title = "S1_Pixel" },
-			[50] = { title = "S1_Champion", trail = "S1_Rainbow" },
+			[50] = { title = "S1_Champion", trail = "S1_Rainbow", ride = "S1_Cloud" },
 		}
 		return cosmetics[level]
 	end
@@ -112,7 +114,7 @@ local PLAYTIME_GIFTS: { Reward } = {
 	{ gems = 20 },
 	{ coinsInEggs = 4, items = { { id = "KeyHalf_Zone", amount = 1 } } },
 	{ freeEggs = 3, freeEggLuck = 1.5 },
-	{ items = { { id = "Elixir_Fortune_2", amount = 1 } } },
+	{ tickets = 3, items = { { id = "Elixir_Fortune_2", amount = 1 } } },
 	{ gems = 50, items = { { id = "KeyHalf_Golden", amount = 1 } } },
 	{ coinsInEggs = 10, items = { { id = "Cart_Coins_2", amount = 1 } } },
 }

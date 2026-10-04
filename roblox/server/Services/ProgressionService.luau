@@ -80,6 +80,15 @@ local function grant(player: Player, data: PlayerData, reward: Progression.Rewar
 		local trail = Cosmetics.trailById[reward.trail]
 		table.insert(parts, if trail then trail.name else reward.trail)
 	end
+	if reward.ride then
+		data.rides[reward.ride] = true
+		local ride = Cosmetics.rideById[reward.ride]
+		table.insert(parts, "Ride: " .. (if ride then ride.name else reward.ride))
+	end
+	if reward.tickets then
+		data.tickets += reward.tickets
+		table.insert(parts, "🎟️ " .. reward.tickets)
+	end
 	if reward.xp then
 		local cap = Progression.PASS_LEVELS * Progression.PASS_XP_PER_LEVEL
 		data.pass.xp = math.min(cap, data.pass.xp + reward.xp)
@@ -229,11 +238,26 @@ local function equipCosmetic(player: Player, kind: any, id: any)
 			return
 		end
 		data.equippedTrail = if id == "" then nil else id
+	elseif kind == "ride" then
+		if id ~= "" and not data.rides[id] then
+			return
+		end
+		data.equippedRide = if id == "" then nil else id
+		GameService.refresh(player)
 	else
 		return
 	end
 	GameService.refreshTitles(player)
 	GameService.markDirty(player)
+end
+
+-- Gives a reward (daily, quests, pass, gifts, Lucky Spin) and returns a short summary.
+function ProgressionService.grant(player: Player, reward: Progression.Reward): string
+	local data = DataService.get(player)
+	if not data then
+		return ""
+	end
+	return grant(player, data, reward)
 end
 
 function ProgressionService.init()

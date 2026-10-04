@@ -13,6 +13,7 @@ export type Perks = {
 	tripSlots: number,
 	cartridgeSlots: number,
 	titles: { string },
+	rides: { string },
 }
 
 local Logic = {}
@@ -88,7 +89,7 @@ function Logic.rank(stars: number): number
 end
 
 function Logic.perks(rank: number): Perks
-	local perks: Perks = { storage = 0, tripSlots = 0, cartridgeSlots = 0, titles = {} }
+	local perks: Perks = { storage = 0, tripSlots = 0, cartridgeSlots = 0, titles = {}, rides = {} }
 	for _, perk in Achievements.rankPerks do
 		if rank >= perk.rank then
 			perks.storage += perk.storage or 0
@@ -96,6 +97,9 @@ function Logic.perks(rank: number): Perks
 			perks.cartridgeSlots += perk.cartridgeSlots or 0
 			if perk.title then
 				table.insert(perks.titles, perk.title)
+			end
+			if perk.ride then
+				table.insert(perks.rides, perk.ride)
 			end
 		end
 	end

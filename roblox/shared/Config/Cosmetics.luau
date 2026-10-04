@@ -3,6 +3,8 @@
 
 export type Title = { id: string, text: string, color: Color3 }
 export type Trail = { id: string, name: string, colors: { Color3 } }
+-- Rides: something the character stands on. Every ride gives the same speed, so they're look only.
+export type Ride = { id: string, name: string, style: string, color: Color3, glow: Color3 }
 
 local titles: { Title } = {
 	{ id = "VIP", text = "VIP", color = Color3.fromRGB(255, 215, 90) },
@@ -45,6 +47,13 @@ local trails: { Trail } = {
 	},
 }
 
+local rides: { Ride } = {
+	{ id = "Skateboard", name = "Skateboard", style = "board", color = Color3.fromRGB(229, 83, 75), glow = Color3.fromRGB(255, 220, 120) },
+	{ id = "S1_Hoverboard", name = "Hoverboard", style = "board", color = Color3.fromRGB(60, 70, 100), glow = Color3.fromRGB(91, 184, 245) },
+	{ id = "PixelBoard", name = "Pixel Board", style = "board", color = Color3.fromRGB(40, 30, 60), glow = Color3.fromRGB(185, 140, 255) },
+	{ id = "S1_Cloud", name = "Cloud", style = "cloud", color = Color3.fromRGB(245, 248, 255), glow = Color3.fromRGB(200, 230, 255) },
+}
+
 local titleById: { [string]: Title } = {}
 for _, title in titles do
 	titleById[title.id] = title
@@ -53,10 +62,17 @@ local trailById: { [string]: Trail } = {}
 for _, trail in trails do
 	trailById[trail.id] = trail
 end
+local rideById: { [string]: Ride } = {}
+for _, ride in rides do
+	rideById[ride.id] = ride
+end
 
 return {
 	titles = titles,
 	trails = trails,
 	titleById = titleById,
 	trailById = trailById,
+	rides = rides,
+	rideById = rideById,
+	RIDE_SPEED = 1.25,
 }

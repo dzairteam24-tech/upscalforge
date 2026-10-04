@@ -89,13 +89,17 @@ local function claim(player: Player, data: PlayerData, index: number, mult: numb
 	end)
 	local coins = GameService.rewardCoins(player, reward.coins * mult, nil)
 	data.gems += reward.gems * mult
+	data.tickets += reward.tickets * mult
 	for _, itemId in reward.items do
 		GameService.giveItem(player, itemId, mult, false)
 	end
 
 	local parts = { "🪙 " .. Format.abbrev(coins) }
 	if reward.gems > 0 then
-		table.insert(parts, "💎 " .. Format.abbrev(reward.gems))
+		table.insert(parts, "💎 " .. Format.abbrev(reward.gems * mult))
+	end
+	if reward.tickets > 0 then
+		table.insert(parts, "🎟️ " .. reward.tickets * mult)
 	end
 	for _, itemId in reward.items do
 		table.insert(parts, Items.byId[itemId].name .. (if mult > 1 then " x" .. mult else ""))

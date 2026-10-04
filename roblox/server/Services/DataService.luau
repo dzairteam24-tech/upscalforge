@@ -61,7 +61,7 @@ local function template(): PlayerData
 		purchases = {},
 		titles = {},
 		tradeHistory = {},
-		settings = { allowTrades = true, autoEquipBest = true, lowEnd = false },
+		settings = { allowTrades = true, autoEquipBest = true, lowEnd = false, sfx = true, music = true },
 		lastSeen = 0,
 		lastPower = 0,
 		items = {},
@@ -79,6 +79,9 @@ local function template(): PlayerData
 		achievements = {},
 		index = {},
 		tutorial = 1,
+		tickets = 0,
+		wheel = { lastFree = -1 },
+		rides = {},
 	}
 end
 

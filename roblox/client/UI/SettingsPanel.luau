@@ -26,6 +26,16 @@ local OPTIONS = {
 		label = "Auto equip best",
 		text = "Put stronger creatures on your team right after hatching.",
 	},
+	{
+		key = "sfx",
+		label = "Sound effects",
+		text = "Coins, hatching, rewards and buttons.",
+	},
+	{
+		key = "music",
+		label = "Music",
+		text = "Background music.",
+	},
 }
 
 function SettingsPanel.mount(gui: ScreenGui)

@@ -39,6 +39,7 @@ local EVENTS = {
 	"SkipTutorial",
 	"ApplySticker",
 	"RemoveSticker",
+	"SpinWheel",
 	-- server -> client
 	"Data",
 	"Currency",
@@ -50,6 +51,7 @@ local EVENTS = {
 	"TradeState",
 	"TradeClosed",
 	"OfflineEarnings",
+	"WheelResult",
 }
 
 local FOLDER_NAME = "Remotes"

@@ -16,6 +16,7 @@ type Pet = Types.Pet
 export type Reward = {
 	coins: number, -- raw coins, before the player's coin multipliers
 	gems: number,
+	tickets: number,
 	items: { string },
 }
 
@@ -106,7 +107,7 @@ end
 -- What a finished trip brings back. `zoneId` is the player's best unlocked zone (scales gems and items).
 function Expedition.rewards(trip: Types.Expedition, zoneId: number, rng: () -> number): Reward
 	local kind = Expeditions.byId[trip.kind]
-	local reward: Reward = { coins = 0, gems = 0, items = {} }
+	local reward: Reward = { coins = 0, gems = 0, tickets = 0, items = {} }
 	if not kind then
 		return reward
 	end
@@ -115,6 +116,7 @@ function Expedition.rewards(trip: Types.Expedition, zoneId: number, rng: () -> n
 
 	reward.coins = trip.power * kind.duration * kind.coinFactor * bonus
 	reward.gems = math.floor(kind.gemsPerZone * math.max(1, zoneId) * bonus)
+	reward.tickets = math.floor(kind.tickets * bonus)
 	for _ = 1, kind.elixirs do
 		local maxTier = kind.elixirTiers[2] + tierBonus
 		table.insert(reward.items, Loot.randomElixir(kind.elixirTiers[1], maxTier, rng))

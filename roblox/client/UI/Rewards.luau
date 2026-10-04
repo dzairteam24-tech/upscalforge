@@ -48,6 +48,13 @@ function Rewards.describe(reward: Progression.Reward, data: { [string]: any }?):
 		local trail = Cosmetics.trailById[reward.trail]
 		table.insert(parts, "✨ " .. (if trail then trail.name else reward.trail))
 	end
+	if reward.ride then
+		local ride = Cosmetics.rideById[reward.ride]
+		table.insert(parts, "🛹 " .. (if ride then ride.name else reward.ride))
+	end
+	if reward.tickets then
+		table.insert(parts, ("🎟️ %d"):format(reward.tickets))
+	end
 	if reward.xp then
 		table.insert(parts, ("⭐ %d XP"):format(reward.xp))
 	end

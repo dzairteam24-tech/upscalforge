@@ -11,6 +11,7 @@ local Store = require(script.Parent.Parent.Store)
 local DailyPanel = require(script.Parent.DailyPanel)
 local QuestsPanel = require(script.Parent.QuestsPanel)
 local ReloadPanel = require(script.Parent.ReloadPanel)
+local SpinPanel = require(script.Parent.SpinPanel)
 local TripsPanel = require(script.Parent.TripsPanel)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
@@ -104,9 +105,33 @@ function HUD.mount(gui: ScreenGui)
 			giftButton.BackgroundColor3 = Theme.card
 		end
 	end
+	local spinButton = Theme.button({
+		Name = "Spin",
+		Text = "🎰",
+		Position = UDim2.fromOffset(354, 12),
+		Size = UDim2.fromOffset(40, 40),
+		BackgroundColor3 = Color3.fromRGB(255, 120, 200),
+		MaxTextSize = 22,
+	})
+	spinButton.Parent = gui
+	spinButton.Activated:Connect(function()
+		Windows.toggle("Spin")
+	end)
+	local spinDot = Theme.frame({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -4, 0, 4),
+		Size = UDim2.fromOffset(14, 14),
+		BackgroundColor3 = Theme.red,
+		Visible = false,
+	})
+	Theme.corner(spinDot, 7)
+	spinDot.Parent = spinButton
 	task.spawn(function()
 		while true do
 			updateGift()
+			-- Leave room when the gift button is gone
+			spinButton.Position = UDim2.fromOffset(if giftButton.Visible then 354 else 236, 12)
+			spinDot.Visible = SpinPanel.freeReady()
 			task.wait(0.5)
 		end
 	end)

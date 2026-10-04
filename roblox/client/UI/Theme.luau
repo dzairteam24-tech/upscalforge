@@ -75,6 +75,18 @@ function Theme.label(props: { [string]: any }): TextLabel
 	return l
 end
 
+-- Click sound for every button. Required on first use so Theme stays free of other client modules.
+local sounds: any = nil
+local function click()
+	if not sounds then
+		local ok, result = pcall(require, script.Parent.Parent.Controllers.SoundClient)
+		sounds = if ok then result else false
+	end
+	if sounds then
+		sounds.play("Click")
+	end
+end
+
 function Theme.button(props: { [string]: any }): TextButton
 	local b = Instance.new("TextButton")
 	b.AutoButtonColor = true
@@ -93,6 +105,7 @@ function Theme.button(props: { [string]: any }): TextButton
 	local limit = Instance.new("UITextSizeConstraint")
 	limit.MaxTextSize = props.MaxTextSize or 24
 	limit.Parent = b
+	b.Activated:Connect(click)
 	return b
 end
 

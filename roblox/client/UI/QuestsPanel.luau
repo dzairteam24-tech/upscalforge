@@ -345,6 +345,17 @@ function QuestsPanel.mount(gui: ScreenGui)
 				end)
 			end
 		end
+		section("Rides (+25% speed, all the same)")
+		row("None", Theme.muted, data.equippedRide == nil, function()
+			Net.event("EquipCosmetic"):FireServer("ride", "")
+		end)
+		for _, ride in Cosmetics.rides do
+			if data.rides and data.rides[ride.id] then
+				row(ride.name, ride.glow, data.equippedRide == ride.id, function()
+					Net.event("EquipCosmetic"):FireServer("ride", ride.id)
+				end)
+			end
+		end
 		section("Trails")
 		row("None", Theme.muted, data.equippedTrail == nil, function()
 			Net.event("EquipCosmetic"):FireServer("trail", "")
@@ -358,7 +369,7 @@ function QuestsPanel.mount(gui: ScreenGui)
 		end
 		order += 1
 		local hint = Theme.label({
-			Text = "Get more titles from achievements, Rank and the Battle Pass premium track.",
+			Text = "Get more titles, trails and rides from achievements, Rank, the Lucky Spin and the Battle Pass premium track.",
 			Font = Enum.Font.Gotham,
 			TextColor3 = Theme.muted,
 			Size = UDim2.new(1, -12, 0, 24),

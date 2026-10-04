@@ -270,6 +270,9 @@ function GameService.refresh(player: Player)
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		local speed = 16 * Upgrades.walkSpeedMult(data.upgrades.WalkSpeed or 0)
+		if data.equippedRide and data.rides[data.equippedRide] then
+			speed *= Cosmetics.RIDE_SPEED
+		end
 		speed *= math.min(3, Effects.get(runtime.effects, "Speed") * Boosts.active(data.boosts, "Speed") * Gear.get(runtime.gear, "Speed"))
 		humanoid.WalkSpeed = speed
 	end
@@ -613,6 +616,53 @@ local function applyTitles(player: Player, character: Model)
 	end
 	gui.Parent = head
 
+	-- Ride: welded under the feet; the character floats a little higher while riding
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local oldRide = character:FindFirstChild("Ride")
+	if oldRide then
+		oldRide:Destroy()
+	end
+	local baseHip = character:GetAttribute("BaseHipHeight")
+	if humanoid and typeof(baseHip) ~= "number" then
+		baseHip = humanoid.HipHeight
+		character:SetAttribute("BaseHipHeight", baseHip)
+	end
+	local rideDef = if data.equippedRide and data.rides[data.equippedRide] then Cosmetics.rideById[data.equippedRide] else nil
+	if humanoid and typeof(baseHip) == "number" then
+		humanoid.HipHeight = baseHip + (if rideDef then 0.6 else 0)
+		if rideDef then
+			local ride = Instance.new("Model")
+			ride.Name = "Ride"
+			local footY = -(root.Size.Y / 2 + baseHip + 0.6) + 0.2
+			local function piece(size: Vector3, offset: CFrame, color: Color3, material: Enum.Material, shape: Enum.PartType?)
+				local p = Instance.new("Part")
+				p.Size = size
+				p.Color = color
+				p.Material = material
+				p.Shape = shape or Enum.PartType.Block
+				p.CanCollide = false
+				p.CanQuery = false
+				p.CanTouch = false
+				p.Massless = true
+				p.CFrame = root.CFrame * offset
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0 = root
+				weld.Part1 = p
+				weld.Parent = p
+				p.Parent = ride
+			end
+			if rideDef.style == "cloud" then
+				for i, x in { -1.1, 0, 1.1 } do
+					piece(Vector3.one * (if i == 2 then 2.4 else 1.9), CFrame.new(x, footY, 0.2 * i - 0.4), rideDef.color, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+				end
+			else
+				piece(Vector3.new(2.4, 0.25, 5), CFrame.new(0, footY, 0), rideDef.color, Enum.Material.SmoothPlastic)
+				piece(Vector3.new(2.5, 0.08, 5.1), CFrame.new(0, footY - 0.16, 0), rideDef.glow, Enum.Material.Neon)
+			end
+			ride.Parent = character
+		end
+	end
+
 	-- Trail
 	for _, name in { "CosmeticTrail", "TrailTop", "TrailBottom" } do
 		local existing = root:FindFirstChild(name)
@@ -811,6 +861,10 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		index = data.index,
 		rank = rank,
 		tutorial = data.tutorial,
+		tickets = data.tickets,
+		wheel = data.wheel,
+		rides = data.rides,
+		equippedRide = data.equippedRide,
 		ads = data.ads,
 		playtime = data.playtime,
 		maxSlots = GameService.maxSlots(player),
@@ -863,12 +917,15 @@ local function tickPlayer(player: Player, runtime: State.Runtime, data: PlayerDa
 
 	-- Pick a target
 	local source = if runtime.target then BreakableService.get(runtime.target) else nil
-	if source and (not source.alive or (source.part.Position - root.Position).Magnitude > Constants.TARGET_RANGE) then
+	local range = math.max(Constants.TARGET_RANGE, Constants.AUTO_TARGET_RANGE * Effects.get(runtime.effects, "Magnet"))
+	if source and (not source.alive or (source.part.Position - root.Position).Magnitude > range) then
 		source = nil
 		runtime.target = nil
 	end
-	if not source and runtime.auto and runtime.zoneId and runtime.zoneId > 0 then
-		source = BreakableService.nearest(runtime.zoneId, root.Position, Constants.AUTO_TARGET_RANGE)
+	-- Auto mode picks the next source; Magnet skills do it in manual mode too, in a wider radius
+	local magnet = Effects.get(runtime.effects, "Magnet")
+	if not source and (runtime.auto or magnet > 1) and runtime.zoneId and runtime.zoneId > 0 then
+		source = BreakableService.nearest(runtime.zoneId, root.Position, Constants.AUTO_TARGET_RANGE * magnet)
 		runtime.target = if source then source.name else nil
 	end
 	player:SetAttribute("Target", runtime.target or "")
@@ -927,7 +984,7 @@ function GameService.init()
 		if not data or type(value) ~= "boolean" then
 			return
 		end
-		if key == "allowTrades" or key == "autoEquipBest" or key == "lowEnd" then
+		if key == "allowTrades" or key == "autoEquipBest" or key == "lowEnd" or key == "sfx" or key == "music" then
 			data.settings[key] = value
 			GameService.markDirty(player)
 		end

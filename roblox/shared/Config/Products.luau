@@ -65,6 +65,7 @@ local devProducts: { DevProduct } = {
 	{ key = "AdTripDouble", id = 0, name = "Ad: double trip rewards", description = "", adOnly = true },
 	{ key = "AdStreak", id = 0, name = "Ad: save the daily streak", description = "", adOnly = true },
 	{ key = "AdReroll", id = 0, name = "Ad: new quest", description = "", adOnly = true },
+	{ key = "AdSpin", id = 0, name = "Ad: Lucky Spin", description = "", adOnly = true },
 }
 
 local adRewards: { AdReward } = {
@@ -77,6 +78,7 @@ local adRewards: { AdReward } = {
 	{ key = "AdTripDouble", label = "Double a trip's rewards", custom = true, dailyLimit = 10 },
 	{ key = "AdStreak", label = "Save your daily streak", custom = true, dailyLimit = 1 },
 	{ key = "AdReroll", label = "Swap a daily quest", custom = true, dailyLimit = 3 },
+	{ key = "AdSpin", label = "Lucky Spin", custom = true, dailyLimit = 3 },
 }
 
 local passByKey: { [string]: GamePass } = {}

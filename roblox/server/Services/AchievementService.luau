@@ -88,6 +88,9 @@ local function check(player: Player)
 				newTitles = true
 			end
 		end
+		for _, rideId in perks.rides do
+			data.rides[rideId] = true
+		end
 		local lines = { ("⭐ Rank %d!"):format(rankAfter) }
 		for _, perk in AchievementConfig.rankPerks do
 			if perk.rank > rankBefore and perk.rank <= rankAfter then

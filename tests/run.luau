@@ -1001,6 +1001,52 @@ test("Loot: stickers and gadgets drop from Bigs and guardians, Holo is rare", fu
 	end
 end)
 
+-- Lucky Spin, tickets, rides --------------------------------------------------------------------------------
+
+local Wheel = R(Shared.Logic.Wheel)
+local WheelConfig = R(Shared.Config.Wheel)
+
+test("Lucky Spin: chances add up to 100% and rolls follow them", function()
+	local total = 0
+	for index in WheelConfig.slices do
+		total += Wheel.chance(index)
+	end
+	near(total, 1, 1e-9, "chances")
+	local rng = makeRng(8)
+	local counts = {}
+	local n = 50000
+	for _ = 1, n do
+		local index = Wheel.spin(rng)
+		counts[index] = (counts[index] or 0) + 1
+	end
+	for index in WheelConfig.slices do
+		near((counts[index] or 0) / n, Wheel.chance(index), 0.01, WheelConfig.slices[index].id)
+	end
+	eq(Wheel.freeReady(10, 10), false)
+	eq(Wheel.freeReady(9, 10), true)
+	assert(Cosmetics.rideById[WheelConfig.JACKPOT_RIDE], "jackpot ride exists")
+end)
+
+test("Tickets come from trips and quests; rides come from Rank and the pass", function()
+	local trip = { kind = "Long", pets = {}, started = 0, ends = 0, power = 1, element = true }
+	local reward = Expedition.rewards(trip, 1, makeRng(2))
+	eq(reward.tickets, 12, "8 tickets x1.5 same element")
+	assert((Progression.DAILY_QUEST_REWARD.tickets or 0) > 0, "daily quests give tickets")
+	local perks = AchievementLogic.perks(7)
+	eq(perks.rides[1], "Skateboard")
+	for _, perk in AchievementConfig.rankPerks do
+		if perk.ride then
+			assert(Cosmetics.rideById[perk.ride], "missing ride " .. perk.ride)
+		end
+	end
+	for level = 1, Progression.PASS_LEVELS do
+		local premium = Progression.passReward(level, true)
+		if premium and premium.ride then
+			assert(Cosmetics.rideById[premium.ride], "missing pass ride " .. premium.ride)
+		end
+	end
+end)
+
 test("Every creature model builds: 40 species x 6 variants x 3 sizes", function()
 	local PetModel = R(Shared.PetModel)
 	local Sizes = R(Shared.Config.Sizes)

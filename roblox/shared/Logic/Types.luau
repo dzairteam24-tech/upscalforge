@@ -47,6 +47,10 @@ export type PlayerData = {
 	achievements: { [string]: number }, -- achievement id -> tiers completed
 	index: { [string]: boolean }, -- "species|variant" ever owned
 	tutorial: number, -- current guide step, 0 when finished or skipped
+	tickets: number,
+	wheel: { lastFree: number }, -- UTC day of the last free spin
+	rides: { [string]: boolean },
+	equippedRide: string?,
 }
 
 -- Rewarded ad limits: watches per UTC day and per-reward cooldowns.
