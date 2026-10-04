@@ -12,6 +12,7 @@ local World1 = require(Shared.Config.World1)
 local Format = require(Shared.Logic.Format)
 local Net = require(Shared.Net)
 
+local AdsService = require(script.Parent.AdsService)
 local DataService = require(script.Parent.DataService)
 local GameService = require(script.Parent.GameService)
 
@@ -93,16 +94,8 @@ local function grantProduct(player: Player, key: string): boolean
 		GameService.markDirty(player)
 		return true
 	end
-	local ad = Products.adByKey[key]
-	if ad then
-		if ad.boost then
-			GameService.addBoost(player, ad.boost.stat, ad.boost.mult, ad.boost.seconds)
-		end
-		if ad.freeEggs then
-			GameService.grantFreeEggs(player, ad.freeEggs, 1)
-		end
-		GameService.notify(player, "Reward: " .. ad.label, "success")
-		return true
+	if Products.adByKey[key] then
+		return AdsService.grant(player, key)
 	end
 	return false
 end

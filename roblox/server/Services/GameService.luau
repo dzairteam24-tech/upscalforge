@@ -768,6 +768,8 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		nextCartridgeSlots = Gear.slots(data.reloads + 1),
 		expeditions = data.expeditions,
 		expeditionSlots = Expedition.slots(data.reloads),
+		ads = data.ads,
+		playtime = data.playtime,
 		maxSlots = GameService.maxSlots(player),
 		capacity = GameService.capacity(player),
 		vip = (State.get(player) :: State.Runtime).vip,

@@ -2,10 +2,13 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Net = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Net"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Progression = require(Shared:WaitForChild("Config"):WaitForChild("Progression"))
+local Net = require(Shared:WaitForChild("Net"))
 
 local Store = {
 	data = nil :: { [string]: any }?,
+	dataTime = 0, -- os.clock() when the latest snapshot arrived
 	currency = {
 		coins = 0,
 		gems = 0,
@@ -29,12 +32,28 @@ Store.CurrencyChanged = currencyChanged.Event
 function Store.init()
 	Net.event("Data").OnClientEvent:Connect(function(snapshot)
 		Store.data = snapshot
+		Store.dataTime = os.clock()
 		dataChanged:Fire(snapshot)
 	end)
 	Net.event("Currency").OnClientEvent:Connect(function(currency)
 		Store.currency = currency
 		currencyChanged:Fire(currency)
 	end)
+end
+
+-- Seconds until the next playtime gift (0 = ready), or nil when today's gifts are opened.
+function Store.giftSecondsLeft(): number?
+	local data = Store.data
+	local state = data and data.playtime
+	if not state then
+		return nil
+	end
+	local count = #Progression.PLAYTIME_GIFTS
+	if state.claimed >= count then
+		return nil
+	end
+	local played = state.seconds + (os.clock() - Store.dataTime)
+	return math.max(0, (state.claimed + 1) * Progression.GIFT_SECONDS - played)
 end
 
 -- Low-end mode: fewer effects and no creatures of other players.

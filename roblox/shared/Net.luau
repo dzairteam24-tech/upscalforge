@@ -35,6 +35,7 @@ local EVENTS = {
 	"Reload",
 	"StartExpedition",
 	"ClaimExpedition",
+	"ClaimGift",
 	-- server -> client
 	"Data",
 	"Currency",

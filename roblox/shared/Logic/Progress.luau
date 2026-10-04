@@ -50,6 +50,50 @@ function Progress.claimDaily(daily: { streak: number, lastDay: number }, today: 
 	return cycleDay
 end
 
+-- A broken streak (a few missed days, nothing claimed today) can be saved by watching an ad.
+function Progress.streakSavable(daily: { streak: number, lastDay: number }, today: number): boolean
+	local missed = today - daily.lastDay - 1
+	return daily.streak >= 2 and missed >= 1 and missed <= Progression.STREAK_SAVE_DAYS
+end
+
+-- Pretends yesterday was claimed, so today's claim continues the streak.
+function Progress.saveStreak(daily: { streak: number, lastDay: number }, today: number): boolean
+	if not Progress.streakSavable(daily, today) then
+		return false
+	end
+	daily.lastDay = today - 1
+	return true
+end
+
+---------------------------------------------------------------------------------------------------------------
+-- Playtime gifts
+
+function Progress.refreshPlaytime(state: Types.Playtime, today: number)
+	if state.day ~= today then
+		state.day = today
+		state.seconds = 0
+		state.claimed = 0
+	end
+end
+
+-- Seconds until the next gift (0 when one is ready), or nil when today's gifts are all opened.
+function Progress.giftSecondsLeft(state: Types.Playtime): number?
+	local nextIndex = state.claimed + 1
+	if nextIndex > #Progression.PLAYTIME_GIFTS then
+		return nil
+	end
+	return math.max(0, nextIndex * Progression.GIFT_SECONDS - state.seconds)
+end
+
+-- Opens the next gift if it's ready. Returns its number and reward.
+function Progress.claimGift(state: Types.Playtime): (number?, Progression.Reward?)
+	if Progress.giftSecondsLeft(state) ~= 0 then
+		return nil, nil
+	end
+	state.claimed += 1
+	return state.claimed, Progression.PLAYTIME_GIFTS[state.claimed]
+end
+
 ---------------------------------------------------------------------------------------------------------------
 -- Quests
 
@@ -128,6 +172,30 @@ function Progress.addQuestProgress(book: QuestBook, event: string, amount: numbe
 		end
 	end
 	return completed
+end
+
+-- Swaps an unfinished daily quest for one the player doesn't have today (ad reward).
+function Progress.rerollQuest(book: QuestBook, index: number, seed: number, bestEgg: number): boolean
+	local quest = book.daily[index]
+	if not quest or quest.claimed or quest.progress >= quest.goal then
+		return false
+	end
+	local used: { [string]: boolean } = {}
+	for _, other in book.daily do
+		used[other.id] = true
+	end
+	local pool = {}
+	for _, template in Progression.DAILY_TEMPLATES do
+		if not used[template.id] then
+			table.insert(pool, template)
+		end
+	end
+	if #pool == 0 then
+		return false
+	end
+	local template = pool[(math.abs(math.floor(seed)) % #pool) + 1]
+	book.daily[index] = build({ template }, bestEgg)[1]
+	return true
 end
 
 -- Marks a finished quest as claimed. Returns its reward, or nil.

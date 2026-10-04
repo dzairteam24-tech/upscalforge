@@ -41,6 +41,22 @@ export type PlayerData = {
 	cartridges: { string }, -- equipped cartridge item ids
 	reloads: number,
 	expeditions: { Expedition },
+	ads: AdState,
+	playtime: Playtime,
+}
+
+-- Rewarded ad limits: watches per UTC day and per-reward cooldowns.
+export type AdState = {
+	day: number,
+	counts: { [string]: number },
+	cooldowns: { [string]: number }, -- reward key -> os.time() when it can be watched again
+}
+
+-- Playtime gifts: seconds played today and how many gifts were opened.
+export type Playtime = {
+	day: number,
+	seconds: number,
+	claimed: number,
 }
 
 export type Expedition = {

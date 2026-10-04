@@ -12,6 +12,7 @@ local PetMath = require(Shared.Logic.PetMath)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
+local AdButton = require(script.Parent.AdButton)
 local PetCard = require(script.Parent.PetCard)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
@@ -192,7 +193,7 @@ function TripsPanel.mount(gui: ScreenGui)
 	})
 	sendButton.Parent = right
 
-	local timers: { { label: TextLabel, claim: TextButton, ends: number } } = {}
+	local timers: { { label: TextLabel, claim: TextButton, double: TextButton, skip: TextButton, ends: number } } = {}
 
 	local function updateTimers()
 		local t = now()
@@ -200,6 +201,8 @@ function TripsPanel.mount(gui: ScreenGui)
 			local ready = t >= timer.ends
 			timer.label.Text = if ready then "✅ Back home!" else "⏳ " .. Format.time(timer.ends - t)
 			timer.claim.Visible = ready
+			timer.double.Visible = ready and AdButton.available("AdTripDouble")
+			timer.skip.Visible = not ready and AdButton.available("AdTripSkip")
 		end
 	end
 
@@ -315,17 +318,43 @@ function TripsPanel.mount(gui: ScreenGui)
 				Text = "Claim",
 				AnchorPoint = Vector2.new(1, 0.5),
 				Position = UDim2.new(1, -8, 0.5, 0),
-				Size = UDim2.new(0.34, 0, 0, 42),
+				Size = UDim2.new(0.2, 0, 0, 42),
 				BackgroundColor3 = Theme.gold,
 				Visible = false,
-				MaxTextSize = 20,
+				MaxTextSize = 18,
 			})
 			claim.Parent = card
 			claim.Activated:Connect(function()
 				Net.event("ClaimExpedition"):FireServer(index, trip.started)
 			end)
+			local double = Theme.button({
+				Text = "▶ x2",
+				AnchorPoint = Vector2.new(1, 0.5),
+				Position = UDim2.new(0.8, -14, 0.5, 0),
+				Size = UDim2.new(0.16, 0, 0, 42),
+				BackgroundColor3 = Theme.purple,
+				Visible = false,
+				MaxTextSize = 18,
+			})
+			double.Parent = card
+			double.Activated:Connect(function()
+				AdButton.watch("AdTripDouble", trip.started)
+			end)
+			local skip = Theme.button({
+				Text = "▶ Finish now",
+				AnchorPoint = Vector2.new(1, 0.5),
+				Position = UDim2.new(1, -8, 0.5, 0),
+				Size = UDim2.new(0.34, 0, 0, 42),
+				BackgroundColor3 = Theme.purple,
+				Visible = false,
+				MaxTextSize = 16,
+			})
+			skip.Parent = card
+			skip.Activated:Connect(function()
+				AdButton.watch("AdTripSkip", trip.started)
+			end)
 			card.Parent = left
-			table.insert(timers, { label = timeLabel, claim = claim, ends = trip.ends })
+			table.insert(timers, { label = timeLabel, claim = claim, double = double, skip = skip, ends = trip.ends })
 		end
 		if #trips == 0 then
 			order += 1

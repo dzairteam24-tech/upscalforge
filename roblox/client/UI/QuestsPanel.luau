@@ -13,6 +13,7 @@ local Progress = require(Shared.Logic.Progress)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
+local AdButton = require(script.Parent.AdButton)
 local Rewards = require(script.Parent.Rewards)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
@@ -152,6 +153,20 @@ function QuestsPanel.mount(gui: ScreenGui)
 				end
 			end)
 			b.Parent = row
+			if kind == "daily" and not done and not quest.claimed and AdButton.available("AdReroll") then
+				text.Size = UDim2.new(0.5, 0, 0, 24)
+				local swap = Theme.button({
+					Text = "▶ Swap",
+					Size = UDim2.new(0.15, 0, 0, 24),
+					Position = UDim2.new(0.52, 0, 0, 6),
+					BackgroundColor3 = Theme.purple,
+					MaxTextSize = 13,
+				})
+				swap.Activated:Connect(function()
+					AdButton.watch("AdReroll", i)
+				end)
+				swap.Parent = row
+			end
 			row.Parent = body
 			order += 1
 		end

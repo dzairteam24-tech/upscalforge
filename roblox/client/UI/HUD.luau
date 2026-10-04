@@ -74,6 +74,43 @@ function HUD.mount(gui: ScreenGui)
 		Windows.toggle("Settings")
 	end)
 
+	-- Playtime gift: counts down, then glows until opened
+	local giftButton = Theme.button({
+		Name = "Gift",
+		Text = "🎁",
+		Position = UDim2.fromOffset(236, 12),
+		Size = UDim2.fromOffset(112, 40),
+		BackgroundColor3 = Theme.card,
+		MaxTextSize = 20,
+	})
+	giftButton.Parent = gui
+	giftButton.Activated:Connect(function()
+		if Store.giftSecondsLeft() == 0 then
+			Net.event("ClaimGift"):FireServer()
+		end
+	end)
+	local function updateGift()
+		local left = Store.giftSecondsLeft()
+		giftButton.Visible = left ~= nil
+		if left == nil then
+			return
+		end
+		if left <= 0 then
+			giftButton.Text = "🎁 Open!"
+			giftButton.BackgroundColor3 = if os.clock() % 1 < 0.5 then Theme.gold else Theme.green
+		else
+			local s = math.ceil(left)
+			giftButton.Text = ("🎁 %d:%02d"):format(s // 60, s % 60)
+			giftButton.BackgroundColor3 = Theme.card
+		end
+	end
+	task.spawn(function()
+		while true do
+			updateGift()
+			task.wait(0.5)
+		end
+	end)
+
 	-- Zone name + restore bar (top center)
 	local zoneFrame = Theme.frame({
 		Name = "Zone",

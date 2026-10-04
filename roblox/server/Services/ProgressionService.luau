@@ -12,6 +12,7 @@ local Progress = require(Shared.Logic.Progress)
 local Types = require(Shared.Logic.Types)
 local Net = require(Shared.Net)
 
+local AdsService = require(script.Parent.AdsService)
 local DataService = require(script.Parent.DataService)
 local GameService = require(script.Parent.GameService)
 local State = require(script.Parent.State)
@@ -160,6 +161,40 @@ local function claimQuest(player: Player, kind: any, index: any)
 	GameService.notify(player, "Quest reward: " .. grant(player, data, reward), "success")
 end
 
+local function claimGift(player: Player)
+	local data = DataService.get(player)
+	local runtime = State.get(player)
+	if not data or not runtime or not State.throttle(runtime, "ClaimGift", 0.5) then
+		return
+	end
+	Progress.refreshPlaytime(data.playtime, Progress.day(os.time()))
+	local number, reward = Progress.claimGift(data.playtime)
+	if not number or not reward then
+		return
+	end
+	GameService.notify(player, ("🎁 Gift %d: %s"):format(number, grant(player, data, reward)), "success")
+end
+
+-- Counts playtime and tells the player when a gift is ready.
+local PLAYTIME_STEP = 5
+local function tickPlaytime()
+	local today = Progress.day(os.time())
+	for player in State.all() do
+		local data = DataService.get(player)
+		if not data then
+			continue
+		end
+		local state = data.playtime
+		Progress.refreshPlaytime(state, today)
+		local before = Progress.giftSecondsLeft(state)
+		state.seconds += PLAYTIME_STEP
+		if before and before > 0 and Progress.giftSecondsLeft(state) == 0 then
+			GameService.notify(player, "🎁 A playtime gift is ready!", "success")
+			GameService.markDirty(player)
+		end
+	end
+end
+
 local function claimPass(player: Player, level: any, premium: any)
 	local data = DataService.get(player)
 	local runtime = State.get(player)
@@ -209,8 +244,67 @@ function ProgressionService.init()
 	Net.event("ClaimQuest").OnServerEvent:Connect(claimQuest)
 	Net.event("ClaimPass").OnServerEvent:Connect(claimPass)
 	Net.event("EquipCosmetic").OnServerEvent:Connect(equipCosmetic)
+	Net.event("ClaimGift").OnServerEvent:Connect(claimGift)
+
+	-- Ad: keep the daily streak after missing a few days
+	AdsService.register("AdStreak", {
+		canUse = function(player)
+			local data = DataService.get(player)
+			if not data or not Progress.streakSavable(data.daily, Progress.day(os.time())) then
+				return false, "Your streak doesn't need saving"
+			end
+			return true, nil
+		end,
+		grant = function(player)
+			local data = DataService.get(player)
+			if not data or not Progress.saveStreak(data.daily, Progress.day(os.time())) then
+				return false
+			end
+			GameService.notify(player, ("Streak saved! Day %d is waiting for you."):format(data.daily.streak + 1), "success")
+			GameService.markDirty(player)
+			return true
+		end,
+	})
+
+	-- Ad: swap an unfinished daily quest for another one
+	local function rerollable(player: Player, index: any): boolean
+		local data = DataService.get(player)
+		local quest = data and type(index) == "number" and data.quests.daily[index]
+		return quest ~= nil and quest ~= false and not quest.claimed and quest.progress < quest.goal
+	end
+	AdsService.register("AdReroll", {
+		canUse = function(player, index)
+			if not rerollable(player, index) then
+				return false, "Pick an unfinished daily quest"
+			end
+			return true, nil
+		end,
+		grant = function(player, index)
+			local data = DataService.get(player)
+			if not data or not rerollable(player, index) then
+				return false
+			end
+			refresh(player)
+			local seed = os.time() + player.UserId + math.floor(os.clock() * 1000)
+			if not Progress.rerollQuest(data.quests, index, seed, bestEgg(data)) then
+				return false
+			end
+			GameService.notify(player, "New quest: " .. questText(data.quests.daily[index]), "success")
+			GameService.markDirty(player)
+			return true
+		end,
+	})
 
 	updateRift()
+	task.spawn(function()
+		while true do
+			task.wait(PLAYTIME_STEP)
+			local ok, err = pcall(tickPlaytime)
+			if not ok then
+				warn("[Progression] playtime error", err)
+			end
+		end
+	end)
 	task.spawn(function()
 		while true do
 			task.wait(30)

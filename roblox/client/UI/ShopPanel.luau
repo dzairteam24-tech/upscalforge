@@ -11,6 +11,7 @@ local Format = require(Shared.Logic.Format)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
+local AdButton = require(script.Parent.AdButton)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
 
@@ -131,10 +132,16 @@ function ShopPanel.mount(gui: ScreenGui)
 			})
 			note.Parent = scroll
 			for order, reward in Products.adRewards do
+				if not reward.inShop then
+					continue
+				end
 				local product = Products.productByKey[reward.key]
-				local ready = product ~= nil and product.id ~= 0
-				row(order, reward.label, "Free · watch a video", if ready then "▶ Watch" else "Soon", ready, function()
-					Net.event("WatchAd"):FireServer(reward.key)
+				local configured = product ~= nil and product.id ~= 0
+				local wait = AdButton.cooldown(reward.key)
+				local subtitle = if reward.cooldown then "Free · once an hour" else "Free · watch a video"
+				local action = if not configured then "Soon" elseif wait > 0 then Format.time(wait) else "▶ Watch"
+				row(order, reward.label, subtitle, action, configured and wait <= 0, function()
+					AdButton.watch(reward.key)
 				end)
 			end
 		else

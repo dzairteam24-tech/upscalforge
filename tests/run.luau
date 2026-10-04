@@ -773,6 +773,84 @@ end)
 
 -- PetModel (builds real Roblox instances through Lune, so wrong property names fail here) -----------------
 
+-- Ads limits, streak save, quest swap, playtime gifts --------------------------------------------------------
+
+local AdLimits = R(Shared.Logic.AdLimits)
+
+test("Ads: daily limits reset each day, cooldowns block until they pass", function()
+	local state = { day = 0, counts = {}, cooldowns = {} }
+	for _ = 1, 3 do
+		assert(AdLimits.canWatch(state, "AdReroll", 1000, 10))
+		AdLimits.record(state, "AdReroll", 1000, 10)
+	end
+	eq((AdLimits.canWatch(state, "AdReroll", 1000, 10)), false, "4th reroll")
+	eq(AdLimits.left(state, "AdReroll", 10), 0)
+	eq(AdLimits.left(state, "AdReroll", 11), 3, "new day")
+	AdLimits.refresh(state, 11)
+	assert(AdLimits.canWatch(state, "AdReroll", 1000, 11))
+
+	assert(AdLimits.canWatch(state, "AdElixir", 1000, 11))
+	AdLimits.record(state, "AdElixir", 1000, 11)
+	eq((AdLimits.canWatch(state, "AdElixir", 1000 + 3599, 11)), false, "cooldown")
+	assert(AdLimits.canWatch(state, "AdElixir", 1000 + 3600, 11))
+	eq(AdLimits.left(state, "AdCoins", 11), nil, "no limit")
+end)
+
+test("Daily: a broken streak can be saved by an ad for a few days", function()
+	local daily = { streak = 5, lastDay = 100 }
+	eq(Progress.streakSavable(daily, 101), false, "nothing missed")
+	eq(Progress.streakSavable(daily, 102), true, "missed one day")
+	eq(Progress.streakSavable(daily, 104), true, "missed three days")
+	eq(Progress.streakSavable(daily, 105), false, "too late")
+	eq(Progress.streakSavable({ streak = 1, lastDay = 100 }, 102), false, "nothing to save")
+	assert(Progress.saveStreak(daily, 103))
+	eq(Progress.claimDaily(daily, 103), 6, "streak continues")
+	eq(daily.streak, 6)
+end)
+
+test("Quests: an unfinished daily quest can be swapped for a new one", function()
+	local book = { day = -1, week = -1, daily = {}, weekly = {} }
+	Progress.refreshQuests(book, 1700000000, 42, 100)
+	local before = {}
+	for _, quest in book.daily do
+		before[quest.id] = true
+	end
+	local old = book.daily[1].id
+	assert(Progress.rerollQuest(book, 1, 7, 100))
+	assert(not before[book.daily[1].id], "new quest is one the player didn't have")
+	assert(book.daily[1].id ~= old)
+	eq(book.daily[1].progress, 0)
+	book.daily[2].progress = book.daily[2].goal
+	eq(Progress.rerollQuest(book, 2, 7, 100), false, "finished quests stay")
+	eq(Progress.rerollQuest(book, 9, 7, 100), false, "missing index")
+end)
+
+test("Gifts: one every 15 minutes, opened in order, reset each day", function()
+	local state = { day = 0, seconds = 0, claimed = 0 }
+	Progress.refreshPlaytime(state, 5)
+	eq(Progress.giftSecondsLeft(state), Progression.GIFT_SECONDS)
+	eq((Progress.claimGift(state)), nil, "not yet")
+	state.seconds = Progression.GIFT_SECONDS * 2
+	local first = Progress.claimGift(state)
+	local second = Progress.claimGift(state)
+	eq(first, 1)
+	eq(second, 2)
+	eq((Progress.claimGift(state)), nil, "third isn't ready")
+	state.seconds = Progression.GIFT_SECONDS * 100
+	for _ = 3, #Progression.PLAYTIME_GIFTS do
+		assert(Progress.claimGift(state))
+	end
+	eq(Progress.giftSecondsLeft(state), nil, "all opened")
+	for _, reward in Progression.PLAYTIME_GIFTS do
+		for _, entry in reward.items or {} do
+			assert(Items.byId[entry.id], "unknown gift item " .. entry.id)
+		end
+	end
+	Progress.refreshPlaytime(state, 6)
+	eq(state.claimed, 0)
+	eq(state.seconds, 0)
+end)
+
 test("Every creature model builds: 40 species x 6 variants x 3 sizes", function()
 	local PetModel = R(Shared.PetModel)
 	local Sizes = R(Shared.Config.Sizes)

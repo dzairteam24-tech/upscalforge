@@ -74,6 +74,8 @@ local function template(): PlayerData
 		cartridges = {},
 		reloads = 0,
 		expeditions = {},
+		ads = { day = 0, counts = {}, cooldowns = {} },
+		playtime = { day = 0, seconds = 0, claimed = 0 },
 	}
 end
 

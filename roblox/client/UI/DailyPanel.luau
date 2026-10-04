@@ -9,6 +9,7 @@ local Progress = require(Shared.Logic.Progress)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
+local AdButton = require(script.Parent.AdButton)
 local Rewards = require(script.Parent.Rewards)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
@@ -52,6 +53,18 @@ function DailyPanel.mount(gui: ScreenGui)
 	claim.Activated:Connect(function()
 		Net.event("ClaimDaily"):FireServer()
 	end)
+	local save = Theme.button({
+		Text = "▶ Save streak",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.72, 0, 0.78, 0),
+		Size = UDim2.new(0.4, 0, 0.16, 0),
+		BackgroundColor3 = Theme.purple,
+		Visible = false,
+	})
+	save.Parent = content
+	save.Activated:Connect(function()
+		AdButton.watch("AdStreak")
+	end)
 
 	local function rebuild()
 		for _, child in row:GetChildren() do
@@ -91,8 +104,18 @@ function DailyPanel.mount(gui: ScreenGui)
 			text.Parent = card
 			card.Parent = row
 		end
+		local savable = data ~= nil
+			and Progress.streakSavable(data.daily, Progress.day(os.time()))
+			and AdButton.available("AdStreak")
+		save.Visible = savable
+		claim.Position = UDim2.new(if savable then 0.28 else 0.5, 0, 0.78, 0)
+		if savable then
+			save.Text = ("▶ Keep my %d-day streak"):format(streak)
+		end
 		if today then
-			status.Text = ("Day %d is ready! Streak: %d"):format(today, streak)
+			status.Text = if savable
+				then ("You missed a day! Watch a video to keep your streak, or start again from Day 1.")
+				else ("Day %d is ready! Streak: %d"):format(today, streak)
 			claim.Visible = true
 		else
 			status.Text = ("Next reward in %s · Streak: %d days"):format(Format.time(Progress.secondsToNextDay(os.time())), streak)

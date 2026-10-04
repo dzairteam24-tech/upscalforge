@@ -104,6 +104,22 @@ local function passReward(level: number, premium: boolean): Reward?
 	return { freeEggs = 2, freeEggLuck = 2 }
 end
 
+-- Playtime gifts: one every 15 minutes played today, bigger as the day goes on.
+local GIFT_SECONDS = 15 * 60
+local PLAYTIME_GIFTS: { Reward } = {
+	{ coinsInEggs = 2 },
+	{ items = { { id = "Elixir_Luck_2", amount = 1 } } },
+	{ gems = 20 },
+	{ coinsInEggs = 4, items = { { id = "KeyHalf_Zone", amount = 1 } } },
+	{ freeEggs = 3, freeEggLuck = 1.5 },
+	{ items = { { id = "Elixir_Fortune_2", amount = 1 } } },
+	{ gems = 50, items = { { id = "KeyHalf_Golden", amount = 1 } } },
+	{ coinsInEggs = 10, items = { { id = "Cart_Coins_2", amount = 1 } } },
+}
+
+-- An ad can save a broken daily streak if at most this many days were missed.
+local STREAK_SAVE_DAYS = 3
+
 -- Pixel Rift: today's zone gets coins x1.5 and Pixel chance x3.
 local RIFT_COINS = 1.5
 local RIFT_PIXEL_CHANCE = 3
@@ -123,4 +139,7 @@ return {
 	passReward = passReward,
 	RIFT_COINS = RIFT_COINS,
 	RIFT_PIXEL_CHANCE = RIFT_PIXEL_CHANCE,
+	GIFT_SECONDS = GIFT_SECONDS,
+	PLAYTIME_GIFTS = PLAYTIME_GIFTS,
+	STREAK_SAVE_DAYS = STREAK_SAVE_DAYS,
 }
