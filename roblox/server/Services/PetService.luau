@@ -77,7 +77,7 @@ local function grant(
 				and (data.stats.hatches or 0) + 1 >= Constants.GUARANTEED_GOLDEN_BY_HATCH
 			local roll = EggRoll.roll(zoneId, {
 				luck = luck,
-				variantChance = runtime.effects.variantChance,
+				variantChance = GameService.variantChance(player, zoneId),
 				forceGolden = forceGolden,
 				minVariant = minVariant,
 			}, random)
@@ -92,6 +92,7 @@ local function grant(
 			end
 		end
 	end
+	GameService.progress(player, "Hatch", eggs)
 	if data.settings.autoEquipBest then
 		Inventory.equipBest(data, GameService.maxSlots(player))
 	end
@@ -266,6 +267,7 @@ function PetService.init()
 		end
 		local pet = data.pets[id]
 		GameService.notify(player, ("Fused a %s %s!"):format(pet.v, pet.s), "success")
+		GameService.progress(player, "Fuse", 1)
 		HatchResult:FireClient(player, { { id = id, s = pet.s, v = pet.v, z = pet.z } }, true)
 		GameService.refresh(player)
 	end)

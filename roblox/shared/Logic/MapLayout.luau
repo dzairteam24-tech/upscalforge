@@ -7,6 +7,7 @@ local MapLayout = {
 	CELL = 170,
 	PLATFORM = 130,
 	BRIDGE_WIDTH = 24,
+	SOURCE_SPACING = 14, -- minimum distance between coin sources (the vault is 12 studs wide)
 }
 
 function MapLayout.center(zoneId: number): Vector3
@@ -50,7 +51,7 @@ function MapLayout.sourceSpots(zoneId: number, count: number, seed: number): { V
 		local nearCenter = offset.Magnitude < 10
 		local crowded = false
 		for _, other in spots do
-			if (other - (center + offset)).Magnitude < 9 then
+			if (other - (center + offset)).Magnitude < MapLayout.SOURCE_SPACING then
 				crowded = true
 				break
 			end

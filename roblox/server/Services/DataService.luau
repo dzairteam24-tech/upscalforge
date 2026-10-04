@@ -64,6 +64,13 @@ local function template(): PlayerData
 		settings = { allowTrades = true, autoEquipBest = true },
 		lastSeen = 0,
 		lastPower = 0,
+		items = {},
+		boosts = {},
+		daily = { streak = 0, lastDay = -1 },
+		quests = { day = -1, week = -1, daily = {}, weekly = {} },
+		pass = { season = 0, xp = 0, premium = false, claimedFree = {}, claimedPremium = {} },
+		guardians = {},
+		trails = {},
 	}
 end
 

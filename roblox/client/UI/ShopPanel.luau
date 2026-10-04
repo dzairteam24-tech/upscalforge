@@ -23,12 +23,19 @@ function ShopPanel.mount(gui: ScreenGui)
 
 	local tabs = Theme.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40) })
 	tabs.Parent = content
-	local upgradesTab = Theme.button({ Text = "🪙 Upgrades", Size = UDim2.new(0.5, -4, 1, -4), BackgroundColor3 = Theme.gold })
+	local upgradesTab = Theme.button({ Text = "🪙 Upgrades", Size = UDim2.new(1 / 3, -6, 1, -4), BackgroundColor3 = Theme.gold })
 	upgradesTab.Parent = tabs
+	local freeTab = Theme.button({
+		Text = "▶ Free",
+		Size = UDim2.new(1 / 3, -6, 1, -4),
+		Position = UDim2.new(1 / 3, 3, 0, 0),
+		BackgroundColor3 = Theme.card,
+	})
+	freeTab.Parent = tabs
 	local robuxTab = Theme.button({
 		Text = "⭐ Robux",
-		Size = UDim2.new(0.5, -4, 1, -4),
-		Position = UDim2.new(0.5, 4, 0, 0),
+		Size = UDim2.new(1 / 3, -6, 1, -4),
+		Position = UDim2.new(2 / 3, 3, 0, 0),
 		BackgroundColor3 = Theme.card,
 	})
 	robuxTab.Parent = tabs
@@ -93,6 +100,7 @@ function ShopPanel.mount(gui: ScreenGui)
 			end
 		end
 		upgradesTab.BackgroundColor3 = if current == "Upgrades" then Theme.gold else Theme.card
+		freeTab.BackgroundColor3 = if current == "Free" then Theme.gold else Theme.card
 		robuxTab.BackgroundColor3 = if current == "Robux" then Theme.gold else Theme.card
 		local data = Store.data
 		if not data then
@@ -110,6 +118,23 @@ function ShopPanel.mount(gui: ScreenGui)
 				end
 				row(order, upgrade.name, subtitle, if cost then "🪙 " .. Format.abbrev(cost) else "MAX", cost ~= nil and not needs, function()
 					Net.event("BuyUpgrade"):FireServer(upgrade.id)
+				end)
+			end
+		elseif current == "Free" then
+			local note = Theme.label({
+				Text = "Watch a short video to get a reward. Boost time stacks up to 4 hours.",
+				Font = Enum.Font.Gotham,
+				TextColor3 = Theme.muted,
+				Size = UDim2.new(1, -12, 0, 30),
+				LayoutOrder = 0,
+				MaxTextSize = 15,
+			})
+			note.Parent = scroll
+			for order, reward in Products.adRewards do
+				local product = Products.productByKey[reward.key]
+				local ready = product ~= nil and product.id ~= 0
+				row(order, reward.label, "Free · watch a video", if ready then "▶ Watch" else "Soon", ready, function()
+					Net.event("WatchAd"):FireServer(reward.key)
 				end)
 			end
 		else
@@ -131,8 +156,12 @@ function ShopPanel.mount(gui: ScreenGui)
 				end)
 			end
 			for _, product in Products.devProducts do
+				if product.adOnly then
+					continue
+				end
 				order += 1
-				local owned = product.key == "SupporterTitle" and data.titles.Supporter
+				local owned = (product.key == "SupporterTitle" and data.titles.Supporter)
+					or (product.key == "PassPremium" and data.pass.premium)
 				row(order, product.name, product.description, if owned then "Owned" elseif product.id == 0 then "Soon" else "Buy", not owned and product.id ~= 0, function()
 					MarketplaceService:PromptProductPurchase(Players.LocalPlayer, product.id)
 				end)
@@ -146,6 +175,10 @@ function ShopPanel.mount(gui: ScreenGui)
 	end)
 	robuxTab.Activated:Connect(function()
 		current = "Robux"
+		rebuild()
+	end)
+	freeTab.Activated:Connect(function()
+		current = "Free"
 		rebuild()
 	end)
 	Store.DataChanged:Connect(function()

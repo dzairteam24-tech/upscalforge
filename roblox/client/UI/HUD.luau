@@ -8,6 +8,8 @@ local Format = require(Shared.Logic.Format)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
+local DailyPanel = require(script.Parent.DailyPanel)
+local QuestsPanel = require(script.Parent.QuestsPanel)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
 
@@ -115,39 +117,81 @@ function HUD.mount(gui: ScreenGui)
 	})
 	boostLabel.Parent = gui
 
-	-- Menu buttons (left middle)
+	-- Rift banner (under the zone)
+	local riftLabel = Theme.label({
+		Name = "Rift",
+		Text = "",
+		Font = Theme.titleFont,
+		TextColor3 = Color3.fromRGB(200, 160, 255),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 66),
+		Size = UDim2.fromOffset(360, 24),
+		MaxTextSize = 18,
+	})
+	riftLabel.Parent = gui
+
+	-- Menu buttons (left middle), two columns so it fits on phones
 	local menu = Theme.frame({
 		Name = "Menu",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 12, 0.55, 0),
-		Size = UDim2.fromOffset(84, 330),
+		Position = UDim2.new(0, 12, 0.58, 0),
+		Size = UDim2.fromOffset(160, 260),
 	})
-	Theme.list(menu, 8)
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.fromOffset(76, 58)
+	grid.CellPadding = UDim2.fromOffset(8, 8)
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = menu
 	local function menuButton(text: string, color: Color3, order: number): TextButton
 		local b = Theme.button({
 			Text = text,
-			Size = UDim2.fromOffset(84, 58),
 			BackgroundColor3 = color,
 			LayoutOrder = order,
-			MaxTextSize = 18,
+			MaxTextSize = 16,
 		})
 		b.Parent = menu
 		return b
 	end
+	local function dot(button: TextButton): Frame
+		local d = Theme.frame({
+			Name = "Dot",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(1, -6, 0, 6),
+			Size = UDim2.fromOffset(16, 16),
+			BackgroundColor3 = Theme.red,
+			Visible = false,
+		})
+		Theme.corner(d, 8)
+		d.Parent = button
+		return d
+	end
 	menuButton("🐾\nPets", Theme.accent, 1).Activated:Connect(function()
 		Windows.toggle("Pets")
 	end)
-	menuButton("🛒\nShop", Theme.gold, 2).Activated:Connect(function()
+	menuButton("🧪\nItems", Color3.fromRGB(80, 170, 120), 2).Activated:Connect(function()
+		Windows.toggle("Items")
+	end)
+	local questsButton = menuButton("📜\nQuests", Color3.fromRGB(240, 138, 45), 3)
+	questsButton.Activated:Connect(function()
+		Windows.toggle("Quests")
+	end)
+	local dailyButton = menuButton("🎁\nDaily", Theme.red, 4)
+	dailyButton.Activated:Connect(function()
+		Windows.toggle("Daily")
+	end)
+	menuButton("🛒\nShop", Theme.gold, 5).Activated:Connect(function()
 		Windows.toggle("Shop")
 	end)
-	menuButton("🔁\nTrade", Theme.purple, 3).Activated:Connect(function()
+	menuButton("🔁\nTrade", Theme.purple, 6).Activated:Connect(function()
 		Windows.toggle("Trade")
 	end)
-	local autoButton = menuButton("🤖\nAuto", Theme.card, 4)
+	local autoButton = menuButton("🤖\nAuto", Theme.card, 7)
 	autoButton.Activated:Connect(function()
 		Net.event("ToggleAuto"):FireServer(not Store.currency.auto)
 	end)
+	local questsDot = dot(questsButton)
+	local dailyDot = dot(dailyButton)
 	menu.Parent = gui
 
 	local function update()
@@ -171,6 +215,10 @@ function HUD.mount(gui: ScreenGui)
 		end
 		boostLabel.Text = table.concat(lines, "\n")
 		autoButton.BackgroundColor3 = if c.auto then Theme.green else Theme.card
+		local rift = if c.rift then World1.zonesById[c.rift] else nil
+		riftLabel.Text = if rift then "🟪 Pixel Rift today: " .. rift.name else ""
+		questsDot.Visible = QuestsPanel.hasClaimable()
+		dailyDot.Visible = DailyPanel.claimable() ~= nil
 	end
 	Store.CurrencyChanged:Connect(update)
 	update()

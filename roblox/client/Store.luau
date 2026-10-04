@@ -16,6 +16,8 @@ local Store = {
 		zoneProgress = 0,
 		auto = false,
 		boosts = {} :: { [string]: { mult: number, left: number } },
+		rift = nil :: number?,
+		questProgress = nil :: { daily: { number }, weekly: { number } }?,
 	},
 }
 

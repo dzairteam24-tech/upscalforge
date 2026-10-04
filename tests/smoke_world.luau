@@ -67,6 +67,17 @@ for zoneId in WorldBuilder.eggPositions do
 end
 local sources = #workspaceInstance:FindFirstChild("Breakables"):GetChildren()
 
+-- A Big and a guardian (Titan) built with real instances
+local Vector3 = roblox.Vector3
+local big = BreakableService.spawnSpecial(1, "Big", { s = "Kitty", v = "Lava", z = "Big" }, Vector3.new(20, 0, 20), 1000, 180)
+local guardian = BreakableService.spawnSpecial(1, "Guardian", { s = "Bear", v = "Normal", z = "Titan" }, Vector3.new(-20, 0, 20), 10000, 300)
+assert(big.part:FindFirstChildOfClass("Model"), "Big has a model")
+assert(#BreakableService.specials() == 2, "two specials")
+assert(#BreakableService.aliveInZone(1) == 24, "specials are not in the instant-break list")
+BreakableService.despawn(big)
+BreakableService.despawn(guardian)
+assert(#BreakableService.specials() == 0, "despawned")
+
 print(("zones=%d gates=%d eggs=%d sources=%d"):format(zones, gates, eggs, sources))
 local ok = zones == 11 and gates == 12 and eggs == 10 and sources == 10 * 24
 if not ok then

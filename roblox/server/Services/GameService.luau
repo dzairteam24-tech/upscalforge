@@ -12,7 +12,13 @@ local Constants = require(Shared.Config.Constants)
 local Products = require(Shared.Config.Products)
 local Upgrades = require(Shared.Config.Upgrades)
 local World1 = require(Shared.Config.World1)
+local Cosmetics = require(Shared.Config.Cosmetics)
+local Items = require(Shared.Config.Items)
+local Progression = require(Shared.Config.Progression)
+local Bag = require(Shared.Logic.Bag)
+local Boosts = require(Shared.Logic.Boosts)
 local Combo = require(Shared.Logic.Combo)
+local Loot = require(Shared.Logic.Loot)
 local Effects = require(Shared.Logic.Effects)
 local Format = require(Shared.Logic.Format)
 local Inventory = require(Shared.Logic.Inventory)
@@ -20,6 +26,7 @@ local MapLayout = require(Shared.Logic.MapLayout)
 local PetMath = require(Shared.Logic.PetMath)
 local Types = require(Shared.Logic.Types)
 local Net = require(Shared.Net)
+local Signal = require(Shared.Signal)
 
 local BreakableService = require(script.Parent.BreakableService)
 local DataService = require(script.Parent.DataService)
@@ -28,6 +35,24 @@ local State = require(script.Parent.State)
 type PlayerData = Types.PlayerData
 
 local GameService = {}
+
+-- Fired for quest and pass progress: (player, event, amount). Events: Coins, Break, Hatch, Combo,
+-- Fuse, Big, Guardian, Restore, Rift.
+GameService.Progress = Signal.new() :: Signal.Signal<Player, string, number>
+
+function GameService.progress(player: Player, event: string, amount: number)
+	GameService.Progress:Fire(player, event, amount)
+end
+
+-- Today's Pixel Rift zone (set by ProgressionService).
+GameService.riftZone = 0
+
+local function riftCoinMult(runtime: State.Runtime, zoneId: number?): number
+	if zoneId and zoneId == GameService.riftZone then
+		return Progression.RIFT_COINS * Effects.get(runtime.effects, "RiftCoins")
+	end
+	return 1
+end
 
 local NotifyRemote = Net.event("Notify")
 local DataRemote = Net.event("Data")
@@ -75,7 +100,49 @@ function GameService.luck(player: Player): number
 	if not runtime then
 		return 1
 	end
-	return Effects.get(runtime.effects, "Luck") * State.boost(runtime, "Luck", os.clock())
+	local data = DataService.get(player)
+	local saved = if data then Boosts.active(data.boosts, "Luck") else 1
+	return Effects.get(runtime.effects, "Luck") * State.boost(runtime, "Luck", os.clock()) * saved
+end
+
+-- Extra multiplier per variant for hatching: skills plus the saved Pixel boost.
+function GameService.variantChance(player: Player, eggZone: number?): { [string]: number }
+	local runtime = State.get(player)
+	local data = DataService.get(player)
+	local chances = if runtime then table.clone(runtime.effects.variantChance) else {}
+	if data then
+		chances.Pixel = (chances.Pixel or 1) * Boosts.active(data.boosts, "Pixel")
+	end
+	if eggZone and eggZone == GameService.riftZone then
+		chances.Pixel = (chances.Pixel or 1) * Progression.RIFT_PIXEL_CHANCE
+	end
+	return chances
+end
+
+-- Adds a saved timed boost (elixirs, ads) and tells the client.
+function GameService.addBoost(player: Player, stat: string, mult: number, seconds: number)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	Boosts.add(data.boosts, stat, mult, seconds, Items.BOOST_CAP_SECONDS)
+	if stat == "Speed" then
+		GameService.refresh(player)
+	end
+	GameService.markDirty(player)
+end
+
+function GameService.giveItem(player: Player, itemId: string, amount: number, announce: boolean?)
+	local data = DataService.get(player)
+	local item = Items.byId[itemId]
+	if not data or not item then
+		return
+	end
+	Bag.add(data.items, itemId, amount)
+	GameService.markDirty(player)
+	if announce then
+		NotifyRemote:FireClient(player, ("Found %s%s!"):format(item.name, if amount > 1 then " x" .. amount else ""), "success")
+	end
 end
 
 function GameService.markDirty(player: Player)
@@ -88,6 +155,27 @@ end
 -- Lets PetService register the hatch function used by EggDrop skills (avoids a require cycle).
 function GameService.setHatcher(fn: (Player, number, number, number, string?) -> ())
 	hatchEggs = fn
+end
+
+-- Free eggs (ad rewards, daily rewards): from the zone the player stands in, or their best unlocked egg.
+function GameService.grantFreeEggs(player: Player, count: number, luck: number?)
+	local data = DataService.get(player)
+	local runtime = State.get(player)
+	if not data or not runtime or not hatchEggs then
+		return
+	end
+	local zone = if runtime.zoneId then World1.zonesById[runtime.zoneId] else nil
+	local zoneId = 1
+	if zone and zone.eggPrice > 0 then
+		zoneId = zone.id
+	else
+		for _, candidate in World1.zones do
+			if candidate.eggPrice > 0 and data.unlockedZones[tostring(candidate.id)] then
+				zoneId = candidate.id
+			end
+		end
+	end
+	hatchEggs(player, zoneId, count, luck or 1, nil)
 end
 
 local function zoneElement(zoneId: number?): string
@@ -141,7 +229,7 @@ function GameService.refresh(player: Player)
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		local speed = 16 * Upgrades.walkSpeedMult(data.upgrades.WalkSpeed or 0)
-		speed *= math.min(3, Effects.get(runtime.effects, "Speed"))
+		speed *= math.min(3, Effects.get(runtime.effects, "Speed") * Boosts.active(data.boosts, "Speed"))
 		humanoid.WalkSpeed = speed
 	end
 
@@ -150,7 +238,7 @@ end
 
 local function computePower(player: Player, runtime: State.Runtime, data: PlayerData, now: number)
 	local boosts = {
-		Power = State.boost(runtime, "Power", now),
+		Power = State.boost(runtime, "Power", now) * Boosts.active(data.boosts, "Power"),
 		Element = if State.boost(runtime, "Element", now) > 1 then State.boost(runtime, "Element", now) else nil,
 		CloneCount = if State.boost(runtime, "Clone", now) > 1 then State.boost(runtime, "Clone", now) else nil,
 	}
@@ -165,10 +253,17 @@ local function comboActive(runtime: State.Runtime, now: number): boolean
 	return now - runtime.lastBreak <= Constants.COMBO_WINDOW + hold
 end
 
-local function coinMultiplier(runtime: State.Runtime, data: PlayerData, kind: Breakables.BreakableKind?, now: number): number
-	local mult = Upgrades.coinMult(data.upgrades.CoinMult or 0)
+local function coinMultiplier(
+	runtime: State.Runtime,
+	data: PlayerData,
+	kind: Breakables.BreakableKind?,
+	now: number,
+	zoneId: number?
+): number
+	local mult = Upgrades.coinMult(data.upgrades.CoinMult or 0) * riftCoinMult(runtime, zoneId)
 	mult *= Effects.get(runtime.effects, "Coins")
 	mult *= State.boost(runtime, "Coins", now)
+	mult *= Boosts.active(data.boosts, "Coins")
 	if kind and kind.isPile then
 		mult *= Effects.get(runtime.effects, "Pile")
 	end
@@ -190,6 +285,7 @@ function GameService.addCoins(player: Player, amount: number, zoneId: number?, r
 	end
 	data.coins += amount
 	data.stats.coinsEarned = (data.stats.coinsEarned or 0) + amount
+	GameService.progress(player, "Coins", amount)
 	if zoneId and zoneId > 0 then
 		local zone = World1.zonesById[zoneId]
 		local key = tostring(zoneId)
@@ -198,6 +294,7 @@ function GameService.addCoins(player: Player, amount: number, zoneId: number?, r
 		data.zoneProgress[key] = progress
 		if zone.restoreGoal > 0 and before < zone.restoreGoal and progress >= zone.restoreGoal then
 			GameService.notify(player, zone.name .. " is fully restored! +10% offline earnings", "success")
+			GameService.progress(player, "Restore", 1)
 			runtime.dirtyData = true
 		end
 	end
@@ -214,7 +311,7 @@ function GameService.collectFrom(player: Player, source: BreakableService.Source
 	if taken <= 0 then
 		return 0
 	end
-	local gained = taken * coinMultiplier(runtime, data, source.kind, os.clock())
+	local gained = taken * coinMultiplier(runtime, data, source.kind, os.clock(), source.zoneId)
 	GameService.addCoins(player, gained, source.zoneId, taken)
 	return gained
 end
@@ -245,9 +342,14 @@ BreakableService.Broken:Connect(function(source: BreakableService.Source, contri
 		if not runtime.auto then
 			runtime.combo = if comboActive(runtime, now) then runtime.combo + 1 else 1
 			runtime.lastBreak = now
+			GameService.progress(player, "Combo", runtime.combo)
+		end
+		GameService.progress(player, "Break", 1)
+		if source.zoneId == GameService.riftZone then
+			GameService.progress(player, "Rift", 1)
 		end
 
-		local mult = coinMultiplier(runtime, data, source.kind, now)
+		local mult = coinMultiplier(runtime, data, source.kind, now, source.zoneId)
 		local bonus = 0
 		local jackpotChance = Constants.JACKPOT_CHANCE
 			* Effects.get(runtime.effects, "Jackpot")
@@ -264,9 +366,16 @@ BreakableService.Broken:Connect(function(source: BreakableService.Source, contri
 			GameService.addCoins(player, bonus, source.zoneId, 0)
 		end
 
-		local gemChance = Constants.BASE_GEM_CHANCE + Effects.get(runtime.effects, "Gem")
+		local gemChance = (Constants.BASE_GEM_CHANCE + Effects.get(runtime.effects, "Gem")) * Boosts.active(data.boosts, "Gem")
 		if rng:NextNumber() < gemChance then
 			data.gems += math.max(1, source.zoneId)
+		end
+
+		local drop = Loot.roll(source.kind.id, source.zoneId, function()
+			return rng:NextNumber()
+		end)
+		if drop then
+			GameService.giveItem(player, drop, 1, true)
 		end
 
 		if Effects.get(runtime.effects, "InstantRespawn") > 0 or State.boost(runtime, "Respawn", now) > 1 then
@@ -279,7 +388,10 @@ BreakableService.Broken:Connect(function(source: BreakableService.Source, contri
 			runtime.target = nil
 		end
 	end
-	BreakableService.respawn(source, if instantRespawn then 0.5 else source.kind.respawn)
+	-- Bigs and guardians are removed by HuntService instead of coming back
+	if not source.special then
+		BreakableService.respawn(source, if instantRespawn then 0.5 else source.kind.respawn)
+	end
 end)
 
 ---------------------------------------------------------------------------------------------------------------
@@ -365,7 +477,7 @@ local function runPeriodic(player: Player, runtime: State.Runtime, data: PlayerD
 	elseif kind == "Rain" then
 		local scale = if zone and zone.id > 0 then zone.scale else 1
 		local raw = (spec.chests or 1) * Breakables.byId.Chest.coins * scale
-		GameService.addCoins(player, raw * coinMultiplier(runtime, data, nil, now), zoneId, raw)
+		GameService.addCoins(player, raw * coinMultiplier(runtime, data, nil, now, zoneId), zoneId, raw)
 	elseif kind == "GemRain" then
 		data.gems += (spec.amount or 1) * math.max(1, zoneId or 1)
 	elseif kind == "ComboAdd" then
@@ -392,38 +504,78 @@ local function applyTitles(player: Player, character: Model)
 	local data = DataService.get(player)
 	local runtime = State.get(player)
 	local head = character:WaitForChild("Head", 10) :: BasePart?
-	if not head or not data or not runtime then
+	local root = character:WaitForChild("HumanoidRootPart", 10) :: BasePart?
+	if not head or not root or not data or not runtime then
 		return
 	end
-	local titles = {}
-	if runtime.vip then
-		table.insert(titles, "VIP")
-	end
-	if data.titles.Supporter then
-		table.insert(titles, "Supporter")
-	end
+
+	-- Title: the equipped one, or VIP / Supporter by default
 	local old = head:FindFirstChild("Titles")
 	if old then
 		old:Destroy()
 	end
-	if #titles == 0 then
-		return
+	local title: Cosmetics.Title? = nil
+	if data.equippedTitle and data.titles[data.equippedTitle] then
+		title = Cosmetics.titleById[data.equippedTitle]
+	elseif runtime.vip then
+		title = Cosmetics.titleById.VIP
+	elseif data.titles.Supporter then
+		title = Cosmetics.titleById.Supporter
 	end
-	local gui = Instance.new("BillboardGui")
-	gui.Name = "Titles"
-	gui.Size = UDim2.fromOffset(200, 30)
-	gui.StudsOffset = Vector3.new(0, 2.6, 0)
-	gui.MaxDistance = 80
-	local textLabel = Instance.new("TextLabel")
-	textLabel.Size = UDim2.fromScale(1, 1)
-	textLabel.BackgroundTransparency = 1
-	textLabel.Font = Enum.Font.FredokaOne
-	textLabel.TextScaled = true
-	textLabel.TextColor3 = Color3.fromRGB(255, 215, 90)
-	textLabel.TextStrokeTransparency = 0.2
-	textLabel.Text = table.concat(titles, " • ")
-	textLabel.Parent = gui
-	gui.Parent = head
+	if title then
+		local gui = Instance.new("BillboardGui")
+		gui.Name = "Titles"
+		gui.Size = UDim2.fromOffset(220, 30)
+		gui.StudsOffset = Vector3.new(0, 2.6, 0)
+		gui.MaxDistance = 80
+		local textLabel = Instance.new("TextLabel")
+		textLabel.Size = UDim2.fromScale(1, 1)
+		textLabel.BackgroundTransparency = 1
+		textLabel.Font = Enum.Font.FredokaOne
+		textLabel.TextScaled = true
+		textLabel.TextColor3 = title.color
+		textLabel.TextStrokeTransparency = 0.2
+		textLabel.Text = title.text
+		textLabel.Parent = gui
+		gui.Parent = head
+	end
+
+	-- Trail
+	for _, name in { "CosmeticTrail", "TrailTop", "TrailBottom" } do
+		local existing = root:FindFirstChild(name)
+		if existing then
+			existing:Destroy()
+		end
+	end
+	local trailDef = if data.equippedTrail and data.trails[data.equippedTrail]
+		then Cosmetics.trailById[data.equippedTrail]
+		else nil
+	if trailDef then
+		local top = Instance.new("Attachment")
+		top.Name = "TrailTop"
+		top.Position = Vector3.new(0, 0.9, 0)
+		top.Parent = root
+		local bottom = Instance.new("Attachment")
+		bottom.Name = "TrailBottom"
+		bottom.Position = Vector3.new(0, -0.9, 0)
+		bottom.Parent = root
+		local keypoints = {}
+		for i, color in trailDef.colors do
+			table.insert(keypoints, ColorSequenceKeypoint.new((i - 1) / math.max(1, #trailDef.colors - 1), color))
+		end
+		if #keypoints == 1 then
+			table.insert(keypoints, ColorSequenceKeypoint.new(1, trailDef.colors[1]))
+		end
+		local trail = Instance.new("Trail")
+		trail.Name = "CosmeticTrail"
+		trail.Attachment0 = top
+		trail.Attachment1 = bottom
+		trail.Color = ColorSequence.new(keypoints)
+		trail.Lifetime = 0.6
+		trail.LightEmission = 0.4
+		trail.Transparency = NumberSequence.new(0.1, 1)
+		trail.Parent = root
+	end
 end
 
 function GameService.refreshTitles(player: Player)
@@ -558,10 +710,27 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		titles = data.titles,
 		settings = data.settings,
 		tradeHistory = data.tradeHistory,
+		items = data.items,
+		boosts = data.boosts,
+		daily = data.daily,
+		quests = data.quests,
+		pass = data.pass,
+		guardians = data.guardians,
+		trails = data.trails,
+		equippedTitle = data.equippedTitle,
+		equippedTrail = data.equippedTrail,
 		maxSlots = GameService.maxSlots(player),
 		capacity = GameService.capacity(player),
 		vip = (State.get(player) :: State.Runtime).vip,
 	}
+end
+
+local function questProgressList(quests: { Types.Quest }): { number }
+	local out = {}
+	for i, quest in quests do
+		out[i] = quest.progress
+	end
+	return out
 end
 
 local function tickPlayer(player: Player, runtime: State.Runtime, data: PlayerData, now: number, dt: number)
@@ -643,15 +812,7 @@ function GameService.init()
 	Players.PlayerRemoving:Connect(onRemoving)
 
 	-- Clicking a source (works on touch too)
-	local breakableFolder = workspace:WaitForChild("Breakables")
-	for _, part in breakableFolder:GetChildren() do
-		local click = part:FindFirstChildOfClass("ClickDetector")
-		if click then
-			click.MouseClick:Connect(function(player)
-				onClick(player, part :: BasePart)
-			end)
-		end
-	end
+	BreakableService.setClickHandler(onClick)
 
 	Net.event("ToggleAuto").OnServerEvent:Connect(function(player, enabled)
 		local runtime = State.get(player)
@@ -708,6 +869,10 @@ function GameService.init()
 					continue
 				end
 				if runSkills then
+					local changed = Boosts.tick(data.boosts, 1)
+					if table.find(changed, "Speed") then
+						GameService.refresh(player)
+					end
 					for _, entry in runtime.effects.periodic do
 						local due = runtime.timers[entry.key]
 						if not due then
@@ -729,9 +894,12 @@ function GameService.init()
 				end
 				local boosts = {}
 				for stat, boost in runtime.boosts do
-					if boost.untilTime > now then
-						boosts[stat] = { mult = boost.mult, left = boost.untilTime - now }
+					if boost.untilTime > now and stat ~= "Respawn" then
+						boosts["Skill " .. stat] = { mult = boost.mult, left = boost.untilTime - now }
 					end
+				end
+				for stat, boost in Boosts.summary(data.boosts) do
+					boosts[stat] = { mult = boost.mult, left = boost.left }
 				end
 				CurrencyRemote:FireClient(player, {
 					coins = data.coins,
@@ -743,6 +911,11 @@ function GameService.init()
 					zoneProgress = progress,
 					auto = runtime.auto,
 					boosts = boosts,
+					rift = GameService.riftZone,
+					questProgress = {
+						daily = questProgressList(data.quests.daily),
+						weekly = questProgressList(data.quests.weekly),
+					},
 				})
 				local stats = player:FindFirstChild("leaderstats")
 				if stats then

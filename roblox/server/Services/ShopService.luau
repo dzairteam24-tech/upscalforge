@@ -87,6 +87,22 @@ local function grantProduct(player: Player, key: string): boolean
 		GameService.refreshTitles(player)
 		GameService.notify(player, "Thanks for your support!", "success")
 		return true
+	elseif key == "PassPremium" then
+		data.pass.premium = true
+		GameService.notify(player, "Premium track unlocked for this season!", "success")
+		GameService.markDirty(player)
+		return true
+	end
+	local ad = Products.adByKey[key]
+	if ad then
+		if ad.boost then
+			GameService.addBoost(player, ad.boost.stat, ad.boost.mult, ad.boost.seconds)
+		end
+		if ad.freeEggs then
+			GameService.grantFreeEggs(player, ad.freeEggs, 1)
+		end
+		GameService.notify(player, "Reward: " .. ad.label, "success")
+		return true
 	end
 	return false
 end

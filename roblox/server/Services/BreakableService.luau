@@ -6,7 +6,16 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Breakables = require(Shared.Config.Breakables)
 local World1 = require(Shared.Config.World1)
 local MapLayout = require(Shared.Logic.MapLayout)
+local PetModel = require(Shared.PetModel)
 local Signal = require(Shared.Signal)
+
+-- A Big or a guardian: a creature you collect from like a source.
+export type Special = {
+	type: string, -- "Big" | "Guardian"
+	pet: { s: string, v: string, z: string },
+	expires: number, -- os.clock() when it leaves
+	eligible: { [Player]: boolean }, -- guardians: players whose fight counts (tame roll + cooldown)
+}
 
 export type Source = {
 	name: string,
@@ -17,6 +26,7 @@ export type Source = {
 	coinsLeft: number,
 	alive: boolean,
 	contributors: { [Player]: number },
+	special: Special?,
 }
 
 local BreakableService = {}
@@ -27,6 +37,70 @@ local folder: Folder
 
 -- Fired with the live source table (not a copy) and who collected from it.
 BreakableService.Broken = Signal.new() :: Signal.Signal<Source, { [Player]: number }>
+
+local clickHandler: ((Player, BasePart) -> ())? = nil
+local specialCount = 0
+
+local unbound: { { detector: ClickDetector, part: BasePart } } = {}
+
+local function bindClick(detector: ClickDetector, part: BasePart)
+	detector.MouseClick:Connect(function(player)
+		if clickHandler then
+			clickHandler(player, part)
+		end
+	end)
+end
+
+-- GameService handles clicks (target + tap damage). Detectors made before this call are bound now.
+function BreakableService.setClickHandler(fn: (Player, BasePart) -> ())
+	clickHandler = fn
+	for _, entry in unbound do
+		bindClick(entry.detector, entry.part)
+	end
+	unbound = {}
+end
+
+local function addInfo(p: BasePart, height: number, width: number)
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "Info"
+	gui.Size = UDim2.fromOffset(width, 34)
+	gui.StudsOffset = Vector3.new(0, height / 2 + 1.8, 0)
+	gui.MaxDistance = 90
+	local bar = Instance.new("Frame")
+	bar.Name = "Bar"
+	bar.Size = UDim2.fromScale(1, 0.32)
+	bar.Position = UDim2.fromScale(0, 0.68)
+	bar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+	bar.BorderSizePixel = 0
+	bar.Parent = gui
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.Size = UDim2.fromScale(1, 1)
+	fill.BackgroundColor3 = Color3.fromRGB(245, 197, 66)
+	fill.BorderSizePixel = 0
+	fill.Parent = bar
+	local text = Instance.new("TextLabel")
+	text.Name = "Coins"
+	text.Size = UDim2.fromScale(1, 0.66)
+	text.BackgroundTransparency = 1
+	text.Font = Enum.Font.FredokaOne
+	text.TextScaled = true
+	text.TextColor3 = Color3.new(1, 1, 1)
+	text.TextStrokeTransparency = 0.3
+	text.Parent = gui
+	gui.Parent = p
+end
+
+local function addClick(p: BasePart)
+	local click = Instance.new("ClickDetector")
+	click.MaxActivationDistance = 120
+	click.Parent = p
+	if clickHandler then
+		bindClick(click, p)
+	else
+		table.insert(unbound, { detector = click, part = p })
+	end
+end
 
 local function buildPart(kind: Breakables.BreakableKind, position: Vector3, name: string): BasePart
 	local p = Instance.new("Part")
@@ -54,38 +128,8 @@ local function buildPart(kind: Breakables.BreakableKind, position: Vector3, name
 		trim.Parent = p
 	end
 
-	local click = Instance.new("ClickDetector")
-	click.MaxActivationDistance = 120
-	click.Parent = p
-
-	local gui = Instance.new("BillboardGui")
-	gui.Name = "Info"
-	gui.Size = UDim2.fromOffset(110, 34)
-	gui.StudsOffset = Vector3.new(0, kind.size.Y / 2 + 1.8, 0)
-	gui.MaxDistance = 70
-	local bar = Instance.new("Frame")
-	bar.Name = "Bar"
-	bar.Size = UDim2.fromScale(1, 0.32)
-	bar.Position = UDim2.fromScale(0, 0.68)
-	bar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-	bar.BorderSizePixel = 0
-	bar.Parent = gui
-	local fill = Instance.new("Frame")
-	fill.Name = "Fill"
-	fill.Size = UDim2.fromScale(1, 1)
-	fill.BackgroundColor3 = Color3.fromRGB(245, 197, 66)
-	fill.BorderSizePixel = 0
-	fill.Parent = bar
-	local text = Instance.new("TextLabel")
-	text.Name = "Coins"
-	text.Size = UDim2.fromScale(1, 0.66)
-	text.BackgroundTransparency = 1
-	text.Font = Enum.Font.FredokaOne
-	text.TextScaled = true
-	text.TextColor3 = Color3.new(1, 1, 1)
-	text.TextStrokeTransparency = 0.3
-	text.Parent = gui
-	gui.Parent = p
+	addClick(p)
+	addInfo(p, kind.size.Y, 110)
 	return p
 end
 
@@ -125,7 +169,11 @@ function BreakableService.build()
 		end
 		local spots = MapLayout.sourceSpots(zone.id, total, zone.id * 7919 + 13)
 		local index = 0
-		for _, kind in Breakables.list do
+		local biggestFirst = table.clone(Breakables.list)
+		table.sort(biggestFirst, function(a, b)
+			return a.coins > b.coins
+		end)
+		for _, kind in biggestFirst do
 			for _ = 1, kind.count do
 				index += 1
 				local spot = spots[index]
@@ -163,10 +211,11 @@ function BreakableService.inZone(zoneId: number): { Source }
 	return byZone[zoneId] or {}
 end
 
+-- Alive regular sources (Bigs and guardians are left out so instant-break skills can't one-shot them).
 function BreakableService.aliveInZone(zoneId: number): { Source }
 	local alive = {}
 	for _, source in BreakableService.inZone(zoneId) do
-		if source.alive then
+		if source.alive and not source.special then
 			table.insert(alive, source)
 		end
 	end
@@ -220,4 +269,85 @@ function BreakableService.nearest(zoneId: number, position: Vector3, range: numb
 	return best
 end
 
+-- Spawns a Big or a guardian: an invisible click box with the creature model inside.
+function BreakableService.spawnSpecial(
+	zoneId: number,
+	specialType: string,
+	pet: { s: string, v: string, z: string },
+	position: Vector3,
+	coins: number,
+	lifetime: number
+): Source
+	specialCount += 1
+	local built = PetModel.build(pet)
+	local width = built.radius * 2.4
+	local kind: Breakables.BreakableKind = {
+		id = specialType,
+		coins = coins,
+		respawn = 0,
+		count = 0,
+		size = Vector3.new(width, built.height, width),
+		color = Color3.new(1, 1, 1),
+		isChest = false,
+		isPile = false,
+	}
+	local name = ("S_%d_%d"):format(zoneId, specialCount)
+	local box = Instance.new("Part")
+	box.Name = name
+	box.Anchored = true
+	box.CanCollide = false
+	box.Transparency = 1
+	box.Size = kind.size
+	box.CFrame = CFrame.new(position + Vector3.new(0, built.height / 2, 0))
+	box:SetAttribute("Kind", specialType)
+	box:SetAttribute("ZoneId", zoneId)
+	box:AddTag("Breakable")
+	addClick(box)
+	addInfo(box, built.height, 170)
+	local facing = CFrame.new(box.CFrame.Position) * CFrame.Angles(0, math.random() * math.pi * 2, 0)
+	PetModel.place(built, facing)
+	built.model.Parent = box
+
+	local source: Source = {
+		name = name,
+		part = box,
+		zoneId = zoneId,
+		kind = kind,
+		coinsMax = coins,
+		coinsLeft = coins,
+		alive = true,
+		contributors = {},
+		special = { type = specialType, pet = pet, expires = os.clock() + lifetime, eligible = {} },
+	}
+	sync(source)
+	box.Parent = folder
+	sources[name] = source
+	byZone[zoneId] = byZone[zoneId] or {}
+	table.insert(byZone[zoneId], source)
+	return source
+end
+
+-- Removes a Big or guardian for good.
+function BreakableService.despawn(source: Source)
+	sources[source.name] = nil
+	local list = byZone[source.zoneId]
+	local index = list and table.find(list, source)
+	if list and index then
+		table.remove(list, index)
+	end
+	source.alive = false
+	source.part:Destroy()
+end
+
+function BreakableService.specials(): { Source }
+	local out = {}
+	for _, source in sources do
+		if source.special then
+			table.insert(out, source)
+		end
+	end
+	return out
+end
+
 return BreakableService
+

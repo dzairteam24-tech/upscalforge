@@ -28,6 +28,37 @@ export type PlayerData = {
 	settings: { [string]: any },
 	lastSeen: number,
 	lastPower: number,
+	items: { [string]: number }, -- item id -> count
+	boosts: { [string]: { [string]: number } }, -- stat -> multiplier -> seconds left
+	daily: { streak: number, lastDay: number },
+	quests: QuestBook,
+	pass: PassState,
+	guardians: { [string]: number }, -- zone id -> os.time() when its guardian can be fought again
+	trails: { [string]: boolean },
+	equippedTitle: string?,
+	equippedTrail: string?,
+}
+
+export type Quest = {
+	id: string, -- template id
+	goal: number,
+	progress: number,
+	claimed: boolean,
+}
+
+export type QuestBook = {
+	day: number, -- UTC day the daily quests belong to
+	week: number, -- UTC week the weekly quests belong to
+	daily: { Quest },
+	weekly: { Quest },
+}
+
+export type PassState = {
+	season: number,
+	xp: number,
+	premium: boolean,
+	claimedFree: { [string]: boolean },
+	claimedPremium: { [string]: boolean },
 }
 
 -- What the player rolls when hatching.

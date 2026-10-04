@@ -7,6 +7,7 @@ local CollectionService = game:GetService("CollectionService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Constants = require(Shared.Config.Constants)
 local World1 = require(Shared.Config.World1)
+local Products = require(Shared.Config.Products)
 local Format = require(Shared.Logic.Format)
 local Net = require(Shared.Net)
 
@@ -23,7 +24,7 @@ function EggPanel.mount(gui: ScreenGui)
 		Name = "EggPanel",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -16),
-		Size = UDim2.fromOffset(560, 220),
+		Size = UDim2.fromOffset(640, 220),
 		BackgroundColor3 = Theme.bg,
 		BackgroundTransparency = 0.05,
 		Visible = false,
@@ -69,6 +70,24 @@ function EggPanel.mount(gui: ScreenGui)
 	local x8 = hatchButton("Hatch x8", 8, Theme.purple, 3)
 	local auto = Theme.button({ Text = "Auto: OFF", Size = UDim2.fromOffset(120, 48), BackgroundColor3 = Theme.card, LayoutOrder = 4, MaxTextSize = 20 })
 	auto.Parent = buttons
+	-- Rewarded video shortcuts next to the egg
+	for order, key in { "AdLuck", "AdEggs" } do
+		local reward = Products.adByKey[key]
+		local product = Products.productByKey[key]
+		if reward and product and product.id ~= 0 then
+			local adButton = Theme.button({
+				Text = "▶ " .. reward.label,
+				Size = UDim2.fromOffset(150, 48),
+				BackgroundColor3 = Theme.gold,
+				LayoutOrder = 10 + order,
+				MaxTextSize = 15,
+			})
+			adButton.Parent = buttons
+			adButton.Activated:Connect(function()
+				Net.event("WatchAd"):FireServer(key)
+			end)
+		end
+	end
 	auto.Activated:Connect(function()
 		autoHatch = not autoHatch
 		auto.Text = if autoHatch then "Auto: ON" else "Auto: OFF"

@@ -395,6 +395,178 @@ test("Combo multiplier steps", function()
 	eq(Combo.multiplier(500), 5)
 end)
 
+-- Boosts, items and loot ------------------------------------------------------------------------------------
+
+local Items = R(Shared.Config.Items)
+local Boosts = R(Shared.Logic.Boosts)
+local Bag = R(Shared.Logic.Bag)
+local Loot = R(Shared.Logic.Loot)
+
+test("Boosts: strongest counts, only it ticks, weaker time is kept", function()
+	local b = {}
+	Boosts.add(b, "Coins", 2, 100, 14400)
+	Boosts.add(b, "Coins", 3, 10, 14400)
+	eq(Boosts.active(b, "Coins"), 3)
+	Boosts.tick(b, 10)
+	eq(Boosts.active(b, "Coins"), 2, "falls back to x2")
+	eq(b.Coins["2"], 100, "x2 time untouched while x3 ran")
+	Boosts.tick(b, 100)
+	eq(Boosts.active(b, "Coins"), 1)
+	eq(b.Coins, nil, "cleaned up")
+end)
+
+test("Boosts: stacking time is capped at 4 hours", function()
+	local b = {}
+	for _ = 1, 30 do
+		Boosts.add(b, "Luck", 2, 1800, Items.BOOST_CAP_SECONDS)
+	end
+	eq(b.Luck["2"], 4 * 3600)
+end)
+
+test("Items: 7 families + 3 mixes, 5 tiers each", function()
+	eq(#Items.list, 10 * 5)
+	eq(Items.nextTier("Elixir_Coins_4"), "Elixir_Coins_5")
+	eq(Items.nextTier("Elixir_Coins_5"), nil)
+	eq(Items.mixResult("Elixir_Luck_2", "Elixir_Coins_2"), "Elixir_Fortune_2")
+	eq(Items.mixResult("Elixir_Luck_2", "Elixir_Coins_3"), nil, "different tiers")
+	eq(Items.byId.Elixir_Fortune_2.boosts[2].stat, "Luck")
+end)
+
+test("Bag: merge 3 -> next tier, mix two -> double", function()
+	local items = { Elixir_Coins_1 = 4, Elixir_Luck_1 = 1 }
+	local merged = Bag.merge(items, "Elixir_Coins_1")
+	eq(merged, "Elixir_Coins_2")
+	eq(items.Elixir_Coins_1, 1)
+	local mixed = Bag.mix(items, "Elixir_Coins_1", "Elixir_Luck_1")
+	eq(mixed, "Elixir_Fortune_1")
+	eq(items.Elixir_Coins_1, nil)
+	eq(items.Elixir_Luck_1, nil)
+	local none = Bag.merge(items, "Elixir_Coins_2")
+	eq(none, nil, "only one left")
+end)
+
+test("Loot: vaults drop often, piles rarely, late zones drop higher tiers", function()
+	local rng = makeRng(5)
+	local vault, pile = 0, 0
+	for _ = 1, 20000 do
+		if Loot.roll("Vault", 1, rng) then
+			vault += 1
+		end
+		if Loot.roll("Pile", 1, rng) then
+			pile += 1
+		end
+	end
+	near(vault / 20000, 0.4, 0.02, "vault")
+	near(pile / 20000, 0.002, 0.002, "pile")
+	for _ = 1, 200 do
+		local id = Loot.roll("Guardian", 9, rng)
+		assert(id and Items.byId[id], "guardian always drops a real item")
+		assert(Items.byId[id].tier >= 5, "zone 9 guardian drops tier 5")
+	end
+end)
+
+-- Daily, quests, pass, rift -----------------------------------------------------------------------------------
+
+local Progress = R(Shared.Logic.Progress)
+local Progression = R(Shared.Config.Progression)
+
+test("Calendar: weeks start on Monday", function()
+	-- 2026-10-04 is a Sunday, 2026-10-05 a Monday
+	local sunday = 20730 * 86400 + 3600
+	local monday = sunday + 86400
+	eq(Progress.week(monday), Progress.week(sunday) + 1)
+	eq(Progress.week(monday + 6 * 86400), Progress.week(monday))
+end)
+
+test("Daily: streak grows day by day, cycles after 7, resets after a missed day", function()
+	local daily = { streak = 0, lastDay = -1 }
+	for day = 1, 9 do
+		local claimed = Progress.claimDaily(daily, 100 + day)
+		eq(claimed, ((day - 1) % 7) + 1, "day " .. day)
+		eq(Progress.claimDaily(daily, 100 + day), nil, "twice the same day")
+	end
+	eq(Progress.claimDaily(daily, 100 + 11), 1, "missed day 10")
+end)
+
+test("Quests: same player + day gives the same set; new day rerolls", function()
+	local a = { day = -1, week = -1, daily = {}, weekly = {} }
+	local b = { day = -1, week = -1, daily = {}, weekly = {} }
+	local now = 20730 * 86400 + 500
+	Progress.refreshQuests(a, now, 42, 1000)
+	Progress.refreshQuests(b, now, 42, 1000)
+	eq(#a.daily, Progression.DAILY_QUESTS)
+	eq(#a.weekly, Progression.WEEKLY_QUESTS)
+	for i = 1, #a.daily do
+		eq(a.daily[i].id, b.daily[i].id)
+	end
+	eq(Progress.refreshQuests(a, now + 10, 42, 1000), false, "same day")
+	eq(Progress.refreshQuests(a, now + 86400, 42, 1000), true, "next day")
+end)
+
+test("Quests: progress, max-type combo, claim once", function()
+	local book = {
+		day = 1,
+		week = 1,
+		daily = {
+			{ id = "d_break", goal = 3, progress = 0, claimed = false },
+			{ id = "d_combo", goal = 20, progress = 0, claimed = false },
+		},
+		weekly = {},
+	}
+	eq(Progress.claimQuest(book, "daily", 1), nil, "not done yet")
+	Progress.addQuestProgress(book, "Break", 2)
+	local done = Progress.addQuestProgress(book, "Break", 5)
+	eq(#done, 1)
+	eq(book.daily[1].progress, 3, "clamped to goal")
+	Progress.addQuestProgress(book, "Combo", 12)
+	Progress.addQuestProgress(book, "Combo", 4)
+	eq(book.daily[2].progress, 12, "combo keeps the best")
+	local reward = Progress.claimQuest(book, "daily", 1)
+	assert(reward and reward.xp == 100, "daily reward")
+	eq(Progress.claimQuest(book, "daily", 1), nil, "claimed once")
+end)
+
+test("Pass: levels, premium lock, cosmetics only on premium", function()
+	local pass = { season = 0, xp = 0, premium = false, claimedFree = {}, claimedPremium = {} }
+	local now = (20730 + 5) * 86400
+	assert(Progress.refreshPass(pass, now), "first season set")
+	eq(pass.season, 1)
+	pass.xp = 5 * Progression.PASS_XP_PER_LEVEL
+	eq(Progress.passLevel(pass.xp), 5)
+	assert(Progress.claimPass(pass, 5, false), "free level 5")
+	eq((Progress.claimPass(pass, 5, false)), nil, "claimed once")
+	eq((Progress.claimPass(pass, 6, false)), nil, "level 6 not reached")
+	eq((Progress.claimPass(pass, 5, true)), nil, "premium locked")
+	pass.premium = true
+	local premium = Progress.claimPass(pass, 5, true)
+	assert(premium and premium.title, "premium gives a title")
+	for level = 1, Progression.PASS_LEVELS do
+		local reward = Progression.passReward(level, true)
+		if reward then
+			assert(not reward.coinsInEggs and not reward.gems and not reward.items and not reward.freeEggs, "premium is cosmetic only")
+		end
+	end
+	assert(Progress.refreshPass(pass, now + 30 * 86400), "new season")
+	eq(pass.season, 2)
+	eq(pass.xp, 0)
+	eq(pass.premium, false)
+end)
+
+test("Rift: one zone per day in range, same for everyone", function()
+	local seen = {}
+	for day = 20730, 20830 do
+		local zone = Progress.riftZone(day, 10)
+		assert(zone >= 1 and zone <= 10, "zone in range")
+		seen[zone] = true
+		eq(Progress.riftZone(day, 10), zone)
+	end
+	local distinct = 0
+	for _ in seen do
+		distinct += 1
+	end
+	assert(distinct >= 8, "rift moves around the map")
+end)
+
 -- PetModel (builds real Roblox instances through Lune, so wrong property names fail here) -----------------
 
 test("Every creature model builds: 40 species x 6 variants x 3 sizes", function()

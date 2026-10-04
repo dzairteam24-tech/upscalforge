@@ -10,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local World1 = require(Shared.Config.World1)
 local Format = require(Shared.Logic.Format)
+local MapLayout = require(Shared.Logic.MapLayout)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
@@ -221,8 +222,51 @@ local SKILL_COLORS = {
 
 ---------------------------------------------------------------------------------------------------------------
 
+-- A floating purple sign over today's Pixel Rift zone.
+local riftMarker: BasePart? = nil
+local function updateRift()
+	local zoneId = ReplicatedStorage:GetAttribute("RiftZone")
+	if riftMarker then
+		riftMarker:Destroy()
+		riftMarker = nil
+	end
+	if type(zoneId) ~= "number" or not World1.zonesById[zoneId] then
+		return
+	end
+	local marker = Instance.new("Part")
+	marker.Name = "RiftMarker"
+	marker.Anchored = true
+	marker.CanCollide = false
+	marker.CanQuery = false
+	marker.Shape = Enum.PartType.Cylinder
+	marker.Material = Enum.Material.Neon
+	marker.Color = Color3.fromRGB(142, 91, 217)
+	marker.Transparency = 0.55
+	marker.Size = Vector3.new(0.6, MapLayout.PLATFORM - 10, MapLayout.PLATFORM - 10)
+	marker.CFrame = CFrame.new(MapLayout.center(zoneId) + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(320, 60)
+	gui.StudsOffset = Vector3.new(0, 34, 0)
+	gui.AlwaysOnTop = true
+	gui.MaxDistance = 600
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(210, 170, 255)
+	label.TextStrokeTransparency = 0.2
+	label.Text = "🟪 PIXEL RIFT"
+	label.Parent = gui
+	gui.Parent = marker
+	marker.Parent = fxFolder
+	riftMarker = marker
+end
+
 function WorldClient.init()
 	fxFolder.Parent = workspace
+	ReplicatedStorage:GetAttributeChangedSignal("RiftZone"):Connect(updateRift)
+	updateRift()
 
 	Store.DataChanged:Connect(function()
 		updateGates()
