@@ -129,6 +129,9 @@ function TradeLogic.validate(session: Session, sideA: Side, sideB: Side): (boole
 			if pet.lk then
 				return false, "Locked creatures can't be traded"
 			end
+			if pet.ex then
+				return false, "Creatures on an expedition can't be traded"
+			end
 		end
 		return true, nil
 	end

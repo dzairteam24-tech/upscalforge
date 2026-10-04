@@ -208,7 +208,7 @@ function TradeService.init()
 			local clean = {}
 			for _, petId in petIds do
 				local pet = data and type(petId) == "string" and data.pets[petId]
-				if pet and not pet.lk then
+				if pet and not pet.lk and not pet.ex then
 					table.insert(clean, petId)
 				end
 			end

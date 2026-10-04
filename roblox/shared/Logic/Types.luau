@@ -7,6 +7,7 @@ export type Pet = {
 	v: string, -- variant id
 	z: string, -- size id
 	lk: boolean?, -- locked (cannot be deleted, fused or traded)
+	ex: boolean?, -- away on an expedition (cannot be equipped, deleted, fused or traded)
 }
 
 export type PetMap = { [string]: Pet }
@@ -37,6 +38,18 @@ export type PlayerData = {
 	trails: { [string]: boolean },
 	equippedTitle: string?,
 	equippedTrail: string?,
+	cartridges: { string }, -- equipped cartridge item ids
+	reloads: number,
+	expeditions: { Expedition },
+}
+
+export type Expedition = {
+	kind: string,
+	pets: { string },
+	started: number, -- os.time()
+	ends: number, -- os.time()
+	power: number, -- total base power when it started
+	element: boolean, -- all creatures share one strong element (+50%)
 }
 
 export type Quest = {

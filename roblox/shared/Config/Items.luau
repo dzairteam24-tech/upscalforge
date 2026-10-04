@@ -1,18 +1,27 @@
 --!strict
 -- Items the player can hold. Earned in game only, never sold.
--- Elixirs give a timed boost. 3 of the same tier merge into the next tier, and the Mixer combines
--- two different elixirs of the same tier into a double elixir.
+--   Elixir     timed boost. 3 of a tier merge into the next tier; the Mixer makes double elixirs.
+--   Cartridge  equipped in a slot for a permanent bonus. 3 of a tier merge into the next tier.
+--              3 cartridges of the same set give a set bonus.
+--   KeyHalf    2 halves make a Key.
+--   Key        opens something (treasure, golden eggs, an early guardian).
 
 export type BoostStat = string -- "Coins" | "Power" | "Luck" | "Speed" | "Pixel" | "Gem" | "Hunter"
+
+export type GearEffect = { stat: string, value: number }
 
 export type Item = {
 	id: string,
 	name: string,
-	kind: string, -- "Elixir"
+	kind: string, -- "Elixir" | "Cartridge" | "KeyHalf" | "Key"
 	tier: number,
-	family: string, -- elixir family, e.g. "Coins" or "Fortune"
-	boosts: { { stat: BoostStat, mult: number } },
-	duration: number, -- seconds
+	family: string,
+	boosts: { { stat: BoostStat, mult: number } }, -- elixirs
+	duration: number, -- elixirs, seconds
+	gear: { GearEffect }, -- cartridges
+	set: string?, -- cartridges
+	mergeInto: string?,
+	mergeCost: number,
 	color: Color3,
 	description: string,
 }
@@ -20,100 +29,50 @@ export type Item = {
 local ROMAN = { "I", "II", "III", "IV", "V" }
 local MAX_TIER = #ROMAN
 
-type Family = {
+local byId: { [string]: Item } = {}
+local list: { Item } = {}
+
+local function add(item: Item)
+	byId[item.id] = item
+	table.insert(list, item)
+end
+
+---------------------------------------------------------------------------------------------------------------
+-- Elixirs
+
+type ElixirFamily = {
 	id: string,
 	label: string,
 	stats: { BoostStat },
 	mults: { { number } }, -- per stat, per tier
 	duration: number,
 	color: Color3,
-	verb: string,
 }
 
--- Base families: one stat each.
-local BASE: { Family } = {
-	{
-		id = "Coins",
-		label = "Coin Elixir",
-		stats = { "Coins" },
-		mults = { { 1.5, 1.75, 2, 2.5, 3 } },
-		duration = 600,
-		color = Color3.fromRGB(245, 197, 66),
-		verb = "coins",
-	},
-	{
-		id = "Power",
-		label = "Power Elixir",
-		stats = { "Power" },
-		mults = { { 1.5, 1.75, 2, 2.5, 3 } },
-		duration = 600,
-		color = Color3.fromRGB(229, 83, 75),
-		verb = "team power",
-	},
-	{
-		id = "Luck",
-		label = "Luck Elixir",
-		stats = { "Luck" },
-		mults = { { 1.5, 1.75, 2, 2.5, 3 } },
-		duration = 600,
-		color = Color3.fromRGB(80, 200, 120),
-		verb = "hatch luck",
-	},
-	{
-		id = "Speed",
-		label = "Speed Elixir",
-		stats = { "Speed" },
-		mults = { { 1.25, 1.4, 1.55, 1.75, 2 } },
-		duration = 600,
-		color = Color3.fromRGB(91, 184, 245),
-		verb = "walk speed",
-	},
-	{
-		id = "Pixel",
-		label = "Pixel Elixir",
-		stats = { "Pixel" },
-		mults = { { 2, 2.75, 3.5, 4.25, 5 } },
-		duration = 300,
-		color = Color3.fromRGB(142, 91, 217),
-		verb = "Pixel chance",
-	},
-	{
-		id = "Gem",
-		label = "Gem Elixir",
-		stats = { "Gem" },
-		mults = { { 2, 2.5, 3, 3.5, 4 } },
-		duration = 600,
-		color = Color3.fromRGB(120, 220, 255),
-		verb = "gem drops",
-	},
-	{
-		id = "Hunter",
-		label = "Hunter Elixir",
-		stats = { "Hunter" },
-		mults = { { 2, 2.5, 3, 3.5, 4 } },
-		duration = 600,
-		color = Color3.fromRGB(240, 138, 45),
-		verb = "Big appearances",
-	},
+local ELIXIRS: { ElixirFamily } = {
+	{ id = "Coins", label = "Coin Elixir", stats = { "Coins" }, mults = { { 1.5, 1.75, 2, 2.5, 3 } }, duration = 600, color = Color3.fromRGB(245, 197, 66) },
+	{ id = "Power", label = "Power Elixir", stats = { "Power" }, mults = { { 1.5, 1.75, 2, 2.5, 3 } }, duration = 600, color = Color3.fromRGB(229, 83, 75) },
+	{ id = "Luck", label = "Luck Elixir", stats = { "Luck" }, mults = { { 1.5, 1.75, 2, 2.5, 3 } }, duration = 600, color = Color3.fromRGB(80, 200, 120) },
+	{ id = "Speed", label = "Speed Elixir", stats = { "Speed" }, mults = { { 1.25, 1.4, 1.55, 1.75, 2 } }, duration = 600, color = Color3.fromRGB(91, 184, 245) },
+	{ id = "Pixel", label = "Pixel Elixir", stats = { "Pixel" }, mults = { { 2, 2.75, 3.5, 4.25, 5 } }, duration = 300, color = Color3.fromRGB(142, 91, 217) },
+	{ id = "Gem", label = "Gem Elixir", stats = { "Gem" }, mults = { { 2, 2.5, 3, 3.5, 4 } }, duration = 600, color = Color3.fromRGB(120, 220, 255) },
+	{ id = "Hunter", label = "Hunter Elixir", stats = { "Hunter" }, mults = { { 2, 2.5, 3, 3.5, 4 } }, duration = 600, color = Color3.fromRGB(240, 138, 45) },
 }
 
--- Mixer recipes: two base families -> a double family.
 local MIXES = {
 	{ id = "Fortune", label = "Fortune Elixir", a = "Coins", b = "Luck", color = Color3.fromRGB(200, 220, 90) },
 	{ id = "Rush", label = "Rush Elixir", a = "Power", b = "Speed", color = Color3.fromRGB(240, 120, 200) },
 	{ id = "Rainbow", label = "Rainbow Elixir", a = "Luck", b = "Pixel", color = Color3.fromRGB(255, 140, 220) },
 }
 
-local byId: { [string]: Item } = {}
-local list: { Item } = {}
-local familyById: { [string]: Family } = {}
-
-local function itemId(family: string, tier: number): string
+local function elixirId(family: string, tier: number): string
 	return ("Elixir_%s_%d"):format(family, tier)
 end
 
-local function register(family: Family)
-	familyById[family.id] = family
+local elixirFamilies: { [string]: ElixirFamily } = {}
+
+local function registerElixir(family: ElixirFamily)
+	elixirFamilies[family.id] = family
 	for tier = 1, MAX_TIER do
 		local boosts = {}
 		local parts = {}
@@ -122,37 +81,177 @@ local function register(family: Family)
 			table.insert(boosts, { stat = stat, mult = mult })
 			table.insert(parts, ("x%g %s"):format(mult, stat))
 		end
-		local item: Item = {
-			id = itemId(family.id, tier),
+		add({
+			id = elixirId(family.id, tier),
 			name = ("%s %s"):format(family.label, ROMAN[tier]),
 			kind = "Elixir",
 			tier = tier,
 			family = family.id,
 			boosts = boosts,
 			duration = family.duration,
+			gear = {},
+			mergeInto = if tier < MAX_TIER then elixirId(family.id, tier + 1) else nil,
+			mergeCost = 3,
 			color = family.color,
 			description = ("%s for %d min"):format(table.concat(parts, " + "), family.duration // 60),
-		}
-		byId[item.id] = item
-		table.insert(list, item)
+		})
 	end
 end
 
-for _, family in BASE do
-	register(family)
+for _, family in ELIXIRS do
+	registerElixir(family)
 end
 for _, mix in MIXES do
-	local a, b = familyById[mix.a], familyById[mix.b]
-	register({
+	local a, b = elixirFamilies[mix.a], elixirFamilies[mix.b]
+	registerElixir({
 		id = mix.id,
 		label = mix.label,
 		stats = { a.stats[1], b.stats[1] },
 		mults = { a.mults[1], b.mults[1] },
 		duration = math.min(a.duration, b.duration),
 		color = mix.color,
-		verb = a.verb .. " and " .. b.verb,
 	})
 end
+
+---------------------------------------------------------------------------------------------------------------
+-- Cartridges (the "books"): 8-bit game cartridges with a permanent bonus while equipped
+
+type CartridgeFamily = {
+	id: string,
+	label: string,
+	stat: string,
+	values: { number }, -- one per tier (rare cartridges have a single tier)
+	set: string?,
+	text: string, -- "%s" is replaced with the formatted value
+	percent: boolean?, -- format the value as a percentage bonus (1.25 -> +25%)
+	color: Color3,
+	rare: boolean?,
+}
+
+local CARTRIDGES: { CartridgeFamily } = {
+	-- Rich set
+	{ id = "Coins", label = "Coins", stat = "Coins", values = { 1.1, 1.25, 1.5, 1.75, 2 }, set = "Rich", text = "%s coins", percent = true, color = Color3.fromRGB(245, 197, 66) },
+	{ id = "Jackpot", label = "Jackpot", stat = "Jackpot", values = { 0.01, 0.02, 0.03, 0.04, 0.05 }, set = "Rich", text = "+%s jackpot chance", color = Color3.fromRGB(255, 90, 200) },
+	{ id = "ChestBreaker", label = "Chest Breaker", stat = "Chest", values = { 1.25, 1.5, 2, 2.5, 3 }, set = "Rich", text = "%s from chests, safes and vaults", percent = true, color = Color3.fromRGB(161, 107, 59) },
+	-- Hatcher set
+	{ id = "Lucky", label = "Lucky", stat = "Luck", values = { 1.1, 1.25, 1.5, 1.75, 2 }, set = "Hatcher", text = "%s hatch luck", percent = true, color = Color3.fromRGB(80, 200, 120) },
+	-- Fighter set
+	{ id = "Power", label = "Power", stat = "Power", values = { 1.1, 1.25, 1.5, 1.75, 2 }, set = "Fighter", text = "%s team power", percent = true, color = Color3.fromRGB(229, 83, 75) },
+	{ id = "Combo", label = "Combo", stat = "ComboHold", values = { 1, 2, 3, 4, 5 }, set = "Fighter", text = "combo lasts +%ss", color = Color3.fromRGB(255, 140, 60) },
+	{ id = "Speed", label = "Speed", stat = "Speed", values = { 1.1, 1.2, 1.3, 1.4, 1.5 }, set = "Fighter", text = "%s walk speed", percent = true, color = Color3.fromRGB(91, 184, 245) },
+	-- Idle set
+	{ id = "Offline", label = "Offline", stat = "Offline", values = { 1.2, 1.5, 2, 2.5, 3 }, set = "Idle", text = "%s offline earnings", percent = true, color = Color3.fromRGB(150, 160, 230) },
+	{ id = "Gems", label = "Gems", stat = "Gem", values = { 1.1, 1.25, 1.5, 1.75, 2 }, set = "Idle", text = "%s gem drops", percent = true, color = Color3.fromRGB(120, 220, 255) },
+	{ id = "Tap", label = "Tap", stat = "Tap", values = { 1.5, 2, 3, 4, 5 }, set = "Idle", text = "%s tap power", percent = true, color = Color3.fromRGB(240, 240, 240) },
+	-- Rare (single tier, can't be merged)
+	{ id = "GoldenTouch", label = "Golden Touch", stat = "GoldenSources", values = { 0.01 }, text = "%s of sources turn gold (x10)", color = Color3.fromRGB(255, 215, 80), rare = true },
+	{ id = "BigHunter", label = "Big Hunter", stat = "BigSpawn", values = { 2 }, text = "Big appears x%s more often", color = Color3.fromRGB(240, 138, 45), rare = true },
+	{ id = "PixelSeeker", label = "Pixel Seeker", stat = "Pixel", values = { 2 }, set = "Hatcher", text = "Pixel chance x%s", color = Color3.fromRGB(142, 91, 217), rare = true },
+	{ id = "AutoTap", label = "Auto Tap", stat = "AutoTap", values = { 1 }, text = "you tap by yourself, even in Auto mode", color = Color3.fromRGB(200, 200, 210), rare = true },
+	{ id = "DoubleHatch", label = "Double Hatch", stat = "EggExtraChance", values = { 0.1 }, set = "Hatcher", text = "%s chance an egg gives 2", color = Color3.fromRGB(180, 255, 140), rare = true },
+}
+
+-- Set bonuses: equip all three cartridges of a set.
+export type SetDef = { label: string, members: { string }, text: string }
+
+local SETS: { [string]: SetDef } = {
+	Rich = { label = "Rich", members = { "Coins", "Jackpot", "ChestBreaker" }, text = "All coins +25%" },
+	Hatcher = { label = "Hatcher", members = { "Lucky", "PixelSeeker", "DoubleHatch" }, text = "Hatch twice as fast" },
+	Fighter = { label = "Fighter", members = { "Power", "Combo", "Speed" }, text = "Every 20s: power x2 for 5s" },
+	Idle = { label = "Idle", members = { "Offline", "Gems", "Tap" }, text = "+4 hours of offline earnings" },
+}
+
+local function cartridgeId(family: string, tier: number): string
+	return ("Cart_%s_%d"):format(family, tier)
+end
+
+local function formatValue(family: CartridgeFamily, value: number): string
+	if family.percent then
+		return ("+%d%%"):format(math.floor((value - 1) * 100 + 0.5))
+	elseif value < 1 then
+		return ("%g%%"):format(value * 100)
+	end
+	return ("%g"):format(value)
+end
+
+local cartridgeFamilies: { [string]: CartridgeFamily } = {}
+for _, family in CARTRIDGES do
+	cartridgeFamilies[family.id] = family
+	for tier, value in family.values do
+		local multi = #family.values > 1
+		add({
+			id = cartridgeId(family.id, tier),
+			name = if multi then ("%s Cartridge %s"):format(family.label, ROMAN[tier]) else family.label .. " Cartridge",
+			kind = "Cartridge",
+			tier = tier,
+			family = family.id,
+			boosts = {},
+			duration = 0,
+			gear = { { stat = family.stat, value = value } },
+			set = family.set,
+			mergeInto = if tier < #family.values then cartridgeId(family.id, tier + 1) else nil,
+			mergeCost = 3,
+			color = family.color,
+			description = (family.text:format(formatValue(family, value))):gsub("^%l", string.upper),
+		})
+	end
+end
+
+---------------------------------------------------------------------------------------------------------------
+-- Keys
+
+local KEYS = {
+	{
+		id = "Zone",
+		label = "Zone Key",
+		color = Color3.fromRGB(91, 184, 245),
+		text = "Opens the treasure vault of the zone you're in: 5 vaults of coins and 2 elixirs",
+	},
+	{
+		id = "Golden",
+		label = "Golden Key",
+		color = Color3.fromRGB(255, 205, 60),
+		text = "Opens a golden chest: 3 eggs from your zone, all Golden or better",
+	},
+	{
+		id = "Titan",
+		label = "Titan Key",
+		color = Color3.fromRGB(255, 120, 200),
+		text = "Calls the guardian of a restored zone right now, skipping its 4h wait",
+	},
+}
+
+for _, key in KEYS do
+	add({
+		id = "Key_" .. key.id,
+		name = key.label,
+		kind = "Key",
+		tier = 1,
+		family = key.id,
+		boosts = {},
+		duration = 0,
+		gear = {},
+		mergeCost = 0,
+		color = key.color,
+		description = key.text,
+	})
+	add({
+		id = "KeyHalf_" .. key.id,
+		name = key.label .. " (half)",
+		kind = "KeyHalf",
+		tier = 1,
+		family = key.id,
+		boosts = {},
+		duration = 0,
+		gear = {},
+		mergeInto = "Key_" .. key.id,
+		mergeCost = 2,
+		color = key.color,
+		description = "Join 2 halves to make a " .. key.label,
+	})
+end
+
+---------------------------------------------------------------------------------------------------------------
 
 local Items = {
 	list = list,
@@ -160,31 +259,39 @@ local Items = {
 	MAX_TIER = MAX_TIER,
 	MERGE_COST = 3,
 	BOOST_CAP_SECONDS = 4 * 3600,
-	baseFamilies = BASE,
+	baseFamilies = ELIXIRS,
+	cartridgeFamilies = CARTRIDGES,
+	sets = SETS,
+	ROMAN = ROMAN,
 }
 
 function Items.elixirId(family: string, tier: number): string
-	return itemId(family, tier)
+	return elixirId(family, tier)
 end
 
--- Id of the next tier, or nil at max tier.
+function Items.cartridgeId(family: string, tier: number): string
+	return cartridgeId(family, tier)
+end
+
+function Items.cartridgeFamily(id: string): CartridgeFamily?
+	return cartridgeFamilies[id]
+end
+
+-- What 'Merge' turns this item into, or nil.
 function Items.nextTier(id: string): string?
 	local item = byId[id]
-	if not item or item.tier >= MAX_TIER then
-		return nil
-	end
-	return itemId(item.family, item.tier + 1)
+	return if item then item.mergeInto else nil
 end
 
 -- Mixer result for two elixir ids (order doesn't matter), or nil.
 function Items.mixResult(a: string, b: string): string?
 	local ia, ib = byId[a], byId[b]
-	if not ia or not ib or ia.tier ~= ib.tier then
+	if not ia or not ib or ia.kind ~= "Elixir" or ib.kind ~= "Elixir" or ia.tier ~= ib.tier then
 		return nil
 	end
 	for _, mix in MIXES do
 		if (ia.family == mix.a and ib.family == mix.b) or (ia.family == mix.b and ib.family == mix.a) then
-			return itemId(mix.id, ia.tier)
+			return elixirId(mix.id, ia.tier)
 		end
 	end
 	return nil

@@ -18,12 +18,15 @@ local Progression = require(Shared.Config.Progression)
 local Bag = require(Shared.Logic.Bag)
 local Boosts = require(Shared.Logic.Boosts)
 local Combo = require(Shared.Logic.Combo)
+local Gear = require(Shared.Logic.Gear)
 local Loot = require(Shared.Logic.Loot)
 local Effects = require(Shared.Logic.Effects)
 local Format = require(Shared.Logic.Format)
 local Inventory = require(Shared.Logic.Inventory)
 local MapLayout = require(Shared.Logic.MapLayout)
 local PetMath = require(Shared.Logic.PetMath)
+local Expedition = require(Shared.Logic.Expedition)
+local Reload = require(Shared.Logic.Reload)
 local Types = require(Shared.Logic.Types)
 local Net = require(Shared.Net)
 local Signal = require(Shared.Signal)
@@ -37,7 +40,7 @@ type PlayerData = Types.PlayerData
 local GameService = {}
 
 -- Fired for quest and pass progress: (player, event, amount). Events: Coins, Break, Hatch, Combo,
--- Fuse, Big, Guardian, Restore, Rift.
+-- Fuse, Big, Guardian, Restore, Rift, Expedition, Reload.
 GameService.Progress = Signal.new() :: Signal.Signal<Player, string, number>
 
 function GameService.progress(player: Player, event: string, amount: number)
@@ -102,7 +105,7 @@ function GameService.luck(player: Player): number
 	end
 	local data = DataService.get(player)
 	local saved = if data then Boosts.active(data.boosts, "Luck") else 1
-	return Effects.get(runtime.effects, "Luck") * State.boost(runtime, "Luck", os.clock()) * saved
+	return Effects.get(runtime.effects, "Luck") * State.boost(runtime, "Luck", os.clock()) * saved * Gear.get(runtime.gear, "Luck")
 end
 
 -- Extra multiplier per variant for hatching: skills plus the saved Pixel boost.
@@ -112,6 +115,9 @@ function GameService.variantChance(player: Player, eggZone: number?): { [string]
 	local chances = if runtime then table.clone(runtime.effects.variantChance) else {}
 	if data then
 		chances.Pixel = (chances.Pixel or 1) * Boosts.active(data.boosts, "Pixel")
+		if runtime then
+			chances.Pixel *= Gear.get(runtime.gear, "Pixel")
+		end
 	end
 	if eggZone and eggZone == GameService.riftZone then
 		chances.Pixel = (chances.Pixel or 1) * Progression.RIFT_PIXEL_CHANCE
@@ -158,7 +164,7 @@ function GameService.setHatcher(fn: (Player, number, number, number, string?) ->
 end
 
 -- Free eggs (ad rewards, daily rewards): from the zone the player stands in, or their best unlocked egg.
-function GameService.grantFreeEggs(player: Player, count: number, luck: number?)
+function GameService.grantFreeEggs(player: Player, count: number, luck: number?, minVariant: string?)
 	local data = DataService.get(player)
 	local runtime = State.get(player)
 	if not data or not runtime or not hatchEggs then
@@ -175,7 +181,18 @@ function GameService.grantFreeEggs(player: Player, count: number, luck: number?)
 			end
 		end
 	end
-	hatchEggs(player, zoneId, count, luck or 1, nil)
+	hatchEggs(player, zoneId, count, luck or 1, minVariant)
+end
+
+
+-- Permanent coin multiplier from Reloads (x1.5 each).
+function GameService.reloadMult(data: PlayerData): number
+	return Reload.coinMult(data.reloads or 0)
+end
+
+function GameService.tapPower(runtime: State.Runtime, data: PlayerData): number
+	return (Constants.BASE_TAP_POWER + runtime.power * Upgrades.tapShare(data.upgrades.TapPower or 0))
+		* Gear.get(runtime.gear, "Tap")
 end
 
 local function zoneElement(zoneId: number?): string
@@ -192,6 +209,7 @@ function GameService.refresh(player: Player)
 	end
 	Inventory.sanitize(data, GameService.maxSlots(player))
 	runtime.effects = Effects.collect(data.pets, data.equipped)
+	runtime.gear = Gear.compute(data.cartridges)
 
 	-- Pets others can see
 	local folder = petDisplay:FindFirstChild(tostring(player.UserId))
@@ -229,7 +247,7 @@ function GameService.refresh(player: Player)
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		local speed = 16 * Upgrades.walkSpeedMult(data.upgrades.WalkSpeed or 0)
-		speed *= math.min(3, Effects.get(runtime.effects, "Speed") * Boosts.active(data.boosts, "Speed"))
+		speed *= math.min(3, Effects.get(runtime.effects, "Speed") * Boosts.active(data.boosts, "Speed") * Gear.get(runtime.gear, "Speed"))
 		humanoid.WalkSpeed = speed
 	end
 
@@ -238,7 +256,7 @@ end
 
 local function computePower(player: Player, runtime: State.Runtime, data: PlayerData, now: number)
 	local boosts = {
-		Power = State.boost(runtime, "Power", now) * Boosts.active(data.boosts, "Power"),
+		Power = State.boost(runtime, "Power", now) * Boosts.active(data.boosts, "Power") * Gear.get(runtime.gear, "Power"),
 		Element = if State.boost(runtime, "Element", now) > 1 then State.boost(runtime, "Element", now) else nil,
 		CloneCount = if State.boost(runtime, "Clone", now) > 1 then State.boost(runtime, "Clone", now) else nil,
 	}
@@ -249,7 +267,7 @@ local function computePower(player: Player, runtime: State.Runtime, data: Player
 end
 
 local function comboActive(runtime: State.Runtime, now: number): boolean
-	local hold = Effects.get(runtime.effects, "ComboHold")
+	local hold = Effects.get(runtime.effects, "ComboHold") + Gear.get(runtime.gear, "ComboHold")
 	return now - runtime.lastBreak <= Constants.COMBO_WINDOW + hold
 end
 
@@ -258,19 +276,22 @@ local function coinMultiplier(
 	data: PlayerData,
 	kind: Breakables.BreakableKind?,
 	now: number,
-	zoneId: number?
+	zoneId: number?,
+	noCombo: boolean?
 ): number
 	local mult = Upgrades.coinMult(data.upgrades.CoinMult or 0) * riftCoinMult(runtime, zoneId)
 	mult *= Effects.get(runtime.effects, "Coins")
 	mult *= State.boost(runtime, "Coins", now)
 	mult *= Boosts.active(data.boosts, "Coins")
+	mult *= Gear.get(runtime.gear, "Coins")
+	mult *= GameService.reloadMult(data)
 	if kind and kind.isPile then
 		mult *= Effects.get(runtime.effects, "Pile")
 	end
 	if kind and kind.isChest then
-		mult *= Effects.get(runtime.effects, "Chest")
+		mult *= Effects.get(runtime.effects, "Chest") * Gear.get(runtime.gear, "Chest")
 	end
-	if not runtime.auto and runtime.combo > 0 then
+	if not noCombo and not runtime.auto and runtime.combo > 0 then
 		mult *= Combo.multiplier(runtime.combo)
 	end
 	return mult
@@ -298,6 +319,18 @@ function GameService.addCoins(player: Player, amount: number, zoneId: number?, r
 			runtime.dirtyData = true
 		end
 	end
+end
+
+-- Coins from rewards (keys, trips): raw amount with the player's coin multipliers applied, except the combo.
+function GameService.rewardCoins(player: Player, raw: number, zoneId: number?): number
+	local data = DataService.get(player)
+	local runtime = State.get(player)
+	if not data or not runtime then
+		return 0
+	end
+	local gained = raw * coinMultiplier(runtime, data, nil, os.clock(), zoneId, true)
+	GameService.addCoins(player, gained, zoneId, raw)
+	return gained
 end
 
 -- Takes coins from a source for the player, with all multipliers applied.
@@ -352,13 +385,15 @@ BreakableService.Broken:Connect(function(source: BreakableService.Source, contri
 		local mult = coinMultiplier(runtime, data, source.kind, now, source.zoneId)
 		local bonus = 0
 		local jackpotChance = Constants.JACKPOT_CHANCE
-			* Effects.get(runtime.effects, "Jackpot")
-			* State.boost(runtime, "Jackpot", now)
+				* Effects.get(runtime.effects, "Jackpot")
+				* State.boost(runtime, "Jackpot", now)
+			+ Gear.get(runtime.gear, "Jackpot")
 		local jackpot = rng:NextNumber() < math.min(1, jackpotChance)
 		if jackpot then
 			bonus += share * (Constants.JACKPOT_MULT - 1) * mult
 		end
-		local golden = rng:NextNumber() < Effects.get(runtime.effects, "GoldenSources")
+		local golden = rng:NextNumber()
+			< Effects.get(runtime.effects, "GoldenSources") + Gear.get(runtime.gear, "GoldenSources")
 		if golden then
 			bonus += share * 9 * mult
 		end
@@ -366,15 +401,16 @@ BreakableService.Broken:Connect(function(source: BreakableService.Source, contri
 			GameService.addCoins(player, bonus, source.zoneId, 0)
 		end
 
-		local gemChance = (Constants.BASE_GEM_CHANCE + Effects.get(runtime.effects, "Gem")) * Boosts.active(data.boosts, "Gem")
+		local gemChance = (Constants.BASE_GEM_CHANCE + Effects.get(runtime.effects, "Gem"))
+			* Boosts.active(data.boosts, "Gem")
+			* Gear.get(runtime.gear, "Gem")
 		if rng:NextNumber() < gemChance then
 			data.gems += math.max(1, source.zoneId)
 		end
 
-		local drop = Loot.roll(source.kind.id, source.zoneId, function()
+		for _, drop in Loot.rollAll(source.kind.id, source.zoneId, function()
 			return rng:NextNumber()
-		end)
-		if drop then
+		end) do
 			GameService.giveItem(player, drop, 1, true)
 		end
 
@@ -616,11 +652,14 @@ local function giveOfflineEarnings(player: Player, data: PlayerData, runtime: St
 	if runtime.vip then
 		hours += Products.VIP_EXTRA_OFFLINE_HOURS
 	end
+	hours += Gear.get(runtime.gear, "OfflineHours")
 	local seconds = math.min(elapsed, hours * 3600)
 	local coins = data.lastPower
 		* seconds
 		* Constants.OFFLINE_EFFICIENCY
 		* Effects.get(runtime.effects, "Offline")
+		* Gear.get(runtime.gear, "Offline")
+		* GameService.reloadMult(data)
 		* (1 + 0.1 * restoredZones(data))
 	if coins > 0 then
 		data.coins += coins
@@ -719,6 +758,16 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		trails = data.trails,
 		equippedTitle = data.equippedTitle,
 		equippedTrail = data.equippedTrail,
+		cartridges = data.cartridges,
+		cartridgeSlots = Gear.slots(data.reloads),
+		gearSets = (State.get(player) :: State.Runtime).gear.sets,
+		reloads = data.reloads,
+		reloadMult = GameService.reloadMult(data),
+		canReload = (Reload.canReload(data)),
+		nextReloadMult = Reload.coinMult(data.reloads + 1),
+		nextCartridgeSlots = Gear.slots(data.reloads + 1),
+		expeditions = data.expeditions,
+		expeditionSlots = Expedition.slots(data.reloads),
 		maxSlots = GameService.maxSlots(player),
 		capacity = GameService.capacity(player),
 		vip = (State.get(player) :: State.Runtime).vip,
@@ -782,6 +831,11 @@ local function tickPlayer(player: Player, runtime: State.Runtime, data: PlayerDa
 	if source and #data.equipped > 0 then
 		GameService.collectFrom(player, source, runtime.power * dt)
 	end
+	-- Auto Tap cartridge: two taps per second without clicking
+	if source and Gear.get(runtime.gear, "AutoTap") > 0 and now - runtime.lastTap >= 0.5 then
+		runtime.lastTap = now
+		GameService.collectFrom(player, source, GameService.tapPower(runtime, data))
+	end
 end
 
 local function onClick(player: Player, part: BasePart)
@@ -801,8 +855,7 @@ local function onClick(player: Player, part: BasePart)
 	local now = os.clock()
 	if now - runtime.lastTap >= Constants.TAP_COOLDOWN then
 		runtime.lastTap = now
-		local tap = Constants.BASE_TAP_POWER + runtime.power * Upgrades.tapShare(data.upgrades.TapPower or 0)
-		GameService.collectFrom(player, source, tap)
+		GameService.collectFrom(player, source, GameService.tapPower(runtime, data))
 	end
 end
 
@@ -829,7 +882,7 @@ function GameService.init()
 		if not data or type(value) ~= "boolean" then
 			return
 		end
-		if key == "allowTrades" or key == "autoEquipBest" then
+		if key == "allowTrades" or key == "autoEquipBest" or key == "lowEnd" then
 			data.settings[key] = value
 			GameService.markDirty(player)
 		end
@@ -872,6 +925,15 @@ function GameService.init()
 					local changed = Boosts.tick(data.boosts, 1)
 					if table.find(changed, "Speed") then
 						GameService.refresh(player)
+					end
+					if runtime.gear.fighter then
+						local due = runtime.timers["gear:Fighter"]
+						if not due then
+							runtime.timers["gear:Fighter"] = now + Gear.FIGHTER_EVERY
+						elseif now >= due then
+							runtime.timers["gear:Fighter"] = now + Gear.FIGHTER_EVERY
+							State.addBoost(runtime, "Power", Gear.FIGHTER_MULT, Gear.FIGHTER_DURATION, now)
+						end
 					end
 					for _, entry in runtime.effects.periodic do
 						local due = runtime.timers[entry.key]

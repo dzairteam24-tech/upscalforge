@@ -37,6 +37,12 @@ function Store.init()
 	end)
 end
 
+-- Low-end mode: fewer effects and no creatures of other players.
+function Store.lowEnd(): boolean
+	local data = Store.data
+	return data ~= nil and data.settings.lowEnd == true
+end
+
 function Store.isUnlocked(zoneId: number): boolean
 	local data = Store.data
 	return data ~= nil and data.unlockedZones[tostring(zoneId)] == true

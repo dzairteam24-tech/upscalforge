@@ -58,6 +58,9 @@ function Inventory.equip(holder: Holder, petId: string, maxSlots: number): (bool
 	if not holder.pets[petId] then
 		return false, "You don't own that creature"
 	end
+	if holder.pets[petId].ex then
+		return false, "This creature is away on an expedition"
+	end
 	if Inventory.isEquipped(holder, petId) then
 		return true, nil
 	end
@@ -73,7 +76,8 @@ function Inventory.sanitize(holder: Holder, maxSlots: number)
 	local seen: { [string]: boolean } = {}
 	local clean = {}
 	for _, petId in holder.equipped do
-		if holder.pets[petId] and not seen[petId] and #clean < maxSlots then
+		local pet = holder.pets[petId]
+		if pet and not pet.ex and not seen[petId] and #clean < maxSlots then
 			seen[petId] = true
 			table.insert(clean, petId)
 		end
@@ -83,8 +87,10 @@ end
 
 function Inventory.equipBest(holder: Holder, maxSlots: number)
 	local ids = {}
-	for petId in holder.pets do
-		table.insert(ids, petId)
+	for petId, pet in holder.pets do
+		if not pet.ex then
+			table.insert(ids, petId)
+		end
 	end
 	local ranked = PetMath.rankIds(holder.pets, ids)
 	local equipped = {}
@@ -108,7 +114,7 @@ end
 function Inventory.fusionMaterial(holder: Holder, speciesId: string, variantId: string): { string }
 	local free, equipped = {}, {}
 	for petId, pet in holder.pets do
-		if pet.s == speciesId and pet.v == variantId and pet.z == "Normal" and not pet.lk then
+		if pet.s == speciesId and pet.v == variantId and pet.z == "Normal" and not pet.lk and not pet.ex then
 			table.insert(if Inventory.isEquipped(holder, petId) then equipped else free, petId)
 		end
 	end

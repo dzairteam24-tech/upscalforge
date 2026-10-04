@@ -10,6 +10,8 @@ local Net = require(Shared.Net)
 local Store = require(script.Parent.Parent.Store)
 local DailyPanel = require(script.Parent.DailyPanel)
 local QuestsPanel = require(script.Parent.QuestsPanel)
+local ReloadPanel = require(script.Parent.ReloadPanel)
+local TripsPanel = require(script.Parent.TripsPanel)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
 
@@ -58,6 +60,19 @@ function HUD.mount(gui: ScreenGui)
 	local gems = pill(top, "💎", Color3.fromRGB(120, 220, 255), 2)
 	local power = pill(top, "⚡", Color3.fromRGB(255, 140, 90), 3)
 	top.Parent = gui
+
+	local settingsButton = Theme.button({
+		Name = "Settings",
+		Text = "⚙️",
+		Position = UDim2.fromOffset(190, 12),
+		Size = UDim2.fromOffset(40, 40),
+		BackgroundColor3 = Theme.card,
+		MaxTextSize = 22,
+	})
+	settingsButton.Parent = gui
+	settingsButton.Activated:Connect(function()
+		Windows.toggle("Settings")
+	end)
 
 	-- Zone name + restore bar (top center)
 	local zoneFrame = Theme.frame({
@@ -130,17 +145,17 @@ function HUD.mount(gui: ScreenGui)
 	})
 	riftLabel.Parent = gui
 
-	-- Menu buttons (left middle), two columns so it fits on phones
+	-- Menu buttons (left middle), three short columns so it fits on phones
 	local menu = Theme.frame({
 		Name = "Menu",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 12, 0.58, 0),
-		Size = UDim2.fromOffset(160, 260),
+		Size = UDim2.fromOffset(210, 174),
 	})
 	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.fromOffset(76, 58)
-	grid.CellPadding = UDim2.fromOffset(8, 8)
+	grid.CellSize = UDim2.fromOffset(66, 54)
+	grid.CellPadding = UDim2.fromOffset(6, 6)
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = menu
 	local function menuButton(text: string, color: Color3, order: number): TextButton
@@ -148,7 +163,7 @@ function HUD.mount(gui: ScreenGui)
 			Text = text,
 			BackgroundColor3 = color,
 			LayoutOrder = order,
-			MaxTextSize = 16,
+			MaxTextSize = 15,
 		})
 		b.Parent = menu
 		return b
@@ -186,12 +201,22 @@ function HUD.mount(gui: ScreenGui)
 	menuButton("🔁\nTrade", Theme.purple, 6).Activated:Connect(function()
 		Windows.toggle("Trade")
 	end)
-	local autoButton = menuButton("🤖\nAuto", Theme.card, 7)
+	local tripsButton = menuButton("🧭\nTrips", Color3.fromRGB(91, 160, 110), 7)
+	tripsButton.Activated:Connect(function()
+		Windows.toggle("Trips")
+	end)
+	local reloadButton = menuButton("🔄\nReload", Color3.fromRGB(110, 90, 200), 8)
+	reloadButton.Activated:Connect(function()
+		Windows.toggle("Reload")
+	end)
+	local autoButton = menuButton("🤖\nAuto", Theme.card, 9)
 	autoButton.Activated:Connect(function()
 		Net.event("ToggleAuto"):FireServer(not Store.currency.auto)
 	end)
 	local questsDot = dot(questsButton)
 	local dailyDot = dot(dailyButton)
+	local tripsDot = dot(tripsButton)
+	local reloadDot = dot(reloadButton)
 	menu.Parent = gui
 
 	local function update()
@@ -219,6 +244,8 @@ function HUD.mount(gui: ScreenGui)
 		riftLabel.Text = if rift then "🟪 Pixel Rift today: " .. rift.name else ""
 		questsDot.Visible = QuestsPanel.hasClaimable()
 		dailyDot.Visible = DailyPanel.claimable() ~= nil
+		tripsDot.Visible = TripsPanel.hasReady()
+		reloadDot.Visible = ReloadPanel.canReload()
 	end
 	Store.CurrencyChanged:Connect(update)
 	update()

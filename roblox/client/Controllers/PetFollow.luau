@@ -1,5 +1,5 @@
 -- Draws every player's team and moves it: following behind the player, or hopping around the target source.
--- Runs on each client so the server never has to move creature models.
+-- Runs on each client so the server never has to move creature models. Low-end mode hides other players' teams.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -7,6 +7,8 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PetModel = require(Shared.PetModel)
+
+local Store = require(script.Parent.Parent.Store)
 
 local PetFollow = {}
 
@@ -25,6 +27,12 @@ type Owner = {
 local owners: { [number]: Owner } = {}
 local container = Instance.new("Folder")
 container.Name = "Pets"
+local LOCAL = Players.LocalPlayer
+local othersHidden = false
+
+local function hidden(owner: Owner): boolean
+	return othersHidden and owner.player ~= LOCAL
+end
 
 local function parse(value: string): { s: string, v: string, z: string }?
 	local s, v, z = string.match(value, "^([^|]+)|([^|]+)|([^|]+)$")
@@ -62,7 +70,7 @@ local function addPet(owner: Owner, value: StringValue)
 		return
 	end
 	local built = PetModel.build(pet)
-	built.model.Parent = container
+	built.model.Parent = if hidden(owner) then nil else container
 	local entry: Entry = { built = built, current = startPosition(owner.player), phase = math.random() * math.pi * 2 }
 	PetModel.place(built, entry.current)
 	owner.entries[value.Name] = entry
@@ -122,8 +130,24 @@ end
 
 local frame = 0
 
+local function applyLowEnd()
+	local hide = Store.lowEnd()
+	if hide == othersHidden then
+		return
+	end
+	othersHidden = hide
+	for _, owner in owners do
+		if owner.player ~= LOCAL then
+			for _, entry in owner.entries do
+				entry.built.model.Parent = if hide then nil else container
+			end
+		end
+	end
+end
+
 local function step(dt: number)
 	frame += 1
+	applyLowEnd()
 	local parts: { BasePart } = {}
 	local cframes: { CFrame } = {}
 	local now = os.clock()
@@ -131,6 +155,9 @@ local function step(dt: number)
 	local breakables = workspace:FindFirstChild("Breakables")
 
 	for _, owner in owners do
+		if hidden(owner) then
+			continue
+		end
 		local character = owner.player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if not root or not character then

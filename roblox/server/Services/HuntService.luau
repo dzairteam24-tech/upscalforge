@@ -9,6 +9,7 @@ local Hunt = require(Shared.Config.Hunt)
 local World1 = require(Shared.Config.World1)
 local Boosts = require(Shared.Logic.Boosts)
 local Effects = require(Shared.Logic.Effects)
+local Gear = require(Shared.Logic.Gear)
 local EggRoll = require(Shared.Logic.EggRoll)
 local Inventory = require(Shared.Logic.Inventory)
 local MapLayout = require(Shared.Logic.MapLayout)
@@ -61,7 +62,10 @@ local function bigInterval(zoneId: number): number
 		local runtime = State.get(player)
 		local data = DataService.get(player)
 		if runtime and data then
-			hunt = math.max(hunt, Effects.get(runtime.effects, "BigSpawn") * Boosts.active(data.boosts, "Hunter"))
+			hunt = math.max(
+				hunt,
+				Effects.get(runtime.effects, "BigSpawn") * Boosts.active(data.boosts, "Hunter") * Gear.get(runtime.gear, "BigSpawn")
+			)
 		end
 	end
 	return math.max(Hunt.BIG_MIN_INTERVAL, Hunt.BIG_INTERVAL / hunt)

@@ -1,10 +1,14 @@
--- Items window: elixirs with counts, use / merge / mix, and the active boosts.
+-- Items window with three tabs:
+--   Elixirs:    use, merge 3 -> 1, mix two families, active boosts
+--   Cartridges: the cartridge machine (equipped slots + set bonuses), equip and merge
+--   Keys:       use keys, merge 2 halves -> 1 key
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared.Config.Items)
 local Format = require(Shared.Logic.Format)
+local Gear = require(Shared.Logic.Gear)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
@@ -13,20 +17,25 @@ local Windows = require(script.Parent.Windows)
 
 local BagPanel = {}
 
+type Tab = "Elixirs" | "Cartridges" | "Keys"
+
+local TABS: { { id: Tab, label: string, kinds: { [string]: boolean } } } = {
+	{ id = "Elixirs", label = "🧪 Elixirs", kinds = { Elixir = true } },
+	{ id = "Cartridges", label = "🕹️ Cartridges", kinds = { Cartridge = true } },
+	{ id = "Keys", label = "🗝️ Keys", kinds = { Key = true, KeyHalf = true } },
+}
+
+local HINTS: { [Tab]: string } = {
+	Elixirs = "Elixirs drop from chests, safes, vaults, Bigs and guardians, and come from quests, trips and daily rewards.",
+	Cartridges = "Cartridges drop from safes, vaults, Bigs, guardians and trips. Equip one per family. Every Reload adds a slot.",
+	Keys = "Key halves drop from chests, safes, vaults, Bigs, guardians and trips. Merge 2 halves into a key.",
+}
+
+local current: Tab = "Elixirs"
 local selected: string? = nil
 local mixFirst: string? = nil
 
-local ROMAN = { "I", "II", "III", "IV", "V" }
-
-local function itemTile(item: Items.Item, count: number, highlight: boolean): TextButton
-	local tile = Instance.new("TextButton")
-	tile.Text = ""
-	tile.AutoButtonColor = true
-	tile.BackgroundColor3 = if highlight then Color3.fromRGB(70, 90, 140) else Theme.card
-	tile.BorderSizePixel = 0
-	Theme.corner(tile, 10)
-	Theme.stroke(tile, item.color, 2)
-	-- Bottle drawn with frames
+local function drawElixir(tile: GuiObject, item: Items.Item)
 	local bottle = Theme.frame({
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0.12, 0),
@@ -43,14 +52,99 @@ local function itemTile(item: Items.Item, count: number, highlight: boolean): Te
 		BackgroundColor3 = Color3.fromRGB(220, 220, 235),
 	})
 	neck.Parent = tile
-	local tier = Theme.label({
-		Text = ROMAN[item.tier],
-		Font = Theme.titleFont,
-		Position = UDim2.new(0.5, -14, 0.2, 0),
-		Size = UDim2.fromOffset(28, 22),
-		MaxTextSize = 18,
+end
+
+-- An 8-bit cartridge: grey shell, colored label, grip lines at the top.
+local function drawCartridge(tile: GuiObject, item: Items.Item, scale: number?)
+	local s = scale or 1
+	local shell = Theme.frame({
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0.08 * s, 0),
+		Size = UDim2.fromScale(0.62 * s, 0.48 * s),
+		BackgroundColor3 = Color3.fromRGB(120, 124, 138),
 	})
-	tier.Parent = tile
+	Theme.corner(shell, 6)
+	Theme.stroke(shell, Color3.fromRGB(30, 32, 44), 2)
+	shell.Parent = tile
+	local label = Theme.frame({
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 0.92, 0),
+		Size = UDim2.fromScale(0.8, 0.62),
+		BackgroundColor3 = item.color,
+	})
+	Theme.corner(label, 4)
+	label.Parent = shell
+	for i = 1, 3 do
+		local grip = Theme.frame({
+			Position = UDim2.new(0.25 + (i - 1) * 0.2, 0, 0.06, 0),
+			Size = UDim2.fromScale(0.1, 0.18),
+			BackgroundColor3 = Color3.fromRGB(90, 94, 108),
+		})
+		grip.Parent = shell
+	end
+end
+
+local function drawKey(tile: GuiObject, item: Items.Item)
+	local half = item.kind == "KeyHalf"
+	local head = Theme.frame({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.32, 0, 0.32, 0),
+		Size = UDim2.fromOffset(30, 30),
+		BackgroundColor3 = item.color,
+	})
+	Theme.corner(head, 15)
+	Theme.stroke(head, Color3.fromRGB(30, 32, 44), 2)
+	head.Parent = tile
+	local shaft = Theme.frame({
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0.32, 10, 0.32, 0),
+		Size = UDim2.new(if half then 0.22 else 0.42, 0, 0, 8),
+		BackgroundColor3 = item.color,
+	})
+	shaft.Parent = tile
+	if not half then
+		for i = 1, 2 do
+			local tooth = Theme.frame({
+				Position = UDim2.new(0.62 + (i - 1) * 0.1, 0, 0.32, 2),
+				Size = UDim2.fromOffset(5, 10),
+				BackgroundColor3 = item.color,
+			})
+			tooth.Parent = tile
+		end
+	end
+end
+
+local function itemTile(item: Items.Item, count: number?, highlight: boolean): TextButton
+	local tile = Instance.new("TextButton")
+	tile.Text = ""
+	tile.AutoButtonColor = true
+	tile.BackgroundColor3 = if highlight then Color3.fromRGB(70, 90, 140) else Theme.card
+	tile.BorderSizePixel = 0
+	Theme.corner(tile, 10)
+	Theme.stroke(tile, item.color, 2)
+	if item.kind == "Elixir" then
+		drawElixir(tile, item)
+	elseif item.kind == "Cartridge" then
+		drawCartridge(tile, item)
+	else
+		drawKey(tile, item)
+	end
+	local family = if item.kind == "Cartridge" then Items.cartridgeFamily(item.family) else nil
+	local tierText = if item.kind == "KeyHalf"
+		then "½"
+		elseif family and family.rare then "★"
+		elseif item.kind == "Key" then ""
+		else Items.ROMAN[item.tier]
+	if tierText ~= "" then
+		local tier = Theme.label({
+			Text = tierText,
+			Font = Theme.titleFont,
+			Position = UDim2.new(1, -30, 0, 4),
+			Size = UDim2.fromOffset(26, 20),
+			MaxTextSize = 18,
+		})
+		tier.Parent = tile
+	end
 	local name = Theme.label({
 		Text = item.name,
 		Size = UDim2.new(1, -6, 0.22, 0),
@@ -58,15 +152,25 @@ local function itemTile(item: Items.Item, count: number, highlight: boolean): Te
 		MaxTextSize = 13,
 	})
 	name.Parent = tile
-	local amount = Theme.label({
-		Text = "x" .. count,
-		TextColor3 = Theme.gold,
-		Size = UDim2.new(1, -6, 0.16, 0),
-		Position = UDim2.new(0, 3, 0.8, 0),
-		MaxTextSize = 15,
-	})
-	amount.Parent = tile
+	if count then
+		local amount = Theme.label({
+			Text = "x" .. count,
+			TextColor3 = Theme.gold,
+			Size = UDim2.new(1, -6, 0.16, 0),
+			Position = UDim2.new(0, 3, 0.8, 0),
+			MaxTextSize = 15,
+		})
+		amount.Parent = tile
+	end
 	return tile
+end
+
+local function clear(container: Instance)
+	for _, child in container:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
 end
 
 function BagPanel.mount(gui: ScreenGui)
@@ -74,20 +178,33 @@ function BagPanel.mount(gui: ScreenGui)
 		Windows.close("Items")
 	end)
 
-	local boostsLabel = Theme.label({
-		Text = "",
-		Size = UDim2.new(1, 0, 0, 40),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Theme.green,
-		MaxTextSize = 16,
+	-- Tabs
+	local tabBar = Theme.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40) })
+	tabBar.Parent = content
+	local tabButtons: { [Tab]: TextButton } = {}
+	for i, tab in TABS do
+		local b = Theme.button({
+			Text = tab.label,
+			Size = UDim2.new(1 / #TABS, -6, 1, -4),
+			Position = UDim2.new((i - 1) / #TABS, 3, 0, 0),
+			BackgroundColor3 = Theme.card,
+			MaxTextSize = 20,
+		})
+		b.Parent = tabBar
+		tabButtons[tab.id] = b
+	end
+
+	-- Header above the grid: boosts, or the cartridge machine
+	local header = Theme.frame({
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(0, 46),
+		Size = UDim2.new(0.64, 0, 0, 92),
 	})
-	boostsLabel.Parent = content
+	header.Parent = content
 
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.BackgroundTransparency = 1
 	scroll.BorderSizePixel = 0
-	scroll.Position = UDim2.fromOffset(0, 46)
-	scroll.Size = UDim2.new(0.64, 0, 1, -46)
 	scroll.ScrollBarThickness = 8
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.CanvasSize = UDim2.new()
@@ -98,6 +215,7 @@ function BagPanel.mount(gui: ScreenGui)
 	grid.Parent = scroll
 	scroll.Parent = content
 
+	-- Side panel
 	local side = Theme.frame({ Position = UDim2.new(0.66, 0, 0, 46), Size = UDim2.new(0.34, 0, 1, -46) })
 	Theme.corner(side, 12)
 	side.Parent = content
@@ -110,10 +228,10 @@ function BagPanel.mount(gui: ScreenGui)
 	})
 	title.Parent = side
 	local info = Theme.label({
-		Text = "Elixirs drop from chests, safes, vaults, Bigs and guardians, and come from quests and daily rewards.",
+		Text = "",
 		Font = Enum.Font.Gotham,
 		TextColor3 = Theme.muted,
-		Size = UDim2.new(1, -12, 0.4, 0),
+		Size = UDim2.new(1, -12, 0.42, 0),
 		Position = UDim2.fromOffset(6, 42),
 		TextYAlignment = Enum.TextYAlignment.Top,
 		MaxTextSize = 15,
@@ -127,34 +245,133 @@ function BagPanel.mount(gui: ScreenGui)
 	Theme.list(buttons, 8)
 	buttons.Parent = side
 	local useButton = Theme.button({ Text = "Use", Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = Theme.green, LayoutOrder = 1 })
-	local mergeButton = Theme.button({ Text = "Merge 3 → 1", Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = Theme.purple, LayoutOrder = 2 })
+	local mergeButton = Theme.button({ Text = "Merge", Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = Theme.purple, LayoutOrder = 2 })
 	local mixButton = Theme.button({ Text = "Mix with...", Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = Theme.accent, LayoutOrder = 3 })
 	for _, b in { useButton, mergeButton, mixButton } do
 		b.Parent = buttons
 	end
 
-	local function updateBoosts()
+	local function boostsText(): string
 		local lines = {}
 		for stat, boost in Store.currency.boosts do
 			table.insert(lines, ("%s x%g (%s)"):format(stat, boost.mult, Format.time(boost.left)))
 		end
-		boostsLabel.Text = if #lines > 0 then "Active: " .. table.concat(lines, " · ") else "No active boosts"
+		return if #lines > 0 then "Active: " .. table.concat(lines, " · ") else "No active boosts"
+	end
+
+	local boostsLabel: TextLabel? = nil
+
+	local function buildHeader(data: { [string]: any })
+		clear(header)
+		boostsLabel = nil
+		if current == "Elixirs" then
+			local label = Theme.label({
+				Text = boostsText(),
+				Size = UDim2.new(1, 0, 0, 40),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextColor3 = Theme.green,
+				MaxTextSize = 16,
+			})
+			label.Parent = header
+			boostsLabel = label
+		elseif current == "Cartridges" then
+			local slots: number = data.cartridgeSlots or Gear.BASE_SLOTS
+			local row = Theme.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 62) })
+			Theme.list(row, 6, true)
+			row.Parent = header
+			for i = 1, Gear.MAX_SLOTS do
+				local id = data.cartridges[i]
+				local item = if id then Items.byId[id] else nil
+				local slot: GuiObject
+				if item then
+					local b = Instance.new("TextButton")
+					b.Text = ""
+					b.BackgroundColor3 = Theme.card
+					b.BorderSizePixel = 0
+					Theme.corner(b, 8)
+					Theme.stroke(b, item.color, 2)
+					drawCartridge(b, item, 1.3)
+					b.Activated:Connect(function()
+						Net.event("UnequipCartridge"):FireServer(id)
+					end)
+					slot = b
+				else
+					local open = i <= slots
+					local f = Theme.label({
+						Text = if open then "+" else "🔒",
+						TextColor3 = Theme.muted,
+						BackgroundTransparency = 0,
+						BackgroundColor3 = if open then Theme.panel else Color3.fromRGB(28, 32, 48),
+						MaxTextSize = 22,
+					})
+					Theme.corner(f, 8)
+					slot = f
+				end
+				slot.Size = UDim2.fromOffset(62, 62)
+				slot.LayoutOrder = i
+				slot.Parent = row
+			end
+			local sets = {}
+			for _, setId in data.gearSets or {} do
+				local set = Items.sets[setId]
+				if set then
+					table.insert(sets, ("✨ %s set: %s"):format(set.label, set.text))
+				end
+			end
+			local setsLabel = Theme.label({
+				Text = if #sets > 0
+					then table.concat(sets, " · ")
+					else ("Slots %d/%d · Tap a slot to take a cartridge out · Equip 3 of a set for a bonus"):format(#data.cartridges, slots),
+				TextColor3 = if #sets > 0 then Theme.gold else Theme.muted,
+				Font = if #sets > 0 then Theme.font else Enum.Font.Gotham,
+				Position = UDim2.fromOffset(0, 66),
+				Size = UDim2.new(1, 0, 0, 24),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				MaxTextSize = 14,
+			})
+			setsLabel.Parent = header
+		else
+			local label = Theme.label({
+				Text = "🗝️ Zone Key: treasure vault · Golden Key: 3 Golden+ eggs · Titan Key: call a guardian now",
+				Font = Enum.Font.Gotham,
+				TextColor3 = Theme.muted,
+				Size = UDim2.new(1, 0, 0, 40),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				MaxTextSize = 15,
+			})
+			label.Parent = header
+		end
+		local headerHeight = if current == "Cartridges" then 92 else 46
+		header.Size = UDim2.new(0.64, 0, 0, headerHeight)
+		scroll.Position = UDim2.fromOffset(0, 46 + headerHeight)
+		scroll.Size = UDim2.new(0.64, 0, 1, -(46 + headerHeight))
+	end
+
+	local function tabKinds(): { [string]: boolean }
+		for _, tab in TABS do
+			if tab.id == current then
+				return tab.kinds
+			end
+		end
+		return {}
 	end
 
 	local function rebuild()
-		for _, child in scroll:GetChildren() do
-			if child:IsA("GuiButton") or child:IsA("TextLabel") then
-				child:Destroy()
-			end
-		end
+		clear(scroll)
 		local data = Store.data
 		if not data then
 			return
 		end
+		for id, b in tabButtons do
+			b.BackgroundColor3 = if id == current then Theme.gold else Theme.card
+		end
+		buildHeader(data)
+
+		local kinds = tabKinds()
 		local order = 0
 		for _, item in Items.list do
 			local count = data.items[item.id] or 0
-			if count > 0 then
+			if count > 0 and kinds[item.kind] then
 				order += 1
 				local tile = itemTile(item, count, item.id == selected or item.id == mixFirst)
 				tile.LayoutOrder = order
@@ -172,29 +389,58 @@ function BagPanel.mount(gui: ScreenGui)
 			end
 		end
 		if order == 0 then
-			local empty = Theme.label({ Text = "No items yet.", Size = UDim2.fromOffset(200, 40), MaxTextSize = 18 })
+			local empty = Theme.label({ Text = "Nothing here yet.", Size = UDim2.fromOffset(200, 40), MaxTextSize = 18 })
 			empty.Parent = scroll
 		end
+
 		local item = if selected then Items.byId[selected] else nil
 		local count = if item then data.items[item.id] or 0 else 0
-		buttons.Visible = item ~= nil and count > 0
-		if item and count > 0 then
-			title.Text = item.name
-			local lines = { item.description, ("You have %d"):format(count) }
-			if mixFirst then
-				table.insert(lines, "Now tap another elixir of the same tier to mix.")
-			end
-			info.Text = table.concat(lines, "\n")
-			mergeButton.Visible = Items.nextTier(item.id) ~= nil
-			mixButton.Text = if mixFirst then "Cancel mix" else "Mix with..."
-		else
+		local show = item ~= nil and count > 0 and kinds[item.kind] == true
+		buttons.Visible = show
+		if not item or not show then
 			title.Text = "Pick an item"
+			info.Text = HINTS[current]
+			return
 		end
+		title.Text = item.name
+		local lines = { item.description, ("You have %d"):format(count) }
+		if item.set and Items.sets[item.set] then
+			local set = Items.sets[item.set]
+			table.insert(lines, ("%s set: %s"):format(set.label, set.text))
+		end
+		if mixFirst then
+			table.insert(lines, "Now tap another elixir of the same tier to mix.")
+		end
+		info.Text = table.concat(lines, "\n")
+
+		useButton.Visible = item.kind ~= "KeyHalf"
+		useButton.Text = if item.kind == "Cartridge" then "Equip" else "Use"
+		local upgrade = Items.nextTier(item.id)
+		mergeButton.Visible = upgrade ~= nil
+		if upgrade then
+			mergeButton.Text = ("Merge %d → %s"):format(item.mergeCost, Items.byId[upgrade].name)
+		end
+		mixButton.Visible = item.kind == "Elixir"
+		mixButton.Text = if mixFirst then "Cancel mix" else "Mix with..."
 	end
 
+	for _, tab in TABS do
+		tabButtons[tab.id].Activated:Connect(function()
+			current = tab.id
+			selected = nil
+			mixFirst = nil
+			rebuild()
+		end)
+	end
 	useButton.Activated:Connect(function()
-		if selected then
-			Net.event("UseItem"):FireServer(selected)
+		local item = if selected then Items.byId[selected] else nil
+		if not item then
+			return
+		end
+		if item.kind == "Cartridge" then
+			Net.event("EquipCartridge"):FireServer(item.id)
+		else
+			Net.event("UseItem"):FireServer(item.id)
 		end
 	end)
 	mergeButton.Activated:Connect(function()
@@ -213,14 +459,12 @@ function BagPanel.mount(gui: ScreenGui)
 		end
 	end)
 	Store.CurrencyChanged:Connect(function()
-		if window.Visible then
-			updateBoosts()
+		local label = boostsLabel
+		if window.Visible and label then
+			label.Text = boostsText()
 		end
 	end)
-	Windows.register("Items", window, function()
-		rebuild()
-		updateBoosts()
-	end)
+	Windows.register("Items", window, rebuild)
 end
 
 return BagPanel

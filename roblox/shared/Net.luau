@@ -30,6 +30,11 @@ local EVENTS = {
 	"ClaimQuest",
 	"ClaimPass",
 	"EquipCosmetic",
+	"EquipCartridge",
+	"UnequipCartridge",
+	"Reload",
+	"StartExpedition",
+	"ClaimExpedition",
 	-- server -> client
 	"Data",
 	"Currency",

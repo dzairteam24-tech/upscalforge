@@ -32,14 +32,16 @@ function Bag.take(items: ItemMap, id: string, amount: number): boolean
 	return true
 end
 
--- 3 of one tier -> 1 of the next tier. Returns the new item id.
+-- Elixirs and cartridges: 3 of a tier -> 1 of the next tier. Key halves: 2 -> 1 key.
+-- Returns the new item id.
 function Bag.merge(items: ItemMap, id: string): (string?, string?)
+	local item = Items.byId[id]
 	local nextId = Items.nextTier(id)
-	if not nextId then
-		return nil, "Already max tier"
+	if not item or not nextId then
+		return nil, "This can't be merged"
 	end
-	if not Bag.take(items, id, Items.MERGE_COST) then
-		return nil, ("You need %d of these"):format(Items.MERGE_COST)
+	if not Bag.take(items, id, item.mergeCost) then
+		return nil, ("You need %d of these"):format(item.mergeCost)
 	end
 	Bag.add(items, nextId, 1)
 	return nextId, nil

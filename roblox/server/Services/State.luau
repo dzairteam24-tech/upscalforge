@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Effects = require(Shared.Logic.Effects)
+local Gear = require(Shared.Logic.Gear)
 
 export type Boost = { mult: number, untilTime: number }
 
@@ -18,6 +19,7 @@ export type Runtime = {
 	boosts: { [string]: Boost },
 	timers: { [string]: number },
 	effects: Effects.Effects,
+	gear: Gear.Gear, -- equipped cartridges
 	power: number, -- current coins per second in the player's zone
 	strongest: number,
 	vip: boolean,
@@ -41,6 +43,7 @@ function State.create(player: Player): Runtime
 		boosts = {},
 		timers = {},
 		effects = Effects.empty(),
+		gear = Gear.empty(),
 		power = 0,
 		strongest = 0,
 		vip = false,

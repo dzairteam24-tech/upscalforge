@@ -49,7 +49,7 @@ export type CardOptions = {
 	showPower: boolean?,
 }
 
-function PetCard.create(pet: { s: string, v: string, z: string, lk: boolean? }, options: CardOptions?): TextButton
+function PetCard.create(pet: { s: string, v: string, z: string, lk: boolean?, ex: boolean? }, options: CardOptions?): TextButton
 	local opts = options or {}
 	local variant = Variants.byId[pet.v]
 	local card = Instance.new("TextButton")
@@ -91,6 +91,9 @@ function PetCard.create(pet: { s: string, v: string, z: string, lk: boolean? }, 
 	end
 	if pet.lk then
 		table.insert(badges, "🔒")
+	end
+	if pet.ex then
+		table.insert(badges, "🧭")
 	end
 	if pet.z == "Titan" then
 		table.insert(badges, "👑")

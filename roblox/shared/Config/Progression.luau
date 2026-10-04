@@ -51,6 +51,7 @@ local DAILY_TEMPLATES: { QuestTemplate } = {
 	{ id = "d_fuse", event = "Fuse", text = "Fuse {goal} times", goal = 2 },
 	{ id = "d_big", event = "Big", text = "Defeat {goal} Big", goal = 1 },
 	{ id = "d_rift", event = "Rift", text = "Break {goal} sources in the Pixel Rift", goal = 50 },
+	{ id = "d_trip", event = "Expedition", text = "Send creatures on {goal} trip", goal = 1 },
 }
 
 local WEEKLY_TEMPLATES: { QuestTemplate } = {
@@ -61,6 +62,7 @@ local WEEKLY_TEMPLATES: { QuestTemplate } = {
 	{ id = "w_guardian", event = "Guardian", text = "Defeat {goal} zone guardian", goal = 1 },
 	{ id = "w_restore", event = "Restore", text = "Fully restore {goal} zone", goal = 1 },
 	{ id = "w_rift", event = "Rift", text = "Break {goal} sources in the Pixel Rift", goal = 500 },
+	{ id = "w_trip", event = "Expedition", text = "Send creatures on {goal} trips", goal = 5 },
 }
 
 -- Battle Pass: 30-day seasons, 50 levels.

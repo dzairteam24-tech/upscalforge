@@ -156,8 +156,14 @@ function PetsPanel.mount(gui: ScreenGui)
 		end
 		detailsText.Text = table.concat(lines, "\n")
 
+		if pet.ex then
+			table.insert(lines, "🧭 Away on a trip. It comes back when you claim the trip.")
+			detailsText.Text = table.concat(lines, "\n")
+		end
 		local equipped = table.find(data.equipped, selectedId) ~= nil
-		equipButton.Text = if equipped then "Unequip" else "Equip"
+		equipButton.Text = if pet.ex then "On a trip" elseif equipped then "Unequip" else "Equip"
+		equipButton.BackgroundColor3 = if pet.ex then Theme.card else Theme.green
+		deleteButton.Visible = not pet.ex
 		lockButton.Text = if pet.lk then "Unlock" else "Lock"
 		local nextVariant = variant and variant.fuseInto
 		if nextVariant and pet.z == "Normal" then
@@ -207,7 +213,7 @@ function PetsPanel.mount(gui: ScreenGui)
 			card.LayoutOrder = order
 			card.Activated:Connect(function()
 				if deleteMode then
-					if not pet.lk then
+					if not pet.lk and not pet.ex then
 						toDelete[petId] = if toDelete[petId] then nil else true
 					end
 					rebuild()
@@ -253,7 +259,9 @@ function PetsPanel.mount(gui: ScreenGui)
 		if not data or not selectedId then
 			return
 		end
-		if table.find(data.equipped, selectedId) then
+		if data.pets[selectedId] and data.pets[selectedId].ex then
+			return
+		elseif table.find(data.equipped, selectedId) then
 			Net.event("UnequipPet"):FireServer(selectedId)
 		else
 			Net.event("EquipPet"):FireServer(selectedId)

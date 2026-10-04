@@ -8,6 +8,7 @@ local Constants = require(Shared.Config.Constants)
 local Variants = require(Shared.Config.Variants)
 local World1 = require(Shared.Config.World1)
 local Effects = require(Shared.Logic.Effects)
+local Gear = require(Shared.Logic.Gear)
 local EggRoll = require(Shared.Logic.EggRoll)
 local Inventory = require(Shared.Logic.Inventory)
 local Types = require(Shared.Logic.Types)
@@ -71,8 +72,10 @@ local function grant(
 	local results = {}
 	local luck = GameService.luck(player) * extraLuck
 	local perEgg = 1 + math.floor(Effects.get(runtime.effects, "EggExtra"))
+	local doubleChance = Gear.get(runtime.gear, "EggExtraChance")
 	for _ = 1, eggs do
-		for _ = 1, perEgg do
+		local count = perEgg + (if rng:NextNumber() < doubleChance then 1 else 0)
+		for _ = 1, count do
 			local forceGolden = not data.flags.gotGolden
 				and (data.stats.hatches or 0) + 1 >= Constants.GUARANTEED_GOLDEN_BY_HATCH
 			local roll = EggRoll.roll(zoneId, {
@@ -126,7 +129,7 @@ local function hatch(player: Player, zoneId: any, amount: any)
 		return
 	end
 	local now = os.clock()
-	if now - runtime.lastHatch < Constants.HATCH_COOLDOWN then
+	if now - runtime.lastHatch < Constants.HATCH_COOLDOWN / Gear.get(runtime.gear, "HatchSpeed") then
 		return
 	end
 	local character = player.Character
@@ -234,7 +237,7 @@ function PetService.init()
 		local removed = 0
 		for _, petId in petIds do
 			local pet = type(petId) == "string" and data.pets[petId]
-			if pet and not pet.lk then
+			if pet and not pet.lk and not pet.ex then
 				Inventory.remove(data, petId)
 				removed += 1
 			end

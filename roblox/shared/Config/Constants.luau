@@ -47,6 +47,10 @@ local Constants = {
 	-- Fusion
 	FUSION_COST = 5,
 
+	-- Reload (rebirth)
+	RELOAD_COIN_MULT = 1.5,
+	RELOAD_REQUIRED_ZONE = 10,
+
 	-- Trading
 	TRADE_MAX_PETS = 12,
 	TRADE_LOCK_SECONDS = 3,

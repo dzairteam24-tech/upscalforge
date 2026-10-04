@@ -61,7 +61,7 @@ local function template(): PlayerData
 		purchases = {},
 		titles = {},
 		tradeHistory = {},
-		settings = { allowTrades = true, autoEquipBest = true },
+		settings = { allowTrades = true, autoEquipBest = true, lowEnd = false },
 		lastSeen = 0,
 		lastPower = 0,
 		items = {},
@@ -71,6 +71,9 @@ local function template(): PlayerData
 		pass = { season = 0, xp = 0, premium = false, claimedFree = {}, claimedPremium = {} },
 		guardians = {},
 		trails = {},
+		cartridges = {},
+		reloads = 0,
+		expeditions = {},
 	}
 end
 

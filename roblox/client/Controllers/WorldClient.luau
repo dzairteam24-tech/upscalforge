@@ -2,6 +2,7 @@
 -- booth prompts, coin and skill effects.
 
 local CollectionService = game:GetService("CollectionService")
+local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local World1 = require(Shared.Config.World1)
 local Format = require(Shared.Logic.Format)
 local MapLayout = require(Shared.Logic.MapLayout)
+local Reload = require(Shared.Logic.Reload)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
@@ -95,6 +97,30 @@ local function tintZones()
 	end
 end
 
+-- Every Reload paints the world in a new palette.
+local function tintWorld()
+	local data = Store.data
+	if not data then
+		return
+	end
+	local effect = Lighting:FindFirstChild("ReloadTint") :: ColorCorrectionEffect?
+	if not effect then
+		local created = Instance.new("ColorCorrectionEffect")
+		created.Name = "ReloadTint"
+		created.Parent = Lighting
+		effect = created
+	end
+	local reloads: number = data.reloads or 0
+	local goal = Reload.tint(reloads)
+	local target = effect :: ColorCorrectionEffect
+	if target.TintColor ~= goal then
+		TweenService:Create(target, TweenInfo.new(2), {
+			TintColor = goal,
+			Saturation = math.min(0.3, reloads * 0.05),
+		}):Play()
+	end
+end
+
 ---------------------------------------------------------------------------------------------------------------
 -- Source health bars
 
@@ -158,6 +184,9 @@ local function floatingText(position: Vector3, text: string, color: Color3, size
 end
 
 local function coinBurst(position: Vector3, count: number)
+	if Store.lowEnd() then
+		return
+	end
 	local character = LOCAL.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	for _ = 1, count do
@@ -190,6 +219,9 @@ local function coinBurst(position: Vector3, count: number)
 end
 
 local function ring(position: Vector3, color: Color3)
+	if Store.lowEnd() then
+		return
+	end
 	local p = Instance.new("Part")
 	p.Shape = Enum.PartType.Cylinder
 	p.Anchored = true
@@ -271,6 +303,7 @@ function WorldClient.init()
 	Store.DataChanged:Connect(function()
 		updateGates()
 		tintZones()
+		tintWorld()
 	end)
 	CollectionService:GetInstanceAddedSignal("Gate"):Connect(function(gate)
 		if gate:IsA("BasePart") then
@@ -302,6 +335,9 @@ function WorldClient.init()
 
 	Net.event("BreakFx").OnClientEvent:Connect(function(position: Vector3, coins: number, jackpot: boolean, golden: boolean)
 		coinBurst(position, if jackpot then 14 else 5)
+		if Store.lowEnd() and not jackpot and not golden then
+			return
+		end
 		local color = if jackpot then Color3.fromRGB(255, 90, 200) elseif golden then Color3.fromRGB(255, 215, 80) else Color3.fromRGB(255, 235, 140)
 		local prefix = if jackpot then "JACKPOT! +" elseif golden then "GOLD! +" else "+"
 		floatingText(position + Vector3.new(0, 3, 0), prefix .. Format.abbrev(coins), color, if jackpot then 60 else 36)

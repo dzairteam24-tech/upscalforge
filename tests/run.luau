@@ -423,8 +423,15 @@ test("Boosts: stacking time is capped at 4 hours", function()
 	eq(b.Luck["2"], 4 * 3600)
 end)
 
-test("Items: 7 families + 3 mixes, 5 tiers each", function()
-	eq(#Items.list, 10 * 5)
+test("Items: elixirs (7 + 3 mixes) x 5, cartridges (10 x 5 + 5 rare), 3 keys + 3 halves", function()
+	local kinds = {}
+	for _, item in Items.list do
+		kinds[item.kind] = (kinds[item.kind] or 0) + 1
+	end
+	eq(kinds.Elixir, 10 * 5, "elixirs")
+	eq(kinds.Cartridge, 10 * 5 + 5, "cartridges")
+	eq(kinds.Key, 3, "keys")
+	eq(kinds.KeyHalf, 3, "halves")
 	eq(Items.nextTier("Elixir_Coins_4"), "Elixir_Coins_5")
 	eq(Items.nextTier("Elixir_Coins_5"), nil)
 	eq(Items.mixResult("Elixir_Luck_2", "Elixir_Coins_2"), "Elixir_Fortune_2")
@@ -463,6 +470,203 @@ test("Loot: vaults drop often, piles rarely, late zones drop higher tiers", func
 		assert(id and Items.byId[id], "guardian always drops a real item")
 		assert(Items.byId[id].tier >= 5, "zone 9 guardian drops tier 5")
 	end
+end)
+
+-- Cartridges, keys, trips, reload ----------------------------------------------------------------------------
+
+local Gear = R(Shared.Logic.Gear)
+local Expedition = R(Shared.Logic.Expedition)
+local Expeditions = R(Shared.Config.Expeditions)
+local Reload = R(Shared.Logic.Reload)
+
+test("Gear: slots grow with Reloads up to 6", function()
+	eq(Gear.slots(0), 2)
+	eq(Gear.slots(3), 5)
+	eq(Gear.slots(10), 6)
+end)
+
+test("Gear: multiplicative and additive stats, defaults", function()
+	local gear = Gear.compute({ "Cart_Coins_2", "Cart_Jackpot_3", "Cart_Combo_4" })
+	near(Gear.get(gear, "Coins"), 1.25, 1e-9, "coins")
+	near(Gear.get(gear, "Jackpot"), 0.03, 1e-9, "jackpot")
+	eq(Gear.get(gear, "ComboHold"), 4, "combo hold")
+	eq(Gear.get(gear, "Luck"), 1, "missing multiplier")
+	eq(Gear.get(gear, "GoldenSources"), 0, "missing additive")
+	eq(#gear.sets, 0, "no set without Chest Breaker")
+end)
+
+test("Gear: completing a set adds its bonus", function()
+	local rich = Gear.compute({ "Cart_Coins_1", "Cart_Jackpot_1", "Cart_ChestBreaker_1" })
+	eq(rich.sets[1], "Rich")
+	near(Gear.get(rich, "Coins"), 1.1 * 1.25, 1e-9, "Rich coins")
+	local fighter = Gear.compute({ "Cart_Power_1", "Cart_Combo_1", "Cart_Speed_1" })
+	eq(fighter.fighter, true)
+	local idle = Gear.compute({ "Cart_Offline_1", "Cart_Gems_1", "Cart_Tap_1" })
+	eq(Gear.get(idle, "OfflineHours"), 4)
+	local hatcher = Gear.compute({ "Cart_Lucky_1", "Cart_PixelSeeker_1", "Cart_DoubleHatch_1" })
+	eq(Gear.get(hatcher, "HatchSpeed"), 2)
+end)
+
+test("Gear: one cartridge per family and a slot limit", function()
+	assert(Gear.canEquip({}, "Cart_Coins_1", 2))
+	eq((Gear.canEquip({ "Cart_Coins_1" }, "Cart_Coins_3", 2)), false, "same family")
+	eq((Gear.canEquip({ "Cart_Coins_1", "Cart_Power_1" }, "Cart_Lucky_1", 2)), false, "full")
+	eq((Gear.canEquip({}, "Elixir_Coins_1", 2)), false, "not a cartridge")
+end)
+
+test("Bag: 2 key halves make a key, 3 cartridges merge, rare ones don't", function()
+	local items = { KeyHalf_Titan = 3, Cart_Power_1 = 3, Cart_AutoTap_1 = 5 }
+	eq(Bag.merge(items, "KeyHalf_Titan"), "Key_Titan")
+	eq(items.KeyHalf_Titan, 1)
+	eq(Bag.merge(items, "Cart_Power_1"), "Cart_Power_2")
+	eq(items.Cart_Power_1, nil)
+	eq(Bag.merge(items, "Cart_AutoTap_1"), nil, "rare")
+	eq(items.Cart_AutoTap_1, 5)
+end)
+
+test("Loot: cartridges and key halves drop from the right sources", function()
+	local rng = makeRng(11)
+	local cartridges, halves, rare = 0, 0, 0
+	for _ = 1, 10000 do
+		for _, id in Loot.rollAll("Guardian", 3, rng) do
+			local item = Items.byId[id]
+			assert(item, "unknown drop " .. id)
+			if item.kind == "Cartridge" then
+				cartridges += 1
+				if (Items.cartridgeFamily(item.family) :: any).rare then
+					rare += 1
+				end
+			elseif item.kind == "KeyHalf" then
+				halves += 1
+			end
+		end
+	end
+	near(cartridges / 10000, 0.6, 0.03, "guardian cartridges")
+	near(halves / 10000, 0.5, 0.03, "guardian titan halves")
+	near(rare / cartridges, 0.03, 0.01, "rare share")
+	for _ = 1, 2000 do
+		for _, id in Loot.rollAll("Pile", 1, rng) do
+			eq(Items.byId[id].kind, "Elixir", "coin piles only drop elixirs")
+		end
+	end
+end)
+
+local function tripData()
+	local data = {
+		pets = {},
+		equipped = {},
+		expeditions = {},
+		reloads = 0,
+		coins = 500,
+		unlockedZones = { ["0"] = true, ["1"] = true },
+		zoneProgress = { ["1"] = 100 },
+		items = { Elixir_Coins_1 = 2 },
+		stats = {},
+	}
+	local gen = idGen()
+	for _ = 1, 4 do
+		Inventory.add(data, { s = "Bear", v = "Lava", z = "Normal" }, gen)
+	end
+	Inventory.add(data, { s = "Cubby", v = "Normal", z = "Normal" }, gen)
+	Inventory.equip(data, "p5", 6)
+	return data
+end
+
+test("Trips: validation", function()
+	local data = tripData()
+	eq((Expedition.validate(data, "Nope", { "p1" })), false, "unknown kind")
+	eq((Expedition.validate(data, "Short", { "p1", "p2" })), false, "too few")
+	eq((Expedition.validate(data, "Short", { "p1", "p1", "p2" })), false, "duplicate")
+	eq((Expedition.validate(data, "Short", { "p1", "p2", "p5" })), false, "equipped")
+	eq((Expedition.validate(data, "Short", { "p1", "p2", "zz" })), false, "missing")
+	assert(Expedition.validate(data, "Short", { "p1", "p2", "p3" }))
+end)
+
+test("Trips: away creatures are locked out until the trip is claimed", function()
+	local data = tripData()
+	local trip = Expedition.start(data, "Short", { "p1", "p2", "p3" }, 1000)
+	eq(trip.ends, 1000 + Expeditions.byId.Short.duration)
+	eq(trip.element, true, "all Lava")
+	near(trip.power, 3 * PetMath.basePower(data.pets.p1), 1e-9, "power")
+	eq(data.pets.p1.ex, true)
+	eq((Inventory.equip(data, "p1", 6)), false, "can't equip an away creature")
+	eq((Expedition.validate(data, "Short", { "p1", "p4", "p2" })), false, "already away")
+
+	eq((Expedition.claim(data, 1, trip.ends - 1)), nil, "too early")
+	local claimed = Expedition.claim(data, 1, trip.ends)
+	assert(claimed, "claim")
+	eq(data.pets.p1.ex, nil)
+	eq(#data.expeditions, 0)
+end)
+
+test("Trips: slots, element bonus and rewards", function()
+	local data = tripData()
+	eq(Expedition.slots(0), 2)
+	eq(Expedition.slots(4), 4)
+	eq(Expedition.slots(40), Expeditions.MAX_SLOTS)
+	Expedition.start(data, "Short", { "p1", "p2", "p3" }, 0)
+	data.expeditions[2] = { kind = "Short", pets = {}, started = 0, ends = 0, power = 0, element = false }
+	eq((Expedition.validate(data, "Short", { "p4", "p4", "p4" })), false, "slots full")
+
+	local mixed = { kind = "Short", pets = {}, started = 0, ends = 0, power = 10, element = false }
+	local same = { kind = "Short", pets = {}, started = 0, ends = 0, power = 10, element = true }
+	local rng = makeRng(3)
+	local a = Expedition.rewards(mixed, 1, rng)
+	local b = Expedition.rewards(same, 1, rng)
+	near(a.coins, 10 * 1800 * 0.3, 1e-6, "coins")
+	near(b.coins, a.coins * Expeditions.ELEMENT_BONUS, 1e-6, "element bonus")
+	eq(#a.items, Expeditions.byId.Short.elixirs)
+	eq(Expedition.sharedElement({ { s = "Cubby", v = "Normal", z = "Normal" } }), false, "Normal has no element")
+	eq(Expedition.sharedElement({ { s = "Cubby", v = "Golden", z = "Normal" }, { s = "Bear", v = "Golden", z = "Big" } }), true)
+
+	local long = { kind = "Long", pets = {}, started = 0, ends = 0, power = 10, element = false }
+	local cartridges = 0
+	for _ = 1, 4000 do
+		for _, id in Expedition.rewards(long, 5, rng).items do
+			assert(Items.byId[id], "unknown reward " .. id)
+			if Items.byId[id].kind == "Cartridge" then
+				cartridges += 1
+			end
+		end
+	end
+	near(cartridges / 4000, Expeditions.byId.Long.cartridgeChance, 0.03, "long trip cartridges")
+end)
+
+test("Trips: repair fixes creatures marked away without a trip", function()
+	local data = tripData()
+	data.pets.p1.ex = true
+	data.expeditions = { { kind = "Short", pets = { "p2" }, started = 0, ends = 0, power = 0, element = false } }
+	Expedition.repair(data)
+	eq(data.pets.p1.ex, nil)
+	eq(data.pets.p2.ex, true)
+end)
+
+test("Reload: needs the last zone, resets the run, keeps creatures and items", function()
+	local data = tripData()
+	eq((Reload.canReload(data)), false)
+	data.unlockedZones[tostring(Constants.RELOAD_REQUIRED_ZONE)] = true
+	assert(Reload.canReload(data))
+	local preview = Reload.preview(data)
+	eq(preview.reloads, 1)
+	near(preview.coinMult, 1.5, 1e-9)
+	eq(preview.cartridgeSlots, 3)
+	Reload.apply(data)
+	eq(data.reloads, 1)
+	eq(data.coins, 0)
+	eq(data.unlockedZones["10"], nil)
+	eq(data.unlockedZones["1"], true)
+	eq(next(data.zoneProgress), nil)
+	eq(Inventory.count(data), 5, "creatures kept")
+	eq(data.items.Elixir_Coins_1, 2, "items kept")
+	near(Reload.coinMult(3), 3.375, 1e-9)
+	assert(Reload.tint(0) ~= Reload.tint(1), "new palette")
+end)
+
+test("Format.mult", function()
+	eq(Format.mult(1), "x1")
+	eq(Format.mult(1.5), "x1.5")
+	eq(Format.mult(3.375), "x3.38")
+	eq(Format.mult(1500), "x1.5K")
 end)
 
 -- Daily, quests, pass, rift -----------------------------------------------------------------------------------

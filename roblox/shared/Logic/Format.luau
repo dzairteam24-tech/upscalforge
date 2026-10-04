@@ -31,6 +31,14 @@ function Format.abbrev(value: number): string
 	return if negative then "-" .. text else text
 end
 
+-- Multipliers: "x1.5", "x3.38", then "x1.2K" for big ones.
+function Format.mult(value: number): string
+	if value < 1000 then
+		return "x" .. string.format("%.2f", value):gsub("%.?0+$", "")
+	end
+	return "x" .. Format.abbrev(value)
+end
+
 function Format.time(seconds: number): string
 	local s = math.max(0, math.floor(seconds))
 	local h = s // 3600
