@@ -423,7 +423,7 @@ test("Boosts: stacking time is capped at 4 hours", function()
 	eq(b.Luck["2"], 4 * 3600)
 end)
 
-test("Items: elixirs (7 + 3 mixes) x 5, cartridges (10 x 5 + 5 rare), 3 keys + 3 halves", function()
+test("Items: elixirs, cartridges, keys, stickers (7 x 3) and gadgets", function()
 	local kinds = {}
 	for _, item in Items.list do
 		kinds[item.kind] = (kinds[item.kind] or 0) + 1
@@ -432,6 +432,8 @@ test("Items: elixirs (7 + 3 mixes) x 5, cartridges (10 x 5 + 5 rare), 3 keys + 3
 	eq(kinds.Cartridge, 10 * 5 + 5, "cartridges")
 	eq(kinds.Key, 3, "keys")
 	eq(kinds.KeyHalf, 3, "halves")
+	eq(kinds.Sticker, 7 * 3, "stickers")
+	eq(kinds.Gadget, 5, "gadgets")
 	eq(Items.nextTier("Elixir_Coins_4"), "Elixir_Coins_5")
 	eq(Items.nextTier("Elixir_Coins_5"), nil)
 	eq(Items.mixResult("Elixir_Luck_2", "Elixir_Coins_2"), "Elixir_Fortune_2")
@@ -935,6 +937,70 @@ test("Rank perks add trip and cartridge slots", function()
 	eq(Gear.slots(0, perks.cartridgeSlots), 3)
 end)
 
+-- Stickers and gadgets --------------------------------------------------------------------------------------
+
+test("Stickers: Star boosts its creature, team stickers add up", function()
+	local plain = { s = "Bear", v = "Normal", z = "Normal" }
+	local starred = { s = "Bear", v = "Normal", z = "Normal", st = "Sticker_Star_1" }
+	near(PetMath.basePower(starred), PetMath.basePower(plain) * 1.25, 1e-9, "star")
+	near(PetMath.basePower({ s = "Bear", v = "Normal", z = "Normal", st = "Sticker_Star_3" }), PetMath.basePower(plain) * 1.5, 1e-9, "holo star")
+
+	local pets = {
+		a = { s = "Cubby", v = "Normal", z = "Normal", st = "Sticker_Coin_1" },
+		b = { s = "Cubby", v = "Normal", z = "Normal", st = "Sticker_Coin_3" },
+		c = { s = "Cubby", v = "Normal", z = "Normal", st = "Sticker_Bolt_2" },
+		d = { s = "Cubby", v = "Normal", z = "Normal", st = "Sticker_Pixel_1" },
+		e = { s = "Cubby", v = "Normal", z = "Normal", st = "Sticker_Clover_1" },
+	}
+	local effects = Effects.collect(pets, { "a", "b", "c", "d", "e" })
+	near(Effects.get(effects, "Coins"), 1 + 0.05 + 0.1, 1e-9, "coins add up")
+	near(Effects.get(effects, "ComboHold"), 0.5, 1e-9, "bolt is additive")
+	near(effects.variantChance.Pixel, 1.1, 1e-9, "pixel chance")
+	near(Effects.get(effects, "Luck"), 1.05, 1e-9, "luck")
+	local benched = Effects.collect(pets, {})
+	eq(Effects.get(benched, "Coins"), 1, "only the equipped team counts")
+end)
+
+test("Stickers: 3 merge into Shiny then Holo; stickered creatures aren't fused", function()
+	local items = { Sticker_Gem_1 = 3, Sticker_Gem_3 = 4 }
+	eq(Bag.merge(items, "Sticker_Gem_1"), "Sticker_Gem_2")
+	eq(Bag.merge(items, "Sticker_Gem_3"), nil, "Holo is the top")
+	eq(Items.byId.Sticker_Gem_2.name, "Shiny Gem Sticker")
+	eq(Items.byId.Sticker_Gem_3.name, "Holo Gem Sticker")
+
+	local holder = { pets = {}, equipped = {} }
+	local gen = idGen()
+	for _ = 1, 5 do
+		Inventory.add(holder, { s = "Kitty", v = "Normal", z = "Normal" }, gen)
+	end
+	holder.pets.p1.st = "Sticker_Star_1"
+	eq(#Inventory.fusionMaterial(holder, "Kitty", "Normal"), 4)
+end)
+
+test("Loot: stickers and gadgets drop from Bigs and guardians, Holo is rare", function()
+	local rng = makeRng(21)
+	local stickers, gadgets, tiers = 0, 0, { 0, 0, 0 }
+	for _ = 1, 20000 do
+		for _, id in Loot.rollAll("Big", 2, rng) do
+			local item = Items.byId[id]
+			if item.kind == "Sticker" then
+				stickers += 1
+			elseif item.kind == "Gadget" then
+				gadgets += 1
+			end
+		end
+		local sticker = Loot.randomSticker(3, rng)
+		local tier = Items.byId[sticker].tier
+		tiers[tier] += 1
+	end
+	near(stickers / 20000, 0.05, 0.01, "Big stickers")
+	near(gadgets / 20000, 0.15, 0.015, "Big gadgets")
+	assert(tiers[1] > tiers[2] and tiers[2] > tiers[3] and tiers[3] > 0, "tier weights")
+	for _ = 1, 500 do
+		eq(Items.byId[Loot.randomGadget(rng)].kind, "Gadget")
+	end
+end)
+
 test("Every creature model builds: 40 species x 6 variants x 3 sizes", function()
 	local PetModel = R(Shared.PetModel)
 	local Sizes = R(Shared.Config.Sizes)
@@ -950,6 +1016,11 @@ test("Every creature model builds: 40 species x 6 variants x 3 sizes", function(
 		end
 	end
 	eq(built, 40 * 6 * 3)
+	-- Stickers add two parts on the back
+	local plain = PetModel.build({ s = "Kitty", v = "Normal", z = "Normal" })
+	local stickered = PetModel.build({ s = "Kitty", v = "Normal", z = "Normal", st = "Sticker_Star_3" })
+	eq(#stickered.parts, #plain.parts + 2)
+	assert(stickered.model:FindFirstChild("Sticker"), "sticker part")
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))

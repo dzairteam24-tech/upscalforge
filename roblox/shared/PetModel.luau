@@ -2,6 +2,7 @@
 -- Every part is anchored; callers move them with workspace:BulkMoveTo using the returned offsets.
 
 local Config = script.Parent.Config
+local Items = require(Config.Items)
 local Sizes = require(Config.Sizes)
 local World1 = require(Config.World1)
 
@@ -44,6 +45,7 @@ local function darken(color: Color3, amount: number): Color3
 	return color:Lerp(Color3.new(0, 0, 0), amount)
 end
 
+-- `pet.st` (sticker id) is optional; it's read loosely so callers can pass plain {s, v, z} tables.
 function PetModel.build(pet: { s: string, v: string, z: string }): Built
 	local species = World1.species[pet.s]
 	local size = Sizes.byId[pet.z] or Sizes.byId.Normal
@@ -327,6 +329,38 @@ function PetModel.build(pet: { s: string, v: string, z: string }): Built
 				CFrame.new(0, topY + (0.1 + i * 0.12) * b, 0) * CFrame.Angles(0, math.rad(i * 25), 0)
 			)
 		end
+	end
+
+	-- Sticker on the back (the side players see while the team follows them)
+	local stickerId = (pet :: any).st
+	local sticker = if type(stickerId) == "string" then Items.byId[stickerId] else nil
+	if sticker then
+		local zBack = 0.5 * b + 0.02
+		local facing = CFrame.Angles(0, math.rad(180), 0)
+		add(
+			newPart({ Name = "StickerBorder", Size = Vector3.new(0.5, 0.5, 0.03) * b, Color = Color3.new(1, 1, 1) }),
+			CFrame.new(0, 0.05 * b, zBack) * facing
+		)
+		local label = newPart({
+			Name = "Sticker",
+			Size = Vector3.new(0.42, 0.42, 0.03) * b,
+			Color = sticker.color,
+			Material = if sticker.tier >= 3 then Enum.Material.Neon elseif sticker.tier == 2 then Enum.Material.Foil else Enum.Material.SmoothPlastic,
+			Reflectance = if sticker.tier == 2 then 0.2 else 0,
+		})
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = Enum.NormalId.Front
+		gui.LightInfluence = 0
+		gui.CanvasSize = Vector2.new(100, 100)
+		local icon = Instance.new("TextLabel")
+		icon.BackgroundTransparency = 1
+		icon.Size = UDim2.fromScale(1, 1)
+		icon.TextScaled = true
+		icon.Font = Enum.Font.GothamBold
+		icon.Text = sticker.icon or ""
+		icon.Parent = gui
+		gui.Parent = label
+		add(label, CFrame.new(0, 0.05 * b, zBack + 0.01 * b) * facing)
 	end
 
 	return {

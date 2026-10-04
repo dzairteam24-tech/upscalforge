@@ -61,6 +61,12 @@ local function rewardText(kind: Expeditions.ExpeditionKind): string
 	if #kind.keyHalves > 0 then
 		table.insert(parts, "🗝️ key halves")
 	end
+	if kind.stickerChance > 0 then
+		table.insert(parts, ("⭐ %d%% sticker"):format(math.floor(kind.stickerChance * 100)))
+	end
+	if kind.gadgetChance > 0 then
+		table.insert(parts, ("💣 %d%% gadget"):format(math.floor(kind.gadgetChance * 100)))
+	end
 	if kind.gemsPerZone > 0 then
 		table.insert(parts, "💎 gems")
 	end

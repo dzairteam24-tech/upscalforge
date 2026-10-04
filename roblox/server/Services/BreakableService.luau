@@ -243,9 +243,15 @@ function BreakableService.collect(source: Source, player: Player, amount: number
 	return taken, broke
 end
 
--- Brings a broken source back after `delay` seconds.
+-- Brings a broken source back after `delay` seconds. A newer respawn call (Time Skip) cancels older ones.
+local respawnTokens: { [Source]: number } = {}
 function BreakableService.respawn(source: Source, delay: number)
+	local token = (respawnTokens[source] or 0) + 1
+	respawnTokens[source] = token
 	task.delay(delay, function()
+		if respawnTokens[source] ~= token or source.alive then
+			return
+		end
 		source.coinsLeft = source.coinsMax
 		source.alive = true
 		setVisible(source, true)

@@ -6,6 +6,7 @@ local Constants = require(Config.Constants)
 local Sizes = require(Config.Sizes)
 local Variants = require(Config.Variants)
 local World1 = require(Config.World1)
+local Items = require(Config.Items)
 local Effects = require(script.Parent.Effects)
 local Types = require(script.Parent.Types)
 
@@ -31,6 +32,11 @@ function PetMath.basePower(pet: Pet): number
 	local skill = Effects.skillFor(pet)
 	if skill and skill.passive and skill.passive.type == "DoubleHit" then
 		power *= skill.passive.value
+	end
+	local sticker = if pet.st then Items.byId[pet.st] else nil
+	local effect = sticker and sticker.sticker
+	if effect and effect.scope == "pet" and effect.stat == "Power" then
+		power *= effect.value
 	end
 	return power
 end

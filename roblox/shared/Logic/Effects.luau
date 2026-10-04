@@ -4,6 +4,7 @@
 
 local Config = script.Parent.Parent.Config
 local World1 = require(Config.World1)
+local Items = require(Config.Items)
 local Types = require(script.Parent.Types)
 
 type Pet = Types.Pet
@@ -55,11 +56,19 @@ function Effects.collect(pets: { [string]: Pet }, equipped: { string }): Effects
 	local values: { [string]: number } = {}
 	local variantChance: { [string]: number } = {}
 	local periodic: { PeriodicEntry } = {}
+	local stickerBonus: { [string]: number } = {}
 
 	for _, petId in equipped do
 		local pet = pets[petId]
 		if not pet then
 			continue
+		end
+		-- Team stickers add up over the team
+		local sticker = if pet.st then Items.byId[pet.st] else nil
+		local effect = sticker and sticker.sticker
+		if effect and effect.scope == "team" then
+			local amount = if effect.additive then effect.value else effect.value - 1
+			stickerBonus[effect.stat] = (stickerBonus[effect.stat] or 0) + amount
 		end
 		local skill = Effects.skillFor(pet)
 		if not skill then
@@ -82,6 +91,16 @@ function Effects.collect(pets: { [string]: Pet }, equipped: { string }): Effects
 					spec = spec,
 				})
 			end
+		end
+	end
+
+	for stat, bonus in stickerBonus do
+		if stat == "PixelChance" then
+			variantChance.Pixel = (variantChance.Pixel or 1) * (1 + bonus)
+		elseif ADDITIVE[stat] then
+			values[stat] = (values[stat] or 0) + bonus
+		else
+			values[stat] = (values[stat] or 1) * (1 + bonus)
 		end
 	end
 

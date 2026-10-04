@@ -5,15 +5,20 @@
 --              3 cartridges of the same set give a set bonus.
 --   KeyHalf    2 halves make a Key.
 --   Key        opens something (treasure, golden eggs, an early guardian).
+--   Sticker    stuck on one creature (it shows on its back). Normal -> Shiny -> Holo, 3 merge into 1.
+--   Gadget     used once in a zone: bomb, coin rain, totems, time skip.
 
 export type BoostStat = string -- "Coins" | "Power" | "Luck" | "Speed" | "Pixel" | "Gem" | "Hunter"
 
 export type GearEffect = { stat: string, value: number }
 
+-- Sticker effect. "pet" applies to the creature it's on; "team" adds up over the equipped team.
+export type StickerEffect = { stat: string, value: number, scope: string, additive: boolean? }
+
 export type Item = {
 	id: string,
 	name: string,
-	kind: string, -- "Elixir" | "Cartridge" | "KeyHalf" | "Key"
+	kind: string, -- "Elixir" | "Cartridge" | "KeyHalf" | "Key" | "Sticker" | "Gadget"
 	tier: number,
 	family: string,
 	boosts: { { stat: BoostStat, mult: number } }, -- elixirs
@@ -24,6 +29,8 @@ export type Item = {
 	mergeCost: number,
 	color: Color3,
 	description: string,
+	icon: string?, -- stickers and gadgets
+	sticker: StickerEffect?,
 }
 
 local ROMAN = { "I", "II", "III", "IV", "V" }
@@ -252,6 +259,92 @@ for _, key in KEYS do
 end
 
 ---------------------------------------------------------------------------------------------------------------
+-- Stickers: one per creature, visible on its back. Team stickers add up over the equipped team.
+
+type StickerFamily = {
+	id: string,
+	label: string,
+	icon: string,
+	stat: string,
+	scope: string,
+	additive: boolean?,
+	values: { number }, -- Normal, Shiny, Holo
+	text: string,
+	percent: boolean?,
+	color: Color3,
+}
+
+local STICKER_TIERS = { "", "Shiny ", "Holo " }
+
+local STICKERS: { StickerFamily } = {
+	{ id = "Star", label = "Star", icon = "⭐", stat = "Power", scope = "pet", values = { 1.25, 1.375, 1.5 }, text = "this creature's power %s", percent = true, color = Color3.fromRGB(255, 215, 80) },
+	{ id = "Bolt", label = "Bolt", icon = "⚡", stat = "ComboHold", scope = "team", additive = true, values = { 0.3, 0.5, 0.7 }, text = "team combo lasts +%ss", color = Color3.fromRGB(255, 160, 60) },
+	{ id = "Clover", label = "Clover", icon = "🍀", stat = "Luck", scope = "team", values = { 1.05, 1.075, 1.1 }, text = "team hatch luck %s", percent = true, color = Color3.fromRGB(80, 200, 120) },
+	{ id = "Coin", label = "Coin", icon = "🪙", stat = "Coins", scope = "team", values = { 1.05, 1.075, 1.1 }, text = "team coins %s", percent = true, color = Color3.fromRGB(245, 197, 66) },
+	{ id = "Gem", label = "Gem", icon = "💎", stat = "GemMult", scope = "team", values = { 1.1, 1.15, 1.2 }, text = "team gem drops %s", percent = true, color = Color3.fromRGB(120, 220, 255) },
+	{ id = "Pixel", label = "Pixel", icon = "🟪", stat = "PixelChance", scope = "team", values = { 1.1, 1.15, 1.2 }, text = "Pixel hatch chance %s", percent = true, color = Color3.fromRGB(142, 91, 217) },
+	{ id = "Wings", label = "Wings", icon = "🪽", stat = "Speed", scope = "team", values = { 1.05, 1.075, 1.1 }, text = "walk speed %s", percent = true, color = Color3.fromRGB(230, 240, 255) },
+}
+
+local function stickerId(family: string, tier: number): string
+	return ("Sticker_%s_%d"):format(family, tier)
+end
+
+local stickerFamilies: { [string]: StickerFamily } = {}
+for _, family in STICKERS do
+	stickerFamilies[family.id] = family
+	for tier, value in family.values do
+		local shown = if family.percent
+			then ("+%g%%"):format(math.floor((value - 1) * 1000 + 0.5) / 10)
+			else ("%g"):format(value)
+		add({
+			id = stickerId(family.id, tier),
+			name = ("%s%s Sticker"):format(STICKER_TIERS[tier], family.label),
+			kind = "Sticker",
+			tier = tier,
+			family = family.id,
+			boosts = {},
+			duration = 0,
+			gear = {},
+			mergeInto = if tier < #family.values then stickerId(family.id, tier + 1) else nil,
+			mergeCost = 3,
+			color = family.color,
+			description = (family.text:format(shown)):gsub("^%l", string.upper),
+			icon = family.icon,
+			sticker = { stat = family.stat, value = value, scope = family.scope, additive = family.additive },
+		})
+	end
+end
+
+---------------------------------------------------------------------------------------------------------------
+-- Gadgets: one use, in a zone
+
+local GADGETS = {
+	{ id = "Bomb", label = "Pixel Bomb", icon = "💣", color = Color3.fromRGB(229, 83, 75), text = "Breaks every coin source around you" },
+	{ id = "RainCloud", label = "Rain Cloud", icon = "🌧️", color = Color3.fromRGB(150, 190, 240), text = "Rains coins on you for 20 seconds" },
+	{ id = "CoinTotem", label = "Coin Totem", icon = "🗿", color = Color3.fromRGB(245, 197, 66), text = "Coins +50% for everyone in this zone for 5 minutes" },
+	{ id = "LuckTotem", label = "Luck Totem", icon = "🍀", color = Color3.fromRGB(80, 200, 120), text = "Hatch luck +50% for everyone in this zone for 5 minutes" },
+	{ id = "TimeSkip", label = "Time Skip", icon = "⏰", color = Color3.fromRGB(190, 160, 255), text = "Every broken source in this zone comes back now" },
+}
+
+for _, gadget in GADGETS do
+	add({
+		id = "Gadget_" .. gadget.id,
+		name = gadget.label,
+		kind = "Gadget",
+		tier = 1,
+		family = gadget.id,
+		boosts = {},
+		duration = 0,
+		gear = {},
+		mergeCost = 0,
+		color = gadget.color,
+		description = gadget.text,
+		icon = gadget.icon,
+	})
+end
+
+---------------------------------------------------------------------------------------------------------------
 
 local Items = {
 	list = list,
@@ -263,7 +356,17 @@ local Items = {
 	cartridgeFamilies = CARTRIDGES,
 	sets = SETS,
 	ROMAN = ROMAN,
+	stickerFamilies = STICKERS,
+	gadgets = GADGETS,
 }
+
+function Items.stickerId(family: string, tier: number): string
+	return stickerId(family, tier)
+end
+
+function Items.stickerFamily(id: string): StickerFamily?
+	return stickerFamilies[id]
+end
 
 function Items.elixirId(family: string, tier: number): string
 	return elixirId(family, tier)

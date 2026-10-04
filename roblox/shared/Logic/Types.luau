@@ -8,6 +8,7 @@ export type Pet = {
 	z: string, -- size id
 	lk: boolean?, -- locked (cannot be deleted, fused or traded)
 	ex: boolean?, -- away on an expedition (cannot be equipped, deleted, fused or traded)
+	st: string?, -- sticker item id stuck on this creature
 }
 
 export type PetMap = { [string]: Pet }

@@ -2,6 +2,8 @@
 --   Elixirs:    use, merge 3 -> 1, mix two families, active boosts
 --   Cartridges: the cartridge machine (equipped slots + set bonuses), equip and merge
 --   Keys:       use keys, merge 2 halves -> 1 key
+--   Stickers:   stick one on a creature, merge 3 -> 1 (Normal -> Shiny -> Holo)
+--   Gadgets:    one-use tools for the zone you're in
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -12,23 +14,29 @@ local Gear = require(Shared.Logic.Gear)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
+local Bus = require(script.Parent.Bus)
+local PetCard = require(script.Parent.PetCard)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
 
 local BagPanel = {}
 
-type Tab = "Elixirs" | "Cartridges" | "Keys"
+type Tab = "Elixirs" | "Cartridges" | "Keys" | "Stickers" | "Gadgets"
 
 local TABS: { { id: Tab, label: string, kinds: { [string]: boolean } } } = {
 	{ id = "Elixirs", label = "🧪 Elixirs", kinds = { Elixir = true } },
-	{ id = "Cartridges", label = "🕹️ Cartridges", kinds = { Cartridge = true } },
+	{ id = "Cartridges", label = "🕹️ Carts", kinds = { Cartridge = true } },
 	{ id = "Keys", label = "🗝️ Keys", kinds = { Key = true, KeyHalf = true } },
+	{ id = "Stickers", label = "⭐ Stickers", kinds = { Sticker = true } },
+	{ id = "Gadgets", label = "💣 Gadgets", kinds = { Gadget = true } },
 }
 
 local HINTS: { [Tab]: string } = {
 	Elixirs = "Elixirs drop from chests, safes, vaults, Bigs and guardians, and come from quests, trips and daily rewards.",
 	Cartridges = "Cartridges drop from safes, vaults, Bigs, guardians and trips. Equip one per family. Every Reload adds a slot.",
 	Keys = "Key halves drop from chests, safes, vaults, Bigs, guardians and trips. Merge 2 halves into a key.",
+	Stickers = "Stick one on a creature: it shows on its back. Star boosts that creature, the others help the whole team. Moving a sticker never breaks it.",
+	Gadgets = "One use, inside a zone. Gadgets drop from vaults, Bigs, guardians and trips.",
 }
 
 local current: Tab = "Elixirs"
@@ -114,6 +122,20 @@ local function drawKey(tile: GuiObject, item: Items.Item)
 	end
 end
 
+local function drawIcon(tile: GuiObject, item: Items.Item)
+	local badge = Theme.frame({
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0.08, 0),
+		Size = UDim2.fromScale(0.5, 0.42),
+		BackgroundColor3 = item.color,
+	})
+	Theme.corner(badge, if item.kind == "Sticker" then 8 else 30)
+	Theme.stroke(badge, Color3.new(1, 1, 1), if item.kind == "Sticker" then 3 else 1)
+	badge.Parent = tile
+	local icon = Theme.label({ Text = item.icon or "?", Size = UDim2.fromScale(1, 1), MaxTextSize = 36 })
+	icon.Parent = badge
+end
+
 local function itemTile(item: Items.Item, count: number?, highlight: boolean): TextButton
 	local tile = Instance.new("TextButton")
 	tile.Text = ""
@@ -126,6 +148,8 @@ local function itemTile(item: Items.Item, count: number?, highlight: boolean): T
 		drawElixir(tile, item)
 	elseif item.kind == "Cartridge" then
 		drawCartridge(tile, item)
+	elseif item.kind == "Sticker" or item.kind == "Gadget" then
+		drawIcon(tile, item)
 	else
 		drawKey(tile, item)
 	end
@@ -133,7 +157,8 @@ local function itemTile(item: Items.Item, count: number?, highlight: boolean): T
 	local tierText = if item.kind == "KeyHalf"
 		then "½"
 		elseif family and family.rare then "★"
-		elseif item.kind == "Key" then ""
+		elseif item.kind == "Key" or item.kind == "Gadget" then ""
+		elseif item.kind == "Sticker" then ({ "", "✦", "✦✦" })[item.tier] or ""
 		else Items.ROMAN[item.tier]
 	if tierText ~= "" then
 		local tier = Theme.label({
@@ -188,7 +213,7 @@ function BagPanel.mount(gui: ScreenGui)
 			Size = UDim2.new(1 / #TABS, -6, 1, -4),
 			Position = UDim2.new((i - 1) / #TABS, 3, 0, 0),
 			BackgroundColor3 = Theme.card,
-			MaxTextSize = 20,
+			MaxTextSize = 16,
 		})
 		b.Parent = tabBar
 		tabButtons[tab.id] = b
@@ -330,6 +355,29 @@ function BagPanel.mount(gui: ScreenGui)
 				MaxTextSize = 14,
 			})
 			setsLabel.Parent = header
+		elseif current == "Stickers" then
+			local target = if Bus.stickerTarget then data.pets[Bus.stickerTarget] else nil
+			local label = Theme.label({
+				Text = if target
+					then ("Pick a sticker for your %s"):format(PetCard.title(target))
+					else "⭐ Normal → ✦ Shiny (+50% effect) → ✦✦ Holo (+100% effect)",
+				Font = Enum.Font.Gotham,
+				TextColor3 = if target then Theme.gold else Theme.muted,
+				Size = UDim2.new(1, 0, 0, 40),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				MaxTextSize = 15,
+			})
+			label.Parent = header
+		elseif current == "Gadgets" then
+			local label = Theme.label({
+				Text = "💣 Use gadgets inside a zone. Totems help everyone in the zone!",
+				Font = Enum.Font.Gotham,
+				TextColor3 = Theme.muted,
+				Size = UDim2.new(1, 0, 0, 40),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				MaxTextSize = 15,
+			})
+			label.Parent = header
 		else
 			local label = Theme.label({
 				Text = "🗝️ Zone Key: treasure vault · Golden Key: 3 Golden+ eggs · Titan Key: call a guardian now",
@@ -414,7 +462,11 @@ function BagPanel.mount(gui: ScreenGui)
 		info.Text = table.concat(lines, "\n")
 
 		useButton.Visible = item.kind ~= "KeyHalf"
-		useButton.Text = if item.kind == "Cartridge" then "Equip" else "Use"
+		local target = if Bus.stickerTarget then data.pets[Bus.stickerTarget] else nil
+		useButton.Text = if item.kind == "Cartridge"
+			then "Equip"
+			elseif item.kind == "Sticker" then (if target then "Stick on " .. PetCard.title(target) else "Stick on a creature")
+			else "Use"
 		local upgrade = Items.nextTier(item.id)
 		mergeButton.Visible = upgrade ~= nil
 		if upgrade then
@@ -439,6 +491,19 @@ function BagPanel.mount(gui: ScreenGui)
 		end
 		if item.kind == "Cartridge" then
 			Net.event("EquipCartridge"):FireServer(item.id)
+		elseif item.kind == "Sticker" then
+			local data = Store.data
+			local target = Bus.stickerTarget
+			if target and data and data.pets[target] then
+				Bus.stickerTarget = nil
+				Net.event("ApplySticker"):FireServer(target, item.id)
+				Windows.open("Pets")
+			else
+				Bus.startPick(("Tap a creature to put the %s on"):format(item.name), function(petId)
+					Net.event("ApplySticker"):FireServer(petId, item.id)
+				end)
+				Windows.open("Pets")
+			end
 		else
 			Net.event("UseItem"):FireServer(item.id)
 		end
@@ -464,7 +529,20 @@ function BagPanel.mount(gui: ScreenGui)
 			label.Text = boostsText()
 		end
 	end)
-	Windows.register("Items", window, rebuild)
+	Windows.register("Items", window, function()
+		local tab = Bus.itemsTab
+		if tab then
+			Bus.itemsTab = nil
+			for _, entry in TABS do
+				if entry.id == tab then
+					current = entry.id
+					selected = nil
+					mixFirst = nil
+				end
+			end
+		end
+		rebuild()
+	end)
 end
 
 return BagPanel

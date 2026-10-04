@@ -34,7 +34,7 @@ function Inventory.add(holder: Holder, pet: Pet, newId: () -> string): string
 	while holder.pets[id] do
 		id = newId()
 	end
-	holder.pets[id] = { s = pet.s, v = pet.v, z = pet.z, lk = pet.lk }
+	holder.pets[id] = { s = pet.s, v = pet.v, z = pet.z, lk = pet.lk, st = pet.st }
 	if holder.index then
 		holder.index[pet.s .. "|" .. pet.v] = true
 	end
@@ -118,7 +118,7 @@ end
 function Inventory.fusionMaterial(holder: Holder, speciesId: string, variantId: string): { string }
 	local free, equipped = {}, {}
 	for petId, pet in holder.pets do
-		if pet.s == speciesId and pet.v == variantId and pet.z == "Normal" and not pet.lk and not pet.ex then
+		if pet.s == speciesId and pet.v == variantId and pet.z == "Normal" and not pet.lk and not pet.ex and not pet.st then
 			table.insert(if Inventory.isEquipped(holder, petId) then equipped else free, petId)
 		end
 	end

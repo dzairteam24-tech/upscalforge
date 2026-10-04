@@ -244,6 +244,9 @@ function PetService.init()
 		for _, petId in petIds do
 			local pet = type(petId) == "string" and data.pets[petId]
 			if pet and not pet.lk and not pet.ex then
+				if pet.st then
+					data.items[pet.st] = (data.items[pet.st] or 0) + 1 -- stickers go back to the bag
+				end
 				Inventory.remove(data, petId)
 				removed += 1
 			end

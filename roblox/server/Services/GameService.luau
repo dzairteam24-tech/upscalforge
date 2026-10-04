@@ -51,6 +51,20 @@ end
 -- Today's Pixel Rift zone (set by ProgressionService).
 GameService.riftZone = 0
 
+-- Totems placed with gadgets: zone id -> stat -> os.clock() when it ends. Everyone in the zone gets +50%.
+GameService.TOTEM_MULT = 1.5
+local totems: { [number]: { [string]: number } } = {}
+
+function GameService.placeTotem(zoneId: number, stat: string, seconds: number)
+	totems[zoneId] = totems[zoneId] or {}
+	totems[zoneId][stat] = math.max(totems[zoneId][stat] or 0, os.clock()) + seconds
+end
+
+function GameService.totem(zoneId: number?, stat: string): number
+	local zone = if zoneId then totems[zoneId] else nil
+	return if zone and (zone[stat] or 0) > os.clock() then GameService.TOTEM_MULT else 1
+end
+
 local function riftCoinMult(runtime: State.Runtime, zoneId: number?): number
 	if zoneId and zoneId == GameService.riftZone then
 		return Progression.RIFT_COINS * Effects.get(runtime.effects, "RiftCoins")
@@ -110,7 +124,11 @@ function GameService.luck(player: Player): number
 	end
 	local data = DataService.get(player)
 	local saved = if data then Boosts.active(data.boosts, "Luck") else 1
-	return Effects.get(runtime.effects, "Luck") * State.boost(runtime, "Luck", os.clock()) * saved * Gear.get(runtime.gear, "Luck")
+	return Effects.get(runtime.effects, "Luck")
+		* State.boost(runtime, "Luck", os.clock())
+		* saved
+		* Gear.get(runtime.gear, "Luck")
+		* GameService.totem(runtime.zoneId, "Luck")
 end
 
 -- Extra multiplier per variant for hatching: skills plus the saved Pixel boost.
@@ -227,7 +245,7 @@ function GameService.refresh(player: Player)
 	for _, petId in data.equipped do
 		local pet = data.pets[petId]
 		if pet then
-			wanted[petId] = ("%s|%s|%s"):format(pet.s, pet.v, pet.z)
+			wanted[petId] = ("%s|%s|%s|%s"):format(pet.s, pet.v, pet.z, pet.st or "")
 		end
 	end
 	for _, child in (folder :: Folder):GetChildren() do
@@ -290,6 +308,7 @@ local function coinMultiplier(
 	mult *= Boosts.active(data.boosts, "Coins")
 	mult *= Gear.get(runtime.gear, "Coins")
 	mult *= GameService.reloadMult(data)
+	mult *= GameService.totem(zoneId, "Coins")
 	if kind and kind.isPile then
 		mult *= Effects.get(runtime.effects, "Pile")
 	end
@@ -409,6 +428,7 @@ BreakableService.Broken:Connect(function(source: BreakableService.Source, contri
 		local gemChance = (Constants.BASE_GEM_CHANCE + Effects.get(runtime.effects, "Gem"))
 			* Boosts.active(data.boosts, "Gem")
 			* Gear.get(runtime.gear, "Gem")
+			* Effects.get(runtime.effects, "GemMult")
 		if rng:NextNumber() < gemChance then
 			data.gems += math.max(1, source.zoneId)
 		end

@@ -133,7 +133,62 @@ function Loot.rollKeyHalves(sourceKind: string, rng: () -> number): { string }
 	return out
 end
 
--- Everything a broken source drops: elixir, cartridge and key halves.
+---------------------------------------------------------------------------------------------------------------
+-- Stickers and gadgets
+
+local STICKER_TABLE: { [string]: { chance: number, maxTier: number } } = {
+	Big = { chance = 0.05, maxTier = 1 },
+	Guardian = { chance = 0.25, maxTier = 2 },
+}
+local GADGET_TABLE: { [string]: number } = {
+	Vault = 0.03,
+	Big = 0.15,
+	Guardian = 0.3,
+}
+-- Holo stickers are rare even when the tier range allows them.
+local STICKER_TIER_WEIGHTS = { 1, 0.25, 0.05 }
+
+function Loot.randomSticker(maxTier: number, rng: () -> number): string
+	local families = Items.stickerFamilies
+	local family = families[1 + math.floor(rng() * #families)]
+	local total = 0
+	for tier = 1, maxTier do
+		total += STICKER_TIER_WEIGHTS[tier]
+	end
+	local pick = rng() * total
+	local tier = 1
+	for t = 1, maxTier do
+		pick -= STICKER_TIER_WEIGHTS[t]
+		if pick < 0 then
+			tier = t
+			break
+		end
+	end
+	return Items.stickerId(family.id, tier)
+end
+
+function Loot.randomGadget(rng: () -> number): string
+	local gadgets = Items.gadgets
+	return "Gadget_" .. gadgets[1 + math.floor(rng() * #gadgets)].id
+end
+
+function Loot.rollSticker(sourceKind: string, rng: () -> number): string?
+	local entry = STICKER_TABLE[sourceKind]
+	if not entry or rng() >= entry.chance then
+		return nil
+	end
+	return Loot.randomSticker(entry.maxTier, rng)
+end
+
+function Loot.rollGadget(sourceKind: string, rng: () -> number): string?
+	local chance = GADGET_TABLE[sourceKind]
+	if not chance or rng() >= chance then
+		return nil
+	end
+	return Loot.randomGadget(rng)
+end
+
+-- Everything a broken source drops: elixir, cartridge, key halves, sticker and gadget.
 function Loot.rollAll(sourceKind: string, zoneId: number, rng: () -> number): { string }
 	local drops = {}
 	local elixir = Loot.roll(sourceKind, zoneId, rng)
@@ -146,6 +201,14 @@ function Loot.rollAll(sourceKind: string, zoneId: number, rng: () -> number): { 
 	end
 	for _, half in Loot.rollKeyHalves(sourceKind, rng) do
 		table.insert(drops, half)
+	end
+	local sticker = Loot.rollSticker(sourceKind, rng)
+	if sticker then
+		table.insert(drops, sticker)
+	end
+	local gadget = Loot.rollGadget(sourceKind, rng)
+	if gadget then
+		table.insert(drops, gadget)
 	end
 	return drops
 end

@@ -34,12 +34,13 @@ local function hidden(owner: Owner): boolean
 	return othersHidden and owner.player ~= LOCAL
 end
 
-local function parse(value: string): { s: string, v: string, z: string }?
-	local s, v, z = string.match(value, "^([^|]+)|([^|]+)|([^|]+)$")
+-- "species|variant|size|sticker" (the sticker part may be empty)
+local function parse(value: string): { s: string, v: string, z: string, st: string? }?
+	local s, v, z, st = string.match(value, "^([^|]+)|([^|]+)|([^|]+)|?([^|]*)$")
 	if not s then
 		return nil
 	end
-	return { s = s :: string, v = v :: string, z = z :: string }
+	return { s = s :: string, v = v :: string, z = z :: string, st = if st and st ~= "" then st else nil }
 end
 
 local function rebuildOrder(owner: Owner)

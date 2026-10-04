@@ -3,6 +3,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Items = require(Shared.Config.Items)
 local Variants = require(Shared.Config.Variants)
 local Format = require(Shared.Logic.Format)
 local PetMath = require(Shared.Logic.PetMath)
@@ -11,7 +12,7 @@ local Theme = require(script.Parent.Theme)
 
 local PetCard = {}
 
-function PetCard.icon(pet: { s: string, v: string, z: string }, parent: Instance): ViewportFrame
+function PetCard.icon(pet: { s: string, v: string, z: string, st: string? }, parent: Instance): ViewportFrame
 	local viewport = Instance.new("ViewportFrame")
 	viewport.BackgroundTransparency = 1
 	viewport.Size = UDim2.fromScale(1, 1)
@@ -49,7 +50,10 @@ export type CardOptions = {
 	showPower: boolean?,
 }
 
-function PetCard.create(pet: { s: string, v: string, z: string, lk: boolean?, ex: boolean? }, options: CardOptions?): TextButton
+function PetCard.create(
+	pet: { s: string, v: string, z: string, lk: boolean?, ex: boolean?, st: string? },
+	options: CardOptions?
+): TextButton
 	local opts = options or {}
 	local variant = Variants.byId[pet.v]
 	local card = Instance.new("TextButton")
@@ -94,6 +98,10 @@ function PetCard.create(pet: { s: string, v: string, z: string, lk: boolean?, ex
 	end
 	if pet.ex then
 		table.insert(badges, "🧭")
+	end
+	local sticker = if pet.st then Items.byId[pet.st] else nil
+	if sticker and sticker.icon then
+		table.insert(badges, sticker.icon)
 	end
 	if pet.z == "Titan" then
 		table.insert(badges, "👑")

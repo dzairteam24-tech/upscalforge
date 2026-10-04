@@ -1,4 +1,5 @@
--- Inventory window: team, storage, equip, lock, delete and fusion.
+-- Inventory window: team, storage, equip, lock, delete, fusion and stickers.
+-- Other windows can ask it to pick a creature (Bus.pick), e.g. to put a sticker on it.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -12,6 +13,8 @@ local PetMath = require(Shared.Logic.PetMath)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
+local Bus = require(script.Parent.Bus)
+local Items = require(Shared.Config.Items)
 local PetCard = require(script.Parent.PetCard)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
@@ -62,6 +65,18 @@ function PetsPanel.mount(gui: ScreenGui)
 		MaxTextSize = 18,
 	})
 	deleteConfirm.Parent = bar
+	local cancelPick = Theme.button({
+		Text = "Cancel",
+		Size = UDim2.new(0.19, 0, 1, -4),
+		Position = UDim2.new(0.81, 0, 0, 2),
+		BackgroundColor3 = Theme.card,
+		Visible = false,
+		MaxTextSize = 18,
+	})
+	cancelPick.Parent = bar
+	cancelPick.Activated:Connect(function()
+		Bus.cancelPick()
+	end)
 
 	-- Grid
 	local scroll = Instance.new("ScrollingFrame")
@@ -113,7 +128,7 @@ function PetsPanel.mount(gui: ScreenGui)
 		Size = UDim2.new(1, -16, 0.38, -36),
 	})
 	local buttonGrid = Instance.new("UIGridLayout")
-	buttonGrid.CellSize = UDim2.new(0.5, -4, 0.5, -4)
+	buttonGrid.CellSize = UDim2.new(0.5, -4, 1 / 3, -6)
 	buttonGrid.CellPadding = UDim2.fromOffset(8, 8)
 	buttonGrid.Parent = buttons
 	buttons.Parent = details
@@ -121,7 +136,8 @@ function PetsPanel.mount(gui: ScreenGui)
 	local lockButton = Theme.button({ Text = "Lock", BackgroundColor3 = Theme.card, MaxTextSize = 18 })
 	local fuseButton = Theme.button({ Text = "Fuse", BackgroundColor3 = Theme.purple, MaxTextSize = 16 })
 	local deleteButton = Theme.button({ Text = "Delete", BackgroundColor3 = Theme.red, MaxTextSize = 18 })
-	for i, b in { equipButton, lockButton, fuseButton, deleteButton } do
+	local stickerButton = Theme.button({ Text = "Sticker", BackgroundColor3 = Color3.fromRGB(240, 138, 45), MaxTextSize = 16 })
+	for i, b in { equipButton, lockButton, fuseButton, deleteButton, stickerButton } do
 		b.LayoutOrder = i
 		b.Parent = buttons
 	end
@@ -164,6 +180,13 @@ function PetsPanel.mount(gui: ScreenGui)
 		equipButton.Text = if pet.ex then "On a trip" elseif equipped then "Unequip" else "Equip"
 		equipButton.BackgroundColor3 = if pet.ex then Theme.card else Theme.green
 		deleteButton.Visible = not pet.ex
+		local sticker = if pet.st then Items.byId[pet.st] else nil
+		if sticker then
+			table.insert(lines, ("%s %s: %s"):format(sticker.icon or "", sticker.name, sticker.description))
+			detailsText.Text = table.concat(lines, "\n")
+		end
+		stickerButton.Text = if sticker then "Remove " .. (sticker.icon or "sticker") else "Add sticker"
+		stickerButton.Visible = not pet.ex
 		lockButton.Text = if pet.lk then "Unlock" else "Lock"
 		local nextVariant = variant and variant.fuseInto
 		if nextVariant and pet.z == "Normal" then
@@ -212,7 +235,11 @@ function PetsPanel.mount(gui: ScreenGui)
 			})
 			card.LayoutOrder = order
 			card.Activated:Connect(function()
-				if deleteMode then
+				if Bus.pick then
+					local pick = Bus.pick
+					Bus.cancelPick()
+					pick.fn(petId)
+				elseif deleteMode then
 					if not pet.lk and not pet.ex then
 						toDelete[petId] = if toDelete[petId] then nil else true
 					end
@@ -230,7 +257,13 @@ function PetsPanel.mount(gui: ScreenGui)
 			n += 1
 		end
 		deleteConfirm.Text = ("Delete (%d)"):format(n)
-		counts.Text = ("Team %d/%d · Storage %d/%d"):format(#data.equipped, data.maxSlots, #ranked, data.capacity)
+		local pick = Bus.pick
+		cancelPick.Visible = pick ~= nil
+		deleteConfirm.Visible = deleteMode and pick == nil
+		counts.Text = if pick
+			then pick.text
+			else ("Team %d/%d · Storage %d/%d"):format(#data.equipped, data.maxSlots, #ranked, data.capacity)
+		counts.TextColor3 = if pick then Theme.gold else Theme.text
 		refreshDetails()
 	end
 
@@ -279,6 +312,25 @@ function PetsPanel.mount(gui: ScreenGui)
 		local pet = data and selectedId and data.pets[selectedId]
 		if pet then
 			Net.event("FusePets"):FireServer(pet.s, pet.v)
+		end
+	end)
+	stickerButton.Activated:Connect(function()
+		local data = Store.data
+		local pet = data and selectedId and data.pets[selectedId]
+		if not pet then
+			return
+		end
+		if pet.st then
+			Net.event("RemoveSticker"):FireServer(selectedId)
+		else
+			Bus.stickerTarget = selectedId
+			Bus.itemsTab = "Stickers"
+			Windows.open("Items")
+		end
+	end)
+	Bus.Changed:Connect(function()
+		if window.Visible then
+			rebuild()
 		end
 	end)
 	deleteButton.Activated:Connect(function()

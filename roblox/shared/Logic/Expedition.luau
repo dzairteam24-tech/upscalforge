@@ -127,6 +127,12 @@ function Expedition.rewards(trip: Types.Expedition, zoneId: number, rng: () -> n
 			table.insert(reward.items, half.id)
 		end
 	end
+	if rng() < kind.stickerChance * bonus then
+		table.insert(reward.items, Loot.randomSticker(kind.stickerMaxTier, rng))
+	end
+	if rng() < kind.gadgetChance * bonus then
+		table.insert(reward.items, Loot.randomGadget(rng))
+	end
 	return reward
 end
 
