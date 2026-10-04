@@ -12,6 +12,7 @@ type PetMap = Types.PetMap
 export type Holder = {
 	pets: PetMap,
 	equipped: { string },
+	index: { [string]: boolean }?, -- "species|variant" ever owned (player data has it)
 }
 
 local Inventory = {}
@@ -34,6 +35,9 @@ function Inventory.add(holder: Holder, pet: Pet, newId: () -> string): string
 		id = newId()
 	end
 	holder.pets[id] = { s = pet.s, v = pet.v, z = pet.z, lk = pet.lk }
+	if holder.index then
+		holder.index[pet.s .. "|" .. pet.v] = true
+	end
 	return id
 end
 

@@ -851,6 +851,90 @@ test("Gifts: one every 15 minutes, opened in order, reset each day", function()
 	eq(state.seconds, 0)
 end)
 
+-- Achievements and Rank -------------------------------------------------------------------------------------
+
+local AchievementLogic = R(Shared.Logic.Achievements)
+local AchievementConfig = R(Shared.Config.Achievements)
+local Cosmetics = R(Shared.Config.Cosmetics)
+
+local function awardData()
+	return { stats = {}, achievements = {}, index = {}, reloads = 0, pets = {}, equipped = {}, expeditions = {} }
+end
+
+test("Achievements: tiers complete in order, several at once, only once", function()
+	local data = awardData()
+	data.stats.hatches = 600
+	local done = AchievementLogic.check(data)
+	eq(#done, 2, "50 and 500 hatches")
+	eq(done[1].tier, 1)
+	eq(done[2].tier, 2)
+	eq(data.achievements.Hatcher, 2)
+	eq(#AchievementLogic.check(data), 0, "nothing new")
+	data.reloads = 1
+	local reload = AchievementLogic.check(data)
+	eq(reload[1].id, "Reload")
+end)
+
+test("Achievements: stars make Ranks, Ranks unlock perks", function()
+	eq(AchievementLogic.rank(0), 1)
+	eq(AchievementLogic.rank(2), 1)
+	eq(AchievementLogic.rank(3), 2)
+	local perks = AchievementLogic.perks(10)
+	eq(perks.storage, 25 + 50 + 100)
+	eq(perks.tripSlots, 2)
+	eq(perks.cartridgeSlots, 1)
+	eq(#perks.titles, 2, "Explorer and Veteran")
+	eq(AchievementLogic.nextPerk(10).rank, 12)
+	eq(AchievementLogic.nextPerk(99), nil)
+	eq(AchievementLogic.stars({ Hatcher = 2, Reload = 1, Unknown = 5 }), 3)
+end)
+
+test("Achievements: every title exists and goals grow", function()
+	for _, achievement in AchievementConfig.list do
+		eq(#achievement.goals, #achievement.gems, achievement.id .. " gems per tier")
+		for i = 2, #achievement.goals do
+			assert(achievement.goals[i] > achievement.goals[i - 1], achievement.id .. " goals grow")
+		end
+		for _, titleId in achievement.titles or {} do
+			assert(Cosmetics.titleById[titleId], "missing title " .. titleId)
+		end
+	end
+	for _, perk in AchievementConfig.rankPerks do
+		if perk.title then
+			assert(Cosmetics.titleById[perk.title], "missing title " .. perk.title)
+		end
+	end
+end)
+
+test("Index: hatching and trading mark species x variant once", function()
+	local data = awardData()
+	local gen = idGen()
+	Inventory.add(data, { s = "Kitty", v = "Normal", z = "Normal" }, gen)
+	Inventory.add(data, { s = "Kitty", v = "Normal", z = "Big" }, gen)
+	Inventory.add(data, { s = "Kitty", v = "Golden", z = "Normal" }, gen)
+	eq(AchievementLogic.discovered(data.index), 2)
+	eq(AchievementLogic.value(data, "discovered"), 2)
+
+	local a = { pets = {}, equipped = {}, capacity = 50, index = {} }
+	local b = { pets = {}, equipped = {}, capacity = 50, index = {} }
+	local id = Inventory.add(a, { s = "Bear", v = "Lava", z = "Normal" }, gen)
+	local session = TradeLogic.new(1, 2, 0)
+	session.offers[1] = { id }
+	TradeLogic.execute(session, a, b)
+	assert(b.index["Bear|Lava"], "receiver discovers the traded creature")
+end)
+
+test("Rank perks add trip and cartridge slots", function()
+	local data = awardData()
+	eq(Expedition.slotsFor(data), 2)
+	-- 24 stars = Rank 9: +2 trip slots (Rank 3 and 8), +1 cartridge slot (Rank 6)
+	data.achievements = { Hatcher = 4, Coins = 4, Breaker = 3, Golden = 3, Pixel = 3, BigCatch = 3, Guardian = 3, Fusion = 1 }
+	eq(AchievementLogic.stars(data.achievements), 24)
+	eq(Expedition.slotsFor(data), 4)
+	local _, perks = AchievementLogic.forData(data)
+	eq(Gear.slots(0, perks.cartridgeSlots), 3)
+end)
+
 test("Every creature model builds: 40 species x 6 variants x 3 sizes", function()
 	local PetModel = R(Shared.PetModel)
 	local Sizes = R(Shared.Config.Sizes)

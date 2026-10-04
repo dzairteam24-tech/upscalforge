@@ -73,6 +73,7 @@ local function unlockZone(player: Player, zoneId: any)
 	end
 	data.coins -= zone.gateCost
 	data.unlockedZones[tostring(zoneId)] = true
+	GameService.progress(player, "Zone", zoneId)
 	GameService.notify(player, ("Unlocked %s!"):format(zone.name), "success")
 	GameService.markDirty(player)
 end

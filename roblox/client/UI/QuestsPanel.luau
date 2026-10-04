@@ -13,6 +13,7 @@ local Progress = require(Shared.Logic.Progress)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
+local AchievementsView = require(script.Parent.AchievementsView)
 local AdButton = require(script.Parent.AdButton)
 local Rewards = require(script.Parent.Rewards)
 local Theme = require(script.Parent.Theme)
@@ -71,11 +72,12 @@ function QuestsPanel.mount(gui: ScreenGui)
 	tabs.Parent = content
 	local tabButtons = {}
 	local current = "Quests"
-	for i, name in { "Quests", "Pass", "Style" } do
+	local TABS = { "Quests", "Pass", "Awards", "Style" }
+	for i, name in TABS do
 		local b = Theme.button({
 			Text = name,
-			Size = UDim2.new(1 / 3, -6, 1, -4),
-			Position = UDim2.new((i - 1) / 3, 3, 0, 0),
+			Size = UDim2.new(1 / #TABS, -6, 1, -4),
+			Position = UDim2.new((i - 1) / #TABS, 3, 0, 0),
 			BackgroundColor3 = Theme.card,
 		})
 		b.Parent = tabs
@@ -356,7 +358,7 @@ function QuestsPanel.mount(gui: ScreenGui)
 		end
 		order += 1
 		local hint = Theme.label({
-			Text = "Get more titles and trails from the Battle Pass premium track.",
+			Text = "Get more titles from achievements, Rank and the Battle Pass premium track.",
 			Font = Enum.Font.Gotham,
 			TextColor3 = Theme.muted,
 			Size = UDim2.new(1, -12, 0, 24),
@@ -375,6 +377,11 @@ function QuestsPanel.mount(gui: ScreenGui)
 			showQuests()
 		elseif current == "Pass" then
 			showPass()
+		elseif current == "Awards" then
+			setLayout(false)
+			if Store.data then
+				AchievementsView.build(body, Store.data)
+			end
 		else
 			showStyle()
 		end

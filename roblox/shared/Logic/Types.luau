@@ -43,6 +43,8 @@ export type PlayerData = {
 	expeditions: { Expedition },
 	ads: AdState,
 	playtime: Playtime,
+	achievements: { [string]: number }, -- achievement id -> tiers completed
+	index: { [string]: boolean }, -- "species|variant" ever owned
 }
 
 -- Rewarded ad limits: watches per UTC day and per-reward cooldowns.

@@ -26,6 +26,7 @@ export type Side = {
 	pets: PetMap,
 	equipped: { string },
 	capacity: number,
+	index: { [string]: boolean }?, -- the receiver's creature index
 }
 
 local TradeLogic = {}
@@ -175,9 +176,15 @@ function TradeLogic.execute(session: Session, sideA: Side, sideB: Side): ({ Type
 	end
 	for petId, pet in fromA do
 		sideB.pets[petId] = pet
+		if sideB.index then
+			sideB.index[pet.s .. "|" .. pet.v] = true
+		end
 	end
 	for petId, pet in fromB do
 		sideA.pets[petId] = pet
+		if sideA.index then
+			sideA.index[pet.s .. "|" .. pet.v] = true
+		end
 	end
 	session.stage = "Done"
 	session.version += 1

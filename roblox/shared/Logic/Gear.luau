@@ -26,8 +26,9 @@ local Gear = {
 	FIGHTER_MULT = 2,
 }
 
-function Gear.slots(reloads: number): number
-	return math.min(Gear.MAX_SLOTS, Gear.BASE_SLOTS + reloads)
+-- Slots from Reloads plus any Rank bonus, up to 6.
+function Gear.slots(reloads: number, bonus: number?): number
+	return math.min(Gear.MAX_SLOTS, Gear.BASE_SLOTS + reloads + (bonus or 0))
 end
 
 function Gear.empty(): Gear

@@ -5,6 +5,7 @@
 local Config = script.Parent.Parent.Config
 local Expeditions = require(Config.Expeditions)
 local Variants = require(Config.Variants)
+local Achievements = require(script.Parent.Achievements)
 local Loot = require(script.Parent.Loot)
 local PetMath = require(script.Parent.PetMath)
 local Types = require(script.Parent.Types)
@@ -20,9 +21,14 @@ export type Reward = {
 
 local Expedition = {}
 
--- One more expedition slot every 2 Reloads.
-function Expedition.slots(reloads: number): number
-	return math.min(Expeditions.MAX_SLOTS, Expeditions.BASE_SLOTS + math.floor(reloads / 2))
+-- One more expedition slot every 2 Reloads, plus any Rank bonus.
+function Expedition.slots(reloads: number, bonus: number?): number
+	return math.min(Expeditions.MAX_SLOTS, Expeditions.BASE_SLOTS + math.floor(reloads / 2) + (bonus or 0))
+end
+
+function Expedition.slotsFor(data: PlayerData): number
+	local _, perks = Achievements.forData(data)
+	return Expedition.slots(data.reloads, perks.tripSlots)
 end
 
 -- True when every creature has the same variant and that variant is strong in some element (e.g. all Lava).
@@ -48,7 +54,7 @@ function Expedition.validate(data: PlayerData, kindId: string, petIds: { string 
 	if not kind then
 		return false, "Unknown trip"
 	end
-	if #data.expeditions >= Expedition.slots(data.reloads) then
+	if #data.expeditions >= Expedition.slotsFor(data) then
 		return false, "All trip slots are busy"
 	end
 	if #petIds ~= kind.pets then

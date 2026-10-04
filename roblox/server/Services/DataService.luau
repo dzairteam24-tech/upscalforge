@@ -76,6 +76,8 @@ local function template(): PlayerData
 		expeditions = {},
 		ads = { day = 0, counts = {}, cooldowns = {} },
 		playtime = { day = 0, seconds = 0, claimed = 0 },
+		achievements = {},
+		index = {},
 	}
 end
 

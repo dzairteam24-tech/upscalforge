@@ -140,6 +140,7 @@ local function claimDaily(player: Player)
 		GameService.notify(player, "Come back tomorrow for the next reward!", "error")
 		return
 	end
+	GameService.progress(player, "Streak", data.daily.streak)
 	local summary = grant(player, data, Progression.DAILY[cycleDay])
 	GameService.notify(player, ("Day %d reward: %s"):format(cycleDay, summary), "success")
 end

@@ -86,7 +86,7 @@ local function sideFor(player: Player): TradeLogic.Side?
 	if not data then
 		return nil
 	end
-	return { pets = data.pets, equipped = data.equipped, capacity = GameService.capacity(player) }
+	return { pets = data.pets, equipped = data.equipped, capacity = GameService.capacity(player), index = data.index }
 end
 
 local function record(player: Player, otherName: string, gave: { any }, got: { any })
@@ -99,6 +99,7 @@ local function record(player: Player, otherName: string, gave: { any }, got: { a
 		table.remove(data.tradeHistory)
 	end
 	data.stats.trades = (data.stats.trades or 0) + 1
+	GameService.progress(player, "Trade", 1)
 end
 
 local function execute(session: TradeLogic.Session)

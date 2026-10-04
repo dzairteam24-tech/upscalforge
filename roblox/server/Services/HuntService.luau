@@ -133,6 +133,7 @@ local function onBroken(source: BreakableService.Source, contributors: { [Player
 					GameService.notify(player, "Your storage is full, the Big got away!", "error")
 				else
 					Inventory.add(data, special.pet, newId)
+					GameService.progress(player, "BigCatch", 1)
 					GameService.notifyAll(("%s caught a %s!"):format(player.DisplayName, describe(special.pet)), "rare")
 					GameService.refresh(player)
 				end
@@ -149,6 +150,7 @@ local function onBroken(source: BreakableService.Source, contributors: { [Player
 						GameService.notify(player, "Your storage is full, the Titan couldn't join you!", "error")
 					else
 						Inventory.add(data, special.pet, newId)
+						GameService.progress(player, "Titan", 1)
 						GameService.notifyAll(("👑 %s TAMED %s!"):format(player.DisplayName, describe(special.pet)), "rare")
 					end
 				else

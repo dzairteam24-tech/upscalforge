@@ -5,6 +5,7 @@
 local Config = script.Parent.Parent.Config
 local Constants = require(Config.Constants)
 local World1 = require(Config.World1)
+local Achievements = require(script.Parent.Achievements)
 local Gear = require(script.Parent.Gear)
 local Types = require(script.Parent.Types)
 
@@ -51,10 +52,11 @@ end
 
 function Reload.preview(data: PlayerData): Preview
 	local reloads = data.reloads + 1
+	local _, perks = Achievements.forData(data)
 	return {
 		reloads = reloads,
 		coinMult = Reload.coinMult(reloads),
-		cartridgeSlots = Gear.slots(reloads),
+		cartridgeSlots = Gear.slots(reloads, perks.cartridgeSlots),
 	}
 end
 

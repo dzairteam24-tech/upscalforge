@@ -97,7 +97,7 @@ function ReloadPanel.mount(gui: ScreenGui)
 				Constants.RELOAD_REQUIRED_ZONE,
 				reloads
 			)
-		local trips = Expedition.slots(reloads + 1)
+		local trips: number = data.nextExpeditionSlots or Expedition.slots(reloads + 1)
 		gain.Text = table.concat({
 			("• Coins %s → %s forever"):format(Format.mult(data.reloadMult or 1), Format.mult(data.nextReloadMult or 1.5)),
 			("• Cartridge slots %d → %d"):format(data.cartridgeSlots or 2, data.nextCartridgeSlots or 3),

@@ -90,6 +90,12 @@ local function grant(
 				data.flags.gotGolden = true
 			end
 			table.insert(results, { id = id, s = roll.s, v = roll.v, z = roll.z })
+			if roll.v == "Golden" or roll.v == "Pixel" then
+				GameService.progress(player, roll.v, 1)
+			end
+			if roll.z == "Titan" then
+				GameService.progress(player, "Titan", 1)
+			end
 			if isRare(roll) then
 				GameService.notifyAll(("%s hatched a %s!"):format(player.DisplayName, describe(roll)), "rare")
 			end

@@ -25,6 +25,7 @@ local Format = require(Shared.Logic.Format)
 local Inventory = require(Shared.Logic.Inventory)
 local MapLayout = require(Shared.Logic.MapLayout)
 local PetMath = require(Shared.Logic.PetMath)
+local Achievements = require(Shared.Logic.Achievements)
 local Expedition = require(Shared.Logic.Expedition)
 local Reload = require(Shared.Logic.Reload)
 local Types = require(Shared.Logic.Types)
@@ -40,7 +41,7 @@ type PlayerData = Types.PlayerData
 local GameService = {}
 
 -- Fired for quest and pass progress: (player, event, amount). Events: Coins, Break, Hatch, Combo,
--- Fuse, Big, Guardian, Restore, Rift, Expedition, Reload.
+-- Fuse, Big, Guardian, Restore, Rift, Expedition, Reload, Golden, Pixel, Titan, BigCatch, Zone, Streak, Trade.
 GameService.Progress = Signal.new() :: Signal.Signal<Player, string, number>
 
 function GameService.progress(player: Player, event: string, amount: number)
@@ -95,7 +96,11 @@ end
 
 function GameService.capacity(player: Player): number
 	local data = DataService.get(player)
-	return Constants.BASE_STORAGE + Upgrades.storageBonus(if data then data.upgrades.Storage or 0 else 0)
+	if not data then
+		return Constants.BASE_STORAGE
+	end
+	local _, perks = Achievements.forData(data)
+	return Constants.BASE_STORAGE + Upgrades.storageBonus(data.upgrades.Storage or 0) + perks.storage
 end
 
 function GameService.luck(player: Player): number
@@ -558,14 +563,26 @@ local function applyTitles(player: Player, character: Model)
 	elseif data.titles.Supporter then
 		title = Cosmetics.titleById.Supporter
 	end
+	-- Rank badge on top, title under it
+	local rank = Achievements.forData(data)
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "Titles"
+	gui.Size = UDim2.fromOffset(220, if title then 50 else 22)
+	gui.StudsOffset = Vector3.new(0, if title then 3 else 2.4, 0)
+	gui.MaxDistance = 80
+	local rankLabel = Instance.new("TextLabel")
+	rankLabel.Size = UDim2.new(1, 0, 0, 20)
+	rankLabel.BackgroundTransparency = 1
+	rankLabel.Font = Enum.Font.FredokaOne
+	rankLabel.TextScaled = true
+	rankLabel.TextColor3 = Color3.fromRGB(255, 225, 120)
+	rankLabel.TextStrokeTransparency = 0.3
+	rankLabel.Text = "⭐ " .. rank
+	rankLabel.Parent = gui
 	if title then
-		local gui = Instance.new("BillboardGui")
-		gui.Name = "Titles"
-		gui.Size = UDim2.fromOffset(220, 30)
-		gui.StudsOffset = Vector3.new(0, 2.6, 0)
-		gui.MaxDistance = 80
 		local textLabel = Instance.new("TextLabel")
-		textLabel.Size = UDim2.fromScale(1, 1)
+		textLabel.Position = UDim2.fromOffset(0, 20)
+		textLabel.Size = UDim2.new(1, 0, 0, 30)
 		textLabel.BackgroundTransparency = 1
 		textLabel.Font = Enum.Font.FredokaOne
 		textLabel.TextScaled = true
@@ -573,8 +590,8 @@ local function applyTitles(player: Player, character: Model)
 		textLabel.TextStrokeTransparency = 0.2
 		textLabel.Text = title.text
 		textLabel.Parent = gui
-		gui.Parent = head
 	end
+	gui.Parent = head
 
 	-- Trail
 	for _, name in { "CosmeticTrail", "TrailTop", "TrailBottom" } do
@@ -737,6 +754,7 @@ end
 -- Main loop
 
 local function snapshot(player: Player, data: PlayerData): { [string]: any }
+	local rank, perks = Achievements.forData(data)
 	return {
 		coins = data.coins,
 		gems = data.gems,
@@ -759,15 +777,19 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		equippedTitle = data.equippedTitle,
 		equippedTrail = data.equippedTrail,
 		cartridges = data.cartridges,
-		cartridgeSlots = Gear.slots(data.reloads),
+		cartridgeSlots = Gear.slots(data.reloads, perks.cartridgeSlots),
 		gearSets = (State.get(player) :: State.Runtime).gear.sets,
 		reloads = data.reloads,
 		reloadMult = GameService.reloadMult(data),
 		canReload = (Reload.canReload(data)),
 		nextReloadMult = Reload.coinMult(data.reloads + 1),
-		nextCartridgeSlots = Gear.slots(data.reloads + 1),
+		nextCartridgeSlots = Gear.slots(data.reloads + 1, perks.cartridgeSlots),
 		expeditions = data.expeditions,
-		expeditionSlots = Expedition.slots(data.reloads),
+		expeditionSlots = Expedition.slots(data.reloads, perks.tripSlots),
+		nextExpeditionSlots = Expedition.slots(data.reloads + 1, perks.tripSlots),
+		achievements = data.achievements,
+		index = data.index,
+		rank = rank,
 		ads = data.ads,
 		playtime = data.playtime,
 		maxSlots = GameService.maxSlots(player),

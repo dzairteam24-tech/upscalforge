@@ -71,6 +71,6 @@ return {
 	list = list,
 	byId = byId,
 	BASE_SLOTS = 2,
-	MAX_SLOTS = 4,
+	MAX_SLOTS = 6,
 	ELEMENT_BONUS = 1.5, -- all creatures share one strong element
 }

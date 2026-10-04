@@ -18,6 +18,7 @@ local HuntService = require(Services.HuntService)
 local ProgressionService = require(Services.ProgressionService)
 local ExpeditionService = require(Services.ExpeditionService)
 local ReloadService = require(Services.ReloadService)
+local AchievementService = require(Services.AchievementService)
 local DataService = require(Services.DataService)
 
 Net.init()
@@ -34,6 +35,7 @@ HuntService.init()
 ProgressionService.init()
 ExpeditionService.init()
 ReloadService.init()
+AchievementService.init()
 
 DataService.init()
 

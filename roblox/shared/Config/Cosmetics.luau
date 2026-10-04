@@ -13,6 +13,18 @@ local titles: { Title } = {
 	{ id = "S1_Tamer", text = "Titan Tamer", color = Color3.fromRGB(255, 120, 200) },
 	{ id = "S1_Pixel", text = "Pixel Legend", color = Color3.fromRGB(185, 140, 255) },
 	{ id = "S1_Champion", text = "Season 1 Champion", color = Color3.fromRGB(255, 200, 60) },
+	-- Achievements
+	{ id = "A_EggMaster", text = "Egg Master", color = Color3.fromRGB(255, 240, 200) },
+	{ id = "A_Rich", text = "Billionaire", color = Color3.fromRGB(245, 197, 66) },
+	{ id = "A_PixelHunter", text = "Pixel Hunter", color = Color3.fromRGB(185, 140, 255) },
+	{ id = "A_Whisperer", text = "Titan Whisperer", color = Color3.fromRGB(255, 120, 200) },
+	{ id = "A_Reloaded", text = "Reloaded", color = Color3.fromRGB(140, 120, 240) },
+	{ id = "A_Loyal", text = "Loyal", color = Color3.fromRGB(120, 230, 160) },
+	{ id = "A_Collector", text = "Master Collector", color = Color3.fromRGB(80, 220, 255) },
+	-- Rank
+	{ id = "R_Explorer", text = "Explorer", color = Color3.fromRGB(150, 220, 255) },
+	{ id = "R_Veteran", text = "Veteran", color = Color3.fromRGB(255, 170, 90) },
+	{ id = "R_Legend", text = "Cube Legend", color = Color3.fromRGB(255, 215, 90) },
 }
 
 local trails: { Trail } = {

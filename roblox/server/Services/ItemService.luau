@@ -7,6 +7,7 @@ local Breakables = require(Shared.Config.Breakables)
 local Items = require(Shared.Config.Items)
 local World1 = require(Shared.Config.World1)
 local Bag = require(Shared.Logic.Bag)
+local Achievements = require(Shared.Logic.Achievements)
 local Gear = require(Shared.Logic.Gear)
 local Loot = require(Shared.Logic.Loot)
 local Format = require(Shared.Logic.Format)
@@ -131,7 +132,8 @@ local function equipCartridge(player: Player, itemId: any)
 	if not data or type(itemId) ~= "string" or Bag.count(data.items, itemId) < 1 then
 		return
 	end
-	local ok, err = Gear.canEquip(data.cartridges, itemId, Gear.slots(data.reloads))
+	local _, perks = Achievements.forData(data)
+	local ok, err = Gear.canEquip(data.cartridges, itemId, Gear.slots(data.reloads, perks.cartridgeSlots))
 	if not ok then
 		GameService.notify(player, err or "Can't equip", "error")
 		return
