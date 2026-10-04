@@ -1,0 +1,30 @@
+{
+  "name": "Cubelings",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "roblox/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "roblox/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "roblox/client"
+        }
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "ClockTime": 14,
+        "Brightness": 2,
+        "GlobalShadows": true
+      }
+    }
+  }
+}

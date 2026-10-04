@@ -1,11 +1,7 @@
-# Godot 4
-.godot/
-/android/
-*.import.tmp
-
-# Builds
+# Build output
 /build/
-*.apk
-*.aab
-*.keystore
-export_credentials.cfg
+sourcemap.json
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
