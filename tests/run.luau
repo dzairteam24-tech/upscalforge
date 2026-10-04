@@ -1047,6 +1047,48 @@ test("Tickets come from trips and quests; rides come from Rank and the pass", fu
 	end
 end)
 
+-- Monetization rules ----------------------------------------------------------------------------------------
+
+local Products = R(Shared.Config.Products)
+
+test("Robux never buys eggs, luck, creatures or random prizes", function()
+	local forbiddenRewards = { Spin = true, Elixir = true } -- random prizes / elixirs include luck
+	for _, product in Products.devProducts do
+		if product.adOnly then
+			assert(Products.adByKey[product.key], "ad product without an ad reward: " .. product.key)
+			continue
+		end
+		if product.boost then
+			assert(product.boost.stat ~= "Luck" and product.boost.stat ~= "Pixel", "luck sold: " .. product.key)
+		end
+		assert(not (product.reward and forbiddenRewards[product.reward]), "random or luck reward sold: " .. product.key)
+		assert(product.price > 0, "missing display price: " .. product.key)
+	end
+	for _, reward in Products.adRewards do
+		local product = Products.productByKey[reward.key]
+		assert(product and product.adOnly, "ad reward needs an adOnly product: " .. reward.key)
+	end
+	-- Every reward that needs a service and has a Robux version also has a video version
+	local adHandlers = {}
+	for _, reward in Products.adRewards do
+		if reward.reward then
+			adHandlers[reward.reward] = true
+		end
+	end
+	for _, key in { "TripSkip", "TripDouble", "StreakSave", "QuestSwap" } do
+		assert(adHandlers[key], "no video version for " .. key)
+		assert(Products.productByKey[key].reward == key, "no Robux version for " .. key)
+	end
+end)
+
+test("Trip slots from the pass and the Club stack with Rank and Reloads", function()
+	local data = awardData()
+	eq(Expedition.slotsFor(data), 2)
+	eq(Expedition.slotsFor(data, Products.PASS_TRIP_SLOTS + Products.CLUB_TRIP_SLOTS), 4)
+	data.expeditions = { {}, {}, {} } :: any
+	eq((Expedition.validate(data, "Short", { "x", "y", "z" }, 0)), false, "full without extras")
+end)
+
 test("Every creature model builds: 40 species x 6 variants x 3 sizes", function()
 	local PetModel = R(Shared.PetModel)
 	local Sizes = R(Shared.Config.Sizes)

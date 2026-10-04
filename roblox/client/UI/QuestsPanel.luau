@@ -155,17 +155,17 @@ function QuestsPanel.mount(gui: ScreenGui)
 				end
 			end)
 			b.Parent = row
-			if kind == "daily" and not done and not quest.claimed and AdButton.available("AdReroll") then
+			if kind == "daily" and not done and not quest.claimed and AdButton.offer("AdReroll", "QuestSwap") ~= nil then
 				text.Size = UDim2.new(0.5, 0, 0, 24)
 				local swap = Theme.button({
-					Text = "▶ Swap",
+					Text = AdButton.label("AdReroll", "QuestSwap", "Swap"),
 					Size = UDim2.new(0.15, 0, 0, 24),
 					Position = UDim2.new(0.52, 0, 0, 6),
 					BackgroundColor3 = Theme.purple,
 					MaxTextSize = 13,
 				})
 				swap.Activated:Connect(function()
-					AdButton.watch("AdReroll", i)
+					AdButton.take("AdReroll", "QuestSwap", i)
 				end)
 				swap.Parent = row
 			end

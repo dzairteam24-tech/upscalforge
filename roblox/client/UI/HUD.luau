@@ -126,11 +126,25 @@ function HUD.mount(gui: ScreenGui)
 	})
 	Theme.corner(spinDot, 7)
 	spinDot.Parent = spinButton
+	local teleportButton = Theme.button({
+		Name = "Teleport",
+		Text = "🌀",
+		Position = UDim2.fromOffset(400, 12),
+		Size = UDim2.fromOffset(40, 40),
+		BackgroundColor3 = Color3.fromRGB(110, 90, 200),
+		MaxTextSize = 22,
+	})
+	teleportButton.Parent = gui
+	teleportButton.Activated:Connect(function()
+		Windows.toggle("Teleport")
+	end)
 	task.spawn(function()
 		while true do
 			updateGift()
 			-- Leave room when the gift button is gone
-			spinButton.Position = UDim2.fromOffset(if giftButton.Visible then 354 else 236, 12)
+			local x = if giftButton.Visible then 354 else 236
+			spinButton.Position = UDim2.fromOffset(x, 12)
+			teleportButton.Position = UDim2.fromOffset(x + 46, 12)
 			spinDot.Visible = SpinPanel.freeReady()
 			task.wait(0.5)
 		end

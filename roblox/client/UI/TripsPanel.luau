@@ -207,8 +207,10 @@ function TripsPanel.mount(gui: ScreenGui)
 			local ready = t >= timer.ends
 			timer.label.Text = if ready then "✅ Back home!" else "⏳ " .. Format.time(timer.ends - t)
 			timer.claim.Visible = ready
-			timer.double.Visible = ready and AdButton.available("AdTripDouble")
-			timer.skip.Visible = not ready and AdButton.available("AdTripSkip")
+			timer.double.Visible = ready and AdButton.offer("AdTripDouble", "TripDouble") ~= nil
+			timer.skip.Visible = not ready and AdButton.offer("AdTripSkip", "TripSkip") ~= nil
+			timer.double.Text = AdButton.label("AdTripDouble", "TripDouble", "x2")
+			timer.skip.Text = AdButton.label("AdTripSkip", "TripSkip", "Finish now")
 		end
 	end
 
@@ -344,7 +346,7 @@ function TripsPanel.mount(gui: ScreenGui)
 			})
 			double.Parent = card
 			double.Activated:Connect(function()
-				AdButton.watch("AdTripDouble", trip.started)
+				AdButton.take("AdTripDouble", "TripDouble", trip.started)
 			end)
 			local skip = Theme.button({
 				Text = "▶ Finish now",
@@ -357,7 +359,7 @@ function TripsPanel.mount(gui: ScreenGui)
 			})
 			skip.Parent = card
 			skip.Activated:Connect(function()
-				AdButton.watch("AdTripSkip", trip.started)
+				AdButton.take("AdTripSkip", "TripSkip", trip.started)
 			end)
 			card.Parent = left
 			table.insert(timers, { label = timeLabel, claim = claim, double = double, skip = skip, ends = trip.ends })

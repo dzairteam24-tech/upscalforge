@@ -82,6 +82,7 @@ local function template(): PlayerData
 		tickets = 0,
 		wheel = { lastFree = -1 },
 		rides = {},
+		club = { lastDay = -1 },
 	}
 end
 

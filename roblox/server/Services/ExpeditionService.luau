@@ -12,7 +12,7 @@ local Format = require(Shared.Logic.Format)
 local Types = require(Shared.Logic.Types)
 local Net = require(Shared.Net)
 
-local AdsService = require(script.Parent.AdsService)
+local RewardService = require(script.Parent.RewardService)
 local DataService = require(script.Parent.DataService)
 local GameService = require(script.Parent.GameService)
 local State = require(script.Parent.State)
@@ -49,7 +49,7 @@ local function startExpedition(player: Player, kindId: any, petIds: any)
 		end
 		ids[i] = petId
 	end
-	local ok, err = Expedition.validate(data, kindId, ids)
+	local ok, err = Expedition.validate(data, kindId, ids, GameService.extraTripSlots(player))
 	if not ok then
 		GameService.notify(player, err or "Can't start this trip", "error")
 		return
@@ -143,8 +143,8 @@ function ExpeditionService.init()
 	Net.event("StartExpedition").OnServerEvent:Connect(startExpedition)
 	Net.event("ClaimExpedition").OnServerEvent:Connect(claimExpedition)
 
-	-- Ad: the creatures come back right away
-	AdsService.register("AdTripSkip", {
+	-- Ad or Robux: the creatures come back right away
+	RewardService.register("TripSkip", {
 		canUse = function(player, started)
 			local data = DataService.get(player)
 			local index = data and findTrip(data, started, isAway)
@@ -166,8 +166,8 @@ function ExpeditionService.init()
 		end,
 	})
 
-	-- Ad: claim a finished trip with double rewards
-	AdsService.register("AdTripDouble", {
+	-- Ad or Robux: claim a finished trip with double rewards
+	RewardService.register("TripDouble", {
 		canUse = function(player, started)
 			local data = DataService.get(player)
 			local index = data and findTrip(data, started, isBack)

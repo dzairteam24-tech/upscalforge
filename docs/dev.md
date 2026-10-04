@@ -19,13 +19,12 @@
 
 ### قبل النشر
 1. **حفظ البيانات:** في Studio، **Game Settings ← Security ← Enable Studio Access to API Services**. بلا هذا، اللعبة تخدم لكن ما تحفظش، وتكتب تحذير في الـ Output. لوحات الترتيب تاني يحتاجو هذا.
-2. **منتجات Robux:** صنع في Creator Dashboard:
-   - **Game Pass:** VIP
-   - **Developer Products:** Supporter Title، Battle Pass Premium
-   - **Developer Products للإعلانات:** AdCoins، AdLuck، AdPower، AdEggs، AdElixir، AdTripSkip، AdTripDouble، AdStreak، AdReroll، AdSpin. هذو ما يتباعوش، Roblox يستعملهم باش يعطي مكافأة الإعلان.
-
-   حط الأرقام في `roblox/shared/Config/Products.luau`. كل منتج رقمو 0 يبان "Soon" ولا ما يبانش.
-3. **إعلانات الفيديو:** لازم اللعبة تكون مؤهلة عند Roblox (صاحبها 13 سنة وأكثر، هوية موثقة، و 2,000 زائر في الشهر).
+2. **منتجات Robux:** صنعهم في Creator Dashboard وحط الأرقام في `roblox/shared/Config/Products.luau`. كل منتج رقمو 0 يبان "Soon" ولا ما يبانش، و `price` لازم يكون نفس الثمن اللي في Dashboard.
+   - **Game Passes:** VIP، Auto Tap، +2 Team Slots، Big Storage، Teleport، Extra Trip
+   - **Developer Products:** Coins x2، Power x2، Server Boost، TripSkip، TripDouble، StreakSave، QuestSwap، Supporter Title، Battle Pass Premium
+   - **اشتراك:** Cubelings Club (حط الـ id اللي يبدا بـ `EXP-` في `club.id`)
+   - **Developer Products للإعلانات:** AdCoins، AdLuck، AdPower، AdEggs، AdElixir، AdTripSkip، AdTripDouble، AdStreak، AdReroll، AdSpin. هذو ما يتباعوش، Roblox يستعملهم باش يعطي مكافأة الفيديو.
+3. **الإعلانات:** الفيديو ولوحات الإعلانات (Immersive Ads) يحتاجو اللعبة تكون مؤهلة عند Roblox (صاحبها 13 سنة وأكثر، هوية موثقة، و 2,000 زائر في الشهر)، ويبانو غير للاعبين 13+. لوحات الإعلانات راهم في المدينة (`Workspace.AdBoards`) ويخدمو وحدهم كي تكون مؤهل.
 4. **الأصوات:** في `roblox/shared/Config/Sounds.luau`. دركا فيها أصوات Roblox الأساسية، بدّلهم بأصوات من Creator Store، وحط id تاع موسيقى في `MUSIC`.
 5. **التجربة مع لاعبين:** باش تجرب التبادل، في Studio اختار **Test ← Clients and Servers** بـ 2 لاعبين.
 
@@ -219,6 +218,13 @@ tests/                     اختبارات Lune
 - **الأصوات:** العملات، Jackpot، الفقس، المكافآت، الأخطاء، الأزرار، و Lucky Spin. والإعدادات فيها Sound effects و Music
 - **المغناطيس:** مهارات Magnet دركا تخدم: الفريق يروح وحدو للمصدر الجاي حتى في الوضع اليدوي (و Combo يبقى)، في دائرة أكبر حسب المهارة
 - **كشك الرحلات** في المدينة
+- **الأرباح (Robux):**
+  - 6 Game Passes، 7 Developer Products (boosts، Server Boost للكل، وتسريع الوقت)، واشتراك Cubelings Club الشهري
+  - Premium: عملات +10%، و Roblox يخلصنا على وقتهم (Premium Payouts)
+  - جوج لوحات Immersive Ads في المدينة
+  - كل مكافأة فيديو مهمة عندها نسخة بـ Robux، وأزرار الفيديو تتخبى كي ما يكونش فيديو للاعب
+  - Teleport: نافذة 🌀 تروح بيها لأي منطقة مفتوحة
+  - اختبار يتأكد أن حتى منتج Robux ما يبيع بيض، حظ، ولا جوائز عشوائية
 - **لوحات الترتيب (Leaderboards):**
   - 4 لوحات في المدينة: أقوى فريق، أكثر عملات، أكثر Titans، أعلى Rank
   - عالمية (كل السيرفرات)، تتحدث كل دقيقتين
@@ -246,7 +252,7 @@ tests/                     اختبارات Lune
 
 الكود ما تجربش في Roblox Studio لأن Studio ما يخدمش في البيئة اللي تكتب فيها. اللي تفحص:
 - **أنواع Luau:** مقابل Roblox API
-- **69 اختبار للمنطق:** الفقس، القوة، الدمج، التبادل، الكاسيطات، المفاتيح، الرحلات، Reload، حدود الإعلانات، الهدايا، Achievements و Rank...
+- **71 اختبار للمنطق:** الفقس، القوة، الدمج، التبادل، الكاسيطات، المفاتيح، الرحلات، Reload، حدود الإعلانات، الهدايا، Achievements و Rank...
 - **اختبار الخريطة:** يبني العالم، و Big والحراس
 - **بناء المخلوقات والخريطة:** بأجزاء Roblox حقيقية
 

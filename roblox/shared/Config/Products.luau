@@ -1,15 +1,22 @@
 --!strict
--- Robux products and rewarded video ads.
--- Rule: eggs, luck and currencies are never sold for Robux.
--- Create these in the Creator Dashboard and paste the IDs here. An ID of 0 hides the product.
+-- Everything that earns money: Robux game passes, developer products, the monthly Club subscription,
+-- Roblox Premium perks and rewarded video ads.
 --
--- Rewarded video ads: Roblox grants an ad reward through a Developer Product (it arrives in
--- ProcessReceipt with PurchaseChannel = AdReward). Those products are marked `adOnly` and are never
--- shown for sale.
+-- Rule: eggs, luck, creatures and currencies are never sold for Robux. We sell time, comfort and looks.
+-- (Selling eggs would also make them "paid random items" under Roblox rules.)
+--
+-- Create the products in the Creator Dashboard and paste the IDs here. An ID of 0 shows "Soon".
+-- `price` is only what the UI shows: keep it the same as the price set in the dashboard.
+--
+-- Rewarded video ads: Roblox grants an ad reward through a developer product (it arrives in
+-- ProcessReceipt with PurchaseChannel = AdReward). Those products are `adOnly` and never sold.
+-- Ads only show to players 13+ in some countries, and only once the game is ads-eligible, so every
+-- ad reward that matters also has a Robux version.
 
 export type GamePass = {
 	key: string,
 	id: number,
+	price: number,
 	name: string,
 	description: string,
 }
@@ -17,55 +24,66 @@ export type GamePass = {
 export type DevProduct = {
 	key: string,
 	id: number,
+	price: number,
 	name: string,
 	description: string,
 	adOnly: boolean?,
+	reward: string?, -- handler key for rewards that need a service (trips, streak, quests...)
+	boost: { stat: string, mult: number, seconds: number }?,
+	inShop: boolean?, -- listed in the shop's Robux tab
 }
 
 export type AdReward = {
-	key: string, -- matches a DevProduct key
+	key: string, -- matches an adOnly DevProduct key
 	label: string,
+	reward: string?, -- handler key, shared with the Robux version
 	boost: { stat: string, mult: number, seconds: number }?,
 	freeEggs: number?,
-	custom: boolean?, -- applied by a service handler (trips, streak, quests, elixir)
 	inShop: boolean?, -- listed in the shop's Free tab
 	dailyLimit: number?, -- watches per UTC day
 	cooldown: number?, -- seconds between watches
 }
 
+export type Subscription = {
+	key: string,
+	id: string, -- "EXP-..." from the Creator Dashboard; "" hides it
+	price: string,
+	name: string,
+	perks: { string },
+}
+
 local gamePasses: { GamePass } = {
-	{
-		key = "VIP",
-		id = 0,
-		name = "VIP",
-		description = "+1 team slot, +4h offline earnings, VIP title",
-	},
+	{ key = "VIP", id = 0, price = 199, name = "VIP", description = "+1 team slot, +4h offline earnings, VIP title" },
+	{ key = "AutoTap", id = 0, price = 149, name = "Auto Tap", description = "You tap by yourself twice a second, forever" },
+	{ key = "TeamSlots", id = 0, price = 299, name = "+2 Team Slots", description = "Two more creatures walk with you" },
+	{ key = "Storage", id = 0, price = 99, name = "Big Storage", description = "+500 creature storage" },
+	{ key = "Teleport", id = 0, price = 79, name = "Teleport", description = "Jump to any zone you unlocked" },
+	{ key = "TripSlot", id = 0, price = 149, name = "Extra Trip", description = "+1 trip slot for expeditions" },
 }
 
 local devProducts: { DevProduct } = {
-	{
-		key = "SupporterTitle",
-		id = 0,
-		name = "Supporter Title",
-		description = "A golden 'Supporter' title above your head. Cosmetic only.",
-	},
-	{
-		key = "PassPremium",
-		id = 0,
-		name = "Battle Pass Premium",
-		description = "Unlocks the premium track of this season: titles and trails for your character. Cosmetic only.",
-	},
+	-- Cosmetic
+	{ key = "SupporterTitle", id = 0, price = 49, name = "Supporter Title", description = "A golden 'Supporter' title above your head. Cosmetic only.", inShop = true },
+	{ key = "PassPremium", id = 0, price = 399, name = "Battle Pass Premium", description = "Premium track of this season: titles, trails and rides. Cosmetic only." },
+	-- Time and comfort (the Robux side of the ad rewards)
+	{ key = "CoinBoost", id = 0, price = 49, name = "Coins x2 · 30 min", description = "Double coins for 30 minutes of play", boost = { stat = "Coins", mult = 2, seconds = 1800 }, inShop = true },
+	{ key = "PowerBoost", id = 0, price = 49, name = "Power x2 · 30 min", description = "Double team power for 30 minutes of play", boost = { stat = "Power", mult = 2, seconds = 1800 }, inShop = true },
+	{ key = "ServerBoost", id = 0, price = 149, name = "Server Boost", description = "Coins x2 for EVERYONE in the server for 15 minutes", reward = "ServerBoost", inShop = true },
+	{ key = "TripSkip", id = 0, price = 25, name = "Finish a trip now", description = "Your creatures come back right away", reward = "TripSkip" },
+	{ key = "TripDouble", id = 0, price = 35, name = "Double trip rewards", description = "Claim a trip with everything x2", reward = "TripDouble" },
+	{ key = "StreakSave", id = 0, price = 25, name = "Save your streak", description = "Keep your daily streak after missing a few days", reward = "StreakSave" },
+	{ key = "QuestSwap", id = 0, price = 10, name = "Swap a quest", description = "Get a different daily quest", reward = "QuestSwap" },
 	-- Rewarded video ads (never sold)
-	{ key = "AdCoins", id = 0, name = "Ad: Coins x2", description = "", adOnly = true },
-	{ key = "AdLuck", id = 0, name = "Ad: Luck x2", description = "", adOnly = true },
-	{ key = "AdPower", id = 0, name = "Ad: Power x2", description = "", adOnly = true },
-	{ key = "AdEggs", id = 0, name = "Ad: 3 free eggs", description = "", adOnly = true },
-	{ key = "AdElixir", id = 0, name = "Ad: free elixir", description = "", adOnly = true },
-	{ key = "AdTripSkip", id = 0, name = "Ad: finish a trip now", description = "", adOnly = true },
-	{ key = "AdTripDouble", id = 0, name = "Ad: double trip rewards", description = "", adOnly = true },
-	{ key = "AdStreak", id = 0, name = "Ad: save the daily streak", description = "", adOnly = true },
-	{ key = "AdReroll", id = 0, name = "Ad: new quest", description = "", adOnly = true },
-	{ key = "AdSpin", id = 0, name = "Ad: Lucky Spin", description = "", adOnly = true },
+	{ key = "AdCoins", id = 0, price = 0, name = "Ad: Coins x2", description = "", adOnly = true },
+	{ key = "AdLuck", id = 0, price = 0, name = "Ad: Luck x2", description = "", adOnly = true },
+	{ key = "AdPower", id = 0, price = 0, name = "Ad: Power x2", description = "", adOnly = true },
+	{ key = "AdEggs", id = 0, price = 0, name = "Ad: 3 free eggs", description = "", adOnly = true },
+	{ key = "AdElixir", id = 0, price = 0, name = "Ad: free elixir", description = "", adOnly = true },
+	{ key = "AdTripSkip", id = 0, price = 0, name = "Ad: finish a trip now", description = "", adOnly = true },
+	{ key = "AdTripDouble", id = 0, price = 0, name = "Ad: double trip rewards", description = "", adOnly = true },
+	{ key = "AdStreak", id = 0, price = 0, name = "Ad: save the daily streak", description = "", adOnly = true },
+	{ key = "AdReroll", id = 0, price = 0, name = "Ad: new quest", description = "", adOnly = true },
+	{ key = "AdSpin", id = 0, price = 0, name = "Ad: Lucky Spin", description = "", adOnly = true },
 }
 
 local adRewards: { AdReward } = {
@@ -73,12 +91,26 @@ local adRewards: { AdReward } = {
 	{ key = "AdLuck", label = "Luck x2 · 15 min", boost = { stat = "Luck", mult = 2, seconds = 900 }, inShop = true },
 	{ key = "AdPower", label = "Power x2 · 15 min", boost = { stat = "Power", mult = 2, seconds = 900 }, inShop = true },
 	{ key = "AdEggs", label = "3 free eggs", freeEggs = 3, inShop = true },
-	{ key = "AdElixir", label = "Free elixir (tier II–III)", custom = true, inShop = true, cooldown = 3600 },
-	{ key = "AdTripSkip", label = "Finish a trip now", custom = true, dailyLimit = 5 },
-	{ key = "AdTripDouble", label = "Double a trip's rewards", custom = true, dailyLimit = 10 },
-	{ key = "AdStreak", label = "Save your daily streak", custom = true, dailyLimit = 1 },
-	{ key = "AdReroll", label = "Swap a daily quest", custom = true, dailyLimit = 3 },
-	{ key = "AdSpin", label = "Lucky Spin", custom = true, dailyLimit = 3 },
+	{ key = "AdElixir", label = "Free elixir (tier II–III)", reward = "Elixir", inShop = true, cooldown = 3600 },
+	{ key = "AdTripSkip", label = "Finish a trip now", reward = "TripSkip", dailyLimit = 5 },
+	{ key = "AdTripDouble", label = "Double a trip's rewards", reward = "TripDouble", dailyLimit = 10 },
+	{ key = "AdStreak", label = "Save your daily streak", reward = "StreakSave", dailyLimit = 1 },
+	{ key = "AdReroll", label = "Swap a daily quest", reward = "QuestSwap", dailyLimit = 3 },
+	{ key = "AdSpin", label = "Lucky Spin", reward = "Spin", dailyLimit = 3 },
+}
+
+-- Monthly subscription (Creator Dashboard → Monetization → Subscriptions)
+local club: Subscription = {
+	key = "Club",
+	id = "",
+	price = "$4.99 / month",
+	name = "Cubelings Club",
+	perks = {
+		"💎 40 gems and 🎟️ 2 tickets every day",
+		"🪙 Coins +10%",
+		"🧭 +1 trip slot",
+		"🏷️ Club title",
+	},
 }
 
 local passByKey: { [string]: GamePass } = {}
@@ -104,10 +136,20 @@ return {
 	gamePasses = gamePasses,
 	devProducts = devProducts,
 	adRewards = adRewards,
+	club = club,
 	passByKey = passByKey,
 	productByKey = productByKey,
 	productById = productById,
 	adByKey = adByKey,
 	VIP_EXTRA_SLOTS = 1,
 	VIP_EXTRA_OFFLINE_HOURS = 4,
+	PASS_TEAM_SLOTS = 2,
+	PASS_STORAGE = 500,
+	PASS_TRIP_SLOTS = 1,
+	CLUB_DAILY_GEMS = 40,
+	CLUB_DAILY_TICKETS = 2,
+	CLUB_COINS = 1.1,
+	CLUB_TRIP_SLOTS = 1,
+	PREMIUM_COINS = 1.1,
+	SERVER_BOOST = { stat = "Coins", mult = 2, seconds = 900 },
 }

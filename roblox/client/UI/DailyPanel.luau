@@ -63,7 +63,7 @@ function DailyPanel.mount(gui: ScreenGui)
 	})
 	save.Parent = content
 	save.Activated:Connect(function()
-		AdButton.watch("AdStreak")
+		AdButton.take("AdStreak", "StreakSave")
 	end)
 
 	local function rebuild()
@@ -106,15 +106,15 @@ function DailyPanel.mount(gui: ScreenGui)
 		end
 		local savable = data ~= nil
 			and Progress.streakSavable(data.daily, Progress.day(os.time()))
-			and AdButton.available("AdStreak")
+			and AdButton.offer("AdStreak", "StreakSave") ~= nil
 		save.Visible = savable
 		claim.Position = UDim2.new(if savable then 0.28 else 0.5, 0, 0.78, 0)
 		if savable then
-			save.Text = ("▶ Keep my %d-day streak"):format(streak)
+			save.Text = AdButton.label("AdStreak", "StreakSave", ("Keep my %d-day streak"):format(streak))
 		end
 		if today then
 			status.Text = if savable
-				then ("You missed a day! Watch a video to keep your streak, or start again from Day 1.")
+				then ("You missed a day! Keep your streak, or start again from Day 1.")
 				else ("Day %d is ready! Streak: %d"):format(today, streak)
 			claim.Visible = true
 		else

@@ -27,9 +27,10 @@ function Expedition.slots(reloads: number, bonus: number?): number
 	return math.min(Expeditions.MAX_SLOTS, Expeditions.BASE_SLOTS + math.floor(reloads / 2) + (bonus or 0))
 end
 
-function Expedition.slotsFor(data: PlayerData): number
+-- `extra` = slots from the Extra Trip pass and the Club.
+function Expedition.slotsFor(data: PlayerData, extra: number?): number
 	local _, perks = Achievements.forData(data)
-	return Expedition.slots(data.reloads, perks.tripSlots)
+	return Expedition.slots(data.reloads, perks.tripSlots + (extra or 0))
 end
 
 -- True when every creature has the same variant and that variant is strong in some element (e.g. all Lava).
@@ -50,12 +51,12 @@ function Expedition.sharedElement(pets: { Pet }): boolean
 	return true
 end
 
-function Expedition.validate(data: PlayerData, kindId: string, petIds: { string }): (boolean, string?)
+function Expedition.validate(data: PlayerData, kindId: string, petIds: { string }, extraSlots: number?): (boolean, string?)
 	local kind = Expeditions.byId[kindId]
 	if not kind then
 		return false, "Unknown trip"
 	end
-	if #data.expeditions >= Expedition.slotsFor(data) then
+	if #data.expeditions >= Expedition.slotsFor(data, extraSlots) then
 		return false, "All trip slots are busy"
 	end
 	if #petIds ~= kind.pets then

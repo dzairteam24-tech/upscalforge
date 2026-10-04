@@ -2,7 +2,6 @@
 -- Big/Titan periodic skills, offline earnings and what the client sees (currency, pets, titles).
 
 local HttpService = game:GetService("HttpService")
-local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -101,11 +100,23 @@ end
 function GameService.maxSlots(player: Player): number
 	local data = DataService.get(player)
 	local runtime = State.get(player)
-	local slots = Constants.BASE_TEAM_SLOTS + (if data then data.upgrades.TeamSlots or 0 else 0)
+	local slots = math.min(Constants.MAX_TEAM_SLOTS, Constants.BASE_TEAM_SLOTS + (if data then data.upgrades.TeamSlots or 0 else 0))
 	if runtime and runtime.vip then
 		slots += Products.VIP_EXTRA_SLOTS
 	end
-	return math.min(slots, Constants.MAX_TEAM_SLOTS + Products.VIP_EXTRA_SLOTS)
+	if runtime and runtime.passes.TeamSlots then
+		slots += Products.PASS_TEAM_SLOTS
+	end
+	return slots
+end
+
+-- Trip slots from the Extra Trip pass and the Club.
+function GameService.extraTripSlots(player: Player): number
+	local runtime = State.get(player)
+	if not runtime then
+		return 0
+	end
+	return (if runtime.passes.TripSlot then Products.PASS_TRIP_SLOTS else 0) + (if runtime.club then Products.CLUB_TRIP_SLOTS else 0)
 end
 
 function GameService.capacity(player: Player): number
@@ -114,7 +125,9 @@ function GameService.capacity(player: Player): number
 		return Constants.BASE_STORAGE
 	end
 	local _, perks = Achievements.forData(data)
-	return Constants.BASE_STORAGE + Upgrades.storageBonus(data.upgrades.Storage or 0) + perks.storage
+	local runtime = State.get(player)
+	local pass = if runtime and runtime.passes.Storage then Products.PASS_STORAGE else 0
+	return Constants.BASE_STORAGE + Upgrades.storageBonus(data.upgrades.Storage or 0) + perks.storage + pass
 end
 
 function GameService.luck(player: Player): number
@@ -312,6 +325,12 @@ local function coinMultiplier(
 	mult *= Gear.get(runtime.gear, "Coins")
 	mult *= GameService.reloadMult(data)
 	mult *= GameService.totem(zoneId, "Coins")
+	if runtime.club then
+		mult *= Products.CLUB_COINS
+	end
+	if runtime.premium then
+		mult *= Products.PREMIUM_COINS
+	end
 	if kind and kind.isPile then
 		mult *= Effects.get(runtime.effects, "Pile")
 	end
@@ -583,6 +602,8 @@ local function applyTitles(player: Player, character: Model)
 		title = Cosmetics.titleById[data.equippedTitle]
 	elseif runtime.vip then
 		title = Cosmetics.titleById.VIP
+	elseif runtime.club then
+		title = Cosmetics.titleById.Club
 	elseif data.titles.Supporter then
 		title = Cosmetics.titleById.Supporter
 	end
@@ -707,26 +728,6 @@ function GameService.refreshTitles(player: Player)
 	end
 end
 
-local function checkVip(player: Player): boolean
-	local pass = Products.passByKey.VIP
-	if not pass or pass.id == 0 then
-		return false
-	end
-	local ok, owns = pcall(function()
-		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, pass.id)
-	end)
-	return ok and owns == true
-end
-
-function GameService.setVip(player: Player, vip: boolean)
-	local runtime = State.get(player)
-	if runtime then
-		runtime.vip = vip
-		GameService.refresh(player)
-		GameService.refreshTitles(player)
-	end
-end
-
 local function giveOfflineEarnings(player: Player, data: PlayerData, runtime: State.Runtime)
 	if data.lastSeen <= 0 or data.lastPower <= 0 then
 		return
@@ -788,7 +789,6 @@ end
 
 local function onLoaded(player: Player, data: PlayerData)
 	local runtime = State.create(player)
-	runtime.vip = checkVip(player)
 	giveStarterPack(player, data)
 	leaderstats(player)
 	GameService.refresh(player)
@@ -855,8 +855,11 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		nextReloadMult = Reload.coinMult(data.reloads + 1),
 		nextCartridgeSlots = Gear.slots(data.reloads + 1, perks.cartridgeSlots),
 		expeditions = data.expeditions,
-		expeditionSlots = Expedition.slots(data.reloads, perks.tripSlots),
-		nextExpeditionSlots = Expedition.slots(data.reloads + 1, perks.tripSlots),
+		expeditionSlots = Expedition.slots(data.reloads, perks.tripSlots + GameService.extraTripSlots(player)),
+		nextExpeditionSlots = Expedition.slots(data.reloads + 1, perks.tripSlots + GameService.extraTripSlots(player)),
+		passes = (State.get(player) :: State.Runtime).passes,
+		club = (State.get(player) :: State.Runtime).club,
+		premium = (State.get(player) :: State.Runtime).premium,
 		achievements = data.achievements,
 		index = data.index,
 		rank = rank,
@@ -934,7 +937,7 @@ local function tickPlayer(player: Player, runtime: State.Runtime, data: PlayerDa
 		GameService.collectFrom(player, source, runtime.power * dt)
 	end
 	-- Auto Tap cartridge: two taps per second without clicking
-	if source and Gear.get(runtime.gear, "AutoTap") > 0 and now - runtime.lastTap >= 0.5 then
+	if source and (Gear.get(runtime.gear, "AutoTap") > 0 or runtime.passes.AutoTap) and now - runtime.lastTap >= 0.5 then
 		runtime.lastTap = now
 		GameService.collectFrom(player, source, GameService.tapPower(runtime, data))
 	end

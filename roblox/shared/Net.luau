@@ -40,6 +40,8 @@ local EVENTS = {
 	"ApplySticker",
 	"RemoveSticker",
 	"SpinWheel",
+	"BuyProduct",
+	"Teleport",
 	-- server -> client
 	"Data",
 	"Currency",

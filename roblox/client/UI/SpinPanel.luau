@@ -151,7 +151,14 @@ function SpinPanel.mount(gui: ScreenGui)
 		local tickets: number = data.tickets or 0
 		ticketButton.Text = ("🎟️ %d · Spin for %d"):format(tickets, WheelConfig.TICKET_COST)
 		ticketButton.BackgroundColor3 = if tickets >= WheelConfig.TICKET_COST then Theme.gold else Theme.card
+		-- Spins are never sold for Robux (prizes are random); videos only, where they can play
 		local left = AdButton.left("AdSpin")
+		local adsOn = AdButton.supported()
+		adButton.Visible = adsOn
+		local width = if adsOn then 1 / 3 else 1 / 2
+		freeButton.Size = UDim2.new(width, -8, 1, 0)
+		ticketButton.Size = UDim2.new(width, -8, 1, 0)
+		ticketButton.Position = UDim2.new(width, 4, 0, 0)
 		adButton.Text = if left and left <= 0 then "▶ Back tomorrow" else ("▶ Watch & spin (%d)"):format(left or 0)
 		adButton.BackgroundColor3 = if AdButton.available("AdSpin") then Theme.purple else Theme.card
 	end

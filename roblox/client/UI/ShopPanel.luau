@@ -122,57 +122,108 @@ function ShopPanel.mount(gui: ScreenGui)
 				end)
 			end
 		elseif current == "Free" then
+			local supported = AdButton.supported()
 			local note = Theme.label({
-				Text = "Watch a short video to get a reward. Boost time stacks up to 4 hours.",
+				Text = if supported
+					then "Watch a short video to get a reward. Boost time stacks up to 4 hours."
+					else "Videos aren't available for your account (Roblox shows them to players 13+ in some countries). Daily rewards, gifts, quests and the Lucky Spin are always free!",
 				Font = Enum.Font.Gotham,
 				TextColor3 = Theme.muted,
-				Size = UDim2.new(1, -12, 0, 30),
+				Size = UDim2.new(1, -12, 0, if supported then 30 else 48),
 				LayoutOrder = 0,
 				MaxTextSize = 15,
 			})
 			note.Parent = scroll
-			for order, reward in Products.adRewards do
-				if not reward.inShop then
-					continue
+			if supported then
+				for order, reward in Products.adRewards do
+					if not reward.inShop then
+						continue
+					end
+					local product = Products.productByKey[reward.key]
+					local configured = product ~= nil and product.id ~= 0
+					local wait = AdButton.cooldown(reward.key)
+					local subtitle = if reward.cooldown then "Free · once an hour" else "Free · watch a video"
+					local action = if not configured then "Soon" elseif wait > 0 then Format.time(wait) else "▶ Watch"
+					row(order, reward.label, subtitle, action, configured and wait <= 0, function()
+						AdButton.watch(reward.key)
+					end)
 				end
-				local product = Products.productByKey[reward.key]
-				local configured = product ~= nil and product.id ~= 0
-				local wait = AdButton.cooldown(reward.key)
-				local subtitle = if reward.cooldown then "Free · once an hour" else "Free · watch a video"
-				local action = if not configured then "Soon" elseif wait > 0 then Format.time(wait) else "▶ Watch"
-				row(order, reward.label, subtitle, action, configured and wait <= 0, function()
-					AdButton.watch(reward.key)
-				end)
 			end
 		else
 			local order = 0
+			local function section(text: string)
+				order += 1
+				local label = Theme.label({
+					Text = text,
+					Font = Theme.titleFont,
+					Size = UDim2.new(1, -12, 0, 28),
+					TextXAlignment = Enum.TextXAlignment.Left,
+					LayoutOrder = order,
+					MaxTextSize = 20,
+				})
+				label.Parent = scroll
+			end
+			local function robux(price: number): string
+				return "R$ " .. price
+			end
+			order += 1
 			local note = Theme.label({
-				Text = "Eggs, luck and coins are never sold. Everything here is VIP or cosmetic.",
+				Text = "Eggs, luck, creatures and coins are never sold. Robux buys time, comfort and looks.",
 				Font = Enum.Font.Gotham,
 				TextColor3 = Theme.muted,
 				Size = UDim2.new(1, -12, 0, 30),
-				LayoutOrder = 0,
+				LayoutOrder = order,
 				MaxTextSize = 15,
 			})
 			note.Parent = scroll
+
+			-- Monthly Club
+			local club = Products.club
+			section("🏅 " .. club.name)
+			order += 1
+			local member = data.club == true
+			row(order, club.name .. " · " .. club.price, table.concat(club.perks, " · "), if member then "Member ✓" elseif club.id == "" then "Soon" else "Join", not member and club.id ~= "", function()
+				MarketplaceService:PromptSubscriptionPurchase(Players.LocalPlayer, club.id)
+			end)
+
+			-- Game passes
+			section("🎫 Game Passes (forever)")
 			for _, pass in Products.gamePasses do
 				order += 1
-				local owned = pass.key == "VIP" and data.vip
-				row(order, pass.name, pass.description, if owned then "Owned" elseif pass.id == 0 then "Soon" else "Buy", not owned and pass.id ~= 0, function()
+				local owned = data.passes ~= nil and data.passes[pass.key] == true
+				row(order, pass.name, pass.description, if owned then "Owned" elseif pass.id == 0 then "Soon" else robux(pass.price), not owned and pass.id ~= 0, function()
 					MarketplaceService:PromptGamePassPurchase(Players.LocalPlayer, pass.id)
 				end)
 			end
+
+			-- Boosts and cosmetics
+			section("🚀 Boosts and looks")
 			for _, product in Products.devProducts do
-				if product.adOnly then
+				if not product.inShop then
 					continue
 				end
 				order += 1
-				local owned = (product.key == "SupporterTitle" and data.titles.Supporter)
-					or (product.key == "PassPremium" and data.pass.premium)
-				row(order, product.name, product.description, if owned then "Owned" elseif product.id == 0 then "Soon" else "Buy", not owned and product.id ~= 0, function()
-					MarketplaceService:PromptProductPurchase(Players.LocalPlayer, product.id)
+				local owned = product.key == "SupporterTitle" and data.titles.Supporter
+				row(order, product.name, product.description, if owned then "Owned" elseif product.id == 0 then "Soon" else robux(product.price), not owned and product.id ~= 0, function()
+					AdButton.buy(product.key)
 				end)
 			end
+			local pass = Products.productByKey.PassPremium
+			if pass then
+				order += 1
+				local owned = data.pass.premium
+				row(order, pass.name, pass.description, if owned then "Owned" elseif pass.id == 0 then "Soon" else robux(pass.price), not owned and pass.id ~= 0, function()
+					AdButton.buy(pass.key)
+				end)
+			end
+
+			-- Roblox Premium
+			section("⭐ Roblox Premium")
+			order += 1
+			local premium = data.premium == true
+			row(order, "Premium perks", "Coins +10% while you're a Roblox Premium member", if premium then "Active ✓" else "Get Premium", not premium, function()
+				MarketplaceService:PromptPremiumPurchase(Players.LocalPlayer)
+			end)
 		end
 	end
 

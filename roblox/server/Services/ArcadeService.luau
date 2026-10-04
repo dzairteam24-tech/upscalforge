@@ -15,7 +15,7 @@ local Types = require(Shared.Logic.Types)
 local Wheel = require(Shared.Logic.Wheel)
 local Net = require(Shared.Net)
 
-local AdsService = require(script.Parent.AdsService)
+local RewardService = require(script.Parent.RewardService)
 local DataService = require(script.Parent.DataService)
 local GameService = require(script.Parent.GameService)
 local ProgressionService = require(script.Parent.ProgressionService)
@@ -126,7 +126,7 @@ end
 
 function ArcadeService.init()
 	Net.event("SpinWheel").OnServerEvent:Connect(spinRequest)
-	AdsService.register("AdSpin", {
+	RewardService.register("Spin", {
 		canUse = function()
 			return true, nil
 		end,

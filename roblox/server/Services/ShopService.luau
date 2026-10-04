@@ -1,5 +1,6 @@
--- Coin shop (upgrades, zone gates) and Robux products (VIP game pass, cosmetic developer products).
--- Robux never buys eggs, luck or currency.
+-- Coin shop (upgrades, zone gates) and Robux developer products (boosts, time skips, cosmetics).
+-- Robux never buys eggs, luck, creatures or currency. Game passes, the Club and Premium live in
+-- MembershipService.
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
@@ -15,6 +16,8 @@ local Net = require(Shared.Net)
 local AdsService = require(script.Parent.AdsService)
 local DataService = require(script.Parent.DataService)
 local GameService = require(script.Parent.GameService)
+local RewardService = require(script.Parent.RewardService)
+local State = require(script.Parent.State)
 
 local ShopService = {}
 
@@ -98,6 +101,16 @@ local function grantProduct(player: Player, key: string): boolean
 	if Products.adByKey[key] then
 		return AdsService.grant(player, key)
 	end
+	local product = Products.productByKey[key]
+	if product and product.reward then
+		RewardService.grant(player, product.reward, key)
+		GameService.markDirty(player)
+		return true
+	elseif product and product.boost then
+		GameService.addBoost(player, product.boost.stat, product.boost.mult, product.boost.seconds)
+		GameService.notify(player, product.name .. " is on. Thanks!", "success")
+		return true
+	end
 	return false
 end
 
@@ -125,19 +138,56 @@ local function processReceipt(receipt: { [string]: any }): Enum.ProductPurchaseD
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
+-- Robux purchase of a developer product. Checks first that the reward still makes sense (a trip to
+-- finish, a quest to swap), remembers what it's for, then opens the Roblox prompt.
+local function buyProduct(player: Player, key: any, context: any)
+	local runtime = State.get(player)
+	if not runtime or type(key) ~= "string" or not State.throttle(runtime, "BuyProduct", 1) then
+		return
+	end
+	local product = Products.productByKey[key]
+	if not product or product.adOnly then
+		return
+	end
+	if product.id == 0 then
+		GameService.notify(player, "This isn't on sale yet", "error")
+		return
+	end
+	if product.reward then
+		local ok, err = RewardService.canUse(player, product.reward, context)
+		if not ok then
+			GameService.notify(player, err or "Not available right now", "error")
+			return
+		end
+		RewardService.setContext(player, key, context)
+	end
+	MarketplaceService:PromptProductPurchase(player, product.id)
+end
+
 function ShopService.init()
 	Net.event("BuyUpgrade").OnServerEvent:Connect(buyUpgrade)
 	Net.event("UnlockZone").OnServerEvent:Connect(unlockZone)
+	Net.event("BuyProduct").OnServerEvent:Connect(buyProduct)
 
 	MarketplaceService.ProcessReceipt = processReceipt
 
-	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
-		local vip = Products.passByKey.VIP
-		if purchased and vip and passId == vip.id then
-			GameService.setVip(player, true)
-			GameService.notify(player, "Welcome to VIP!", "success")
-		end
-	end)
+	-- Server Boost: coins x2 for everyone online
+	RewardService.register("ServerBoost", {
+		canUse = function()
+			return true, nil
+		end,
+		grant = function(player)
+			local boost = Products.SERVER_BOOST
+			for other in State.all() do
+				GameService.addBoost(other, boost.stat, boost.mult, boost.seconds)
+			end
+			GameService.notifyAll(
+				("🚀 %s boosted the server! Coins x%g for everyone for %d minutes!"):format(player.DisplayName, boost.mult, boost.seconds // 60),
+				"rare"
+			)
+			return true
+		end,
+	})
 end
 
 return ShopService

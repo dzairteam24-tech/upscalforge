@@ -51,6 +51,7 @@ export type PlayerData = {
 	wheel: { lastFree: number }, -- UTC day of the last free spin
 	rides: { [string]: boolean },
 	equippedRide: string?,
+	club: { lastDay: number }, -- UTC day the last Club daily bonus was given
 }
 
 -- Rewarded ad limits: watches per UTC day and per-reward cooldowns.

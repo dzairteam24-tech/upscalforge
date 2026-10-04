@@ -12,7 +12,7 @@ local Progress = require(Shared.Logic.Progress)
 local Types = require(Shared.Logic.Types)
 local Net = require(Shared.Net)
 
-local AdsService = require(script.Parent.AdsService)
+local RewardService = require(script.Parent.RewardService)
 local DataService = require(script.Parent.DataService)
 local GameService = require(script.Parent.GameService)
 local State = require(script.Parent.State)
@@ -271,8 +271,8 @@ function ProgressionService.init()
 	Net.event("EquipCosmetic").OnServerEvent:Connect(equipCosmetic)
 	Net.event("ClaimGift").OnServerEvent:Connect(claimGift)
 
-	-- Ad: keep the daily streak after missing a few days
-	AdsService.register("AdStreak", {
+	-- Ad or Robux: keep the daily streak after missing a few days
+	RewardService.register("StreakSave", {
 		canUse = function(player)
 			local data = DataService.get(player)
 			if not data or not Progress.streakSavable(data.daily, Progress.day(os.time())) then
@@ -291,13 +291,13 @@ function ProgressionService.init()
 		end,
 	})
 
-	-- Ad: swap an unfinished daily quest for another one
+	-- Ad or Robux: swap an unfinished daily quest for another one
 	local function rerollable(player: Player, index: any): boolean
 		local data = DataService.get(player)
 		local quest = data and type(index) == "number" and data.quests.daily[index]
 		return quest ~= nil and quest ~= false and not quest.claimed and quest.progress < quest.goal
 	end
-	AdsService.register("AdReroll", {
+	RewardService.register("QuestSwap", {
 		canUse = function(player, index)
 			if not rerollable(player, index) then
 				return false, "Pick an unfinished daily quest"

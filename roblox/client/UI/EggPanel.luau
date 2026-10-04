@@ -11,6 +11,7 @@ local Products = require(Shared.Config.Products)
 local Format = require(Shared.Logic.Format)
 local Net = require(Shared.Net)
 
+local AdButton = require(script.Parent.AdButton)
 local Store = require(script.Parent.Parent.Store)
 local PetCard = require(script.Parent.PetCard)
 local Theme = require(script.Parent.Theme)
@@ -70,24 +71,34 @@ function EggPanel.mount(gui: ScreenGui)
 	local x8 = hatchButton("Hatch x8", 8, Theme.purple, 3)
 	local auto = Theme.button({ Text = "Auto: OFF", Size = UDim2.fromOffset(120, 48), BackgroundColor3 = Theme.card, LayoutOrder = 4, MaxTextSize = 20 })
 	auto.Parent = buttons
-	-- Rewarded video shortcuts next to the egg
+	-- Rewarded video shortcuts next to the egg (shown only when a video can play)
+	local adButtons: { [string]: TextButton } = {}
 	for order, key in { "AdLuck", "AdEggs" } do
 		local reward = Products.adByKey[key]
-		local product = Products.productByKey[key]
-		if reward and product and product.id ~= 0 then
+		if reward then
 			local adButton = Theme.button({
 				Text = "▶ " .. reward.label,
 				Size = UDim2.fromOffset(150, 48),
 				BackgroundColor3 = Theme.gold,
 				LayoutOrder = 10 + order,
+				Visible = false,
 				MaxTextSize = 15,
 			})
 			adButton.Parent = buttons
 			adButton.Activated:Connect(function()
-				Net.event("WatchAd"):FireServer(key)
+				AdButton.watch(key)
 			end)
+			adButtons[key] = adButton
 		end
 	end
+	task.spawn(function()
+		while true do
+			for key, adButton in adButtons do
+				adButton.Visible = AdButton.available(key)
+			end
+			task.wait(2)
+		end
+	end)
 	auto.Activated:Connect(function()
 		autoHatch = not autoHatch
 		auto.Text = if autoHatch then "Auto: ON" else "Auto: OFF"
