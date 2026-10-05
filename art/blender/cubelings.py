@@ -198,44 +198,41 @@ def build(spec):
             leg = rounded_box("Leg", (0.46, 0.46, LEG_H + 0.3), (x, y, (LEG_H + 0.3) / 2), 0.1, segments=3)
             parts.append(finish(leg, mat["legs"]))
 
-    # Ears: soft wide cones on the top corners (wider than deep), leaning out. The pink inside is a slightly
-    # bigger copy of the cone cut to a triangle at the front, so it sits right on the ear's surface.
+    # Ears: thick rounded triangles on the top corners, leaning out a little, with a soft pink triangle
+    # set into the front. Bevel + one level of subdivision keeps every edge soft (no sharp cone tips).
     if spec["ears"] == "cat":
         top = BODY_Z + BODY_H / 2
-        radius, depth_scale, height, sunk = 0.44, 0.7, 0.68, 0.2
 
-        def cone(name, grow):
-            bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=radius * grow, radius2=0.03 * grow, depth=height, location=(0, 0, height / 2))
-            obj = bpy.context.active_object
-            obj.name = name
-            obj.scale = (1, depth_scale, 1)
-            bpy.ops.object.transform_apply(location=True, rotation=False, scale=True)
-            return obj
+        def soft(obj, bevel_width, segments=3, subdiv=1):
+            bevel = obj.modifiers.new("Bevel", "BEVEL")
+            bevel.width = bevel_width
+            bevel.segments = segments
+            bevel.limit_method = "NONE"
+            if subdiv:
+                sub = obj.modifiers.new("Subdivision", "SUBSURF")
+                sub.levels = subdiv
+                sub.render_levels = subdiv
+            apply_modifiers(obj)
+
+        def place(obj, location, lean):
+            obj.location = location
+            obj.rotation_euler = (math.radians(-6), lean, 0)
+            bpy.context.view_layer.objects.active = obj
+            obj.select_set(True)
+            bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+            obj.select_set(False)
 
         for side in (-1, 1):
-            lean = math.radians(-10 * side)
-            ear = cone("Ear", 1.0)
-            inner = cone("EarInner", 1.04)
-            cutter = triangle_prism("Cut", half_width=0.19, height=0.4, depth=1.0)
-            cutter.location = (0, -0.5, sunk + 0.05)
-            bpy.context.view_layer.objects.active = cutter
-            cutter.select_set(True)
-            bpy.ops.object.transform_apply(location=True, rotation=False, scale=False)
-            cutter.select_set(False)
-            boolean = inner.modifiers.new("Cut", "BOOLEAN")
-            boolean.operation = "INTERSECT"
-            boolean.object = cutter
-            apply_modifiers(inner)
-            bpy.data.objects.remove(cutter)
-            for obj in (ear, inner):
-                obj.location = (0.55 * side, -0.28, top - sunk)
-                obj.rotation_euler = (0, lean, 0)
-                bpy.context.view_layer.objects.active = obj
-                obj.select_set(True)
-                bpy.ops.object.transform_apply(location=True, rotation=True, scale=False)
-                obj.select_set(False)
-            parts.append(finish(ear, mat["body"], angle=80))
-            parts.append(finish(inner, mat["ear_inner"], angle=80))
+            lean = math.radians(-11 * side)
+            base = Vector((0.56 * side, -0.32, top - 0.22))
+            ear = triangle_prism("Ear", half_width=0.4, height=0.82, depth=0.36, tip_shift=0.05 * side)
+            soft(ear, 0.12, segments=3, subdiv=1)
+            place(ear, base, lean)
+            parts.append(finish(ear, mat["body"], angle=180))
+            inner = triangle_prism("EarInner", half_width=0.22, height=0.46, depth=0.08, tip_shift=0.04 * side)
+            soft(inner, 0.035, segments=2, subdiv=1)
+            place(inner, base + Vector((0, -0.17, 0.2)), lean)
+            parts.append(finish(inner, mat["ear_inner"], angle=180))
 
     # Eyes with a white shine
     for side in (-1, 1):
@@ -370,6 +367,15 @@ def export(name, parts):
         image.paste(srgb, (i * cell, 0, (i + 1) * cell, cell))
     palette_path = os.path.join(ROOT, "models", f"{name}_palette.png")
     image.save(palette_path)
+    # Which part of the creature each palette cell is (viewers and variant shaders use it)
+    import json
+
+    roles = []
+    for color in palette:
+        names = [key for key, mat_ in materials.items() if tuple(mat_["palette_color"]) == color]
+        roles.append(names)
+    with open(os.path.join(ROOT, "models", f"{name}_palette.json"), "w") as f:
+        json.dump({"cells": len(palette), "roles": roles}, f, indent=1)
 
     for part in parts:
         index = palette.index(tuple(part.data.materials[0]["palette_color"]))

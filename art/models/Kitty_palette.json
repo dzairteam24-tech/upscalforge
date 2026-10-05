@@ -1,0 +1,30 @@
+{
+ "cells": 8,
+ "roles": [
+  [
+   "body"
+  ],
+  [
+   "belly"
+  ],
+  [
+   "legs"
+  ],
+  [
+   "ear_inner",
+   "nose"
+  ],
+  [
+   "eye"
+  ],
+  [
+   "shine"
+  ],
+  [
+   "mouth"
+  ],
+  [
+   "blush"
+  ]
+ ]
+}

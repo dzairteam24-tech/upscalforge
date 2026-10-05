@@ -20,3 +20,9 @@ python art/blender/cubelings.py Kitty
 4. الوجه يشوف لـ -Z (القدام تاع Roblox)
 
 كل الموديل mesh واحد (~3300 مثلث) و texture وحدة صغيرة، يعني خفيف على الموبايل.
+
+## صفحة المعاينة 3D (للتيليفون)
+
+`python art/viewer/build.py Kitty Kitty-3d.html 4,864` يصنع صفحة HTML فيها الموديل يدور، يرمّش ويقفز،
+والـ variants حيين: Golden (ذهب يلمع)، Crystal (جليد)، Lava (حجرة فيها شقوق تشعل)، Neon (يضوي)، Pixel (مربعات تبدّل اللون).
+هذا معاينة برك: في اللعبة لازم نديرو نفس الستيل بـ SurfaceAppearance و particles تاع Roblox.
