@@ -14,6 +14,7 @@ local PetFollow = {}
 
 type Entry = {
 	built: PetModel.Built,
+	pet: { s: string, v: string, z: string },
 	current: CFrame,
 	phase: number,
 }
@@ -72,7 +73,7 @@ local function addPet(owner: Owner, value: StringValue)
 	end
 	local built = PetModel.build(pet)
 	built.model.Parent = if hidden(owner) then nil else container
-	local entry: Entry = { built = built, current = startPosition(owner.player), phase = math.random() * math.pi * 2 }
+	local entry: Entry = { built = built, pet = pet, current = startPosition(owner.player), phase = math.random() * math.pi * 2 }
 	PetModel.place(built, entry.current)
 	owner.entries[value.Name] = entry
 	rebuildOrder(owner)
@@ -211,8 +212,30 @@ local function step(dt: number)
 	end
 end
 
+-- The 3D models can arrive after the first creatures were drawn (they load from Roblox at server start):
+-- then every creature is rebuilt with its model.
+local function rebuildAll()
+	PetModel.reset()
+	for _, owner in owners do
+		for _, entry in owner.entries do
+			local parent = entry.built.model.Parent
+			entry.built.model:Destroy()
+			entry.built = PetModel.build(entry.pet)
+			entry.built.model.Parent = parent
+			PetModel.place(entry.built, entry.current)
+		end
+		rebuildOrder(owner)
+	end
+end
+
 function PetFollow.init()
 	container.Parent = workspace
+	ReplicatedStorage.ChildAdded:Connect(function(child)
+		if child.Name == "CreatureModels" then
+			task.wait(0.5) -- let the whole folder replicate
+			rebuildAll()
+		end
+	end)
 	local display = ReplicatedStorage:WaitForChild("PetDisplay")
 	for _, folder in display:GetChildren() do
 		task.spawn(watchFolder, folder)

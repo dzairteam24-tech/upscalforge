@@ -34,3 +34,10 @@ python art/blender/cubelings.py Kitty
 - منطقة كاملة: `python art/blender/cubelings.py zone 3`
 - معاينة سريعة (الزاوية 3/4 برك): `FAST=1 python art/blender/cubelings.py zone 3`
 - مخلوقات بالاسم: `python art/blender/cubelings.py Bee "Ice Fox"`
+
+## في اللعبة
+
+`python art/blender/cubelings.py roblox` يخرج `models/Cubelings_Roblox.glb` (الـ 40 مخلوق، كل واحد مقسوم لقطع:
+`Kitty__body`، `Kitty__eye`...) و `roblox/shared/Config/CreatureLooks.luau` (اللون العادي تاع كل قطعة).
+الكود (`roblox/shared/PetModel.luau`) يستنسخ القطع، يكبّرهم على قد الحجم (Normal/Big/Titan)، ويبدّل الألوان والمواد
+على حسب الـ variant. كيفاش تدخلهم لـ Studio مكتوب في `docs/dev.md`.

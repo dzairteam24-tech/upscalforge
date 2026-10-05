@@ -26,7 +26,12 @@
 3. **الإعلانات:** الفيديو ولوحات الإعلانات (Immersive Ads) يحتاجو اللعبة تكون مؤهلة عند Roblox (صاحبها 13 سنة وأكثر، هوية موثقة، و 2,000 زائر في الشهر)، ويبانو غير للاعبين 13+. لوحات الإعلانات راهم في المدينة (`Workspace.AdBoards`) ويخدمو وحدهم كي تكون مؤهل.
 4. **الأصوات:** في `roblox/shared/Config/Sounds.luau`. دركا فيها أصوات Roblox الأساسية، بدّلهم بأصوات من Creator Store، وحط id تاع موسيقى في `MUSIC`.
 5. **Codes:** في `roblox/shared/Config/Codes.luau`. زيد كود، والمكافأة، وتاريخ النهاية إذا حبيت. كل لاعب يستعمل الكود مرة وحدة، ويكتبو في Settings. انشر الأكواد في صفحة اللعبة والـ Discord.
-6. **التجربة مع لاعبين:** باش تجرب التبادل، في Studio اختار **Test ← Clients and Servers** بـ 2 لاعبين.
+6. **المخلوقات 3D:** اللعبة ترسم المخلوقات بالمكعبات حتى تدخل الموديلات 3D مرة وحدة:
+   1. افتح اللعبة في Studio ← **Home ← Import 3D** ← اختار `art/models/Cubelings_Roblox.glb` ← Import (فيه الـ 40 مخلوق)
+   2. **تجربة سريعة:** بدّل اسم الموديل اللي دخل لـ `CreatureModels` وجرّو لـ **ReplicatedStorage**، ومن بعد Play
+   3. **باش يبقاو ديما:** كليك يمين على الموديل ← **Save to Roblox** ← انسخ الـ ID وحطو في `roblox/shared/Config/Art.luau` (`CREATURE_MODELS_ASSET_ID`). السيرفر يحمّلهم وحدو في كل مرة، حتى مع ملفات `.rbxlx` جداد
+   - إذا بدّلنا التصاميم: `python art/blender/cubelings.py roblox` يعاود يخرج الملف و `Config/CreatureLooks.luau`
+7. **التجربة مع لاعبين:** باش تجرب التبادل، في Studio اختار **Test ← Clients and Servers** بـ 2 لاعبين.
 
 ## الاختبارات
 

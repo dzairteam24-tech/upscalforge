@@ -1398,6 +1398,45 @@ test("World Boss: schedule, health and fair rewards", function()
 	eq(Boss.reward("full", 4, false).tickets, 0, "escaped gives no tickets")
 end)
 
+test("3D models: parts are cloned, scaled, face forward and get their colors", function()
+	local roblox = require("@lune/roblox")
+	local Instance, Vector3, CFrame, Color3, Enum = roblox.Instance, roblox.Vector3, roblox.CFrame, roblox.Color3, roblox.Enum
+	local PetModel = R(Shared.PetModel)
+	local folder = Instance.new("Folder")
+	folder.Name = "CreatureModels"
+	-- Like the imported .glb: front is +Z, the body is 2 wide
+	local function part(name: string, size: Vector3, position: Vector3)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.CFrame = CFrame.new(position)
+		p.Parent = folder
+	end
+	part("Kitty__body", Vector3.new(2, 1.9, 2), Vector3.new(10, 1.19, 0))
+	part("Kitty__eye", Vector3.new(0.38, 0.48, 0.14), Vector3.new(10.47, 1.29, 1.0))
+	part("Kitty__eye", Vector3.new(0.38, 0.48, 0.14), Vector3.new(9.53, 1.29, 1.0))
+	part("Kitty__legs", Vector3.new(0.46, 0.54, 0.46), Vector3.new(10.62, 0.27, 0.62))
+	PetModel.useModels(folder)
+	local built = PetModel.build({ s = "Kitty", v = "Normal", z = "Normal" })
+	eq(#built.parts, 4, "cloned every part")
+	eq(built.body.Name, "body")
+	near(built.body.Size.X, 2.2, 1e-4, "body scaled to the creature size")
+	eq(built.body.Color, Color3.fromRGB(245, 166, 91), "normal color from CreatureLooks")
+	for i, p in built.parts do
+		if p.Name == "eye" then
+			assert(built.offsets[i].Position.Z < 0, "eyes face -Z (front)")
+		end
+	end
+	near(built.height, (1.19 + 0.95 - 0) * 1.1, 0.05, "height is the whole model")
+	local golden = PetModel.build({ s = "Kitty", v = "Golden", z = "Big" })
+	eq(golden.body.Material, Enum.Material.Foil, "golden body")
+	assert(golden.body.Size.X > 3.5, "big is bigger")
+	-- Species without a model still get the block version
+	local blocks = PetModel.build({ s = "Bee", v = "Normal", z = "Normal" })
+	eq(blocks.body.Name, "Body")
+	PetModel.useModels(nil)
+end)
+
 print(("%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	process.exit(1)

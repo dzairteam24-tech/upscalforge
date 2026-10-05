@@ -28,9 +28,11 @@ local PlazaService = require(Services.PlazaService)
 local ClanService = require(Services.ClanService)
 local EventService = require(Services.EventService)
 local BossService = require(Services.BossService)
+local ArtService = require(Services.ArtService)
 local DataService = require(Services.DataService)
 
 Net.init()
+ArtService.init()
 WorldBuilder.build()
 BreakableService.build()
 

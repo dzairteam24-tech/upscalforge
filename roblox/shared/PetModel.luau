@@ -1,7 +1,12 @@
--- Builds a creature as a 3D model from blocks: one cube body + face + top part + variant look.
--- Every part is anchored; callers move them with workspace:BulkMoveTo using the returned offsets.
+-- Builds a creature as a 3D model. Every part is anchored; callers move them with workspace:BulkMoveTo
+-- using the returned offsets.
+--
+-- With the 3D models (ReplicatedStorage.CreatureModels, imported from art/models/Cubelings_Roblox.glb) each
+-- creature is a clone of its mesh parts ("Kitty__body", "Kitty__eye"...), recolored per variant.
+-- Without them it falls back to the block version below, so the game always works.
 
 local Config = script.Parent.Config
+local CreatureLooks = require(Config.CreatureLooks)
 local Items = require(Config.Items)
 local Sizes = require(Config.Sizes)
 local World1 = require(Config.World1)
@@ -45,8 +50,271 @@ local function darken(color: Color3, amount: number): Color3
 	return color:Lerp(Color3.new(0, 0, 0), amount)
 end
 
+local addSticker: (pet: { s: string, v: string, z: string }, b: number, add: (BasePart, CFrame) -> (), center: CFrame) -> ()
+local buildBlocks: (pet: { s: string, v: string, z: string }) -> Built
+
+---------------------------------------------------------------------------------------------------------------
+-- 3D models
+
+type TemplatePart = { part: BasePart, role: string, offset: CFrame }
+type Template = { parts: { TemplatePart }, width: number, height: number, radius: number, bodyOffset: CFrame }
+
+-- Parts of the face keep their look in every variant
+local FACE = { eye = true, shine = true, mouth = true, teeth = true, tongue = true, brow = true, shades = true, white = true, screen = true }
+-- Parts that always glow
+local GLOW = { glow = true }
+
+local templates: { [string]: Template | false } = {}
+local indexed: { [string]: { BasePart } }? = nil
+local override: Instance? = nil -- tests point this at a fake CreatureModels folder
+
+-- Finds every creature part under ReplicatedStorage.CreatureModels, grouped by species ("Kitty__body" -> Kitty).
+local function index(): { [string]: { BasePart } }?
+	if indexed then
+		return indexed
+	end
+	-- Looked up safely: the offline tests run this module without a full game
+	local ok, root = pcall(function()
+		return override or game:GetService("ReplicatedStorage"):FindFirstChild("CreatureModels")
+	end)
+	if not ok or not root then
+		return nil
+	end
+	local found: { [string]: { BasePart } } = {}
+	for _, d in root:GetDescendants() do
+		if d:IsA("BasePart") then
+			local species, role = string.match(d.Name, "^(.-)__([%w_]+)$")
+			if species and role then
+				found[species] = found[species] or {}
+				table.insert(found[species], d)
+			end
+		end
+	end
+	indexed = found
+	return found
+end
+
+-- Forget the cached models (called when CreatureModels arrives or changes).
+function PetModel.reset()
+	indexed = nil
+	table.clear(templates)
+end
+
+-- Tests: use this folder instead of ReplicatedStorage.CreatureModels (nil to go back).
+function PetModel.useModels(root: Instance?)
+	override = root
+	PetModel.reset()
+end
+
+function PetModel.hasModels(): boolean
+	local found = index()
+	return found ~= nil and next(found) ~= nil
+end
+
+-- Measures a species' parts once: which way the face looks, the size of the body, and each part's offset
+-- from the model's center (front is -Z, like the block version).
+local function template(speciesId: string): Template?
+	local cached = templates[speciesId]
+	if cached ~= nil then
+		return cached or nil
+	end
+	local found = index()
+	local list = found and found[speciesId]
+	if not list then
+		templates[speciesId] = false
+		return nil
+	end
+	local body: BasePart? = nil
+	local eyeSum, eyes = Vector3.zero, 0
+	local minY, maxY = math.huge, -math.huge
+	for _, part in list do
+		local role = string.match(part.Name, "__([%w_]+)$")
+		if role == "body" then
+			body = part
+		elseif role == "eye" then
+			eyeSum += part.CFrame.Position
+			eyes += 1
+		end
+		local half = part.Size / 2
+		for _, corner in { Vector3.new(1, 1, 1), Vector3.new(1, -1, 1), Vector3.new(-1, 1, -1), Vector3.new(-1, -1, -1), Vector3.new(1, 1, -1), Vector3.new(-1, -1, 1), Vector3.new(1, -1, -1), Vector3.new(-1, 1, 1) } do
+			local y = (part.CFrame * (half * corner)).Y
+			minY = math.min(minY, y)
+			maxY = math.max(maxY, y)
+		end
+	end
+	if not body then
+		templates[speciesId] = false
+		return nil
+	end
+	local bodyPart = body :: BasePart
+	local bodyPos = bodyPart.CFrame.Position
+	local facing = if eyes > 0 then (eyeSum / eyes - bodyPos) * Vector3.new(1, 0, 1) else bodyPart.CFrame.LookVector
+	if facing.Magnitude < 1e-3 then
+		facing = Vector3.new(0, 0, -1)
+	end
+	local center = Vector3.new(bodyPos.X, (minY + maxY) / 2, bodyPos.Z)
+	-- A frame whose -Z (LookVector) is the face direction, built from its axes
+	local back = -facing.Unit
+	local up = Vector3.yAxis
+	local ref = CFrame.fromMatrix(center, up:Cross(back), up, back)
+	local parts: { TemplatePart } = {}
+	local radius = 0
+	for _, part in list do
+		local offset = ref:ToObjectSpace(part.CFrame)
+		local role = string.match(part.Name, "__([%w_]+)$") :: string
+		table.insert(parts, { part = part, role = role, offset = offset })
+		radius = math.max(radius, Vector2.new(offset.X, offset.Z).Magnitude + math.max(part.Size.X, part.Size.Z) / 2)
+	end
+	local made: Template = {
+		parts = parts,
+		width = math.max(bodyPart.Size.X, bodyPart.Size.Z),
+		height = maxY - minY,
+		radius = radius,
+		bodyOffset = ref:ToObjectSpace(bodyPart.CFrame),
+	}
+	templates[speciesId] = made
+	return made
+end
+
+local function luminance(c: Color3): number
+	return 0.299 * c.R + 0.587 * c.G + 0.114 * c.B
+end
+
+-- The look of one part for a variant: color, material, transparency.
+local function styleMesh(part: BasePart, role: string, variant: string, normal: Color3)
+	part.Material = Enum.Material.SmoothPlastic
+	part.Color = normal
+	part.Transparency = 0
+	part.Reflectance = 0
+	if GLOW[role] then
+		part.Material = Enum.Material.Neon
+	end
+	if FACE[role] then
+		if role == "eye" and variant == "Lava" then
+			part.Color = Color3.fromRGB(255, 181, 71)
+			part.Material = Enum.Material.Neon
+		elseif role == "eye" and variant == "Neon" then
+			part.Color = Color3.fromRGB(43, 245, 154)
+			part.Material = Enum.Material.Neon
+		end
+		return
+	end
+	local lum = luminance(normal)
+	if variant == "Golden" then
+		part.Color = Color3.fromRGB(150, 95, 20):Lerp(Color3.fromRGB(255, 214, 90), math.clamp(lum * 1.3, 0, 1))
+		part.Material = Enum.Material.Foil
+		part.Reflectance = 0.1
+	elseif variant == "Crystal" then
+		part.Color = Color3.fromRGB(110, 185, 240):Lerp(Color3.fromRGB(225, 248, 255), math.clamp(lum * 1.2, 0, 1))
+		part.Material = Enum.Material.Glass
+		part.Transparency = 0.2
+	elseif variant == "Lava" then
+		if role == "body" or role == "belly" then
+			part.Color = Color3.fromRGB(255, 120, 40)
+			part.Material = Enum.Material.CrackedLava
+		else
+			part.Color = Color3.fromRGB(60, 42, 40)
+			part.Material = Enum.Material.Basalt
+		end
+	elseif variant == "Neon" then
+		if role == "body" then
+			part.Color = Color3.fromRGB(18, 22, 39)
+		else
+			part.Color = Color3.fromRGB(43, 245, 154):Lerp(Color3.fromRGB(80, 200, 255), math.clamp(1 - lum, 0, 1))
+			part.Material = Enum.Material.Neon
+		end
+	elseif variant == "Pixel" then
+		part.Color = Color3.fromRGB(110, 70, 220):Lerp(Color3.fromRGB(255, 110, 210), math.clamp(lum, 0, 1))
+		part.Material = if role == "body" then Enum.Material.SmoothPlastic else Enum.Material.Neon
+	end
+end
+
+local function buildFromMeshes(pet: { s: string, v: string, z: string }, t: Template, b: number): Built
+	local scale = b / t.width
+	local model = Instance.new("Model")
+	model.Name = pet.s
+	local parts: { BasePart } = {}
+	local offsets: { CFrame } = {}
+	local body: BasePart? = nil
+	local looks = CreatureLooks[pet.s] or {}
+	for _, entry in t.parts do
+		local part = entry.part:Clone()
+		for _, child in part:GetChildren() do
+			if not child:IsA("DataModelMesh") then
+				child:Destroy()
+			end
+		end
+		if part:IsA("MeshPart") then
+			part.TextureID = ""
+		end
+		part.Name = entry.role
+		part.Size *= scale
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.CastShadow = false
+		part.Massless = true
+		styleMesh(part, entry.role, pet.v, looks[entry.role] or part.Color)
+		part.Parent = model
+		table.insert(parts, part)
+		table.insert(offsets, CFrame.new(entry.offset.Position * scale) * entry.offset.Rotation)
+		if entry.role == "body" then
+			body = part
+		end
+	end
+	local bodyPart = body or parts[1]
+	model.PrimaryPart = bodyPart
+	local function add(part: BasePart, offset: CFrame)
+		part.Parent = model
+		table.insert(parts, part)
+		table.insert(offsets, offset)
+	end
+	-- Extra sparkle for the shiny variants, little floating bits for Pixel
+	local bodyCenter = CFrame.new(t.bodyOffset.Position * scale)
+	if pet.v == "Golden" or pet.v == "Crystal" then
+		add(
+			newPart({
+				Name = "Sparkle",
+				Size = Vector3.one * b * 0.14,
+				Color = if pet.v == "Golden" then Color3.fromRGB(255, 240, 160) else Color3.fromRGB(230, 250, 255),
+				Material = Enum.Material.Neon,
+			}),
+			bodyCenter * CFrame.new(0.62 * b, 0.55 * b, -0.3 * b) * CFrame.Angles(0, 0, math.rad(45))
+		)
+	elseif pet.v == "Pixel" then
+		for _, offset in { Vector3.new(0.8, 0.6, -0.2), Vector3.new(-0.85, -0.1, 0.3), Vector3.new(0.5, 0.95, 0.4) } do
+			add(
+				newPart({ Name = "Bit", Size = Vector3.one * b * 0.12, Color = Color3.fromRGB(185, 166, 245), Material = Enum.Material.Neon }),
+				bodyCenter * CFrame.new(offset * b)
+			)
+		end
+	end
+	addSticker(pet, b, add, bodyCenter)
+	return {
+		model = model,
+		body = bodyPart,
+		parts = parts,
+		offsets = offsets,
+		height = t.height * scale,
+		radius = t.radius * scale,
+	}
+end
+
+---------------------------------------------------------------------------------------------------------------
+-- Block version (no 3D models)
+
 -- `pet.st` (sticker id) is optional; it's read loosely so callers can pass plain {s, v, z} tables.
 function PetModel.build(pet: { s: string, v: string, z: string }): Built
+	local size = Sizes.byId[pet.z] or Sizes.byId.Normal
+	local t = template(pet.s)
+	if t then
+		return buildFromMeshes(pet, t, BASE_SIZE * size.scale)
+	end
+	return buildBlocks(pet)
+end
+
+function buildBlocks(pet: { s: string, v: string, z: string }): Built
 	local species = World1.species[pet.s]
 	local size = Sizes.byId[pet.z] or Sizes.byId.Normal
 	local b = BASE_SIZE * size.scale
@@ -331,37 +599,7 @@ function PetModel.build(pet: { s: string, v: string, z: string }): Built
 		end
 	end
 
-	-- Sticker on the back (the side players see while the team follows them)
-	local stickerId = (pet :: any).st
-	local sticker = if type(stickerId) == "string" then Items.byId[stickerId] else nil
-	if sticker then
-		local zBack = 0.5 * b + 0.02
-		local facing = CFrame.Angles(0, math.rad(180), 0)
-		add(
-			newPart({ Name = "StickerBorder", Size = Vector3.new(0.5, 0.5, 0.03) * b, Color = Color3.new(1, 1, 1) }),
-			CFrame.new(0, 0.05 * b, zBack) * facing
-		)
-		local label = newPart({
-			Name = "Sticker",
-			Size = Vector3.new(0.42, 0.42, 0.03) * b,
-			Color = sticker.color,
-			Material = if sticker.tier >= 3 then Enum.Material.Neon elseif sticker.tier == 2 then Enum.Material.Foil else Enum.Material.SmoothPlastic,
-			Reflectance = if sticker.tier == 2 then 0.2 else 0,
-		})
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = Enum.NormalId.Front
-		gui.LightInfluence = 0
-		gui.CanvasSize = Vector2.new(100, 100)
-		local icon = Instance.new("TextLabel")
-		icon.BackgroundTransparency = 1
-		icon.Size = UDim2.fromScale(1, 1)
-		icon.TextScaled = true
-		icon.Font = Enum.Font.GothamBold
-		icon.Text = sticker.icon or ""
-		icon.Parent = gui
-		gui.Parent = label
-		add(label, CFrame.new(0, 0.05 * b, zBack + 0.01 * b) * facing)
-	end
+	addSticker(pet, b, add, CFrame.identity)
 
 	return {
 		model = model,
@@ -371,6 +609,41 @@ function PetModel.build(pet: { s: string, v: string, z: string }): Built
 		height = b * 1.1,
 		radius = b * 0.75,
 	}
+end
+
+-- Sticker on the back (the side players see while the team follows them). `center` is the body's center.
+function addSticker(pet: { s: string, v: string, z: string }, b: number, add: (BasePart, CFrame) -> (), center: CFrame)
+	local stickerId = (pet :: any).st
+	local sticker = if type(stickerId) == "string" then Items.byId[stickerId] else nil
+	if not sticker then
+		return
+	end
+	local zBack = 0.5 * b + 0.02
+	local facing = CFrame.Angles(0, math.rad(180), 0)
+	add(
+		newPart({ Name = "StickerBorder", Size = Vector3.new(0.5, 0.5, 0.03) * b, Color = Color3.new(1, 1, 1) }),
+		center * CFrame.new(0, 0.05 * b, zBack) * facing
+	)
+	local label = newPart({
+		Name = "Sticker",
+		Size = Vector3.new(0.42, 0.42, 0.03) * b,
+		Color = sticker.color,
+		Material = if sticker.tier >= 3 then Enum.Material.Neon elseif sticker.tier == 2 then Enum.Material.Foil else Enum.Material.SmoothPlastic,
+		Reflectance = if sticker.tier == 2 then 0.2 else 0,
+	})
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.LightInfluence = 0
+	gui.CanvasSize = Vector2.new(100, 100)
+	local icon = Instance.new("TextLabel")
+	icon.BackgroundTransparency = 1
+	icon.Size = UDim2.fromScale(1, 1)
+	icon.TextScaled = true
+	icon.Font = Enum.Font.GothamBold
+	icon.Text = sticker.icon or ""
+	icon.Parent = gui
+	gui.Parent = label
+	add(label, center * CFrame.new(0, 0.05 * b, zBack + 0.01 * b) * facing)
 end
 
 -- Places a freshly built model at a CFrame (used for icons and previews).
