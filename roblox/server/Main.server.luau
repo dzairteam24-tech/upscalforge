@@ -29,6 +29,7 @@ local ClanService = require(Services.ClanService)
 local EventService = require(Services.EventService)
 local BossService = require(Services.BossService)
 local ArtService = require(Services.ArtService)
+local BountyService = require(Services.BountyService)
 local DataService = require(Services.DataService)
 
 Net.init()
@@ -56,6 +57,7 @@ PlazaService.init()
 ClanService.init()
 EventService.init()
 BossService.init()
+BountyService.init()
 
 DataService.init()
 

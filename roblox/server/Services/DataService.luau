@@ -74,6 +74,7 @@ local function template(): PlayerData
 		cartridges = {},
 		loadouts = {},
 		codes = {},
+		bounty = { day = -1, targets = {}, done = {} },
 		reloads = 0,
 		expeditions = {},
 		ads = { day = 0, counts = {}, cooldowns = {} },

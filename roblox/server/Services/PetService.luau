@@ -96,6 +96,7 @@ local function grant(
 				and data.index[roll.s .. "|" .. roll.v] == true
 			local id = if deleted then "" else Inventory.add(data, roll, newId)
 			data.stats.hatches = (data.stats.hatches or 0) + 1
+			GameService.Hatched:Fire(player, roll.s, roll.v)
 			if Variants.byId[roll.v].order >= 2 then
 				data.flags.gotGolden = true
 			end

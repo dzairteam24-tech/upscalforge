@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local BountyConfig = require(Shared.Config.Bounty)
 local Cosmetics = require(Shared.Config.Cosmetics)
 local Products = require(Shared.Config.Products)
 local Progression = require(Shared.Config.Progression)
@@ -15,6 +16,7 @@ local Net = require(Shared.Net)
 local Store = require(script.Parent.Parent.Store)
 local AchievementsView = require(script.Parent.AchievementsView)
 local AdButton = require(script.Parent.AdButton)
+local PetCard = require(script.Parent.PetCard)
 local Rewards = require(script.Parent.Rewards)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
@@ -175,10 +177,71 @@ function QuestsPanel.mount(gui: ScreenGui)
 		return order
 	end
 
+	-- Daily Bounty: three creatures to hatch today
+	local function bountyRows(order: number): number
+		local data = Store.data
+		local bounty = data and (data :: any).bounty
+		if not bounty or not bounty.targets or #bounty.targets == 0 then
+			return order
+		end
+		local title = Theme.label({
+			Text = "🎯 Daily Bounty · hatch these today",
+			Font = Theme.titleFont,
+			Size = UDim2.new(1, -12, 0, 28),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			LayoutOrder = order,
+			MaxTextSize = 20,
+		})
+		title.Parent = body
+		order += 1
+		for index, target in bounty.targets do
+			local done = bounty.done[index] == true
+			local row = Theme.frame({ Size = UDim2.new(1, -12, 0, 62), BackgroundColor3 = Theme.card, LayoutOrder = order })
+			Theme.corner(row, 10)
+			if not done and target.tier == 3 then
+				Theme.stroke(row, Theme.gold, 2)
+			end
+			local iconHolder = Theme.frame({ BackgroundTransparency = 1, Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(4, 3) })
+			iconHolder.Parent = row
+			PetCard.icon({ s = target.species, v = target.variant, z = "Normal" }, iconHolder)
+			local name = if target.variant == "Normal" then target.species else target.variant .. " " .. target.species
+			local text = Theme.label({
+				Text = ("%s · Hatch a %s"):format(BountyConfig.TIER_NAMES[target.tier], name),
+				Size = UDim2.new(0.6, -64, 0, 24),
+				Position = UDim2.fromOffset(66, 8),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				MaxTextSize = 17,
+			})
+			text.Parent = row
+			local sub = Theme.label({
+				Text = if target.variant == "Normal" then "Any variant counts" else ("%s or rarer counts"):format(target.variant),
+				Font = Enum.Font.Gotham,
+				TextColor3 = Theme.muted,
+				Size = UDim2.new(0.6, -64, 0, 18),
+				Position = UDim2.fromOffset(66, 34),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				MaxTextSize = 13,
+			})
+			sub.Parent = row
+			local reward = Theme.label({
+				Text = if done then "✅ Done" else (Rewards.describe(BountyConfig.REWARDS[target.tier], data :: any):gsub("\n", " · ")),
+				TextColor3 = if done then Theme.green else Theme.text,
+				Size = UDim2.new(0.36, 0, 1, -14),
+				Position = UDim2.new(0.63, 0, 0, 7),
+				MaxTextSize = 15,
+			})
+			reward.Parent = row
+			row.Parent = body
+			order += 1
+		end
+		return order
+	end
+
 	local function showQuests()
 		setLayout(false)
 		local now = os.time()
-		local order = questRows("daily", ("Daily · new in %s"):format(Format.time(Progress.secondsToNextDay(now))), 1)
+		local order = bountyRows(1)
+		order = questRows("daily", ("Daily · new in %s"):format(Format.time(Progress.secondsToNextDay(now))), order)
 		questRows("weekly", "Weekly · new every Monday", order)
 	end
 

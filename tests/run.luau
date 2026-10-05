@@ -1468,6 +1468,26 @@ test("Legendary Egg: in the last zone, near-impossible odds that luck can't chan
 	end
 end)
 
+test("Daily Bounty: 3 targets from reached zones, same all day, rarer variants count", function()
+	local Bounty = R(Shared.Logic.Bounty)
+	local a = Bounty.forDay(20000, 3, 42)
+	local b = Bounty.forDay(20000, 3, 42)
+	eq(#a, 3)
+	for i = 1, 3 do
+		eq(a[i].species, b[i].species, "same day, same pick")
+		eq(a[i].tier, i)
+		local species = World1.species[a[i].species]
+		assert(species and species.zone <= 3, "only reached zones")
+		assert(not species.legendary, "never a Legendary")
+	end
+	eq(World1.species[Bounty.forDay(20000, 1, 7)[3].species].zone, 1, "a new player only gets zone 1")
+	local target = { tier = 2, species = "Fox", variant = "Golden" }
+	assert(Bounty.matches(target, "Fox", "Golden"), "exact")
+	assert(Bounty.matches(target, "Fox", "Neon"), "rarer variant counts")
+	assert(not Bounty.matches(target, "Fox", "Normal"), "plainer doesn't")
+	assert(not Bounty.matches(target, "Owl", "Golden"), "other species doesn't")
+end)
+
 print(("%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	process.exit(1)

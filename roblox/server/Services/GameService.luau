@@ -46,6 +46,8 @@ local GameService = {}
 -- Fired for quest and pass progress: (player, event, amount). Events: Coins, Break, Hatch, Combo,
 -- Fuse, Big, Guardian, Restore, Rift, Expedition, Reload, Golden, Pixel, Titan, BigCatch, Zone, Streak, Trade.
 GameService.Progress = Signal.new() :: Signal.Signal<Player, string, number>
+-- Fired for every creature hatched (species, variant), even auto-deleted ones
+GameService.Hatched = Signal.new() :: Signal.Signal<Player, string, string>
 
 function GameService.progress(player: Player, event: string, amount: number)
 	GameService.Progress:Fire(player, event, amount)
@@ -968,6 +970,7 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		tickets = data.tickets,
 		gemShop = data.gemShop,
 		events = data.events,
+		bounty = data.bounty,
 		wheel = data.wheel,
 		rides = data.rides,
 		equippedRide = data.equippedRide,
