@@ -23,6 +23,9 @@ local titles: { Title } = {
 	{ id = "A_Reloaded", text = "Reloaded", color = Color3.fromRGB(140, 120, 240) },
 	{ id = "A_Loyal", text = "Loyal", color = Color3.fromRGB(120, 230, 160) },
 	{ id = "A_Collector", text = "Master Collector", color = Color3.fromRGB(80, 220, 255) },
+	-- Events
+	{ id = "E_Spooky", text = "Spooky", color = Color3.fromRGB(255, 140, 40) },
+	{ id = "E_Frosty", text = "Frosty", color = Color3.fromRGB(150, 220, 255) },
 	-- Clans
 	{ id = "C_TopClan", text = "Top Clan", color = Color3.fromRGB(255, 200, 90) },
 	-- Rank
@@ -36,6 +39,8 @@ local trails: { Trail } = {
 	{ id = "S1_Lava", name = "Lava Trail", colors = { Color3.fromRGB(255, 120, 30), Color3.fromRGB(255, 220, 80) } },
 	{ id = "S1_Neon", name = "Neon Trail", colors = { Color3.fromRGB(43, 245, 154), Color3.fromRGB(20, 120, 80) } },
 	{ id = "S1_Pixel", name = "Pixel Trail", colors = { Color3.fromRGB(142, 91, 217), Color3.fromRGB(255, 90, 200) } },
+	{ id = "E_Pumpkin", name = "Pumpkin Trail", colors = { Color3.fromRGB(255, 140, 40), Color3.fromRGB(90, 40, 120) } },
+	{ id = "E_Snow", name = "Snow Trail", colors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(150, 220, 255) } },
 	{
 		id = "S1_Rainbow",
 		name = "Rainbow Trail",
@@ -54,6 +59,8 @@ local rides: { Ride } = {
 	{ id = "S1_Hoverboard", name = "Hoverboard", style = "board", color = Color3.fromRGB(60, 70, 100), glow = Color3.fromRGB(91, 184, 245) },
 	{ id = "PixelBoard", name = "Pixel Board", style = "board", color = Color3.fromRGB(40, 30, 60), glow = Color3.fromRGB(185, 140, 255) },
 	{ id = "S1_Cloud", name = "Cloud", style = "cloud", color = Color3.fromRGB(245, 248, 255), glow = Color3.fromRGB(200, 230, 255) },
+	{ id = "E_Broom", name = "Broom Board", style = "board", color = Color3.fromRGB(90, 60, 40), glow = Color3.fromRGB(255, 140, 40) },
+	{ id = "E_Sled", name = "Snow Sled", style = "board", color = Color3.fromRGB(200, 60, 60), glow = Color3.fromRGB(150, 220, 255) },
 }
 
 local titleById: { [string]: Title } = {}

@@ -85,6 +85,7 @@ local function template(): PlayerData
 		pity = { big = 0, titan = 0 },
 		gemShop = { day = -1, deals = {}, storage = 0 },
 		clan = { id = "", rewardWeek = 0 },
+		events = {},
 	}
 end
 

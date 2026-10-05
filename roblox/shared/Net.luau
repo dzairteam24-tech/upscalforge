@@ -51,6 +51,7 @@ local EVENTS = {
 	"ClanJoin",
 	"ClanLeave",
 	"ClanRequest",
+	"EventBuy",
 	"Teleport",
 	-- server -> client
 	"Data",

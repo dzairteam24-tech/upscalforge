@@ -1242,6 +1242,52 @@ test("Clans: weekly points reset on a new week; rewards by rank", function()
 	eq(ClanLogic.rewardFor(11), 0)
 end)
 
+-- Events -----------------------------------------------------------------------------------------------------
+
+local EventLogic = R(Shared.Logic.Events)
+local EventConfig = R(Shared.Config.Events)
+
+test("Events: UTC dates, the running event, tokens, bonus and the shop", function()
+	eq(EventConfig.utc(1970, 1, 1), 0)
+	eq(EventConfig.utc(2026, 10, 4), 20730 * 86400, "same day as the Battle Pass start")
+	local spooky = EventConfig.byId.Spooky26
+	eq(EventLogic.active(spooky.starts - 1), nil)
+	eq(EventLogic.active(spooky.starts).id, "Spooky26")
+	eq(EventLogic.active(spooky.ends), nil, "ends are exclusive")
+	eq(EventLogic.active(0, "Snow26").id, "Snow26", "forced for Studio tests")
+	eq(EventLogic.bonus(spooky, "Gem"), 2)
+	eq(EventLogic.bonus(spooky, "Coins"), 1)
+	eq(EventLogic.bonus(nil, "Gem"), 1)
+	local rng = makeRng(6)
+	eq(EventLogic.tokensFor(spooky, "Vault", rng), 5)
+	local piles = 0
+	for _ = 1, 10000 do
+		piles += EventLogic.tokensFor(spooky, "Pile", rng)
+	end
+	near(piles / 10000, 0.15, 0.02, "fractional tokens are a chance")
+
+	local state = { tokens = 400, bought = {} }
+	assert(EventLogic.canBuy(spooky, state, "Title"))
+	EventLogic.buy(spooky, state, "Title")
+	eq(state.tokens, 100)
+	eq((EventLogic.canBuy(spooky, state, "Title")), false, "once")
+	eq((EventLogic.canBuy(spooky, state, "Ride")), false, "not enough")
+	for _, event in EventConfig.list do
+		assert(event.ends > event.starts, event.id)
+		for _, offer in event.shop do
+			if offer.title then
+				assert(Cosmetics.titleById[offer.title], offer.title)
+			elseif offer.trail then
+				assert(Cosmetics.trailById[offer.trail], offer.trail)
+			elseif offer.ride then
+				assert(Cosmetics.rideById[offer.ride], offer.ride)
+			else
+				assert(offer.itemId and Items.byId[offer.itemId], "event item " .. tostring(offer.itemId))
+			end
+		end
+	end
+end)
+
 test("Every creature model builds: 40 species x 6 variants x 3 sizes", function()
 	local PetModel = R(Shared.PetModel)
 	local Sizes = R(Shared.Config.Sizes)

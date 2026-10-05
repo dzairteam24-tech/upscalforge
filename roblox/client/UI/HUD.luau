@@ -13,6 +13,7 @@ local DailyPanel = require(script.Parent.DailyPanel)
 local QuestsPanel = require(script.Parent.QuestsPanel)
 local ReloadPanel = require(script.Parent.ReloadPanel)
 local SpinPanel = require(script.Parent.SpinPanel)
+local EventPanel = require(script.Parent.EventPanel)
 local TripsPanel = require(script.Parent.TripsPanel)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
@@ -139,6 +140,20 @@ function HUD.mount(gui: ScreenGui)
 	teleportButton.Activated:Connect(function()
 		Windows.toggle("Teleport")
 	end)
+	-- Running event: token count, opens the event shop
+	local eventButton = Theme.button({
+		Name = "Event",
+		Text = "",
+		Position = UDim2.fromOffset(446, 12),
+		Size = UDim2.fromOffset(110, 40),
+		BackgroundColor3 = Theme.card,
+		Visible = false,
+		MaxTextSize = 18,
+	})
+	eventButton.Parent = gui
+	eventButton.Activated:Connect(function()
+		Windows.toggle("Event")
+	end)
 	task.spawn(function()
 		while true do
 			updateGift()
@@ -149,7 +164,15 @@ function HUD.mount(gui: ScreenGui)
 			local data = Store.data
 			spinButton.Visible = data ~= nil and Unlocks.has(data :: any, "Spin")
 			spinDot.Visible = SpinPanel.freeReady()
-			teleportButton.Position = UDim2.fromOffset(if spinButton.Visible then x + 46 else x, 12)
+			local teleportX = if spinButton.Visible then x + 46 else x
+			teleportButton.Position = UDim2.fromOffset(teleportX, 12)
+			local event = EventPanel.current()
+			eventButton.Visible = event ~= nil
+			if event then
+				eventButton.Position = UDim2.fromOffset(teleportX + 46, 12)
+				eventButton.Text = ("%s %s"):format(event.tokenIcon, Format.abbrev(EventPanel.tokens()))
+				eventButton.BackgroundColor3 = event.color
+			end
 			task.wait(0.5)
 		end
 	end)

@@ -4,6 +4,7 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Breakables = require(Shared.Config.Breakables)
@@ -27,6 +28,8 @@ local PetMath = require(Shared.Logic.PetMath)
 local Achievements = require(Shared.Logic.Achievements)
 local Expedition = require(Shared.Logic.Expedition)
 local GemShop = require(Shared.Logic.GemShop)
+local Events = require(Shared.Logic.Events)
+local EventConfig = require(Shared.Config.Events)
 local Reload = require(Shared.Logic.Reload)
 local Types = require(Shared.Logic.Types)
 local Net = require(Shared.Net)
@@ -50,6 +53,12 @@ end
 
 -- Today's Pixel Rift zone (set by ProgressionService).
 GameService.riftZone = 0
+
+-- The running limited-time event, or nil. In Studio, Config/Events.TEST_EVENT forces one.
+function GameService.event(): EventConfig.Event?
+	local forced = if RunService:IsStudio() then EventConfig.TEST_EVENT else nil
+	return Events.active(os.time(), forced)
+end
 
 -- Totems placed with gadgets: zone id -> stat -> os.clock() when it ends. Everyone in the zone gets +50%.
 GameService.TOTEM_MULT = 1.5
@@ -340,6 +349,7 @@ local function coinMultiplier(
 	mult *= Gear.get(runtime.gear, "Coins")
 	mult *= GameService.reloadMult(data)
 	mult *= GameService.totem(zoneId, "Coins")
+	mult *= Events.bonus(GameService.event(), "Coins")
 	if runtime.premium then
 		mult *= Products.PREMIUM_COINS
 	end
@@ -463,6 +473,7 @@ BreakableService.Broken:Connect(function(source: BreakableService.Source, contri
 			* Boosts.active(data.boosts, "Gem")
 			* Gear.get(runtime.gear, "Gem")
 			* Effects.get(runtime.effects, "GemMult")
+			* Events.bonus(GameService.event(), "Gem")
 		if rng:NextNumber() < gemChance then
 			data.gems += math.max(1, source.zoneId)
 		end
@@ -875,6 +886,7 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		tutorial = data.tutorial,
 		tickets = data.tickets,
 		gemShop = data.gemShop,
+		events = data.events,
 		wheel = data.wheel,
 		rides = data.rides,
 		equippedRide = data.equippedRide,
