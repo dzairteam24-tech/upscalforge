@@ -91,15 +91,15 @@ end
 function Gear.canEquip(equipped: { string }, id: string, slots: number): (boolean, string?)
 	local item = Items.byId[id]
 	if not item or item.kind ~= "Cartridge" then
-		return false, "That's not a cartridge"
+		return false, "That's not a Boost Card"
 	end
 	if #equipped >= slots then
-		return false, "All cartridge slots are full"
+		return false, "All card slots are full"
 	end
 	for _, other in equipped do
 		local otherItem = Items.byId[other]
 		if otherItem and otherItem.family == item.family then
-			return false, "You already have a " .. item.family .. " cartridge in"
+			return false, "You already have a " .. item.family .. " card in"
 		end
 	end
 	return true, nil

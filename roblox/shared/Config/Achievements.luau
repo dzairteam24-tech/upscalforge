@@ -198,11 +198,11 @@ local rankPerks: { RankPerk } = {
 	{ rank = 3, text = "+1 trip slot", tripSlots = 1 },
 	{ rank = 4, text = "Title: Explorer", title = "R_Explorer" },
 	{ rank = 5, text = "Storage +50", storage = 50 },
-	{ rank = 6, text = "+1 cartridge slot", cartridgeSlots = 1 },
+	{ rank = 6, text = "+1 Boost Card slot", cartridgeSlots = 1 },
 	{ rank = 7, text = "Ride: Skateboard", ride = "Skateboard" },
 	{ rank = 8, text = "+1 trip slot", tripSlots = 1 },
 	{ rank = 10, text = "Storage +100 and title: Veteran", storage = 100, title = "R_Veteran" },
-	{ rank = 12, text = "+1 cartridge slot", cartridgeSlots = 1 },
+	{ rank = 12, text = "+1 Boost Card slot", cartridgeSlots = 1 },
 	{ rank = 15, text = "Title: Cube Legend", title = "R_Legend" },
 }
 

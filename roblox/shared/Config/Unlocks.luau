@@ -6,7 +6,7 @@ export type Unlock = { feature: string, zone: number, label: string, text: strin
 
 local list: { Unlock } = {
 	{ feature = "Trips", zone = 2, label = "🧭 Trips", text = "Send creatures you don't use on trips for loot" },
-	{ feature = "Cartridges", zone = 3, label = "🕹️ Cartridges", text = "Permanent bonuses in the cartridge machine" },
+	{ feature = "Cartridges", zone = 3, label = "🃏 Boost Cards", text = "Cards that give permanent bonuses while equipped" },
 	{ feature = "Spin", zone = 3, label = "🎰 Lucky Spin", text = "A free spin every day" },
 	{ feature = "Stickers", zone = 4, label = "⭐ Stickers", text = "Stick them on creatures for bonuses" },
 	{ feature = "Gadgets", zone = 4, label = "💣 Gadgets", text = "One-use tools: bombs, totems, coin rain" },

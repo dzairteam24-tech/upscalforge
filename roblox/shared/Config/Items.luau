@@ -188,7 +188,7 @@ for _, family in CARTRIDGES do
 		local multi = #family.values > 1
 		add({
 			id = cartridgeId(family.id, tier),
-			name = if multi then ("%s Cartridge %s"):format(family.label, ROMAN[tier]) else family.label .. " Cartridge",
+			name = if multi then ("%s Card %s"):format(family.label, ROMAN[tier]) else family.label .. " Card",
 			kind = "Cartridge",
 			tier = tier,
 			family = family.id,

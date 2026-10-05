@@ -52,7 +52,7 @@ local function rewardText(kind: Expeditions.ExpeditionKind): string
 		))
 	end
 	if kind.cartridgeChance > 0 then
-		table.insert(parts, ("🕹️ %d%% cartridge %s–%s"):format(
+		table.insert(parts, ("🃏 %d%% Boost Card %s–%s"):format(
 			math.floor(kind.cartridgeChance * 100),
 			Items.ROMAN[kind.cartridgeTiers[1]],
 			Items.ROMAN[kind.cartridgeTiers[2]]

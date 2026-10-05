@@ -1,6 +1,6 @@
 -- Items window with three tabs:
 --   Elixirs:    use, merge 3 -> 1, mix two families, active boosts
---   Cartridges: the cartridge machine (equipped slots + set bonuses), equip and merge
+--   Cards:      Boost Cards (equipped slots + set bonuses), equip and merge
 --   Keys:       use keys, merge 2 halves -> 1 key
 --   Stickers:   stick one on a creature, merge 3 -> 1 (Normal -> Shiny -> Holo)
 --   Gadgets:    one-use tools for the zone you're in
@@ -27,7 +27,7 @@ type Tab = "Elixirs" | "Cartridges" | "Keys" | "Stickers" | "Gadgets"
 -- `feature`: the tab shows once that system is open (Config/Unlocks)
 local TABS: { { id: Tab, label: string, kinds: { [string]: boolean }, feature: string? } } = {
 	{ id = "Elixirs", label = "🧪 Elixirs", kinds = { Elixir = true } },
-	{ id = "Cartridges", label = "🕹️ Carts", kinds = { Cartridge = true }, feature = "Cartridges" },
+	{ id = "Cartridges", label = "🃏 Cards", kinds = { Cartridge = true }, feature = "Cartridges" },
 	{ id = "Keys", label = "🗝️ Keys", kinds = { Key = true, KeyHalf = true } },
 	{ id = "Stickers", label = "⭐ Stickers", kinds = { Sticker = true }, feature = "Stickers" },
 	{ id = "Gadgets", label = "💣 Gadgets", kinds = { Gadget = true }, feature = "Gadgets" },
@@ -35,7 +35,7 @@ local TABS: { { id: Tab, label: string, kinds: { [string]: boolean }, feature: s
 
 local HINTS: { [Tab]: string } = {
 	Elixirs = "Elixirs drop from chests, safes, vaults, Bigs and guardians, and come from quests, trips and daily rewards.",
-	Cartridges = "Cartridges drop from safes, vaults, Bigs, guardians and trips. Equip one per family. Every Reload adds a slot.",
+	Cartridges = "Boost Cards give a bonus for as long as they are equipped. They drop from safes, vaults, Bigs, guardians and trips. One card of each kind; merge 3 into a stronger one. Every Reload adds a slot.",
 	Keys = "Key halves drop from chests, safes, vaults, Bigs, guardians and trips. Merge 2 halves into a key.",
 	Stickers = "Stick one on a creature: it shows on its back. Star boosts that creature, the others help the whole team. Moving a sticker never breaks it.",
 	Gadgets = "One use, inside a zone. Gadgets drop from vaults, Bigs, guardians and trips.",
@@ -64,34 +64,27 @@ local function drawElixir(tile: GuiObject, item: Items.Item)
 	neck.Parent = tile
 end
 
--- An 8-bit cartridge: grey shell, colored label, grip lines at the top.
-local function drawCartridge(tile: GuiObject, item: Items.Item, scale: number?)
+-- A Boost Card: colored card with a white border, a shine stripe and a star.
+local function drawCard(tile: GuiObject, item: Items.Item, scale: number?)
 	local s = scale or 1
-	local shell = Theme.frame({
+	local card = Theme.frame({
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0.08 * s, 0),
-		Size = UDim2.fromScale(0.62 * s, 0.48 * s),
-		BackgroundColor3 = Color3.fromRGB(120, 124, 138),
-	})
-	Theme.corner(shell, 6)
-	Theme.stroke(shell, Color3.fromRGB(30, 32, 44), 2)
-	shell.Parent = tile
-	local label = Theme.frame({
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 0.92, 0),
-		Size = UDim2.fromScale(0.8, 0.62),
+		Position = UDim2.new(0.5, 0, 0.06 * s, 0),
+		Size = UDim2.fromScale(0.42 * s, 0.5 * s),
 		BackgroundColor3 = item.color,
 	})
-	Theme.corner(label, 4)
-	label.Parent = shell
-	for i = 1, 3 do
-		local grip = Theme.frame({
-			Position = UDim2.new(0.25 + (i - 1) * 0.2, 0, 0.06, 0),
-			Size = UDim2.fromScale(0.1, 0.18),
-			BackgroundColor3 = Color3.fromRGB(90, 94, 108),
-		})
-		grip.Parent = shell
-	end
+	Theme.corner(card, 6)
+	Theme.stroke(card, Color3.new(1, 1, 1), 2)
+	card.Parent = tile
+	local shine = Theme.frame({
+		Position = UDim2.fromScale(0, 0.12),
+		Size = UDim2.fromScale(1, 0.14),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 0.55,
+	})
+	shine.Parent = card
+	local star = Theme.label({ Text = "★", Size = UDim2.fromScale(1, 0.55), Position = UDim2.fromScale(0, 0.35), MaxTextSize = 30 })
+	star.Parent = card
 end
 
 local function drawKey(tile: GuiObject, item: Items.Item)
@@ -149,7 +142,7 @@ local function itemTile(item: Items.Item, count: number?, highlight: boolean): T
 	if item.kind == "Elixir" then
 		drawElixir(tile, item)
 	elseif item.kind == "Cartridge" then
-		drawCartridge(tile, item)
+		drawCard(tile, item)
 	elseif item.kind == "Sticker" or item.kind == "Gadget" then
 		drawIcon(tile, item)
 	else
@@ -221,7 +214,7 @@ function BagPanel.mount(gui: ScreenGui)
 		tabButtons[tab.id] = b
 	end
 
-	-- Header above the grid: boosts, or the cartridge machine
+	-- Header above the grid: boosts, or the Boost Card slots
 	local header = Theme.frame({
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(0, 46),
@@ -317,7 +310,7 @@ function BagPanel.mount(gui: ScreenGui)
 					b.BorderSizePixel = 0
 					Theme.corner(b, 8)
 					Theme.stroke(b, item.color, 2)
-					drawCartridge(b, item, 1.3)
+					drawCard(b, item, 1.3)
 					b.Activated:Connect(function()
 						Net.event("UnequipCartridge"):FireServer(id)
 					end)
@@ -348,7 +341,7 @@ function BagPanel.mount(gui: ScreenGui)
 			local setsLabel = Theme.label({
 				Text = if #sets > 0
 					then table.concat(sets, " · ")
-					else ("Slots %d/%d · Tap a slot to take a cartridge out · Equip 3 of a set for a bonus"):format(#data.cartridges, slots),
+					else ("Slots %d/%d · Tap a card to take it out · Equip 3 of a set for a bonus"):format(#data.cartridges, slots),
 				TextColor3 = if #sets > 0 then Theme.gold else Theme.muted,
 				Font = if #sets > 0 then Theme.font else Enum.Font.Gotham,
 				Position = UDim2.fromOffset(0, 66),

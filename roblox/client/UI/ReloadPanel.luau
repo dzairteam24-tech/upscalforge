@@ -69,7 +69,7 @@ function ReloadPanel.mount(gui: ScreenGui)
 	local reset = column(content, "Resets", Theme.red, 1 / 3)
 	local keep = column(content, "You keep", Theme.green, 2 / 3)
 	reset.Text = "• Coins\n• Gates (back to Zone 1)\n• Zone restore %"
-	keep.Text = "• All creatures\n• Items and cartridges\n• Upgrades\n• Gems\n• Pass, titles and trails\n• Trips in progress"
+	keep.Text = "• All creatures\n• Items and Boost Cards\n• Upgrades\n• Gems\n• Pass, titles and trails\n• Trips in progress"
 
 	local button = Theme.button({
 		Text = "Reload",
@@ -100,7 +100,7 @@ function ReloadPanel.mount(gui: ScreenGui)
 		local trips: number = data.nextExpeditionSlots or Expedition.slots(reloads + 1)
 		gain.Text = table.concat({
 			("• Coins %s → %s forever"):format(Format.mult(data.reloadMult or 1), Format.mult(data.nextReloadMult or 1.5)),
-			("• Cartridge slots %d → %d"):format(data.cartridgeSlots or 2, data.nextCartridgeSlots or 3),
+			("• Boost Card slots %d → %d"):format(data.cartridgeSlots or 2, data.nextCartridgeSlots or 3),
 			("• Trip slots: %d"):format(trips),
 			"• New world colors",
 		}, "\n")
