@@ -1,21 +1,22 @@
 {
- "cells": 5,
+ "cells": 6,
  "roles": [
   [
    "body"
   ],
   [
-   "legs",
+   "legs"
+  ],
+  [
+   "cap"
+  ],
+  [
    "spot",
-   "antenna_tip",
-   "dark"
+   "shine"
   ],
   [
    "eye",
    "mouth"
-  ],
-  [
-   "shine"
   ],
   [
    "blush"

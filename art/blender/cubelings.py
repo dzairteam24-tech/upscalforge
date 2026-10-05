@@ -1408,8 +1408,6 @@ def build_mouth(c, kind, on_face):
         if kind == "fangs":
             sym(lambda s_: c.add(cone("Fang", 0.04, 0.0, 0.1, on_face(0.07 * s_, -0.18, 0.02), rotation=(math.radians(180), 0, 0), verts=8), "white"))
 
-    return parts
-
 
 # ---------------------------------------------------------------------------------------------------------------
 # Scene, renders and export

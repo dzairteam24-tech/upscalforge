@@ -1,21 +1,27 @@
 {
- "cells": 5,
+ "cells": 7,
  "roles": [
   [
    "body"
   ],
   [
-   "legs",
-   "spot",
-   "antenna_tip",
-   "dark"
+   "belly",
+   "tail_tip"
   ],
   [
+   "ear_inner",
+   "legs"
+  ],
+  [
+   "nose",
    "eye",
    "mouth"
   ],
   [
    "shine"
+  ],
+  [
+   "tongue"
   ],
   [
    "blush"
