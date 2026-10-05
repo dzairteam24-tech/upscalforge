@@ -17,7 +17,23 @@ type Entry = {
 	pet: { s: string, v: string, z: string },
 	current: CFrame,
 	phase: number,
+	eyes: { { part: BasePart, size: Vector3 } }, -- for blinking
+	nextBlink: number,
+	lastHop: number, -- hop height last frame (to squash on landing)
+	squash: number, -- 0..1, fades out after a landing
 }
+
+-- Eye parts of a built creature (block or 3D version), with their normal size
+local function findEyes(built: PetModel.Built): { { part: BasePart, size: Vector3 } }
+	local eyes = {}
+	for _, p in built.parts do
+		local name = string.lower(p.Name)
+		if name == "eye" or name == "shine" then
+			table.insert(eyes, { part = p, size = p.Size })
+		end
+	end
+	return eyes
+end
 
 type Owner = {
 	player: Player,
@@ -73,7 +89,16 @@ local function addPet(owner: Owner, value: StringValue)
 	end
 	local built = PetModel.build(pet)
 	built.model.Parent = if hidden(owner) then nil else container
-	local entry: Entry = { built = built, pet = pet, current = startPosition(owner.player), phase = math.random() * math.pi * 2 }
+	local entry: Entry = {
+		built = built,
+		pet = pet,
+		current = startPosition(owner.player),
+		phase = math.random() * math.pi * 2,
+		eyes = findEyes(built),
+		nextBlink = os.clock() + 1 + math.random() * 4,
+		lastHop = 0,
+		squash = 0,
+	}
 	PetModel.place(built, entry.current)
 	owner.entries[value.Name] = entry
 	rebuildOrder(owner)
@@ -200,9 +225,39 @@ local function step(dt: number)
 				goal = CFrame.lookAt(Vector3.new(pos.X, y, pos.Z), Vector3.new(pos.X + look.X, y, pos.Z + look.Z))
 			end
 			entry.current = entry.current:Lerp(goal, alpha)
+
+			-- Life: squash when landing a hop, lean into the movement, blink now and then
+			if entry.lastHop > 0.25 and hop < 0.08 then
+				entry.squash = 1
+			end
+			entry.lastHop = hop
+			entry.squash = math.max(0, entry.squash - dt * 6)
+			local squash = math.sin(entry.squash * math.pi) * 0.12
+			local stretch = if hop > 0.1 then 0.05 else 0
+			local sy = 1 - squash + stretch
+			local sxz = 1 + squash * 0.6 - stretch * 0.5
+			local moving = not target and root.AssemblyLinearVelocity.Magnitude > 2
+			local lean = if moving then CFrame.Angles(math.rad(-10), 0, math.sin(now * 10 + entry.phase) * math.rad(4)) else CFrame.identity
+			local visual = entry.current * lean
+			local scale = Vector3.new(sxz, sy, sxz)
 			for i, p in built.parts do
+				local offset = built.offsets[i]
 				table.insert(parts, p)
-				table.insert(cframes, entry.current * built.offsets[i])
+				table.insert(cframes, visual * CFrame.new(offset.Position * scale) * offset.Rotation)
+			end
+			if now >= entry.nextBlink and #entry.eyes > 0 then
+				entry.nextBlink = now + 2.5 + math.random() * 3.5
+				for _, eye in entry.eyes do
+					eye.part.Size = Vector3.new(eye.size.X, eye.size.Y * 0.12, eye.size.Z)
+				end
+				local eyes = entry.eyes
+				task.delay(0.13, function()
+					for _, eye in eyes do
+						if eye.part.Parent then
+							eye.part.Size = eye.size
+						end
+					end
+				end)
 			end
 		end
 	end
@@ -222,6 +277,7 @@ local function rebuildAll()
 			entry.built.model:Destroy()
 			entry.built = PetModel.build(entry.pet)
 			entry.built.model.Parent = parent
+			entry.eyes = findEyes(entry.built)
 			PetModel.place(entry.built, entry.current)
 		end
 		rebuildOrder(owner)
