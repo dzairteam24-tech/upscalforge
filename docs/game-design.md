@@ -477,11 +477,12 @@
 - **قوة النوع:** تكبر مع المناطق، من Cubby (1) حتى King (500). الأسطوريين من 1,000 (Slime King) حتى 8,000 (Glitch)، يعني ديما أقوى من أحسن مخلوق في المنطقة الأخيرة
 - **الـ variant:** Normal x1 · Golden x1.5 · Crystal x2.5 · Lava x4 · Neon x6 · Pixel x10
 - **الحجم:** Normal x1 · Big x3 · Titan x10
-- **العنصر:** مخلوق من منطقة Fire في منطقة Fire = x2 (كذلك Ice، Dark، Pixel). مناطق Dark تنقص قوة الفريق اللي ماشي Dark
+- **العنصر (حسب الـ variant):** Crystal x2 في مناطق Fire · Lava x2 في مناطق Ice · Neon x2 في مناطق Dark · Pixel x2 في Pixel Zone. هكذا كل variant عندو منطقة يلمع فيها
 - **الفريق:** نجمعو قوة المخلوقات اللي لابسهم، ومن بعد قدرات الـ Big/Titan (مثلاً Power x3). قدرات من نفس النوع ما يتجمعوش: الأقوى برك
 - **من برا المخلوقات:** upgrades بالعملات، الإكسيرات، Boost Cards، الـ Reload (x1.5 كل مرة)، والـ Stickers
 
 **أمثلة:**
-- Normal King في Pixel Zone: 500 × 2 (عنصر Pixel) = **1,000**
-- Golden Big Phoenix في Volcano: 190 × 1.5 × 3 × 2 (Fire) = **1,710**
+- Normal King في Pixel Zone: 500 = **500**
+- Golden Big Phoenix في Volcano: 190 × 1.5 × 3 = **855**
+- Crystal Ice Dragon في Volcano (Fire): 190 × 2.5 × 2 = **950**
 - Pixel Titan Glitch في Pixel Zone: 8,000 × 10 × 10 × 2 = **1,600,000** (قريب من المستحيل)
