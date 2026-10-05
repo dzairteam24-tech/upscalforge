@@ -1127,6 +1127,71 @@ test("Pity: Big is sure on the 10th try, Titan chance grows and is sure on the 1
 	end
 end)
 
+-- Gem shop -------------------------------------------------------------------------------------------------
+
+local GemShopLogic = R(Shared.Logic.GemShop)
+local GemShopConfig = R(Shared.Config.GemShop)
+
+local function shopper(gems: number)
+	return { gems = gems, gemShop = { day = -1, deals = {}, storage = 0 }, stats = {}, unlockedZones = { ["0"] = true, ["1"] = true } }
+end
+
+test("Gem shop: every offer is a real item or an upgrade, never random", function()
+	for _, offer in GemShopConfig.offers do
+		if offer.itemId then
+			assert(Items.byId[offer.itemId], "unknown item " .. offer.itemId)
+		else
+			eq(offer.upgrade, "Storage")
+		end
+		assert(offer.price > 0, offer.id)
+	end
+end)
+
+test("Gem shop: buying, locked items, and Storage getting dearer", function()
+	local holder = shopper(1000)
+	eq((GemShopLogic.canBuy(holder, "CoinsCard", false, 10)), false, "Boost Cards open at zone 3")
+	assert(GemShopLogic.canBuy(holder, "CoinElixir2", false, 10))
+	GemShopLogic.buy(holder, "CoinElixir2", false, 10)
+	eq(holder.gems, 1000 - 30)
+	eq(GemShopLogic.price(holder, "Storage", false), 200)
+	GemShopLogic.buy(holder, "Storage", false, 10)
+	eq(holder.gemShop.storage, 1)
+	eq(GemShopLogic.price(holder, "Storage", false), 300, "dearer each time")
+	eq(GemShopLogic.storageBonus(holder.gemShop), 50)
+	holder.gems = 10
+	eq((GemShopLogic.canBuy(holder, "LuckElixir2", false, 10)), false, "not enough gems")
+end)
+
+test("Gem shop: 3 daily deals, same for everyone, 40% off, once each per day", function()
+	local deals = GemShopLogic.deals(20000)
+	eq(#deals, GemShopConfig.DEALS_PER_DAY)
+	eq(table.concat(deals, ","), table.concat(GemShopLogic.deals(20000), ","), "same every call")
+	local seen = {}
+	for _, id in deals do
+		assert(not seen[id], "deals are different items")
+		seen[id] = true
+	end
+	-- Find a day whose deals include an item that's always open
+	local day, id = 20000, nil
+	while not id do
+		for _, dealId in GemShopLogic.deals(day) do
+			if GemShopConfig.byId[dealId].feature == nil then
+				id = dealId
+			end
+		end
+		if not id then
+			day += 1
+		end
+	end
+	local holder = shopper(1000)
+	local full = GemShopLogic.price(holder, id, false)
+	eq(GemShopLogic.price(holder, id, true), math.floor(full * 0.6 + 0.5))
+	assert(GemShopLogic.canBuy(holder, id, true, day))
+	GemShopLogic.buy(holder, id, true, day)
+	eq((GemShopLogic.canBuy(holder, id, true, day)), false, "once a day")
+	assert(GemShopLogic.canBuy(holder, id, true, day + 1) or not GemShopLogic.isDeal(id, day + 1), "new day resets")
+end)
+
 test("Every creature model builds: 40 species x 6 variants x 3 sizes", function()
 	local PetModel = R(Shared.PetModel)
 	local Sizes = R(Shared.Config.Sizes)

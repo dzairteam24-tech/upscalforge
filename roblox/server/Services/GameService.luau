@@ -26,6 +26,7 @@ local MapLayout = require(Shared.Logic.MapLayout)
 local PetMath = require(Shared.Logic.PetMath)
 local Achievements = require(Shared.Logic.Achievements)
 local Expedition = require(Shared.Logic.Expedition)
+local GemShop = require(Shared.Logic.GemShop)
 local Reload = require(Shared.Logic.Reload)
 local Types = require(Shared.Logic.Types)
 local Net = require(Shared.Net)
@@ -137,7 +138,11 @@ function GameService.capacity(player: Player): number
 	local _, perks = Achievements.forData(data)
 	local runtime = State.get(player)
 	local pass = if runtime and runtime.passes.Storage then Products.PASS_STORAGE else 0
-	return Constants.BASE_STORAGE + Upgrades.storageBonus(data.upgrades.Storage or 0) + perks.storage + pass
+	return Constants.BASE_STORAGE
+		+ Upgrades.storageBonus(data.upgrades.Storage or 0)
+		+ perks.storage
+		+ pass
+		+ GemShop.storageBonus(data.gemShop)
 end
 
 function GameService.luck(player: Player): number
@@ -869,6 +874,7 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		rank = rank,
 		tutorial = data.tutorial,
 		tickets = data.tickets,
+		gemShop = data.gemShop,
 		wheel = data.wheel,
 		rides = data.rides,
 		equippedRide = data.equippedRide,

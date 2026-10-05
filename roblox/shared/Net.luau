@@ -41,6 +41,7 @@ local EVENTS = {
 	"RemoveSticker",
 	"SpinWheel",
 	"BuyProduct",
+	"BuyGemItem",
 	"Teleport",
 	-- server -> client
 	"Data",

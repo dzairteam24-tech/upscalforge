@@ -83,6 +83,7 @@ local function template(): PlayerData
 		wheel = { lastFree = -1 },
 		rides = {},
 		pity = { big = 0, titan = 0 },
+		gemShop = { day = -1, deals = {}, storage = 0 },
 	}
 end
 

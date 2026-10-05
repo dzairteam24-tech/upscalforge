@@ -82,8 +82,9 @@ local function findTrip(data: PlayerData, started: any, fallback: (Types.Expedit
 	return nil
 end
 
--- Claims a finished trip. `mult` doubles everything for the ad reward.
-local function claim(player: Player, data: PlayerData, index: number, mult: number): boolean
+-- Claims a finished trip. `mult` doubles the rewards for the video reward; `coinsOnly` limits it to coins
+-- when the double was bought with Robux (items and gems are random, and Robux never buys random prizes).
+local function claim(player: Player, data: PlayerData, index: number, mult: number, coinsOnly: boolean?): boolean
 	local trip, err = Expedition.claim(data, index, os.time())
 	if not trip then
 		GameService.notify(player, err or "Can't claim this trip", "error")
@@ -93,23 +94,24 @@ local function claim(player: Player, data: PlayerData, index: number, mult: numb
 		return rng:NextNumber()
 	end)
 	local coins = GameService.rewardCoins(player, reward.coins * mult, nil)
-	data.gems += reward.gems * mult
-	data.tickets += reward.tickets * mult
+	local itemMult = if coinsOnly then 1 else mult
+	data.gems += reward.gems * itemMult
+	data.tickets += reward.tickets -- never doubled: tickets feed the random Lucky Spin, and a double can be bought
 	for _, itemId in reward.items do
-		GameService.giveItem(player, itemId, mult, false)
+		GameService.giveItem(player, itemId, itemMult, false)
 	end
 
 	local parts = { "🪙 " .. Format.abbrev(coins) }
 	if reward.gems > 0 then
-		table.insert(parts, "💎 " .. Format.abbrev(reward.gems * mult))
+		table.insert(parts, "💎 " .. Format.abbrev(reward.gems * itemMult))
 	end
 	if reward.tickets > 0 then
-		table.insert(parts, "🎟️ " .. reward.tickets * mult)
+		table.insert(parts, "🎟️ " .. reward.tickets)
 	end
 	for _, itemId in reward.items do
-		table.insert(parts, Items.byId[itemId].name .. (if mult > 1 then " x" .. mult else ""))
+		table.insert(parts, Items.byId[itemId].name .. (if itemMult > 1 then " x" .. itemMult else ""))
 	end
-	local heading = if mult > 1 then "Double trip rewards: " else "Trip rewards: "
+	local heading = if mult > 1 and coinsOnly then "Double coins trip: " elseif mult > 1 then "Double trip rewards: " else "Trip rewards: "
 	GameService.notify(player, heading .. table.concat(parts, ", "), "success")
 	GameService.refresh(player)
 	return true
@@ -181,13 +183,13 @@ function ExpeditionService.init()
 			end
 			return true, nil
 		end,
-		grant = function(player, started)
+		grant = function(player, started, paid)
 			local data = DataService.get(player)
 			local index = data and findTrip(data, started, isBack)
 			if not data or not index or not isBack(data.expeditions[index]) then
 				return false
 			end
-			return claim(player, data, index, 2)
+			return claim(player, data, index, 2, paid)
 		end,
 	})
 end

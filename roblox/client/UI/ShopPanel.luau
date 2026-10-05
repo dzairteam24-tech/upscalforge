@@ -1,4 +1,4 @@
--- Shop window: coin upgrades and Robux products (cosmetics and VIP only).
+-- Shop window: coin upgrades, free video rewards, the gem shop and Robux products.
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
@@ -7,7 +7,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Products = require(Shared.Config.Products)
 local Upgrades = require(Shared.Config.Upgrades)
+local Items = require(Shared.Config.Items)
+local GemShopConfig = require(Shared.Config.GemShop)
 local Format = require(Shared.Logic.Format)
+local GemShop = require(Shared.Logic.GemShop)
+local Progress = require(Shared.Logic.Progress)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
@@ -24,22 +28,21 @@ function ShopPanel.mount(gui: ScreenGui)
 
 	local tabs = Theme.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40) })
 	tabs.Parent = content
-	local upgradesTab = Theme.button({ Text = "🪙 Upgrades", Size = UDim2.new(1 / 3, -6, 1, -4), BackgroundColor3 = Theme.gold })
-	upgradesTab.Parent = tabs
-	local freeTab = Theme.button({
-		Text = "▶ Free",
-		Size = UDim2.new(1 / 3, -6, 1, -4),
-		Position = UDim2.new(1 / 3, 3, 0, 0),
-		BackgroundColor3 = Theme.card,
-	})
-	freeTab.Parent = tabs
-	local robuxTab = Theme.button({
-		Text = "⭐ Robux",
-		Size = UDim2.new(1 / 3, -6, 1, -4),
-		Position = UDim2.new(2 / 3, 3, 0, 0),
-		BackgroundColor3 = Theme.card,
-	})
-	robuxTab.Parent = tabs
+	local function tab(text: string, index: number): TextButton
+		local b = Theme.button({
+			Text = text,
+			Size = UDim2.new(1 / 4, -6, 1, -4),
+			Position = UDim2.new((index - 1) / 4, 3, 0, 0),
+			BackgroundColor3 = Theme.card,
+			MaxTextSize = 20,
+		})
+		b.Parent = tabs
+		return b
+	end
+	local upgradesTab = tab("🪙 Upgrades", 1)
+	local gemsTab = tab("💎 Gems", 2)
+	local freeTab = tab("▶ Free", 3)
+	local robuxTab = tab("⭐ Robux", 4)
 
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.BackgroundTransparency = 1
@@ -103,6 +106,7 @@ function ShopPanel.mount(gui: ScreenGui)
 		upgradesTab.BackgroundColor3 = if current == "Upgrades" then Theme.gold else Theme.card
 		freeTab.BackgroundColor3 = if current == "Free" then Theme.gold else Theme.card
 		robuxTab.BackgroundColor3 = if current == "Robux" then Theme.gold else Theme.card
+		gemsTab.BackgroundColor3 = if current == "Gems" then Theme.gold else Theme.card
 		local data = Store.data
 		if not data then
 			return
@@ -120,6 +124,64 @@ function ShopPanel.mount(gui: ScreenGui)
 				row(order, upgrade.name, subtitle, if cost then "🪙 " .. Format.abbrev(cost) else "MAX", cost ~= nil and not needs, function()
 					Net.event("BuyUpgrade"):FireServer(upgrade.id)
 				end)
+			end
+		elseif current == "Gems" then
+			local today = Progress.day(workspace:GetServerTimeNow())
+			local gems: number = data.gems or 0
+			local state = data.gemShop or { day = -1, deals = {}, storage = 0 }
+			local holder = {
+				gems = gems,
+				gemShop = { day = state.day, deals = if state.day == today then state.deals else {}, storage = state.storage },
+				stats = data.stats,
+				unlockedZones = data.unlockedZones,
+			}
+			local order = 0
+			local function header(text: string)
+				order += 1
+				local label = Theme.label({
+					Text = text,
+					Font = Theme.titleFont,
+					Size = UDim2.new(1, -12, 0, 28),
+					TextXAlignment = Enum.TextXAlignment.Left,
+					LayoutOrder = order,
+					MaxTextSize = 20,
+				})
+				label.Parent = scroll
+			end
+			local function offerRow(id: string, asDeal: boolean)
+				local offer = GemShopConfig.byId[id]
+				local price = GemShop.price(holder, id, asDeal)
+				local ok = GemShop.canBuy(holder, id, asDeal, today)
+				local title, subtitle
+				if offer.itemId then
+					local item = Items.byId[offer.itemId]
+					title = (item.icon or "") .. " " .. item.name
+					subtitle = item.description
+				else
+					title = "📦 Storage +" .. GemShopConfig.STORAGE_STEP
+					subtitle = ("More creature storage, forever (%d/%d)"):format(holder.gemShop.storage, GemShopConfig.STORAGE_MAX)
+				end
+				if asDeal then
+					title = ("🔥 -%d%% %s"):format(math.floor(GemShopConfig.DEAL_DISCOUNT * 100), title)
+				end
+				local bought = asDeal and holder.gemShop.deals[id] == true
+				local maxed = offer.upgrade == "Storage" and holder.gemShop.storage >= GemShopConfig.STORAGE_MAX
+				order += 1
+				row(order, title, subtitle, if bought then "Bought ✓" elseif maxed then "MAX" else "💎 " .. Format.abbrev(price), ok, function()
+					Net.event("BuyGemItem"):FireServer(id, asDeal)
+				end)
+			end
+
+			header(("💎 %s gems · daily deals reset in %s"):format(Format.abbrev(gems), Format.time(Progress.secondsToNextDay(os.time()))))
+			for _, id in GemShop.deals(today) do
+				local offer = GemShopConfig.byId[id]
+				if offer.feature == nil or table.find(GemShop.visible(holder), offer) then
+					offerRow(id, true)
+				end
+			end
+			header("Everything")
+			for _, offer in GemShop.visible(holder) do
+				offerRow(offer.id, false)
 			end
 		elseif current == "Free" then
 			local supported = AdButton.supported()
@@ -224,6 +286,10 @@ function ShopPanel.mount(gui: ScreenGui)
 	end)
 	robuxTab.Activated:Connect(function()
 		current = "Robux"
+		rebuild()
+	end)
+	gemsTab.Activated:Connect(function()
+		current = "Gems"
 		rebuild()
 	end)
 	freeTab.Activated:Connect(function()

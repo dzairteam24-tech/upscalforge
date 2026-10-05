@@ -12,6 +12,9 @@ local Upgrades = require(Shared.Config.Upgrades)
 local World1 = require(Shared.Config.World1)
 local Format = require(Shared.Logic.Format)
 local Unlocks = require(Shared.Logic.Unlocks)
+local GemShop = require(Shared.Logic.GemShop)
+local Items = require(Shared.Config.Items)
+local Progress = require(Shared.Logic.Progress)
 local Net = require(Shared.Net)
 
 local AdsService = require(script.Parent.AdsService)
@@ -146,6 +149,31 @@ local function processReceipt(receipt: { [string]: any }): Enum.ProductPurchaseD
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
+-- Gem shop: fixed items for gems (see Config/GemShop). `asDeal` buys today's discounted deal.
+local function buyGemItem(player: Player, id: any, asDeal: any)
+	local data = DataService.get(player)
+	local runtime = State.get(player)
+	if not data or not runtime or type(id) ~= "string" or not State.throttle(runtime, "BuyGemItem", 0.25) then
+		return
+	end
+	local deal = asDeal == true
+	local today = Progress.day(os.time())
+	local ok, err = GemShop.canBuy(data, id, deal, today)
+	if not ok then
+		GameService.notify(player, err or "Can't buy that", "error")
+		return
+	end
+	local offer = GemShop.buy(data, id, deal, today)
+	if offer.itemId then
+		GameService.giveItem(player, offer.itemId, 1, false)
+		GameService.notify(player, ("Bought %s!"):format(Items.byId[offer.itemId].name), "success")
+	elseif offer.upgrade == "Storage" then
+		GameService.notify(player, "Storage +50!", "success")
+		GameService.refresh(player)
+	end
+	GameService.markDirty(player)
+end
+
 -- Robux purchase of a developer product. Checks first that the reward still makes sense (a trip to
 -- finish, a quest to swap), remembers what it's for, then opens the Roblox prompt.
 local function buyProduct(player: Player, key: any, context: any)
@@ -176,6 +204,7 @@ function ShopService.init()
 	Net.event("BuyUpgrade").OnServerEvent:Connect(buyUpgrade)
 	Net.event("UnlockZone").OnServerEvent:Connect(unlockZone)
 	Net.event("BuyProduct").OnServerEvent:Connect(buyProduct)
+	Net.event("BuyGemItem").OnServerEvent:Connect(buyGemItem)
 
 	MarketplaceService.ProcessReceipt = processReceipt
 

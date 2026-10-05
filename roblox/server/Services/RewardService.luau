@@ -6,14 +6,18 @@
 -- can't be applied any more (for example after a rejoin), the player gets Coins x2 for 30 min instead.
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Products = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Products"))
 
 local GameService = require(script.Parent.GameService)
 
 local RewardService = {}
 
+-- `paid` is true when the reward was bought with Robux (false for a rewarded video).
 export type Handler = {
 	canUse: (player: Player, context: any) -> (boolean, string?),
-	grant: (player: Player, context: any) -> boolean,
+	grant: (player: Player, context: any, paid: boolean) -> boolean,
 }
 
 local handlers: { [string]: Handler } = {}
@@ -50,7 +54,9 @@ function RewardService.grant(player: Player, key: string, productKey: string)
 	end
 	local applied = false
 	if handler then
-		local ok, result = pcall(handler.grant, player, context)
+		local product = Products.productByKey[productKey]
+		local paid = product ~= nil and product.adOnly ~= true
+		local ok, result = pcall(handler.grant, player, context, paid)
 		applied = ok and result == true
 		if not ok then
 			warn("[Rewards] grant error", key, result)

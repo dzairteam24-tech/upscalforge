@@ -62,7 +62,7 @@ local devProducts: { DevProduct } = {
 	{ key = "PowerBoost", id = 0, price = 49, name = "Power x2 · 30 min", description = "Double team power for 30 minutes of play", boost = { stat = "Power", mult = 2, seconds = 1800 }, inShop = true },
 	{ key = "ServerBoost", id = 0, price = 149, name = "Server Boost", description = "Coins x2 for EVERYONE in the server for 15 minutes", reward = "ServerBoost", inShop = true },
 	{ key = "TripSkip", id = 0, price = 25, name = "Finish a trip now", description = "Your creatures come back right away", reward = "TripSkip" },
-	{ key = "TripDouble", id = 0, price = 35, name = "Double trip rewards", description = "Claim a trip with everything x2", reward = "TripDouble" },
+	{ key = "TripDouble", id = 0, price = 35, name = "Double trip coins", description = "Claim a trip with its coins x2", reward = "TripDouble" },
 	{ key = "StreakSave", id = 0, price = 25, name = "Save your streak", description = "Keep your daily streak after missing a few days", reward = "StreakSave" },
 	{ key = "QuestSwap", id = 0, price = 10, name = "Swap a quest", description = "Get a different daily quest", reward = "QuestSwap" },
 	-- Rewarded video ads (never sold)

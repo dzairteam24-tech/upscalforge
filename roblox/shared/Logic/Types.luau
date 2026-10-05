@@ -52,6 +52,7 @@ export type PlayerData = {
 	rides: { [string]: boolean },
 	equippedRide: string?,
 	pity: { big: number, titan: number }, -- misses in a row (bad-luck protection)
+	gemShop: { day: number, deals: { [string]: boolean }, storage: number },
 }
 
 -- Rewarded ad limits: watches per UTC day and per-reward cooldowns.
