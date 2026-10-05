@@ -1,0 +1,29 @@
+{
+ "cells": 7,
+ "roles": [
+  [
+   "body",
+   "claw"
+  ],
+  [
+   "belly"
+  ],
+  [
+   "legs"
+  ],
+  [
+   "eye",
+   "mouth"
+  ],
+  [
+   "shine"
+  ],
+  [
+   "stinger",
+   "brow"
+  ],
+  [
+   "segment"
+  ]
+ ]
+}

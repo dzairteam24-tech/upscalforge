@@ -1,0 +1,33 @@
+{
+ "cells": 9,
+ "roles": [
+  [
+   "body"
+  ],
+  [
+   "belly"
+  ],
+  [
+   "legs"
+  ],
+  [
+   "shades"
+  ],
+  [
+   "shine"
+  ],
+  [
+   "eye",
+   "mouth"
+  ],
+  [
+   "cloth"
+  ],
+  [
+   "cloth2"
+  ],
+  [
+   "gold"
+  ]
+ ]
+}

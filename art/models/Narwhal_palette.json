@@ -1,0 +1,31 @@
+{
+ "cells": 8,
+ "roles": [
+  [
+   "body"
+  ],
+  [
+   "belly"
+  ],
+  [
+   "eye",
+   "mouth"
+  ],
+  [
+   "shine"
+  ],
+  [
+   "horn"
+  ],
+  [
+   "horn_line"
+  ],
+  [
+   "fin",
+   "spot"
+  ],
+  [
+   "blush"
+  ]
+ ]
+}

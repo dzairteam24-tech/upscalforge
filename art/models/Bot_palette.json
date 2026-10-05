@@ -1,0 +1,31 @@
+{
+ "cells": 8,
+ "roles": [
+  [
+   "body"
+  ],
+  [
+   "belly"
+  ],
+  [
+   "legs",
+   "metal"
+  ],
+  [
+   "dark"
+  ],
+  [
+   "antenna_tip"
+  ],
+  [
+   "screen"
+  ],
+  [
+   "eye",
+   "mouth"
+  ],
+  [
+   "shine"
+  ]
+ ]
+}

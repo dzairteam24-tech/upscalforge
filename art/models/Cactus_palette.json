@@ -1,0 +1,30 @@
+{
+ "cells": 8,
+ "roles": [
+  [
+   "body"
+  ],
+  [
+   "pot"
+  ],
+  [
+   "pot_rim"
+  ],
+  [
+   "eye",
+   "mouth"
+  ],
+  [
+   "spine"
+  ],
+  [
+   "flower"
+  ],
+  [
+   "flower_center"
+  ],
+  [
+   "blush"
+  ]
+ ]
+}

@@ -151,12 +151,12 @@ SPECIES = {
     # ----- Zone 6: Desert ----------------------------------------------------------------------------------------------
     "Camel": {
         "colors": {"body": "#D6AA6E", "belly": "#F5E0BC", "legs": "#A87C4A", "ear_inner": "#F5E0BC", "nose": "#6B4A2E", **face("#2B1C10")},
-        "ears": "round",
+        "ears": "none",
         "eye_style": "sleepy",
         "nose": "oval",
         "mouth": "smile",
         "features": ["hump"],
-        "humps": [(-0.05, 0.5), (0.6, 0.42)],
+        "humps": [(-0.15, 0.62), (0.62, 0.52)],
         "tail": "nub",
     },
     "Scorpion": {

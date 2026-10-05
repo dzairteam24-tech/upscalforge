@@ -1,0 +1,33 @@
+{
+ "cells": 9,
+ "roles": [
+  [
+   "body"
+  ],
+  [
+   "belly"
+  ],
+  [
+   "eye",
+   "mouth"
+  ],
+  [
+   "shine"
+  ],
+  [
+   "nose"
+  ],
+  [
+   "tongue"
+  ],
+  [
+   "fin"
+  ],
+  [
+   "dark"
+  ],
+  [
+   "blush"
+  ]
+ ]
+}

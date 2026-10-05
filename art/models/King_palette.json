@@ -1,0 +1,35 @@
+{
+ "cells": 9,
+ "roles": [
+  [
+   "body"
+  ],
+  [
+   "belly"
+  ],
+  [
+   "legs"
+  ],
+  [
+   "gold"
+  ],
+  [
+   "gem"
+  ],
+  [
+   "gem2"
+  ],
+  [
+   "shades",
+   "eye",
+   "mouth"
+  ],
+  [
+   "white",
+   "shine"
+  ],
+  [
+   "cape"
+  ]
+ ]
+}

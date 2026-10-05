@@ -604,24 +604,53 @@ def wing_sheet(name, side, span, height, location, key, c, droop=0.0):
     c.add(wing, key, angle=180)
 
 
+def extruded(name, outline, depth, y=0.0):
+    """A flat shape from a 2D outline [(x, z), ...] given some thickness along y."""
+    import bmesh
+
+    mesh = bpy.data.meshes.new(name)
+    bm = bmesh.new()
+    front = [bm.verts.new((x, y - depth / 2, z)) for x, z in outline]
+    back = [bm.verts.new((x, y + depth / 2, z)) for x, z in outline]
+    bm.faces.new(front[::-1])
+    bm.faces.new(back)
+    for i in range(len(outline)):
+        j = (i + 1) % len(outline)
+        bm.faces.new((front[i], front[j], back[j], back[i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
+# A bat wing seen from behind: top edge going up and out, scalloped bottom edge
+BAT_WING = [(0, 0.3), (0.55, 0.62), (1.2, 0.78), (1.12, 0.22), (0.9, 0.36), (0.72, 0.0), (0.48, 0.2), (0.24, -0.1), (0, 0.0)]
+
+
+def membrane_wing(c, side, scale, key, bone_key, height):
+    outline = [(x * scale * side, z * scale) for x, z in BAT_WING]
+    if side < 0:
+        outline = outline[::-1]
+    wing = extruded("Wing", outline, 0.07)
+    soft(wing, 0.025, segments=2, subdiv=0)
+    wing.location = (0.62 * side, 0.85, BODY_Z + height)
+    wing.rotation_euler = (0, 0, math.radians(-22 * side))
+    bpy.context.view_layer.objects.active = wing
+    wing.select_set(True)
+    bpy.ops.object.transform_apply(location=True, rotation=True)
+    wing.select_set(False)
+    c.add(wing, key, angle=30)
+    # The arm bone along the top edge
+    a = math.radians(-22 * side)
+    def world(x, z):
+        return (0.62 * side + x * scale * side * math.cos(a), 0.85 + x * scale * side * math.sin(a), BODY_Z + height + z * scale)
+    c.add(tube("Bone", [world(0, 0.3), world(0.55, 0.62), world(1.2, 0.78)], 0.045 * scale), bone_key)
+
+
 def feat_wings_bat(c):
-    def one(side):
-        wing = triangle_prism("Wing", half_width=0.55, height=1.1, depth=0.07, tip_shift=0.2)
-        soft(wing, 0.05, segments=2, subdiv=1)
-        # Lay the triangle sideways so it sticks out of the body's side, then fold it back and up
-        wing.rotation_euler = (0, math.radians(90 * side), 0)
-        bpy.context.view_layer.objects.active = wing
-        wing.select_set(True)
-        bpy.ops.object.transform_apply(rotation=True)
-        wing.location = (0.85 * side, 0.45, BODY_Z + 0.2)
-        wing.rotation_euler = (math.radians(-15), 0, math.radians(-35 * side))
-        bpy.ops.object.transform_apply(location=True, rotation=True)
-        wing.select_set(False)
-        c.add(wing, "wing", angle=180)
-        # Finger bones along the top edge
-        pts = [(0.85 * side, 0.45, BODY_Z + 0.2), (0.85 * side + 0.75 * side * math.cos(math.radians(35)), 0.45 + 0.75 * math.sin(math.radians(35)), BODY_Z + 0.75)]
-        c.add(tube("Bone", curve_points(pts[0], ((pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2, BODY_Z + 0.6), pts[1], 6), 0.05), "dark")
-    sym(one)
+    sym(lambda s_: membrane_wing(c, s_, 1.0, "wing", "dark", 0.2))
 
 
 def feat_wings_bird(c):
@@ -639,19 +668,7 @@ def feat_wings_bird(c):
 
 
 def feat_wings_dragon(c):
-    def one(side):
-        wing = triangle_prism("Wing", half_width=0.75, height=1.6, depth=0.08, tip_shift=0.5)
-        soft(wing, 0.06, segments=2, subdiv=1)
-        wing.rotation_euler = (0, math.radians(90 * side), 0)
-        bpy.context.view_layer.objects.active = wing
-        wing.select_set(True)
-        bpy.ops.object.transform_apply(rotation=True)
-        wing.location = (0.6 * side, 0.6, c.top - 0.1)
-        wing.rotation_euler = (math.radians(-35), math.radians(-30 * side), math.radians(-30 * side))
-        bpy.ops.object.transform_apply(location=True, rotation=True)
-        wing.select_set(False)
-        c.add(wing, "wing", angle=180)
-    sym(one)
+    sym(lambda s_: membrane_wing(c, s_, 1.45, "wing", "spike", 0.35))
 
 
 def feat_claws(c):
@@ -770,12 +787,12 @@ def feat_spines(c):
 
 
 def feat_flower(c):
-    center = Vector((0.35, -0.1, c.top + 0.05))
+    center = Vector((0.3, -0.15, c.top + 0.08))
     for i in range(6):
         a = math.radians(i * 60)
-        petal = ellipsoid("Petal", (0.17, 0.11, 0.05), center + Vector((math.cos(a) * 0.17, math.sin(a) * 0.17, 0.02)), segments=12, rings=6, rotation=(0, 0, a))
+        petal = ellipsoid("Petal", (0.27, 0.16, 0.07), center + Vector((math.cos(a) * 0.26, math.sin(a) * 0.26, 0.03)), segments=14, rings=6, rotation=(math.radians(-12), 0, a))
         c.add(petal, "flower")
-    c.add(ellipsoid("FlowerCenter", (0.1, 0.1, 0.07), center + Vector((0, 0, 0.06)), segments=12, rings=8), "flower_center")
+    c.add(ellipsoid("FlowerCenter", (0.15, 0.15, 0.1), center + Vector((0, 0, 0.09)), segments=14, rings=8), "flower_center")
 
 
 def feat_nemes(c):
@@ -806,7 +823,7 @@ def feat_rocks(c):
 
 
 def feat_screen(c):
-    panel = rounded_box("Screen", (1.45, 0.06, 0.95), face_point(0, 0.0, 0.01), 0.12, segments=3)
+    panel = rounded_box("Screen", (1.45, 0.06, 0.95), face_point(0, 0.0, -0.018), 0.12, segments=3)
     c.add(panel, "screen")
 
 
@@ -971,13 +988,16 @@ def tail_fox(c):
 
 
 def tail_stinger(c):
-    pts = curve_points((0, BODY_D / 2 - 0.1, BODY_Z - 0.4), (0, BODY_D / 2 + 1.1, BODY_Z + 0.2), (0, BODY_D / 2 + 0.2, c.top + 0.9), 7)
-    for i, p in enumerate(pts):
-        r = 0.26 - i * 0.022
-        c.add(ellipsoid("Segment", (r, r, r), p, segments=16, rings=10), "body" if i % 2 == 0 else "segment")
+    # A segmented tail that curls up over the back with the stinger pointing forward
+    pts = curve_points((0, BODY_D / 2 - 0.15, BODY_Z - 0.35), (0, BODY_D / 2 + 1.25, BODY_Z + 0.5), (0, BODY_D / 2 - 0.35, c.top + 0.85), 14)
+    c.add(tapered("Tail", pts, 0.2, 0.55), "body")
+    for i in range(1, len(pts) - 1, 2):
+        r = 0.2 * (1 - 0.45 * i / (len(pts) - 1)) * 1.18
+        c.add(ellipsoid("Segment", (r, r, r), pts[i], segments=16, rings=10), "segment")
     end = Vector(pts[-1])
-    sting = cone("Stinger", 0.13, 0.0, 0.45, tuple(end + Vector((0, -0.05, 0.05))), rotation=(math.radians(-120), 0, 0), verts=12)
-    c.add(sting, "stinger")
+    bulb = ellipsoid("Bulb", (0.16, 0.2, 0.16), tuple(end + Vector((0, -0.05, 0.0))), segments=16, rings=10)
+    c.add(bulb, "segment")
+    c.add(cone("Stinger", 0.09, 0.0, 0.32, tuple(end + Vector((0, -0.18, -0.02))), rotation=(math.radians(105), 0, 0), verts=12), "stinger")
 
 
 def tail_devil(c):
