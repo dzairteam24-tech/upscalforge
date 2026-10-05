@@ -27,6 +27,7 @@ local MembershipService = require(Services.MembershipService)
 local PlazaService = require(Services.PlazaService)
 local ClanService = require(Services.ClanService)
 local EventService = require(Services.EventService)
+local BossService = require(Services.BossService)
 local DataService = require(Services.DataService)
 
 Net.init()
@@ -52,6 +53,7 @@ MembershipService.init()
 PlazaService.init()
 ClanService.init()
 EventService.init()
+BossService.init()
 
 DataService.init()
 

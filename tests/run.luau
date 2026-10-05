@@ -1375,6 +1375,29 @@ test("Codes: upper case, real items, no creatures", function()
 	end
 end)
 
+test("World Boss: schedule, health and fair rewards", function()
+	local Boss = R(Shared.Logic.Boss)
+	local BossConfig = R(Shared.Config.Boss)
+	-- Every hour at :30
+	eq(Boss.nextSpawn(0), 1800)
+	eq(Boss.nextSpawn(1799), 1800)
+	eq(Boss.nextSpawn(1800), 1800 + 3600, "strictly after")
+	eq(Boss.nextSpawn(5000), 5400)
+	eq(Boss.health(0), BossConfig.MIN_HEALTH)
+	eq(Boss.health(1000), 1000 * BossConfig.HEALTH_SECONDS)
+	-- Fighting time is measured against your own power
+	eq(Boss.tier(15 * 10, 10), "full")
+	eq(Boss.tier(15 * 1e6, 1e6), "full", "strong players need the same time")
+	eq(Boss.tier(5 * 10, 10), "small")
+	eq(Boss.tier(1, 10), nil)
+	eq(Boss.tier(50, 0), "full", "a player with no team who taps still counts")
+	local full = Boss.reward("full", 4, true)
+	eq(full.gems, BossConfig.GEMS_BASE + 4 * BossConfig.GEMS_PER_ZONE)
+	eq(full.tickets, BossConfig.TICKETS)
+	assert(Boss.reward("small", 4, true).gems < full.gems, "small is less")
+	eq(Boss.reward("full", 4, false).tickets, 0, "escaped gives no tickets")
+end)
+
 print(("%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	process.exit(1)

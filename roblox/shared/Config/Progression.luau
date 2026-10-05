@@ -62,6 +62,7 @@ local WEEKLY_TEMPLATES: { QuestTemplate } = {
 	{ id = "w_hatch", event = "Hatch", text = "Hatch {goal} eggs", goal = 300 },
 	{ id = "w_big", event = "Big", text = "Defeat {goal} Bigs", goal = 5 },
 	{ id = "w_guardian", event = "Guardian", text = "Defeat {goal} zone guardian", goal = 1 },
+	{ id = "w_boss", event = "Boss", text = "Defeat {goal} World Bosses", goal = 3 },
 	{ id = "w_restore", event = "Restore", text = "Fully restore {goal} zone", goal = 1 },
 	{ id = "w_rift", event = "Rift", text = "Break {goal} sources in the Pixel Rift", goal = 500 },
 	{ id = "w_trip", event = "Expedition", text = "Send creatures on {goal} trips", goal = 5 },

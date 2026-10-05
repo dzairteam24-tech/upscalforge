@@ -248,6 +248,53 @@ function HUD.mount(gui: ScreenGui)
 	})
 	riftLabel.Parent = gui
 
+	-- World Boss: shows 2 minutes before it lands and during the fight. Tap it to go fight (free).
+	local bossButton = Theme.button({
+		Name = "Boss",
+		Text = "",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 66),
+		Size = UDim2.fromOffset(300, 34),
+		BackgroundColor3 = Color3.fromRGB(150, 40, 60),
+		Visible = false,
+		MaxTextSize = 17,
+	})
+	bossButton.Parent = gui
+	bossButton.Activated:Connect(function()
+		if (ReplicatedStorage:GetAttribute("BossEnds") or 0) > 0 then
+			Net.event("BossGo"):FireServer()
+		end
+	end)
+	task.spawn(function()
+		while true do
+			local now = workspace:GetServerTimeNow()
+			local nextAt = ReplicatedStorage:GetAttribute("BossNext") or 0
+			local endsAt = ReplicatedStorage:GetAttribute("BossEnds") or 0
+			local sourceName = ReplicatedStorage:GetAttribute("BossSource") or ""
+			if endsAt > 0 then
+				local breakables = workspace:FindFirstChild("Breakables")
+				local part = if breakables and sourceName ~= "" then breakables:FindFirstChild(sourceName) else nil
+				local left = if part then part:GetAttribute("CoinsLeft") or 0 else 0
+				local max = if part then part:GetAttribute("CoinsMax") or 1 else 1
+				local seconds = math.max(0, math.ceil(endsAt - now))
+				bossButton.Text = ("👹 BOSS %d%% · %d:%02d · Tap to fight!"):format(
+					math.ceil(100 * left / math.max(1, max)),
+					seconds // 60,
+					seconds % 60
+				)
+				bossButton.Visible = true
+			elseif nextAt > 0 and nextAt - now <= 120 then
+				local seconds = math.max(0, math.ceil(nextAt - now))
+				bossButton.Text = ("👹 World Boss in %d:%02d (Hub)"):format(seconds // 60, seconds % 60)
+				bossButton.Visible = true
+			else
+				bossButton.Visible = false
+			end
+			bossButton.Position = UDim2.new(0.5, 0, 0, if riftLabel.Text ~= "" then 92 else 66)
+			task.wait(0.5)
+		end
+	end)
+
 	-- Menu buttons (left middle), three short columns so it fits on phones
 	local menu = Theme.frame({
 		Name = "Menu",

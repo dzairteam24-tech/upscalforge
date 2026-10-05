@@ -29,6 +29,7 @@ local EVENT_STATS: { [string]: { stat: string, max: boolean? } } = {
 	Big = { stat = "bigsDefeated" },
 	BigCatch = { stat = "bigsCaught" },
 	Guardian = { stat = "guardians" },
+	Boss = { stat = "bosses" },
 	Titan = { stat = "titans" },
 	Golden = { stat = "goldens" },
 	Pixel = { stat = "pixels" },

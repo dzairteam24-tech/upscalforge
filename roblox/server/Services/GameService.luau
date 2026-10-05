@@ -1034,7 +1034,8 @@ local function tickPlayer(player: Player, runtime: State.Runtime, data: PlayerDa
 	end
 	-- Auto mode picks the next source; Magnet skills do it in manual mode too, in a wider radius
 	local magnet = Effects.get(runtime.effects, "Magnet")
-	if not source and (runtime.auto or magnet > 1) and runtime.zoneId and runtime.zoneId > 0 then
+	-- In the Hub (zone 0) the only target is the World Boss
+	if not source and (runtime.auto or magnet > 1) and runtime.zoneId and runtime.zoneId >= 0 then
 		source = BreakableService.nearest(runtime.zoneId, root.Position, Constants.AUTO_TARGET_RANGE * magnet)
 		runtime.target = if source then source.name else nil
 	end

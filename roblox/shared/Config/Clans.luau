@@ -15,6 +15,7 @@ return {
 		Hatch = 1, -- per egg
 		Big = 10,
 		Guardian = 50,
+		Boss = 40,
 		Restore = 100,
 		Expedition = 5,
 	} :: { [string]: number },

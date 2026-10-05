@@ -39,7 +39,7 @@ local function utc(year: number, month: number, day: number): number
 	return (era * 146097 + doe - 719468) * 86400
 end
 
-local TOKENS = { Pile = 0.15, Chest = 1, Safe = 2, Vault = 5, Big = 10, Guardian = 25 }
+local TOKENS = { Pile = 0.15, Chest = 1, Safe = 2, Vault = 5, Big = 10, Guardian = 25, Boss = 40 }
 
 local list: { Event } = {
 	{

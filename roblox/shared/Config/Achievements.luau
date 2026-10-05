@@ -102,6 +102,15 @@ local list: { Achievement } = {
 		gems = { 20, 60, 200 },
 	},
 	{
+		id = "Boss",
+		name = "Boss Hunter",
+		icon = "👹",
+		text = "Defeat {goal} World Bosses",
+		stat = "bosses",
+		goals = { 1, 10, 100 },
+		gems = { 30, 100, 400 },
+	},
+	{
 		id = "Fusion",
 		name = "Fusion Lab",
 		icon = "⚗️",

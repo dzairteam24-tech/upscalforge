@@ -26,7 +26,7 @@
 | 12 | **Auto-hatch يرجع وحدو بعد ما يطردك AFK ولا يتبدّل السيرفر** | ساعات | PS99، ACS | ✅ |
 | 13 | **Codes (أكواد بهدايا مجانية)** | بزاف | Clicker Sim، عام | ✅ |
 | 14 | **مهام طويلة دائمة مع NPC** (ماشي غير يومية) | بزاف | Bee Swarm | 🆕 |
-| 15 | **Raids / Boss مع الصحاب (co-op)** | بزاف | AFS، ACS، Bee Swarm | 🆕 (عندنا guardians برك) |
+| 15 | **Raids / Boss مع الصحاب (co-op)** | بزاف | AFS، ACS، Bee Swarm | ✅ World Boss كل ساعة |
 | 16 | **Minigames** (obby، Flappy، tower defense، claw machine) | ساعات | PS99، BGSI، Pet Catchers | 🆕 |
 | 17 | **دمج المخلوقات المكررة لدرجة أعلى** | بزاف | Tap Sim، PS99، BGSI | ✅ (Fuse) |
 | 18 | إعدادات: screen shake، سرعة المشي، رفض التبادل | ساعات | AFS | ✅ جزئياً |
@@ -82,7 +82,7 @@
 | 9 | **Admin Abuse: event مباشر بحظ عالي والكل حاضر** | PS99، BGSI | 🆕 |
 | 10 | **Secret Bounty: بيضة يومية تتبدل فيها مخلوق خاص** | BGSI | 🆕 |
 | 11 | **Minigames بعملة خاصة** | PS99، BGSI | 🆕 |
-| 12 | **Boss مع الصحاب، اللعب الجماعي** | Bee Swarm، Pet Catchers | 🆕 |
+| 12 | **Boss مع الصحاب، اللعب الجماعي** | Bee Swarm، Pet Catchers | ✅ World Boss |
 | 13 | Fishing مع auto-fish | BGSI | 🆕 |
 | 14 | Enchants + reroll | PS99، BGSI | ✅ (Boost Cards + Stickers) |
 | 15 | Hoverboard | PS99 | ✅ Rides |
