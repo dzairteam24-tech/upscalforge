@@ -234,6 +234,8 @@ local zones: { Zone } = {
 local CHANCES = { 0.6, 0.3, 0.09, 0.01 }
 
 -- Species rows: id, power, color, top, face, big skill, titan skill.
+-- Power follows the zone's coin scale (like the coin sources), so every zone feels the same to play and the
+-- numbers grow big: 1, 2, 4, 8 x the zone scale (1, 10, 50, 250, 1.5K, 10K).
 -- Order inside each zone matches CHANCES (60% / 30% / 9% / 1%). Legendaries hatch only from the Legendary Egg.
 local rows: { { any } } = {
 	-- 1. Spawn Meadow
@@ -256,7 +258,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Bunny", 3, rgb(240, 240, 245), "bunny", "round",
+		"Bunny", 4, rgb(240, 240, 245), "bunny", "round",
 		{ text = "Team speed +50%", passive = passive("Speed", 1.5) },
 		{
 			text = "All coins x2. Every minute: coin rain.",
@@ -265,7 +267,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Bear", 5, rgb(168, 117, 79), "round", "round",
+		"Bear", 8, rgb(168, 117, 79), "round", "round",
 		{ text = "Chests +50%", passive = passive("Chest", 1.5) },
 		{
 			text = "Power of all creatures x2. Earthquake: every 20s the team stomps.",
@@ -275,7 +277,7 @@ local rows: { { any } } = {
 	},
 	-- 2. Flower Field
 	{
-		"Bee", 3, rgb(245, 210, 70), "antenna", "round",
+		"Bee", 10, rgb(245, 210, 70), "antenna", "round",
 		{ text = "Magnet (small)", passive = passive("Magnet", 1.25) },
 		{
 			text = "10% of sources turn gold (x10). Midas: every 2 min, coins x10 for 20s.",
@@ -284,7 +286,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Ladybug", 5, rgb(229, 83, 75), "antenna", "round",
+		"Ladybug", 20, rgb(229, 83, 75), "antenna", "round",
 		{ text = "Coin piles +50%", passive = passive("Pile", 1.5) },
 		{
 			text = "Golden chance x5. Every 2 min: a giant chest worth 50 chests.",
@@ -293,7 +295,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Butterfly", 8, rgb(185, 166, 245), "antenna", "sparkle",
+		"Butterfly", 40, rgb(185, 166, 245), "antenna", "sparkle",
 		{ text = "3% gem chance from every source", passive = passive("Gem", 0.03) },
 		{
 			text = "10% gem chance from every source. Every 2 min: gem rain.",
@@ -302,7 +304,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Uni", 12, rgb(247, 198, 224), "unihorn", "sparkle",
+		"Uni", 80, rgb(247, 198, 224), "unihorn", "sparkle",
 		{ text = "Hits twice", passive = passive("DoubleHit", 2) },
 		{
 			text = "Every egg gives 2 creatures. Every 5 min: 5 free eggs with luck x10.",
@@ -312,7 +314,7 @@ local rows: { { any } } = {
 	},
 	-- 3. Forest
 	{
-		"Fox", 3, rgb(235, 120, 60), "cat", "happy",
+		"Fox", 10, rgb(235, 120, 60), "cat", "happy",
 		{ text = "Team speed +50%", passive = passive("Speed", 1.5) },
 		{
 			text = "Big appears x5 more often. Every minute: coins x3 for 15s.",
@@ -321,7 +323,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Owl", 5, rgb(150, 120, 95), "cat", "round",
+		"Owl", 20, rgb(150, 120, 95), "cat", "round",
 		{ text = "Chests +75%", passive = passive("Chest", 1.75) },
 		{
 			text = "Offline earnings x5. Time Warp: every minute, coins x5 for 10s.",
@@ -330,7 +332,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Deer", 8, rgb(200, 150, 100), "horns", "round",
+		"Deer", 40, rgb(200, 150, 100), "horns", "round",
 		{ text = "Magnet (medium)", passive = passive("Magnet", 1.5) },
 		{
 			text = "Fuse with 2 instead of 5. Every 2 min: coins x3 for 30s.",
@@ -339,7 +341,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Sprout", 12, rgb(123, 211, 137), "leaf", "sleepy",
+		"Sprout", 80, rgb(123, 211, 137), "leaf", "sleepy",
 		{ text = "Stomp every 15s", periodic = { { kind = "Area", every = 15, radius = 25, damageMult = 5 } :: Periodic } },
 		{
 			text = "Sources respawn instantly. Tornado: every 45s collects every coin pile.",
@@ -349,7 +351,7 @@ local rows: { { any } } = {
 	},
 	-- 4. Beach
 	{
-		"Crab", 8, rgb(229, 90, 70), "round", "angry",
+		"Crab", 50, rgb(229, 90, 70), "round", "angry",
 		{ text = "Safes +50%", passive = passive("Chest", 1.5) },
 		{
 			text = "All coins x2. Smash: breaks the biggest source every 20s.",
@@ -358,7 +360,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Turtle", 12, rgb(110, 180, 110), "none", "sleepy",
+		"Turtle", 100, rgb(110, 180, 110), "none", "sleepy",
 		{ text = "Combo lasts +3s", passive = passive("ComboHold", 3) },
 		{
 			text = "Combo never drops. Every minute: combo +20.",
@@ -367,7 +369,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Dolphin", 20, rgb(120, 160, 200), "none", "happy",
+		"Dolphin", 200, rgb(120, 160, 200), "none", "happy",
 		{ text = "Hits twice", passive = passive("DoubleHit", 2) },
 		{
 			text = "All coins x3. Tsunami: every minute breaks every source in the zone.",
@@ -376,7 +378,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Octopus", 30, rgb(160, 90, 200), "none", "round",
+		"Octopus", 400, rgb(160, 90, 200), "none", "round",
 		{ text = "Stomp every 10s", periodic = { { kind = "Area", every = 10, radius = 30, damageMult = 5 } :: Periodic } },
 		{
 			text = "Power of all creatures x2. Clone Army: every minute, 8 clones of your strongest for 20s.",
@@ -386,7 +388,7 @@ local rows: { { any } } = {
 	},
 	-- 5. Mushroom Cave
 	{
-		"Mushroom", 8, rgb(215, 70, 70), "cap", "round",
+		"Mushroom", 50, rgb(215, 70, 70), "cap", "round",
 		{ text = "5% gem chance from every source", passive = passive("Gem", 0.05) },
 		{
 			text = "Neon chance x5. Every 30s breaks 5 sources.",
@@ -395,7 +397,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Bat", 12, rgb(70, 60, 90), "cat", "angry",
+		"Bat", 100, rgb(70, 60, 90), "cat", "angry",
 		{ text = "Magnet (large)", passive = passive("Magnet", 2) },
 		{
 			text = "Team speed x3. Every 40s collects every source in the zone.",
@@ -404,7 +406,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Glowworm", 20, rgb(180, 240, 90), "antenna", "sleepy",
+		"Glowworm", 200, rgb(180, 240, 90), "antenna", "sleepy",
 		{ text = "Team +50% in Dark zones", passive = passive("DarkPower", 1.5) },
 		{
 			text = "Element bonus x4 instead of x2. Every minute: element bonus x10 for 15s.",
@@ -413,7 +415,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Shade", 30, rgb(90, 60, 130), "horns", "angry",
+		"Shade", 400, rgb(90, 60, 130), "horns", "angry",
 		{ text = "Combo lasts +5s", passive = passive("ComboHold", 5) },
 		{
 			text = "Power of all creatures x2.5. Shadow Clones: every minute, power x2 for 15s.",
@@ -423,7 +425,7 @@ local rows: { { any } } = {
 	},
 	-- 6. Desert
 	{
-		"Camel", 20, rgb(214, 170, 110), "round", "sleepy",
+		"Camel", 250, rgb(214, 170, 110), "round", "sleepy",
 		{ text = "Team speed x2", passive = passive("Speed", 2) },
 		{
 			text = "50% chance a hatch is free. Every 3 min: 10 free eggs.",
@@ -432,7 +434,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Scorpion", 30, rgb(140, 90, 50), "horns", "angry",
+		"Scorpion", 500, rgb(140, 90, 50), "horns", "angry",
 		{ text = "Safes +100%", passive = passive("Chest", 2) },
 		{
 			text = "All coins x3. Venom: every source in the zone loses 5% each second.",
@@ -441,7 +443,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Cactus", 50, rgb(90, 170, 90), "leaf", "closed",
+		"Cactus", 1000, rgb(90, 170, 90), "leaf", "closed",
 		{ text = "10% chance a hatch is free", passive = passive("FreeHatch", 0.1) },
 		{
 			text = "Hatch luck x5. Every 2 min: luck x20 for 30s.",
@@ -450,7 +452,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Sphinx", 75, rgb(230, 190, 90), "crown", "shades",
+		"Sphinx", 2000, rgb(230, 190, 90), "crown", "shades",
 		{ text = "Stomp every 8s", periodic = { { kind = "Area", every = 8, radius = 30, damageMult = 5 } :: Periodic } },
 		{
 			text = "All coins x4. Every 2 min: a golden vault worth 100 chests.",
@@ -460,7 +462,7 @@ local rows: { { any } } = {
 	},
 	-- 7. Snow Peak
 	{
-		"Penguin", 20, rgb(50, 55, 70), "none", "round",
+		"Penguin", 250, rgb(50, 55, 70), "none", "round",
 		{ text = "Chests +100%", passive = passive("Chest", 2) },
 		{
 			text = "Lava chance x5. Freeze: every minute, sources respawn instantly for 20s.",
@@ -469,7 +471,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Seal", 30, rgb(160, 170, 185), "none", "happy",
+		"Seal", 500, rgb(160, 170, 185), "none", "happy",
 		{ text = "Hits twice", passive = passive("DoubleHit", 2) },
 		{
 			text = "Zones restore x3 faster. Avalanche: every 45s breaks half the zone.",
@@ -478,7 +480,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Snowman", 50, rgb(245, 248, 255), "hat", "round",
+		"Snowman", 1000, rgb(245, 248, 255), "hat", "round",
 		{ text = "15% chance a hatch is free", passive = passive("FreeHatch", 0.15) },
 		{
 			text = "25% of sources turn gold (x10). Blizzard: every minute, power x5 for 20s.",
@@ -487,7 +489,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Yeti", 75, rgb(235, 240, 250), "horns", "angry",
+		"Yeti", 2000, rgb(235, 240, 250), "horns", "angry",
 		{ text = "Stomp every 8s", periodic = { { kind = "Area", every = 8, radius = 30, damageMult = 5 } :: Periodic } },
 		{
 			text = "Power of all creatures x3. Mega Stomp: every 15s breaks every source around.",
@@ -497,7 +499,7 @@ local rows: { { any } } = {
 	},
 	-- 8. Volcano
 	{
-		"Imp", 50, rgb(229, 83, 75), "horns", "angry",
+		"Imp", 1500, rgb(229, 83, 75), "horns", "angry",
 		{ text = "8% gem chance from every source", passive = passive("Gem", 0.08) },
 		{
 			text = "Coin rain every 30s. Inferno: every minute burns every source.",
@@ -505,7 +507,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Salamander", 75, rgb(245, 120, 50), "none", "happy",
+		"Salamander", 3000, rgb(245, 120, 50), "none", "happy",
 		{ text = "Combo lasts +8s", passive = passive("ComboHold", 8) },
 		{
 			text = "Jackpot chance x10. Every minute: every source is a jackpot for 10s.",
@@ -514,7 +516,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Golem", 125, rgb(110, 105, 100), "none", "square",
+		"Golem", 6000, rgb(110, 105, 100), "none", "square",
 		{ text = "Safes +200%", passive = passive("Chest", 3) },
 		{
 			text = "The whole team stomps. Rock Fall: every 30s breaks 10 sources.",
@@ -525,7 +527,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Phoenix", 190, rgb(255, 140, 40), "flame", "sparkle",
+		"Phoenix", 12000, rgb(255, 140, 40), "flame", "sparkle",
 		{ text = "Stomp every 5s", periodic = { { kind = "Area", every = 5, radius = 30, damageMult = 5 } :: Periodic } },
 		{
 			text = "Every creature gets your strongest creature's power. Every 2 min: coins x10 for 20s.",
@@ -535,7 +537,7 @@ local rows: { { any } } = {
 	},
 	-- 9. Frozen Lake
 	{
-		"Ice Fox", 50, rgb(190, 225, 245), "cat", "happy",
+		"Ice Fox", 1500, rgb(190, 225, 245), "cat", "happy",
 		{ text = "Team speed x3", passive = passive("Speed", 3) },
 		{
 			text = "Offline earnings x10. Every minute: a golden chest.",
@@ -544,7 +546,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Narwhal", 75, rgb(130, 170, 220), "unihorn", "round",
+		"Narwhal", 3000, rgb(130, 170, 220), "unihorn", "round",
 		{ text = "Magnet (whole zone)", passive = passive("Magnet", 3) },
 		{
 			text = "Every egg gives 3 creatures. Tsunami every 30s.",
@@ -553,7 +555,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Frost Owl", 125, rgb(220, 235, 250), "cat", "sparkle",
+		"Frost Owl", 6000, rgb(220, 235, 250), "cat", "sparkle",
 		{ text = "20% chance a hatch is free", passive = passive("FreeHatch", 0.2) },
 		{
 			text = "Hatch luck x10. Every 5 min: a free egg with Crystal or better.",
@@ -562,7 +564,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Ice Dragon", 190, rgb(120, 210, 235), "horns", "angry",
+		"Ice Dragon", 12000, rgb(120, 210, 235), "horns", "angry",
 		{ text = "Stomp every 5s", periodic = { { kind = "Area", every = 5, radius = 30, damageMult = 5 } :: Periodic } },
 		{
 			text = "All coins x5. Dragon Breath: every 20s burns 8 sources.",
@@ -572,7 +574,7 @@ local rows: { { any } } = {
 	},
 	-- 10. Pixel Zone
 	{
-		"Bot", 125, rgb(154, 165, 177), "antenna", "square",
+		"Bot", 10000, rgb(154, 165, 177), "antenna", "square",
 		{ text = "+100% coins in the Pixel Rift", passive = passive("RiftCoins", 2) },
 		{
 			text = "Pixel chance x5. Overclock: every minute, power x5 for 15s.",
@@ -581,7 +583,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Byte", 190, rgb(142, 91, 217), "none", "square",
+		"Byte", 20000, rgb(142, 91, 217), "none", "square",
 		{ text = "Hits 3 times", passive = passive("DoubleHit", 3) },
 		{
 			text = "All coins x6. Pixel Burst: every 2 min, coins x20 for 15s.",
@@ -590,7 +592,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Cursor", 300, rgb(240, 240, 240), "none", "square",
+		"Cursor", 40000, rgb(240, 240, 240), "none", "square",
 		{ text = "Combo lasts +10s", passive = passive("ComboHold", 10) },
 		{
 			text = "Power of all creatures x4. Click Storm: every 30s breaks 10 sources.",
@@ -599,7 +601,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"King", 500, rgb(108, 99, 217), "crown", "shades",
+		"King", 80000, rgb(108, 99, 217), "crown", "shades",
 		{ text = "Stomp every 3s", periodic = { { kind = "Area", every = 3, radius = 30, damageMult = 5 } :: Periodic } },
 		{
 			text = "Power of all creatures x5. Royal Decree: every 3 min, coins x20 for 30s and a free egg with luck x50.",
@@ -611,9 +613,9 @@ local rows: { { any } } = {
 		},
 	},
 	-- Legendaries: one per zone in look, but they only hatch from the Legendary Egg in the last zone, so they
-	-- are all stronger than that zone's King (500): from 2x (Slime King) to 16x (Glitch)
+	-- are all stronger than that zone's King (80K): from 2x (Slime King) to 16x (Glitch)
 	{
-		"Slime King", 1000, rgb(107, 227, 107), "crown", "happy",
+		"Slime King", 160000, rgb(107, 227, 107), "crown", "happy",
 		{ text = "Coins +60%", passive = passive("Coins", 1.6) },
 		{
 			text = "Power of all creatures x3. Split: every minute, 5 mini slimes break 5 sources.",
@@ -622,7 +624,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Blossom Queen", 1200, rgb(255, 176, 214), "crown", "sparkle",
+		"Blossom Queen", 192000, rgb(255, 176, 214), "crown", "sparkle",
 		{ text = "Hatch luck x2", passive = passive("Luck", 2) },
 		{
 			text = "Hatch luck x6. Pollen Storm: every 2 min, 3 free eggs with luck x10.",
@@ -631,7 +633,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Elder Treant", 1400, rgb(120, 84, 56), "leaf", "round",
+		"Elder Treant", 224000, rgb(120, 84, 56), "leaf", "round",
 		{ text = "Zones restore +50% faster", passive = passive("Restore", 1.5) },
 		{
 			text = "Power of all creatures x3. Roots: every 30s the ground shakes and breaks everything nearby.",
@@ -640,7 +642,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Kraken", 1700, rgb(40, 90, 140), "crown", "angry",
+		"Kraken", 272000, rgb(40, 90, 140), "crown", "angry",
 		{ text = "Chests +100%", passive = passive("Chest", 2) },
 		{
 			text = "Power of all creatures x3.5. Tidal Wave: every 45s a wave breaks every source in the zone.",
@@ -649,7 +651,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Spore Sage", 2000, rgb(150, 90, 220), "cap", "sleepy",
+		"Spore Sage", 320000, rgb(150, 90, 220), "cap", "sleepy",
 		{ text = "Gems +50%", passive = passive("Gem", 1.5) },
 		{
 			text = "Gems x3. Spore Rain: every 90s, 25 gems fall around you.",
@@ -658,7 +660,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Pharaoh Scarab", 2400, rgb(245, 196, 66), "horns", "sparkle",
+		"Pharaoh Scarab", 384000, rgb(245, 196, 66), "horns", "sparkle",
 		{ text = "Jackpot chance x3", passive = passive("Jackpot", 3) },
 		{
 			text = "All coins x3. Sun Blessing: every 2 min, coins x15 for 30s.",
@@ -667,7 +669,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Aurora Wolf", 3000, rgb(220, 240, 255), "cat", "sparkle",
+		"Aurora Wolf", 480000, rgb(220, 240, 255), "cat", "sparkle",
 		{ text = "Team speed x3", passive = passive("Speed", 3) },
 		{
 			text = "Power of all creatures x4. Pack Howl: every minute, 10 ghost wolves join for 20s.",
@@ -676,7 +678,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Inferno Drake", 3800, rgb(40, 30, 34), "horns", "angry",
+		"Inferno Drake", 608000, rgb(40, 30, 34), "horns", "angry",
 		{ text = "Stomp every 4s", periodic = { { kind = "Area", every = 4, radius = 35, damageMult = 6 } :: Periodic } },
 		{
 			text = "Power of all creatures x5. Meteor: every 20s the biggest source is smashed.",
@@ -685,7 +687,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Frost Leviathan", 5000, rgb(120, 200, 240), "unihorn", "sparkle",
+		"Frost Leviathan", 800000, rgb(120, 200, 240), "unihorn", "sparkle",
 		{ text = "Offline earnings x5", passive = passive("Offline", 5) },
 		{
 			text = "Every creature gets your strongest creature's power. Blizzard: every minute, 20 golden chests.",
@@ -694,7 +696,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Glitch", 8000, rgb(24, 24, 32), "halo", "square",
+		"Glitch", 1280000, rgb(24, 24, 32), "halo", "square",
 		{ text = "Power of all creatures x2", passive = passive("TeamPower", 2) },
 		{
 			text = "Power of all creatures x6. Overclock: every 3 min, coins x25 for 30s and a free egg with luck x100.",

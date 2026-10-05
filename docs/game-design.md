@@ -455,16 +455,16 @@
 
 | الأسطوري | المنطقة (الشكل) | الحظ | القوة | قدرة Titan |
 |---|---|---|---|---|
-| Slime King | Spawn Meadow | 1 in 200K | 1,000 | Power x3، كل دقيقة 5 slimes يكسرو مصادر |
-| Blossom Queen | Flower Field | 1 in 300K | 1,200 | Luck x6، كل 2 دقايق 3 بيضات بحظ x10 |
-| Elder Treant | Forest | 1 in 400K | 1,400 | Power x3، كل 30 ثانية الأرض تهتز |
-| Kraken | Beach | 1 in 600K | 1,700 | Power x3.5، موجة تكسر المنطقة كل 45 ثانية |
-| Spore Sage | Mushroom Cave | 1 in 800K | 2,000 | Gems x3، مطر جواهر |
-| Pharaoh Scarab | Desert | 1 in 1M | 2,400 | Coins x3، كل 2 دقايق Coins x15 |
-| Aurora Wolf | Snow Peak | 1 in 1.5M | 3,000 | Power x4، 10 ذئاب أشباح |
-| Inferno Drake | Volcano | 1 in 2.5M | 3,800 | Power x5، نيزك كل 20 ثانية |
-| Frost Leviathan | Frozen Lake | 1 in 4M | 5,000 | يعطي الكل قوة أقوى مخلوق، 20 صندوق ذهبي كل دقيقة |
-| Glitch | Pixel Zone | 1 in 10M | 8,000 | Power x6، Coins x25 و بيضة بحظ x100 |
+| Slime King | Spawn Meadow | 1 in 200K | 160K | Power x3، كل دقيقة 5 slimes يكسرو مصادر |
+| Blossom Queen | Flower Field | 1 in 300K | 192K | Luck x6، كل 2 دقايق 3 بيضات بحظ x10 |
+| Elder Treant | Forest | 1 in 400K | 224K | Power x3، كل 30 ثانية الأرض تهتز |
+| Kraken | Beach | 1 in 600K | 272K | Power x3.5، موجة تكسر المنطقة كل 45 ثانية |
+| Spore Sage | Mushroom Cave | 1 in 800K | 320K | Gems x3، مطر جواهر |
+| Pharaoh Scarab | Desert | 1 in 1M | 384K | Coins x3، كل 2 دقايق Coins x15 |
+| Aurora Wolf | Snow Peak | 1 in 1.5M | 480K | Power x4، 10 ذئاب أشباح |
+| Inferno Drake | Volcano | 1 in 2.5M | 608K | Power x5، نيزك كل 20 ثانية |
+| Frost Leviathan | Frozen Lake | 1 in 4M | 800K | يعطي الكل قوة أقوى مخلوق، 20 صندوق ذهبي كل دقيقة |
+| Glitch | Pixel Zone | 1 in 10M | 1.28M | Power x6، Coins x25 و بيضة بحظ x100 |
 
 - **الـ Luck ما يبدّلش حظ الأسطوريين** (لا الفيديو، لا الإكسيرات، لا الكروت). يبدّل غير الـ variant و الحجم، يعني Golden Glitch ممكن
 - كي يخرج أسطوري: رسالة للسيرفر كامل و احتفال كبير
@@ -474,7 +474,18 @@
 
 **قوة مخلوق = قوة النوع × الـ variant × الحجم × العنصر**
 
-- **قوة النوع:** تكبر مع المناطق، من Cubby (1) حتى King (500). الأسطوريين من 1,000 (Slime King) حتى 8,000 (Glitch)، يعني ديما أقوى من أحسن مخلوق في المنطقة الأخيرة
+- **قوة النوع:** تكبر مع المناطق بنفس سلّم العملات (1، 10، 50، 250، 1.5K، 10K). في كل منطقة: 1 · 2 · 4 · 8 × السلّم. يعني من Cubby (1) حتى King (80K). الأسطوريين من 160K (Slime King) حتى 1.28M (Glitch)، ديما أقوى من أحسن مخلوق في المنطقة الأخيرة
+
+| المنطقة | القوة (60% · 30% · 9% · 1%) |
+|---|---|
+| 1 | 1 · 2 · 4 · 8 |
+| 2–3 | 10 · 20 · 40 · 80 |
+| 4–5 | 50 · 100 · 200 · 400 |
+| 6–7 | 250 · 500 · 1K · 2K |
+| 8–9 | 1.5K · 3K · 6K · 12K |
+| 10 | 10K · 20K · 40K · 80K |
+
+- **علاش:** العملات تكبر ×10,000 من المنطقة 1 للـ 10، القوة لازم تكبر معاها، باش كل منطقة تتلعب بنفس الإيقاع والأرقام تولي كبار كيما PS99
 - **الـ variant:** Normal x1 · Golden x1.5 · Crystal x2.5 · Lava x4 · Neon x6 · Pixel x10
 - **الحجم:** Normal x1 · Big x3 · Titan x10
 - **العنصر (حسب الـ variant):** Crystal x2 في مناطق Fire · Lava x2 في مناطق Ice · Neon x2 في مناطق Dark · Pixel x2 في Pixel Zone. هكذا كل variant عندو منطقة يلمع فيها
@@ -482,7 +493,8 @@
 - **من برا المخلوقات:** upgrades بالعملات، الإكسيرات، Boost Cards، الـ Reload (x1.5 كل مرة)، والـ Stickers
 
 **أمثلة:**
-- Normal King في Pixel Zone: 500 = **500**
-- Golden Big Phoenix في Volcano: 190 × 1.5 × 3 = **855**
-- Crystal Ice Dragon في Volcano (Fire): 190 × 2.5 × 2 = **950**
-- Pixel Titan Glitch في Pixel Zone: 8,000 × 10 × 10 × 2 = **1,600,000** (قريب من المستحيل)
+- Normal King في Pixel Zone: **80K**
+- Golden Big Phoenix في Volcano: 12K × 1.5 × 3 = **54K**
+- Crystal Ice Dragon في Volcano (Fire): 12K × 2.5 × 2 = **60K**
+- Pixel Titan Glitch في Pixel Zone: 1.28M × 10 × 10 × 2 = **256M** (قريب من المستحيل)
+- فريق كامل + قدرات Titan + Reload: الأرقام توصل **B**. العوالم الجاية (2–15) تكمّل السلّم وتوصل **T و Qa**

@@ -133,7 +133,7 @@ test("Power = species x variant x size", function()
 end)
 
 test("Big Uni hits twice", function()
-	eq(PetMath.basePower({ s = "Uni", v = "Normal", z = "Big" }), 12 * 3 * 2)
+	eq(PetMath.basePower({ s = "Uni", v = "Normal", z = "Big" }), World1.species.Uni.power * 3 * 2)
 end)
 
 test("Element bonus: Lava is x2 in Ice zones only", function()
@@ -149,8 +149,8 @@ test("Titan Glowworm raises the element bonus to x4", function()
 		g = { s = "Glowworm", v = "Normal", z = "Titan" },
 	}
 	local effects = Effects.collect(pets, { "a", "g" })
-	-- Cubby Lava 4 x4 = 16, Titan Glowworm 200 (no element bonus) = 216
-	eq((PetMath.teamPower(pets, { "a", "g" }, "Ice", effects)), 216)
+	-- Cubby Lava 4 x4 = 16, Titan Glowworm (no element bonus)
+	eq((PetMath.teamPower(pets, { "a", "g" }, "Ice", effects)), 16 + World1.species.Glowworm.power * 10)
 end)
 
 test("Same skill doesn't stack: two Titan Bears give x2, not x4", function()
@@ -160,7 +160,8 @@ test("Same skill doesn't stack: two Titan Bears give x2, not x4", function()
 	}
 	local effects = Effects.collect(pets, { "a", "b" })
 	eq(Effects.get(effects, "TeamPower"), 2)
-	eq((PetMath.teamPower(pets, { "a", "b" }, "Neutral", effects)), (50 + 50) * 2)
+	local titanBear = World1.species.Bear.power * 10
+	eq((PetMath.teamPower(pets, { "a", "b" }, "Neutral", effects)), (titanBear + titanBear) * 2)
 end)
 
 test("Different skills multiply: Titan Bear x2 and Titan King x5 -> x5 (max of same type)", function()
@@ -174,11 +175,11 @@ end)
 
 test("Titan Phoenix gives every creature the strongest power", function()
 	local pets = {
-		p = { s = "Phoenix", v = "Normal", z = "Titan" }, -- 1900
-		c = { s = "Cubby", v = "Normal", z = "Normal" }, -- 1
+		p = { s = "Phoenix", v = "Normal", z = "Titan" },
+		c = { s = "Cubby", v = "Normal", z = "Normal" },
 	}
 	local effects = Effects.collect(pets, { "p", "c" })
-	eq((PetMath.teamPower(pets, { "p", "c" }, "Neutral", effects)), 3800)
+	eq((PetMath.teamPower(pets, { "p", "c" }, "Neutral", effects)), World1.species.Phoenix.power * 10 * 2)
 end)
 
 test("Effects collects periodic skills with unique keys", function()
@@ -1557,6 +1558,16 @@ test("Cube Stack: overlap rule, cheat checks, capped rewards", function()
 	eq(big.gems, MinigameConfig.MAX_GEMS)
 	eq(big.tickets, MinigameConfig.MAX_TICKETS)
 	eq(Minigame.reward(4).tickets, 0)
+end)
+
+test("Power follows the zone's coin scale (same time to break a source in every zone)", function()
+	for _, zone in World1.zones do
+		if #zone.species == 4 then
+			local common = World1.species[zone.species[1]].power
+			eq(common, zone.scale, zone.name .. ": common power = zone scale")
+			eq(World1.species[zone.species[4]].power, zone.scale * 8, zone.name .. ": the 1% one is 8x")
+		end
+	end
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))
