@@ -18,6 +18,7 @@ local Net = require(Shared.Net)
 local Store = require(script.Parent.Parent.Store)
 local Notify = require(script.Parent.Parent.UI.Notify)
 local Windows = require(script.Parent.Parent.UI.Windows)
+local BoothPanel = require(script.Parent.Parent.UI.BoothPanel)
 
 local WorldClient = {}
 
@@ -318,6 +319,11 @@ function WorldClient.init()
 	CollectionService:GetInstanceAddedSignal("Breakable"):Connect(bindBreakable)
 
 	ProximityPromptService.PromptTriggered:Connect(function(prompt)
+		local boothId = prompt:GetAttribute("BoothId")
+		if type(boothId) == "number" then
+			BoothPanel.use(boothId)
+			return
+		end
 		local ui = prompt:GetAttribute("OpenUI")
 		if type(ui) == "string" then
 			Windows.open(ui)

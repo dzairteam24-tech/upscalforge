@@ -78,7 +78,41 @@ BreakableService.despawn(big)
 BreakableService.despawn(guardian)
 assert(#BreakableService.specials() == 0, "despawned")
 
-print(("zones=%d gates=%d eggs=%d sources=%d"):format(zones, gates, eggs, sources))
+-- Every bridge end must be open: no invisible border wall where a bridge meets a platform
+local MapLayout = Loader.require(Shared.Logic.MapLayout)
+local World1 = Loader.require(Shared.Config.World1)
+local function blocked(point)
+	for _, descendant in world:GetDescendants() do
+		if descendant:IsA("BasePart") and descendant.Name == "Border" then
+			local p = descendant.CFrame.Position
+			local half = descendant.Size / 2
+			if math.abs(point.X - p.X) <= half.X and math.abs(point.Y - p.Y) <= half.Y and math.abs(point.Z - p.Z) <= half.Z then
+				return true
+			end
+		end
+	end
+	return false
+end
+for _, zone in World1.zones do
+	local center = MapLayout.center(zone.id)
+	for _, other in zone.links do
+		local direction = (MapLayout.center(other) - center).Unit
+		local edge = center + direction * (MapLayout.PLATFORM / 2 + 0.5) + Vector3.new(0, 3, 0)
+		assert(not blocked(edge), ("zone %d is walled off toward zone %d"):format(zone.id, other))
+	end
+end
+local hubEdge = MapLayout.center(0) + WorldBuilder.PLAZA_SIDE * (MapLayout.PLATFORM / 2 + 0.5) + Vector3.new(0, 3, 0)
+assert(not blocked(hubEdge), "the hub is walled off toward the plaza")
+
+local booths = 0
+for _, descendant in world:GetDescendants() do
+	if descendant:IsA("BasePart") and descendant:GetAttribute("BoothId") then
+		booths += 1
+	end
+end
+assert(booths == WorldBuilder.PLAZA_BOOTHS, "plaza booths")
+
+print(("zones=%d gates=%d eggs=%d sources=%d booths=%d"):format(zones, gates, eggs, sources, booths))
 local ok = zones == 11 and gates == 12 and eggs == 10 and sources == 10 * 24
 if not ok then
 	print("FAIL: unexpected world shape")

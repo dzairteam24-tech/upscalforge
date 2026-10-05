@@ -24,6 +24,7 @@ local LeaderboardService = require(Services.LeaderboardService)
 local ArcadeService = require(Services.ArcadeService)
 local RewardService = require(Services.RewardService)
 local MembershipService = require(Services.MembershipService)
+local PlazaService = require(Services.PlazaService)
 local DataService = require(Services.DataService)
 
 Net.init()
@@ -46,6 +47,7 @@ TutorialService.init()
 LeaderboardService.init()
 ArcadeService.init()
 MembershipService.init()
+PlazaService.init()
 
 DataService.init()
 

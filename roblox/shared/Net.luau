@@ -42,6 +42,11 @@ local EVENTS = {
 	"SpinWheel",
 	"BuyProduct",
 	"BuyGemItem",
+	"BoothClaim",
+	"BoothRelease",
+	"BoothList",
+	"BoothUnlist",
+	"BoothBuy",
 	"Teleport",
 	-- server -> client
 	"Data",
