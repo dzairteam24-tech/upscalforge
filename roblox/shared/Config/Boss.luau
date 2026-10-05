@@ -18,5 +18,6 @@ return {
 	TICKETS = 3,
 	GOLDEN_KEY_CHANCE = 0.25,
 	CARD_CHANCE = 0.1,
+	RIFT_KEY_HALF_CHANCE = 0.2,
 	VARIANTS = { "Crystal", "Lava", "Neon" }, -- how the boss looks (just for show)
 }

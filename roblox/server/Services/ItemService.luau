@@ -72,6 +72,21 @@ local KEY_ACTIONS: { [string]: (Player, PlayerData, State.Runtime, number) -> nu
 		GameService.notify(player, if count > 1 then count .. " golden chests opened!" else "Golden chest opened!", "success")
 		return count
 	end,
+	Key_Rift = function(player, _data, runtime, _count)
+		local zone = if runtime.zoneId then World1.zonesById[runtime.zoneId] else nil
+		if not zone or zone.eggPrice <= 0 then
+			GameService.notify(player, "Use the Rift Key inside a zone", "error")
+			return 0
+		end
+		if GameService.isRift(zone.id) then
+			GameService.notify(player, "A Pixel Rift is already open here", "error")
+			return 0
+		end
+		GameService.keyRifts[zone.id] = os.clock() + 180
+		ReplicatedStorage:SetAttribute("KeyRift" .. zone.id, workspace:GetServerTimeNow() + 180)
+		GameService.notifyZone(zone.id, ("🟪 %s opened a Pixel Rift here for 3 minutes!"):format(player.DisplayName), "rare")
+		return 1
+	end,
 	Key_Titan = function(player, data, runtime, _count)
 		local zone = if runtime.zoneId then World1.zonesById[runtime.zoneId] else nil
 		if not zone or zone.restoreGoal <= 0 then

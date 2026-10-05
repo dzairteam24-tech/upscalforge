@@ -419,7 +419,7 @@ function BagPanel.mount(gui: ScreenGui)
 			label.Parent = header
 		else
 			local label = Theme.label({
-				Text = "🗝️ Zone Key: treasure vault · Golden Key: 3 Golden+ eggs · Titan Key: call a guardian now",
+				Text = "🗝️ Zone Key: treasure vault · Golden Key: 3 Golden+ eggs · Rift Key: Pixel Rift here · Titan Key: guardian now",
 				Font = Enum.Font.Gotham,
 				TextColor3 = Theme.muted,
 				Size = UDim2.new(1, 0, 0, 40),

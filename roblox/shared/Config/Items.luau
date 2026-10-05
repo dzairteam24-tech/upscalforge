@@ -215,6 +215,12 @@ local KEYS = {
 		text = "Opens the treasure vault of the zone you're in: 5 vaults of coins and 2 elixirs",
 	},
 	{
+		id = "Rift",
+		label = "Rift Key",
+		color = Color3.fromRGB(185, 140, 255),
+		text = "Opens a Pixel Rift in the zone you're in for 3 minutes, for everyone there",
+	},
+	{
 		id = "Golden",
 		label = "Golden Key",
 		color = Color3.fromRGB(255, 205, 60),

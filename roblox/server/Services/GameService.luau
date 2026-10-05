@@ -55,6 +55,20 @@ end
 
 -- Today's Pixel Rift zone (set by ProgressionService).
 GameService.riftZone = 0
+-- Rift Keys open a short extra rift: zone id -> os.clock() when it closes
+GameService.keyRifts = {} :: { [number]: number }
+
+-- True for the daily Pixel Rift zone and for zones with an open Rift Key rift.
+function GameService.isRift(zoneId: number?): boolean
+	if not zoneId then
+		return false
+	end
+	if zoneId == GameService.riftZone then
+		return true
+	end
+	local ends = GameService.keyRifts[zoneId]
+	return ends ~= nil and os.clock() < ends
+end
 
 -- The running limited-time event, or nil. In Studio, Config/Events.TEST_EVENT forces one.
 function GameService.event(): EventConfig.Event?
@@ -77,7 +91,7 @@ function GameService.totem(zoneId: number?, stat: string): number
 end
 
 local function riftCoinMult(runtime: State.Runtime, zoneId: number?): number
-	if zoneId and zoneId == GameService.riftZone then
+	if GameService.isRift(zoneId) then
 		return Progression.RIFT_COINS * Effects.get(runtime.effects, "RiftCoins")
 	end
 	return 1
@@ -181,7 +195,7 @@ function GameService.variantChance(player: Player, eggZone: number?): { [string]
 			chances.Pixel *= Gear.get(runtime.gear, "Pixel")
 		end
 	end
-	if eggZone and eggZone == GameService.riftZone then
+	if GameService.isRift(eggZone) then
 		chances.Pixel = (chances.Pixel or 1) * Progression.RIFT_PIXEL_CHANCE
 	end
 	return chances
@@ -455,7 +469,7 @@ BreakableService.Broken:Connect(function(source: BreakableService.Source, contri
 			GameService.progress(player, "Combo", runtime.combo)
 		end
 		GameService.progress(player, "Break", 1)
-		if source.zoneId == GameService.riftZone then
+		if GameService.isRift(source.zoneId) then
 			GameService.progress(player, "Rift", 1)
 		end
 

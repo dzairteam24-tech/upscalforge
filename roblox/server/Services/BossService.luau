@@ -90,6 +90,10 @@ local function payOut(contributors: { [Player]: number }, defeated: boolean)
 				GameService.giveItem(player, "Key_Golden", 1, false)
 				table.insert(parts, Items.byId.Key_Golden.name)
 			end
+			if rng:NextNumber() < BossConfig.RIFT_KEY_HALF_CHANCE then
+				GameService.giveItem(player, "KeyHalf_Rift", 1, false)
+				table.insert(parts, Items.byId.KeyHalf_Rift.name)
+			end
 			if Unlocks.has(data, "Cartridges") and rng:NextNumber() < BossConfig.CARD_CHANCE then
 				local card = Loot.randomCartridge(1, 2, function()
 					return rng:NextNumber()

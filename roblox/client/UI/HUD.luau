@@ -395,7 +395,12 @@ function HUD.mount(gui: ScreenGui)
 		boostLabel.Text = table.concat(lines, "\n")
 		autoButton.BackgroundColor3 = if c.auto then Theme.green else Theme.card
 		local rift = if c.rift then World1.zonesById[c.rift] else nil
-		riftLabel.Text = if rift then "🟪 Pixel Rift today: " .. rift.name else ""
+		local keyRiftEnds = if c.zoneId then ReplicatedStorage:GetAttribute("KeyRift" .. c.zoneId) else nil
+		local keyLeft = if type(keyRiftEnds) == "number" then keyRiftEnds - workspace:GetServerTimeNow() else 0
+		riftLabel.Text = if keyLeft > 0
+			then ("🟪 Pixel Rift here! %d:%02d left"):format(keyLeft // 60, math.floor(keyLeft) % 60)
+			elseif rift then "🟪 Pixel Rift today: " .. rift.name
+			else ""
 		questsDot.Visible = QuestsPanel.hasClaimable()
 		dailyDot.Visible = DailyPanel.claimable() ~= nil
 		local data = Store.data

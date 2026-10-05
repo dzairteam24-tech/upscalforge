@@ -11,6 +11,6 @@ return {
 		{ gems = 200, tickets = 6, items = { { id = "Key_Golden", amount = 1 } } },
 	} :: { Progression.Reward },
 	-- Extra for finishing all three
-	ALL_DONE = { gems = 100 } :: Progression.Reward,
+	ALL_DONE = { gems = 100, items = { { id = "KeyHalf_Rift", amount = 1 } } } :: Progression.Reward,
 	TIER_NAMES = { "Easy", "Medium", "Hard" },
 }

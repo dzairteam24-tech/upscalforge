@@ -430,8 +430,8 @@ test("Items: elixirs, cartridges, keys, stickers (7 x 3) and gadgets", function(
 	end
 	eq(kinds.Elixir, 10 * 5, "elixirs")
 	eq(kinds.Cartridge, 10 * 5 + 5, "cartridges")
-	eq(kinds.Key, 3, "keys")
-	eq(kinds.KeyHalf, 3, "halves")
+	eq(kinds.Key, 4, "keys (Zone, Rift, Golden, Titan)")
+	eq(kinds.KeyHalf, 4, "halves")
 	eq(kinds.Sticker, 7 * 3, "stickers")
 	eq(kinds.Gadget, 5, "gadgets")
 	eq(Items.nextTier("Elixir_Coins_4"), "Elixir_Coins_5")
