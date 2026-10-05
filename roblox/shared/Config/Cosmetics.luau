@@ -23,6 +23,8 @@ local titles: { Title } = {
 	{ id = "A_Reloaded", text = "Reloaded", color = Color3.fromRGB(140, 120, 240) },
 	{ id = "A_Loyal", text = "Loyal", color = Color3.fromRGB(120, 230, 160) },
 	{ id = "A_Collector", text = "Master Collector", color = Color3.fromRGB(80, 220, 255) },
+	-- Clans
+	{ id = "C_TopClan", text = "Top Clan", color = Color3.fromRGB(255, 200, 90) },
 	-- Rank
 	{ id = "R_Explorer", text = "Explorer", color = Color3.fromRGB(150, 220, 255) },
 	{ id = "R_Veteran", text = "Veteran", color = Color3.fromRGB(255, 170, 90) },

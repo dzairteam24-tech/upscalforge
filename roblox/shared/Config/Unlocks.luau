@@ -10,6 +10,8 @@ local list: { Unlock } = {
 	{ feature = "Spin", zone = 3, label = "🎰 Lucky Spin", text = "A free spin every day" },
 	{ feature = "Stickers", zone = 4, label = "⭐ Stickers", text = "Stick them on creatures for bonuses" },
 	{ feature = "Gadgets", zone = 4, label = "💣 Gadgets", text = "One-use tools: bombs, totems, coin rain" },
+	{ feature = "Clans", zone = 3, label = "🛡️ Clans", text = "Team up with friends and climb the weekly clan board" },
+	{ feature = "Reload", zone = 10, label = "🔄 Reload", text = "Start again with coins x1.5 forever" },
 }
 
 local byFeature: { [string]: Unlock } = {}

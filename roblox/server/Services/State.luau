@@ -25,6 +25,7 @@ export type Runtime = {
 	vip: boolean,
 	passes: { [string]: boolean }, -- owned game passes by key
 	premium: boolean, -- Roblox Premium member
+	clanTag: string?, -- shown above the head
 	dirtyData: boolean, -- full data snapshot needs to be sent
 	lastAction: { [string]: number }, -- simple rate limits
 }

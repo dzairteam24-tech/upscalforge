@@ -26,6 +26,7 @@ local SettingsPanel = require(UI.SettingsPanel)
 local SpinPanel = require(UI.SpinPanel)
 local TeleportPanel = require(UI.TeleportPanel)
 local BoothPanel = require(UI.BoothPanel)
+local ClanPanel = require(UI.ClanPanel)
 local WorldClient = require(Controllers.WorldClient)
 local PetFollow = require(Controllers.PetFollow)
 local TutorialClient = require(Controllers.TutorialClient)
@@ -34,7 +35,7 @@ local SoundClient = require(Controllers.SoundClient)
 Store.init()
 
 -- Windows of systems that aren't open yet explain when they open instead
-local WINDOW_FEATURES = { Trips = "Trips", Spin = "Spin" }
+local WINDOW_FEATURES = { Trips = "Trips", Spin = "Spin", Clan = "Clans" }
 Windows.setGate(function(name: string): boolean
 	local feature = WINDOW_FEATURES[name]
 	local data = Store.data
@@ -66,6 +67,7 @@ SettingsPanel.mount(gui)
 SpinPanel.mount(gui)
 TeleportPanel.mount(gui)
 BoothPanel.mount(gui)
+ClanPanel.mount(gui)
 Notify.mount(gui)
 
 WorldClient.init()

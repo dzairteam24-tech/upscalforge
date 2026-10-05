@@ -231,7 +231,7 @@ function HUD.mount(gui: ScreenGui)
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 12, 0.58, 0),
-		Size = UDim2.fromOffset(210, 174),
+		Size = UDim2.fromOffset(210, 234),
 	})
 	local grid = Instance.new("UIGridLayout")
 	grid.CellSize = UDim2.fromOffset(66, 54)
@@ -289,7 +289,11 @@ function HUD.mount(gui: ScreenGui)
 	reloadButton.Activated:Connect(function()
 		Windows.toggle("Reload")
 	end)
-	local autoButton = menuButton("🤖\nAuto", Theme.card, 9)
+	local clanButton = menuButton("🛡️\nClans", Color3.fromRGB(70, 110, 170), 9)
+	clanButton.Activated:Connect(function()
+		Windows.toggle("Clan")
+	end)
+	local autoButton = menuButton("🤖\nAuto", Theme.card, 10)
 	autoButton.Activated:Connect(function()
 		Net.event("ToggleAuto"):FireServer(not Store.currency.auto)
 	end)
@@ -326,6 +330,8 @@ function HUD.mount(gui: ScreenGui)
 		dailyDot.Visible = DailyPanel.claimable() ~= nil
 		local data = Store.data
 		tripsButton.Visible = data ~= nil and Unlocks.has(data :: any, "Trips")
+		clanButton.Visible = data ~= nil and Unlocks.has(data :: any, "Clans")
+		reloadButton.Visible = data ~= nil and Unlocks.has(data :: any, "Reload")
 		tripsDot.Visible = TripsPanel.hasReady()
 		reloadDot.Visible = ReloadPanel.canReload()
 	end

@@ -1107,7 +1107,7 @@ test("Unlocks: systems open by best zone and stay open after a Reload", function
 	data.unlockedZones = { ["0"] = true, ["1"] = true }
 	data.stats.bestZone = 4
 	eq(UnlockLogic.has(data, "Stickers"), true)
-	eq(#UnlockLogic.openedAt(3), 2, "Cartridges and Spin")
+	eq(#UnlockLogic.openedAt(3), 3, "Boost Cards, Spin and Clans")
 end)
 
 test("Pity: Big is sure on the 10th try, Titan chance grows and is sure on the 100th", function()
@@ -1190,6 +1190,56 @@ test("Gem shop: 3 daily deals, same for everyone, 40% off, once each per day", f
 	GemShopLogic.buy(holder, id, true, day)
 	eq((GemShopLogic.canBuy(holder, id, true, day)), false, "once a day")
 	assert(GemShopLogic.canBuy(holder, id, true, day + 1) or not GemShopLogic.isDeal(id, day + 1), "new day resets")
+end)
+
+-- Clans ------------------------------------------------------------------------------------------------------
+
+local ClanLogic = R(Shared.Logic.Clans)
+local ClanConfig = R(Shared.Config.Clans)
+
+test("Clans: names and tags are checked", function()
+	assert(ClanLogic.checkName("Cube Kings"))
+	eq((ClanLogic.checkName("ab")), false, "too short")
+	eq((ClanLogic.checkName("Bad<Name>")), false, "symbols")
+	assert(ClanLogic.checkTag("CUBE"))
+	eq((ClanLogic.checkTag("TOOLONG")), false)
+	eq((ClanLogic.checkTag("A!")), false)
+end)
+
+test("Clans: members, full clans, owner hand-over and empty clans", function()
+	local clan = ClanLogic.new("ABC123", "Cube Kings", "ck", 1, "Owner", 1700000000)
+	eq(clan.tag, "CK")
+	for i = 2, ClanConfig.MAX_MEMBERS do
+		assert(ClanLogic.addMember(clan, i, "P" .. i))
+	end
+	eq((ClanLogic.addMember(clan, 999, "Late")), false, "full")
+	clan.members["5"].points = 50
+	assert(ClanLogic.removeMember(clan, 1))
+	eq(clan.owner, 5, "the member with most points takes over")
+	for i = 2, ClanConfig.MAX_MEMBERS do
+		ClanLogic.removeMember(clan, i)
+	end
+	eq(ClanLogic.count(clan), 0)
+	local solo = ClanLogic.new("X", "Solo Team", "SO", 7, "Solo", 0)
+	eq(ClanLogic.removeMember(solo, 7), false, "empty clan")
+end)
+
+test("Clans: weekly points reset on a new week; rewards by rank", function()
+	local now = 1700000000
+	local clan = ClanLogic.new("ABC", "Cube Kings", "CK", 1, "A", now)
+	ClanLogic.addMember(clan, 2, "B")
+	ClanLogic.addPoints(clan, { ["1"] = 10, ["2"] = 5, ["99"] = 1000 }, now)
+	eq(clan.points, 15, "outsiders don't count")
+	ClanLogic.addPoints(clan, { ["1"] = 1 }, now + 7 * 86400)
+	eq(clan.points, 1, "new week")
+	eq(clan.members["2"].points, 0)
+	eq(ClanLogic.week(now + 7 * 86400), ClanLogic.week(now) + 1)
+	eq(ClanLogic.pointsFor("Guardian", 2), 100)
+	eq(ClanLogic.pointsFor("Coins", 1000), 0)
+	eq(ClanLogic.rewardFor(1), 500)
+	eq(ClanLogic.rewardFor(3), 300)
+	eq(ClanLogic.rewardFor(10), 150)
+	eq(ClanLogic.rewardFor(11), 0)
 end)
 
 test("Every creature model builds: 40 species x 6 variants x 3 sizes", function()

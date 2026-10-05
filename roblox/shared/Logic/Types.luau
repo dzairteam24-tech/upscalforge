@@ -53,6 +53,7 @@ export type PlayerData = {
 	equippedRide: string?,
 	pity: { big: number, titan: number }, -- misses in a row (bad-luck protection)
 	gemShop: { day: number, deals: { [string]: boolean }, storage: number },
+	clan: { id: string, rewardWeek: number }, -- "" when not in a clan
 }
 
 -- Rewarded ad limits: watches per UTC day and per-reward cooldowns.

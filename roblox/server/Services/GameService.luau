@@ -631,7 +631,7 @@ local function applyTitles(player: Player, character: Model)
 	rankLabel.TextScaled = true
 	rankLabel.TextColor3 = Color3.fromRGB(255, 225, 120)
 	rankLabel.TextStrokeTransparency = 0.3
-	rankLabel.Text = "⭐ " .. rank
+	rankLabel.Text = "⭐ " .. rank .. (if runtime.clanTag then (" [%s]"):format(runtime.clanTag) else "")
 	rankLabel.Parent = gui
 	if title then
 		local textLabel = Instance.new("TextLabel")

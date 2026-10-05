@@ -47,6 +47,10 @@ local EVENTS = {
 	"BoothList",
 	"BoothUnlist",
 	"BoothBuy",
+	"ClanCreate",
+	"ClanJoin",
+	"ClanLeave",
+	"ClanRequest",
 	"Teleport",
 	-- server -> client
 	"Data",
@@ -60,6 +64,7 @@ local EVENTS = {
 	"TradeClosed",
 	"OfflineEarnings",
 	"WheelResult",
+	"ClanData",
 }
 
 local FOLDER_NAME = "Remotes"
