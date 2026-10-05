@@ -46,19 +46,23 @@ local function send(player: Player, targetId: any)
 		GameService.notify(player, "You already sent today's gift. One a day!", "error")
 		return
 	end
-	local ok, friends = pcall(function()
-		return player:IsFriendsWith(target.UserId)
-	end)
-	if not ok or not friends then
-		GameService.notify(player, "Gifts are for your Roblox friends", "error")
-		return
-	end
 	if targetData.gifts.received >= MAX_RECEIVED then
 		GameService.notify(player, ("%s already got %d gifts today"):format(target.DisplayName, MAX_RECEIVED), "error")
 		return
 	end
+	-- Reserve the gift before the friend check (it waits on the web), and give it back if it fails
 	data.gifts.sent = true
 	targetData.gifts.received += 1
+	local ok, friends = pcall(function()
+		return player:IsFriendsWith(target.UserId)
+	end)
+	local stillHere = target.Parent ~= nil and DataService.get(target) == targetData and player.Parent ~= nil
+	if not ok or not friends or not stillHere then
+		data.gifts.sent = false
+		targetData.gifts.received = math.max(0, targetData.gifts.received - 1)
+		GameService.notify(player, if stillHere then "Gifts are for your Roblox friends" else "They left the server", "error")
+		return
+	end
 	local elixir = Loot.randomElixir(2, 3, function()
 		return rng:NextNumber()
 	end)

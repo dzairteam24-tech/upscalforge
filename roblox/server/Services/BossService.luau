@@ -49,8 +49,10 @@ local function spawn()
 		total += runtime.power
 	end
 	local species = {}
-	for id in World1.species do
-		table.insert(species, id)
+	for id, info in World1.species do
+		if not info.legendary then -- Legendaries stay a secret of the Legendary Egg
+			table.insert(species, id)
+		end
 	end
 	table.sort(species)
 	local pet = {

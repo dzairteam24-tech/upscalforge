@@ -390,8 +390,8 @@ function GameService.addCoins(player: Player, amount: number, zoneId: number?, r
 	end
 	data.coins += amount
 	-- The Coins leaderboard leaves out timed boosts (bought, watched or from elixirs) and Premium,
-	-- so it can't be bought: it ranks what you earn by playing.
-	local timed = State.boost(runtime, "Coins", os.clock()) * Boosts.active(data.boosts, "Coins")
+	-- so it can't be bought: it ranks what you earn by playing. Creature skills still count.
+	local timed = Boosts.active(data.boosts, "Coins")
 	if runtime.premium then
 		timed *= Products.PREMIUM_COINS
 	end

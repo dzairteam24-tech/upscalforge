@@ -10,21 +10,29 @@ export type Target = { tier: number, species: string, variant: string }
 local Bounty = {}
 
 -- Small deterministic random generator so a day always gives the same picks
+-- (Park-Miller: small multiplier so the math stays exact in doubles)
 local function seeded(seed: number): (number, number) -> number
-	local state = (seed * 1103515245 + 12345) % 2147483648
+	local state = seed % 2147483646 + 1
 	return function(lo: number, hi: number): number
-		state = (state * 1103515245 + 12345) % 2147483648
+		state = (state * 48271) % 2147483647
 		return lo + state % (hi - lo + 1)
 	end
 end
 
--- Three targets for a UTC day, from the zones the player reached (1..bestZone).
-function Bounty.forDay(day: number, bestZone: number, userId: number?): { Target }
+-- Three targets for a UTC day, from the zones the player has open right now (`openZones`: zone ids).
+function Bounty.forDay(day: number, openZones: { number }, userId: number?): { Target }
 	local zones: { World1.Zone } = {}
-	for _, zone in World1.zones do
-		if zone.eggPrice > 0 and zone.id <= math.max(1, bestZone) then
+	for _, zoneId in openZones do
+		local zone = World1.zonesById[zoneId]
+		if zone and zone.eggPrice > 0 then
 			table.insert(zones, zone)
 		end
+	end
+	table.sort(zones, function(a, b)
+		return a.id < b.id
+	end)
+	if #zones == 0 then
+		table.insert(zones, World1.zonesById[1])
 	end
 	local rand = seeded(day * 7919 + (userId or 0) % 100000)
 	local function pickZone(): World1.Zone

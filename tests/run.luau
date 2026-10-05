@@ -1470,8 +1470,8 @@ end)
 
 test("Daily Bounty: 3 targets from reached zones, same all day, rarer variants count", function()
 	local Bounty = R(Shared.Logic.Bounty)
-	local a = Bounty.forDay(20000, 3, 42)
-	local b = Bounty.forDay(20000, 3, 42)
+	local a = Bounty.forDay(20000, { 1, 2, 3 }, 42)
+	local b = Bounty.forDay(20000, { 1, 2, 3 }, 42)
 	eq(#a, 3)
 	for i = 1, 3 do
 		eq(a[i].species, b[i].species, "same day, same pick")
@@ -1480,7 +1480,18 @@ test("Daily Bounty: 3 targets from reached zones, same all day, rarer variants c
 		assert(species and species.zone <= 3, "only reached zones")
 		assert(not species.legendary, "never a Legendary")
 	end
-	eq(World1.species[Bounty.forDay(20000, 1, 7)[3].species].zone, 1, "a new player only gets zone 1")
+	eq(World1.species[Bounty.forDay(20000, { 1 }, 7)[3].species].zone, 1, "a new player only gets zone 1")
+	-- Picks vary across days (both kinds of medium and hard bounties show up)
+	local goldenMedium, normalMedium = 0, 0
+	for day = 20000, 20200 do
+		local t = Bounty.forDay(day, { 1, 2, 3, 4 }, 5)
+		if t[2].variant == "Golden" then
+			goldenMedium += 1
+		else
+			normalMedium += 1
+		end
+	end
+	assert(goldenMedium > 30 and normalMedium > 30, ("medium mix %d/%d"):format(goldenMedium, normalMedium))
 	local target = { tier = 2, species = "Fox", variant = "Golden" }
 	assert(Bounty.matches(target, "Fox", "Golden"), "exact")
 	assert(Bounty.matches(target, "Fox", "Neon"), "rarer variant counts")

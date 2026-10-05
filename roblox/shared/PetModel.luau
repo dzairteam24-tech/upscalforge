@@ -85,7 +85,9 @@ local function index(): { [string]: { BasePart } }?
 	local found: { [string]: { BasePart } } = {}
 	for _, d in root:GetDescendants() do
 		if d:IsA("BasePart") then
-			local species, role = string.match(d.Name, "^(.-)__([%w_]+)$")
+			-- The importer may add ".001" style suffixes; ignore them
+			local name = string.gsub(d.Name, "%.%d+$", "")
+			local species, role = string.match(name, "^(.-)__([%w_]+)$")
 			if species and role then
 				found[species] = found[species] or {}
 				table.insert(found[species], d)
@@ -130,7 +132,7 @@ local function template(speciesId: string): Template?
 	local eyeSum, eyes = Vector3.zero, 0
 	local minY, maxY = math.huge, -math.huge
 	for _, part in list do
-		local role = string.match(part.Name, "__([%w_]+)$")
+		local role = string.match((string.gsub(part.Name, "%.%d+$", "")), "__([%w_]+)$")
 		if role == "body" or (role == "jelly" and not body) then
 			body = part
 		elseif role == "eye" then
@@ -163,7 +165,7 @@ local function template(speciesId: string): Template?
 	local radius = 0
 	for _, part in list do
 		local offset = ref:ToObjectSpace(part.CFrame)
-		local role = string.match(part.Name, "__([%w_]+)$") :: string
+		local role = string.match((string.gsub(part.Name, "%.%d+$", "")), "__([%w_]+)$") :: string
 		table.insert(parts, { part = part, role = role, offset = offset })
 		radius = math.max(radius, Vector2.new(offset.X, offset.Z).Magnitude + math.max(part.Size.X, part.Size.Z) / 2)
 	end

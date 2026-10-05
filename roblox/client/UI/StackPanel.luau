@@ -1,9 +1,9 @@
 -- Cube Stack: a cube slides left and right; tap to drop it on the stack. What hangs over the edge falls off.
 -- The game runs here; the server only times it and pays the score (MinigameService).
 
+local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local MinigameConfig = require(Shared.Config.Minigame)
@@ -187,16 +187,29 @@ function StackPanel.mount(gui: ScreenGui)
 			drop()
 		end
 	end)
-	UserInputService.InputBegan:Connect(function(input, processed)
-		if not processed and window.Visible and input.KeyCode == Enum.KeyCode.Space then
-			drop()
+	-- Space drops too, and doesn't make the character jump while the game is open
+	window:GetPropertyChangedSignal("Visible"):Connect(function()
+		if window.Visible then
+			ContextActionService:BindActionAtPriority("StackDrop", function(_, state)
+				if state == Enum.UserInputState.Begin then
+					drop()
+				end
+				return Enum.ContextActionResult.Sink
+			end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Space)
+		else
+			ContextActionService:UnbindAction("StackDrop")
 		end
 	end)
 
 	play.Activated:Connect(function()
 		Net.event("StackStart"):FireServer()
 	end)
-	Net.event("StackGo").OnClientEvent:Connect(begin)
+	Net.event("StackGo").OnClientEvent:Connect(function()
+		if not window.Visible then
+			Windows.open("Stack")
+		end
+		begin()
+	end)
 
 	local function update()
 		local data = Store.data

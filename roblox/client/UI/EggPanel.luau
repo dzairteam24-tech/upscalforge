@@ -177,13 +177,16 @@ function EggPanel.mount(gui: ScreenGui)
 			local character = LOCAL.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			local nearest: number? = nil
+			local nearestDistance = math.huge
 			if root then
 				for _, egg in CollectionService:GetTagged("EggStand") do
-					if egg:IsA("BasePart") and (egg.Position - root.Position).Magnitude <= Constants.EGG_RANGE then
+					local distance = if egg:IsA("BasePart") then (egg.Position - root.Position).Magnitude else math.huge
+					if distance <= Constants.EGG_RANGE and distance < nearestDistance then
 						local zoneId = egg:GetAttribute("ZoneId")
 						local eggId = egg:GetAttribute("EggId") or zoneId
 						if type(zoneId) == "number" and type(eggId) == "number" and Store.isUnlocked(zoneId) then
 							nearest = eggId
+							nearestDistance = distance
 						end
 					end
 				end

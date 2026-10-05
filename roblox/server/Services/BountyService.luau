@@ -8,7 +8,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BountyConfig = require(Shared.Config.Bounty)
 local Bounty = require(Shared.Logic.Bounty)
 local Progress = require(Shared.Logic.Progress)
-local Unlocks = require(Shared.Logic.Unlocks)
 local Types = require(Shared.Logic.Types)
 
 local DataService = require(script.Parent.DataService)
@@ -23,9 +22,17 @@ local function ensure(player: Player, data: Types.PlayerData): boolean
 	if data.bounty.day == today then
 		return false
 	end
+	-- Only zones open right now (after a Reload, far zones are locked again)
+	local open = {}
+	for key, unlocked in data.unlockedZones do
+		local id = tonumber(key)
+		if unlocked and id then
+			table.insert(open, id)
+		end
+	end
 	data.bounty = {
 		day = today,
-		targets = Bounty.forDay(today, Unlocks.bestZone(data), player.UserId),
+		targets = Bounty.forDay(today, open, player.UserId),
 		done = { false, false, false },
 	}
 	return true
