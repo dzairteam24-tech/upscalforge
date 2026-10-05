@@ -610,9 +610,10 @@ local rows: { { any } } = {
 			},
 		},
 	},
-	-- Legendaries: one per zone in look, but they only hatch from the Legendary Egg in the last zone
+	-- Legendaries: one per zone in look, but they only hatch from the Legendary Egg in the last zone, so they
+	-- are all stronger than that zone's King (500): from 2x (Slime King) to 16x (Glitch)
 	{
-		"Slime King", 15, rgb(107, 227, 107), "crown", "happy",
+		"Slime King", 1000, rgb(107, 227, 107), "crown", "happy",
 		{ text = "Coins +60%", passive = passive("Coins", 1.6) },
 		{
 			text = "Power of all creatures x3. Split: every minute, 5 mini slimes break 5 sources.",
@@ -621,7 +622,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Blossom Queen", 36, rgb(255, 176, 214), "crown", "sparkle",
+		"Blossom Queen", 1200, rgb(255, 176, 214), "crown", "sparkle",
 		{ text = "Hatch luck x2", passive = passive("Luck", 2) },
 		{
 			text = "Hatch luck x6. Pollen Storm: every 2 min, 3 free eggs with luck x10.",
@@ -630,7 +631,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Elder Treant", 36, rgb(120, 84, 56), "leaf", "round",
+		"Elder Treant", 1400, rgb(120, 84, 56), "leaf", "round",
 		{ text = "Zones restore +50% faster", passive = passive("Restore", 1.5) },
 		{
 			text = "Power of all creatures x3. Roots: every 30s the ground shakes and breaks everything nearby.",
@@ -639,7 +640,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Kraken", 90, rgb(40, 90, 140), "crown", "angry",
+		"Kraken", 1700, rgb(40, 90, 140), "crown", "angry",
 		{ text = "Chests +100%", passive = passive("Chest", 2) },
 		{
 			text = "Power of all creatures x3.5. Tidal Wave: every 45s a wave breaks every source in the zone.",
@@ -648,7 +649,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Spore Sage", 90, rgb(150, 90, 220), "cap", "sleepy",
+		"Spore Sage", 2000, rgb(150, 90, 220), "cap", "sleepy",
 		{ text = "Gems +50%", passive = passive("Gem", 1.5) },
 		{
 			text = "Gems x3. Spore Rain: every 90s, 25 gems fall around you.",
@@ -657,7 +658,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Pharaoh Scarab", 225, rgb(245, 196, 66), "horns", "sparkle",
+		"Pharaoh Scarab", 2400, rgb(245, 196, 66), "horns", "sparkle",
 		{ text = "Jackpot chance x3", passive = passive("Jackpot", 3) },
 		{
 			text = "All coins x3. Sun Blessing: every 2 min, coins x15 for 30s.",
@@ -666,7 +667,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Aurora Wolf", 225, rgb(220, 240, 255), "cat", "sparkle",
+		"Aurora Wolf", 3000, rgb(220, 240, 255), "cat", "sparkle",
 		{ text = "Team speed x3", passive = passive("Speed", 3) },
 		{
 			text = "Power of all creatures x4. Pack Howl: every minute, 10 ghost wolves join for 20s.",
@@ -675,7 +676,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Inferno Drake", 570, rgb(40, 30, 34), "horns", "angry",
+		"Inferno Drake", 3800, rgb(40, 30, 34), "horns", "angry",
 		{ text = "Stomp every 4s", periodic = { { kind = "Area", every = 4, radius = 35, damageMult = 6 } :: Periodic } },
 		{
 			text = "Power of all creatures x5. Meteor: every 20s the biggest source is smashed.",
@@ -684,7 +685,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Frost Leviathan", 570, rgb(120, 200, 240), "unihorn", "sparkle",
+		"Frost Leviathan", 5000, rgb(120, 200, 240), "unihorn", "sparkle",
 		{ text = "Offline earnings x5", passive = passive("Offline", 5) },
 		{
 			text = "Every creature gets your strongest creature's power. Blizzard: every minute, 20 golden chests.",
@@ -693,7 +694,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Glitch", 1500, rgb(24, 24, 32), "halo", "square",
+		"Glitch", 8000, rgb(24, 24, 32), "halo", "square",
 		{ text = "Power of all creatures x2", passive = passive("TeamPower", 2) },
 		{
 			text = "Power of all creatures x6. Overclock: every 3 min, coins x25 for 30s and a free egg with luck x100.",

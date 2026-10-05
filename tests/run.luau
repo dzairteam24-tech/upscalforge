@@ -1460,6 +1460,21 @@ test("Legendary Egg: in the last zone, near-impossible odds that luck can't chan
 		end
 	end
 	eq(legendaries, 10)
+	-- Every Legendary beats every creature of the zone its egg stands in, and they get stronger with rarity
+	local lastZone = World1.zonesById[egg.zone]
+	local strongestThere = 0
+	for _, speciesId in lastZone.species do
+		strongestThere = math.max(strongestThere, World1.species[speciesId].power)
+	end
+	local previous = 0
+	for _, speciesId in egg.species do
+		local species = World1.species[speciesId]
+		if species.legendary then
+			assert(species.power > strongestThere, speciesId .. " beats the zone's best")
+			assert(species.power > previous, speciesId .. " is stronger than the more common Legendary")
+			previous = species.power
+		end
+	end
 	-- Zone eggs never give a Legendary
 	for _, zone in World1.zones do
 		for _, speciesId in zone.species do
