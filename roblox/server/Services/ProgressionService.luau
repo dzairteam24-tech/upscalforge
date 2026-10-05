@@ -244,6 +244,19 @@ local function equipCosmetic(player: Player, kind: any, id: any)
 		end
 		data.equippedRide = if id == "" then nil else id
 		GameService.refresh(player)
+	elseif kind == "aura" then
+		if id ~= "" and not data.auras[id] then
+			return
+		end
+		data.equippedAura = if id == "" then nil else id
+	elseif kind == "hatchFx" then
+		if id ~= "" and not data.hatchFx[id] then
+			return
+		end
+		data.equippedHatchFx = if id == "" then nil else id
+		GameService.refresh(player)
+		GameService.markDirty(player)
+		return
 	else
 		return
 	end

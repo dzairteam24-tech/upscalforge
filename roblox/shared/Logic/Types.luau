@@ -51,6 +51,10 @@ export type PlayerData = {
 	wheel: { lastFree: number }, -- UTC day of the last free spin
 	rides: { [string]: boolean },
 	equippedRide: string?,
+	auras: { [string]: boolean },
+	equippedAura: string?,
+	hatchFx: { [string]: boolean },
+	equippedHatchFx: string?,
 	pity: { big: number, titan: number }, -- misses in a row (bad-luck protection)
 	gemShop: { day: number, deals: { [string]: boolean }, storage: number },
 	clan: { id: string, rewardWeek: number }, -- "" when not in a clan

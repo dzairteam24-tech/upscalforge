@@ -1310,6 +1310,29 @@ test("Every creature model builds: 40 species x 6 variants x 3 sizes", function(
 	assert(stickered.model:FindFirstChild("Sticker"), "sticker part")
 end)
 
+test("Every aura and hatch effect is sold once, cosmetic only", function()
+	local Cosmetics = R(Shared.Config.Cosmetics)
+	local Products = R(Shared.Config.Products)
+	local sold: { [string]: number } = {}
+	for _, product in Products.devProducts do
+		local cosmetic = product.cosmetic
+		if cosmetic then
+			assert(cosmetic.kind == "aura" or cosmetic.kind == "hatchFx", "kind " .. product.key)
+			local known = if cosmetic.kind == "aura" then Cosmetics.auraById[cosmetic.id] else Cosmetics.hatchFxById[cosmetic.id]
+			assert(known, "unknown cosmetic " .. product.key)
+			assert(not product.boost and not product.reward and not product.adOnly, "cosmetic only " .. product.key)
+			local key = cosmetic.kind .. "|" .. cosmetic.id
+			sold[key] = (sold[key] or 0) + 1
+		end
+	end
+	for _, aura in Cosmetics.auras do
+		eq(sold["aura|" .. aura.id], 1, aura.id)
+	end
+	for _, fx in Cosmetics.hatchFx do
+		eq(sold["hatchFx|" .. fx.id], 1, fx.id)
+	end
+end)
+
 print(("%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	process.exit(1)

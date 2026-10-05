@@ -249,18 +249,24 @@ function ShopPanel.mount(gui: ScreenGui)
 				end)
 			end
 
-			-- Boosts and cosmetics
-			section("🚀 Boosts and looks")
-			for _, product in Products.devProducts do
-				if not product.inShop then
-					continue
+			-- Boosts, then looks (auras and hatch effects are kept forever)
+			local function productRows(wantCosmetic: boolean)
+				for _, product in Products.devProducts do
+					local cosmetic = product.cosmetic
+					if not product.inShop or (cosmetic ~= nil) ~= wantCosmetic then
+						continue
+					end
+					order += 1
+					local owned = (product.key == "SupporterTitle" and data.titles.Supporter)
+						or (cosmetic ~= nil and cosmetic.kind == "aura" and (data.auras or {})[cosmetic.id] == true)
+						or (cosmetic ~= nil and cosmetic.kind == "hatchFx" and (data.hatchFx or {})[cosmetic.id] == true)
+					row(order, product.name, product.description, if owned then "Owned" elseif product.id == 0 then "Soon" else robux(product.price), not owned and product.id ~= 0, function()
+						AdButton.buy(product.key)
+					end)
 				end
-				order += 1
-				local owned = product.key == "SupporterTitle" and data.titles.Supporter
-				row(order, product.name, product.description, if owned then "Owned" elseif product.id == 0 then "Soon" else robux(product.price), not owned and product.id ~= 0, function()
-					AdButton.buy(product.key)
-				end)
 			end
+			section("🚀 Boosts and titles")
+			productRows(false)
 			local pass = Products.productByKey.PassPremium
 			if pass then
 				order += 1
@@ -269,6 +275,9 @@ function ShopPanel.mount(gui: ScreenGui)
 					AdButton.buy(pass.key)
 				end)
 			end
+
+			section("✨ Auras and hatch effects (yours forever)")
+			productRows(true)
 
 			-- Roblox Premium
 			section("⭐ Roblox Premium")

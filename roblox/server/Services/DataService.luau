@@ -82,6 +82,8 @@ local function template(): PlayerData
 		tickets = 0,
 		wheel = { lastFree = -1 },
 		rides = {},
+		auras = {},
+		hatchFx = {},
 		pity = { big = 0, titan = 0 },
 		gemShop = { day = -1, deals = {}, storage = 0 },
 		clan = { id = "", rewardWeek = 0 },

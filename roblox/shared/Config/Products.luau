@@ -31,6 +31,7 @@ export type DevProduct = {
 	reward: string?, -- handler key for rewards that need a service (trips, streak, quests...)
 	boost: { stat: string, mult: number, seconds: number }?,
 	inShop: boolean?, -- listed in the shop's Robux tab
+	cosmetic: { kind: string, id: string }?, -- a look bought once and kept forever ("aura" or "hatchFx")
 }
 
 export type AdReward = {
@@ -57,6 +58,16 @@ local devProducts: { DevProduct } = {
 	-- Cosmetic
 	{ key = "SupporterTitle", id = 0, price = 49, name = "Supporter Title", description = "A golden 'Supporter' title above your head. Cosmetic only.", inShop = true },
 	{ key = "PassPremium", id = 0, price = 399, name = "Battle Pass Premium", description = "Premium track of this season: titles, trails and rides. Cosmetic only." },
+	{ key = "Aura_Sparkle", id = 0, price = 79, name = "Sparkle Aura", description = "Sparkles float around you. Everyone sees it. Cosmetic only.", inShop = true, cosmetic = { kind = "aura", id = "Sparkle" } },
+	{ key = "Aura_Frost", id = 0, price = 79, name = "Frost Aura", description = "Ice sparkles float around you. Cosmetic only.", inShop = true, cosmetic = { kind = "aura", id = "Frost" } },
+	{ key = "Aura_Flame", id = 0, price = 99, name = "Flame Aura", description = "You're on fire! Cosmetic only.", inShop = true, cosmetic = { kind = "aura", id = "Flame" } },
+	{ key = "Aura_Toxic", id = 0, price = 99, name = "Toxic Aura", description = "Green flames around you. Cosmetic only.", inShop = true, cosmetic = { kind = "aura", id = "Toxic" } },
+	{ key = "Aura_Pixel", id = 0, price = 129, name = "Pixel Aura", description = "Tiny glowing cubes orbit you. Cosmetic only.", inShop = true, cosmetic = { kind = "aura", id = "Pixel" } },
+	{ key = "Aura_Galaxy", id = 0, price = 149, name = "Galaxy Aura", description = "A ring of stars around your feet. Cosmetic only.", inShop = true, cosmetic = { kind = "aura", id = "Galaxy" } },
+	{ key = "Hatch_Confetti", id = 0, price = 79, name = "Confetti Hatch", description = "Your hatches burst with confetti. Same odds, just prettier.", inShop = true, cosmetic = { kind = "hatchFx", id = "Confetti" } },
+	{ key = "Hatch_Gold", id = 0, price = 99, name = "Golden Hatch", description = "Golden rays behind every hatch. Same odds, just prettier.", inShop = true, cosmetic = { kind = "hatchFx", id = "Gold" } },
+	{ key = "Hatch_Pixel", id = 0, price = 99, name = "Pixel Hatch", description = "Pixel confetti on every hatch. Same odds, just prettier.", inShop = true, cosmetic = { kind = "hatchFx", id = "Pixel" } },
+	{ key = "Hatch_Galaxy", id = 0, price = 129, name = "Galaxy Hatch", description = "Galaxy rays behind every hatch. Same odds, just prettier.", inShop = true, cosmetic = { kind = "hatchFx", id = "Galaxy" } },
 	-- Time and comfort (the Robux side of the ad rewards)
 	{ key = "CoinBoost", id = 0, price = 49, name = "Coins x2 · 30 min", description = "Double coins for 30 minutes of play", boost = { stat = "Coins", mult = 2, seconds = 1800 }, inShop = true },
 	{ key = "PowerBoost", id = 0, price = 49, name = "Power x2 · 30 min", description = "Double team power for 30 minutes of play", boost = { stat = "Power", mult = 2, seconds = 1800 }, inShop = true },

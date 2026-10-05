@@ -367,6 +367,79 @@ function QuestsPanel.mount(gui: ScreenGui)
 				end)
 			end
 		end
+		-- Looks sold for Robux: owned ones can be equipped, the others show their price
+		local function forSale(kind: string, id: string): Products.DevProduct?
+			for _, product in Products.devProducts do
+				local cosmetic = product.cosmetic
+				if cosmetic and cosmetic.kind == kind and cosmetic.id == id then
+					return product
+				end
+			end
+			return nil
+		end
+		local function buyRow(text: string, color: Color3, product: Products.DevProduct)
+			order += 1
+			local frame = Theme.frame({ Size = UDim2.new(1, -12, 0, 48), BackgroundColor3 = Theme.card, LayoutOrder = order })
+			Theme.corner(frame, 10)
+			local label = Theme.label({
+				Text = text,
+				Font = Theme.titleFont,
+				TextColor3 = color,
+				TextTransparency = 0.35,
+				Size = UDim2.new(0.65, 0, 1, -8),
+				Position = UDim2.fromOffset(12, 4),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				MaxTextSize = 20,
+			})
+			label.Parent = frame
+			local b = Theme.button({
+				Text = if product.id == 0 then "Soon" else "R$ " .. product.price,
+				Size = UDim2.new(0.3, 0, 1, -12),
+				Position = UDim2.new(0.68, 0, 0, 6),
+				BackgroundColor3 = if product.id == 0 then Theme.panel else Theme.gold,
+			})
+			b.Activated:Connect(function()
+				if product.id ~= 0 then
+					AdButton.buy(product.key)
+				end
+			end)
+			b.Parent = frame
+			frame.Parent = body
+		end
+		local auras = data.auras or {}
+		section("Auras (look only)")
+		row("None", Theme.muted, data.equippedAura == nil, function()
+			Net.event("EquipCosmetic"):FireServer("aura", "")
+		end)
+		for _, aura in Cosmetics.auras do
+			if auras[aura.id] then
+				row(aura.name, aura.colors[1], data.equippedAura == aura.id, function()
+					Net.event("EquipCosmetic"):FireServer("aura", aura.id)
+				end)
+			else
+				local product = forSale("aura", aura.id)
+				if product then
+					buyRow(aura.name, aura.colors[1], product)
+				end
+			end
+		end
+		local hatchFx = data.hatchFx or {}
+		section("Hatch effects (same odds, just prettier)")
+		row("Classic", Theme.muted, data.equippedHatchFx == nil, function()
+			Net.event("EquipCosmetic"):FireServer("hatchFx", "")
+		end)
+		for _, fx in Cosmetics.hatchFx do
+			if hatchFx[fx.id] then
+				row(fx.name, fx.colors[1], data.equippedHatchFx == fx.id, function()
+					Net.event("EquipCosmetic"):FireServer("hatchFx", fx.id)
+				end)
+			else
+				local product = forSale("hatchFx", fx.id)
+				if product then
+					buyRow(fx.name, fx.colors[1], product)
+				end
+			end
+		end
 		order += 1
 		local hint = Theme.label({
 			Text = "Get more titles, trails and rides from achievements, Rank, the Lucky Spin and the Battle Pass premium track.",

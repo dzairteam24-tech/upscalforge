@@ -113,6 +113,21 @@ local function grantProduct(player: Player, key: string): boolean
 		return AdsService.grant(player, key)
 	end
 	local product = Products.productByKey[key]
+	local cosmetic = product and product.cosmetic
+	if cosmetic and (cosmetic.kind == "aura" or cosmetic.kind == "hatchFx") then
+		-- Bought once, kept forever, and put on right away
+		if cosmetic.kind == "aura" then
+			data.auras[cosmetic.id] = true
+			data.equippedAura = cosmetic.id
+			GameService.refreshTitles(player)
+		else
+			data.hatchFx[cosmetic.id] = true
+			data.equippedHatchFx = cosmetic.id
+		end
+		GameService.notify(player, ("%s is yours! Change it in Quests → Style."):format(product.name), "success")
+		GameService.refresh(player)
+		return true
+	end
 	if product and product.reward then
 		RewardService.grant(player, product.reward, key)
 		GameService.markDirty(player)
@@ -188,6 +203,15 @@ local function buyProduct(player: Player, key: any, context: any)
 	if product.id == 0 then
 		GameService.notify(player, "This isn't on sale yet", "error")
 		return
+	end
+	local data = DataService.get(player)
+	local cosmetic = product.cosmetic
+	if data and cosmetic then
+		local owned = if cosmetic.kind == "aura" then data.auras[cosmetic.id] else data.hatchFx[cosmetic.id]
+		if owned then
+			GameService.notify(player, "You already own this", "error")
+			return
+		end
 	end
 	if product.reward then
 		local ok, err = RewardService.canUse(player, product.reward, context)

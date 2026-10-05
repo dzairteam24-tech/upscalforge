@@ -5,6 +5,10 @@ export type Title = { id: string, text: string, color: Color3 }
 export type Trail = { id: string, name: string, colors: { Color3 } }
 -- Rides: something the character stands on. Every ride gives the same speed, so they're look only.
 export type Ride = { id: string, name: string, style: string, color: Color3, glow: Color3 }
+-- Auras: particles around the character that everyone sees. Hatch effects: how your own hatch screen
+-- celebrates. Both are sold for Robux and give no power at all.
+export type Aura = { id: string, name: string, style: string, colors: { Color3 } }
+export type HatchFx = { id: string, name: string, style: string, colors: { Color3 } }
 
 local titles: { Title } = {
 	{ id = "VIP", text = "VIP", color = Color3.fromRGB(255, 215, 90) },
@@ -63,6 +67,22 @@ local rides: { Ride } = {
 	{ id = "E_Sled", name = "Snow Sled", style = "board", color = Color3.fromRGB(200, 60, 60), glow = Color3.fromRGB(150, 220, 255) },
 }
 
+local auras: { Aura } = {
+	{ id = "Sparkle", name = "Sparkle Aura", style = "sparkle", colors = { Color3.fromRGB(255, 240, 160), Color3.fromRGB(255, 255, 255) } },
+	{ id = "Frost", name = "Frost Aura", style = "sparkle", colors = { Color3.fromRGB(150, 220, 255), Color3.fromRGB(230, 250, 255) } },
+	{ id = "Flame", name = "Flame Aura", style = "flame", colors = { Color3.fromRGB(255, 200, 60), Color3.fromRGB(255, 80, 30) } },
+	{ id = "Toxic", name = "Toxic Aura", style = "flame", colors = { Color3.fromRGB(150, 255, 90), Color3.fromRGB(30, 140, 60) } },
+	{ id = "Pixel", name = "Pixel Aura", style = "cubes", colors = { Color3.fromRGB(185, 140, 255), Color3.fromRGB(255, 90, 200) } },
+	{ id = "Galaxy", name = "Galaxy Aura", style = "ring", colors = { Color3.fromRGB(120, 90, 255), Color3.fromRGB(80, 220, 255) } },
+}
+
+local hatchFx: { HatchFx } = {
+	{ id = "Confetti", name = "Confetti Hatch", style = "confetti", colors = { Color3.fromRGB(255, 107, 107), Color3.fromRGB(255, 217, 61), Color3.fromRGB(77, 150, 255), Color3.fromRGB(107, 203, 119) } },
+	{ id = "Gold", name = "Golden Hatch", style = "rays", colors = { Color3.fromRGB(255, 215, 90), Color3.fromRGB(255, 245, 200) } },
+	{ id = "Pixel", name = "Pixel Hatch", style = "confetti", colors = { Color3.fromRGB(185, 140, 255), Color3.fromRGB(255, 90, 200), Color3.fromRGB(80, 220, 255) } },
+	{ id = "Galaxy", name = "Galaxy Hatch", style = "rays", colors = { Color3.fromRGB(120, 90, 255), Color3.fromRGB(80, 220, 255) } },
+}
+
 local titleById: { [string]: Title } = {}
 for _, title in titles do
 	titleById[title.id] = title
@@ -76,6 +96,15 @@ for _, ride in rides do
 	rideById[ride.id] = ride
 end
 
+local auraById: { [string]: Aura } = {}
+for _, aura in auras do
+	auraById[aura.id] = aura
+end
+local hatchFxById: { [string]: HatchFx } = {}
+for _, fx in hatchFx do
+	hatchFxById[fx.id] = fx
+end
+
 return {
 	titles = titles,
 	trails = trails,
@@ -83,5 +112,9 @@ return {
 	trailById = trailById,
 	rides = rides,
 	rideById = rideById,
+	auras = auras,
+	auraById = auraById,
+	hatchFx = hatchFx,
+	hatchFxById = hatchFxById,
 	RIDE_SPEED = 1.25,
 }

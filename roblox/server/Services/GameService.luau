@@ -741,6 +741,77 @@ local function applyTitles(player: Player, character: Model)
 		trail.Transparency = NumberSequence.new(0.1, 1)
 		trail.Parent = root
 	end
+
+	-- Aura: particles around the character
+	local oldAura = character:FindFirstChild("Aura")
+	if oldAura then
+		oldAura:Destroy()
+	end
+	local auraDef = if data.equippedAura and data.auras[data.equippedAura] then Cosmetics.auraById[data.equippedAura] else nil
+	if auraDef then
+		-- An invisible part gives the particles a shape to come out of (an attachment is a single point)
+		local holder = Instance.new("Part")
+		holder.Name = "Aura"
+		holder.Transparency = 1
+		holder.CanCollide = false
+		holder.CanQuery = false
+		holder.CanTouch = false
+		holder.Massless = true
+		holder.Size = Vector3.new(3.5, 4.5, 3.5)
+		local auraOffset = Vector3.zero
+		local first = auraDef.colors[1]
+		local last = auraDef.colors[#auraDef.colors]
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Color = ColorSequence.new(first, last)
+		emitter.LightEmission = 0.6
+		emitter.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+		emitter.Shape = Enum.ParticleEmitterShape.Cylinder
+		emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+		emitter.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+		emitter.LockedToPart = false
+		if auraDef.style == "flame" then
+			emitter.Texture = "rbxasset://textures/particles/fire_main.dds"
+			emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(1, 0) })
+			emitter.Lifetime = NumberRange.new(0.5, 0.9)
+			emitter.Speed = NumberRange.new(0.5, 1.5)
+			emitter.Acceleration = Vector3.new(0, 6, 0)
+			emitter.Rate = 30
+			holder.Size = Vector3.new(3, 1, 3)
+			auraOffset = Vector3.new(0, -2.2, 0)
+		elseif auraDef.style == "cubes" then
+			emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+			emitter.Size = NumberSequence.new(0.35)
+			emitter.Lifetime = NumberRange.new(1, 1.6)
+			emitter.Speed = NumberRange.new(0.3, 0.8)
+			emitter.RotSpeed = NumberRange.new(-90, 90)
+			emitter.Acceleration = Vector3.new(0, 1.5, 0)
+			emitter.Rate = 14
+		elseif auraDef.style == "ring" then
+			emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+			emitter.Shape = Enum.ParticleEmitterShape.Disc
+			emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0.1) })
+			emitter.Lifetime = NumberRange.new(0.8, 1.2)
+			emitter.Speed = NumberRange.new(0.2, 0.4)
+			emitter.Acceleration = Vector3.new(0, 2, 0)
+			emitter.Rate = 24
+			holder.Size = Vector3.new(5, 0.2, 5)
+			auraOffset = Vector3.new(0, -2.8, 0)
+		else -- sparkle
+			emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+			emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 0) })
+			emitter.Lifetime = NumberRange.new(0.8, 1.4)
+			emitter.Speed = NumberRange.new(0.2, 0.6)
+			emitter.Acceleration = Vector3.new(0, 1, 0)
+			emitter.Rate = 16
+		end
+		emitter.Parent = holder
+		holder.CFrame = root.CFrame * CFrame.new(auraOffset)
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = root
+		weld.Part1 = holder
+		weld.Parent = holder
+		holder.Parent = character
+	end
 end
 
 function GameService.refreshTitles(player: Player)
@@ -890,6 +961,10 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		wheel = data.wheel,
 		rides = data.rides,
 		equippedRide = data.equippedRide,
+		auras = data.auras,
+		equippedAura = data.equippedAura,
+		hatchFx = data.hatchFx,
+		equippedHatchFx = data.equippedHatchFx,
 		ads = data.ads,
 		playtime = data.playtime,
 		maxSlots = GameService.maxSlots(player),

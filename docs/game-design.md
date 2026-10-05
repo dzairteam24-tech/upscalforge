@@ -352,6 +352,10 @@
 | بدّل مهمة | R$ 10 | مهمة يومية جديدة |
 | Battle Pass Premium | R$ 399 | ألقاب، Trails ومركبات |
 | لقب Supporter | R$ 49 | شكل برك |
+| Auras (6): Sparkle، Frost، Flame، Toxic، Pixel، Galaxy | R$ 79–149 | particles حول اللاعب، الكل يشوفها. شكل برك |
+| Hatch effects (4): Confetti، Golden، Pixel، Galaxy | R$ 79–129 | احتفال أجمل في شاشة الفقس. **نفس الحظ**، شكل برك |
+
+> **علاش ما نبيعوش Luck ×2:** الحظ يبدّل واش يخرج من البيض، يعني Robux يشري جوائز عشوائية (pay to win، ومشكل مع قوانين Roblox). Auras و Hatch effects يعطيو نفس الإحساس "أنا مميز" بلا ما يمسو الحظ. Luck ×2 يبقى غير بالفيديو (مجاني).
 
 ### 12.3 Game Passes (مرة وحدة، ديما)
 | الـ Pass | الثمن (مقترح) | فيه |
