@@ -36,6 +36,8 @@ local titles: { Title } = {
 	{ id = "R_Explorer", text = "Explorer", color = Color3.fromRGB(150, 220, 255) },
 	{ id = "R_Veteran", text = "Veteran", color = Color3.fromRGB(255, 170, 90) },
 	{ id = "R_Legend", text = "Cube Legend", color = Color3.fromRGB(255, 215, 90) },
+	-- Journey
+	{ id = "J_Hero", text = "Valley Hero", color = Color3.fromRGB(120, 230, 160) },
 }
 
 local trails: { Trail } = {

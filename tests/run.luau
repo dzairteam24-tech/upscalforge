@@ -1488,6 +1488,33 @@ test("Daily Bounty: 3 targets from reached zones, same all day, rarer variants c
 	assert(not Bounty.matches(target, "Owl", "Golden"), "other species doesn't")
 end)
 
+test("Journey: steps count their event, max steps use the best value, rewards are real", function()
+	local Journey = R(Shared.Logic.Journey)
+	local JourneyConfig = R(Shared.Config.Journey)
+	local Items = R(Shared.Config.Items)
+	local Cosmetics = R(Shared.Config.Cosmetics)
+	local state = { step = 1, progress = 0 }
+	assert(not Journey.onEvent(state, "Hatch", 5), "wrong event does nothing")
+	eq(state.progress, 0)
+	assert(not Journey.onEvent(state, "Break", 10))
+	assert(Journey.onEvent(state, "Break", 15), "20 breaks done")
+	assert(Journey.isDone(state))
+	Journey.advance(state, { Zone = 1 })
+	eq(state.step, 2)
+	Journey.advance(state, { Zone = 4 })
+	eq(state.step, 3)
+	assert(Journey.isDone(state), "zone step starts done when already past it")
+	for _, step in JourneyConfig.steps do
+		for _, item in step.reward.items or {} do
+			assert(Items.byId[item.id], "unknown item " .. item.id)
+		end
+		if step.reward.title then
+			assert(Cosmetics.titleById[step.reward.title], "unknown title " .. step.reward.title)
+		end
+	end
+	eq(#JourneyConfig.steps, 30)
+end)
+
 print(("%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	process.exit(1)

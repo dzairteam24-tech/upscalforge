@@ -35,6 +35,7 @@ local EVENTS = {
 	"CardLoadout",
 	"RedeemCode",
 	"BossGo",
+	"ClaimJourney",
 	"Reload",
 	"StartExpedition",
 	"ClaimExpedition",

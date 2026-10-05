@@ -971,6 +971,7 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		gemShop = data.gemShop,
 		events = data.events,
 		bounty = data.bounty,
+		journey = data.journey,
 		wheel = data.wheel,
 		rides = data.rides,
 		equippedRide = data.equippedRide,

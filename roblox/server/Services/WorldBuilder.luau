@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local World1 = require(Shared.Config.World1)
+local PetModel = require(Shared.PetModel)
 local MapLayout = require(Shared.Logic.MapLayout)
 
 local WorldBuilder = {}
@@ -316,6 +317,47 @@ local function buildHub(folder: Folder)
 	end
 end
 
+-- Professor Cubo: the Journey's NPC near the spawn. Talking to him opens the Quests window.
+local function buildProfessor(folder: Folder)
+	local center = MapLayout.center(0) + Vector3.new(16, 0, 40)
+	local built = PetModel.build({ s = "Cubby", v = "Normal", z = "Big" })
+	local facing = CFrame.lookAt(center + Vector3.new(0, built.height / 2, 0), center + Vector3.new(-16, built.height / 2, -20))
+	PetModel.place(built, facing)
+	built.model.Name = "ProfessorCubo"
+	-- Round glasses
+	for _, side in { -1, 1 } do
+		local lens = part({
+			Name = "Glasses",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.15, 1.1, 1.1),
+			CFrame = facing * CFrame.new(side * 0.85, 0.35, -built.radius * 0.66) * CFrame.Angles(0, math.rad(90), 0),
+			Color = Color3.fromRGB(40, 40, 50),
+			Transparency = 0.4,
+			CanCollide = false,
+		})
+		lens.Parent = built.model
+	end
+	local base = part({
+		Name = "ProfessorBase",
+		Size = Vector3.new(8, 0.6, 8),
+		Position = center + Vector3.new(0, 0.3, 0),
+		Color = Color3.fromRGB(120, 90, 200),
+		Material = Enum.Material.Neon,
+		Transparency = 0.4,
+		CanCollide = false,
+	})
+	base.Parent = built.model
+	label(base, "📖 Professor Cubo", UDim2.fromOffset(260, 56), Vector3.new(0, built.height + 3, 0))
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Talk"
+	prompt.ObjectText = "Professor Cubo"
+	prompt.MaxActivationDistance = 14
+	prompt.RequiresLineOfSight = false
+	prompt:SetAttribute("OpenUI", "Quests")
+	prompt.Parent = base
+	built.model.Parent = folder
+end
+
 local PLAZA_SIZE = 90
 
 function WorldBuilder.plazaCenter(): Vector3
@@ -458,6 +500,7 @@ function WorldBuilder.build()
 		end
 	end
 	buildHub(folder)
+	buildProfessor(folder)
 	buildPlaza(folder)
 
 	folder.Parent = workspace

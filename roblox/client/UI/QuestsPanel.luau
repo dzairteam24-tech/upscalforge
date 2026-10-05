@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BountyConfig = require(Shared.Config.Bounty)
+local JourneyConfig = require(Shared.Config.Journey)
 local Cosmetics = require(Shared.Config.Cosmetics)
 local Products = require(Shared.Config.Products)
 local Progression = require(Shared.Config.Progression)
@@ -177,6 +178,79 @@ function QuestsPanel.mount(gui: ScreenGui)
 		return order
 	end
 
+	-- Journey: Professor Cubo's current step
+	local function journeyRows(order: number): number
+		local data = Store.data
+		local journey = data and (data :: any).journey
+		if not journey then
+			return order
+		end
+		local step = JourneyConfig.steps[journey.step]
+		local title = Theme.label({
+			Text = if step
+				then ("📖 Journey · step %d of %d"):format(journey.step, #JourneyConfig.steps)
+				else "📖 Journey complete! You're a Valley Hero.",
+			Font = Theme.titleFont,
+			Size = UDim2.new(1, -12, 0, 28),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			LayoutOrder = order,
+			MaxTextSize = 20,
+		})
+		title.Parent = body
+		order += 1
+		if not step then
+			return order
+		end
+		local row = Theme.frame({ Size = UDim2.new(1, -12, 0, 92), BackgroundColor3 = Theme.card, LayoutOrder = order })
+		Theme.corner(row, 10)
+		Theme.stroke(row, Theme.accent, 2)
+		local say = Theme.label({
+			Text = ("%s: \"%s\""):format(JourneyConfig.NPC_NAME, step.say),
+			Font = Enum.Font.GothamMedium,
+			TextColor3 = Theme.muted,
+			Size = UDim2.new(1, -20, 0, 30),
+			Position = UDim2.fromOffset(10, 4),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextWrapped = true,
+			MaxTextSize = 14,
+		})
+		say.Parent = row
+		local text = Theme.label({
+			Text = step.text,
+			Size = UDim2.new(0.66, 0, 0, 22),
+			Position = UDim2.fromOffset(10, 36),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			MaxTextSize = 17,
+		})
+		text.Parent = row
+		local progress = math.min(journey.progress, step.goal)
+		progressBar(row, progress / math.max(1, step.goal), UDim2.fromOffset(10, 64), UDim2.new(0.5, 0, 0, 14))
+		local count = Theme.label({
+			Text = ("%s / %s"):format(Format.abbrev(progress), Format.abbrev(step.goal)),
+			Size = UDim2.new(0.14, 0, 0, 16),
+			Position = UDim2.new(0.52, 14, 0, 63),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			MaxTextSize = 13,
+		})
+		count.Parent = row
+		local done = journey.progress >= step.goal
+		local b = Theme.button({
+			Text = if done then "Claim" else (Rewards.describe(step.reward, data :: any):gsub("\n", " · ")),
+			Size = UDim2.new(0.3, 0, 0, 46),
+			Position = UDim2.new(0.69, 0, 0, 38),
+			BackgroundColor3 = if done then Theme.green else Theme.panel,
+			MaxTextSize = 15,
+		})
+		b.Activated:Connect(function()
+			if done then
+				Net.event("ClaimJourney"):FireServer()
+			end
+		end)
+		b.Parent = row
+		row.Parent = body
+		return order + 1
+	end
+
 	-- Daily Bounty: three creatures to hatch today
 	local function bountyRows(order: number): number
 		local data = Store.data
@@ -240,7 +314,8 @@ function QuestsPanel.mount(gui: ScreenGui)
 	local function showQuests()
 		setLayout(false)
 		local now = os.time()
-		local order = bountyRows(1)
+		local order = journeyRows(1)
+		order = bountyRows(order)
 		order = questRows("daily", ("Daily · new in %s"):format(Format.time(Progress.secondsToNextDay(now))), order)
 		questRows("weekly", "Weekly · new every Monday", order)
 	end
