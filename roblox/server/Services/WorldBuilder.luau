@@ -290,6 +290,7 @@ local function buildHub(folder: Folder)
 		{ name = "Fusion", color = Color3.fromRGB(185, 166, 245), offset = Vector3.new(0, 0, -35), ui = "Pets" },
 		{ name = "Lucky Spin", color = Color3.fromRGB(255, 120, 200), offset = Vector3.new(-35, 0, 24), ui = "Spin" },
 		{ name = "Trips", color = Color3.fromRGB(91, 160, 110), offset = Vector3.new(35, 0, 24), ui = "Trips" },
+		{ name = "Arcade", color = Color3.fromRGB(110, 90, 220), offset = Vector3.new(-16, 0, 44), ui = "Stack" },
 	}
 	for _, booth in booths do
 		local base = part({

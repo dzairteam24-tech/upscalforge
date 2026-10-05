@@ -43,6 +43,7 @@ export type PlayerData = {
 	loadouts: { { string } }, -- saved Boost Card sets
 	codes: { [string]: boolean }, -- redeemed codes
 	journey: { step: number, progress: number },
+	arcade: { day: number, plays: number, best: number },
 	bounty: { day: number, targets: { { tier: number, species: string, variant: string } }, done: { boolean } },
 	reloads: number,
 	expeditions: { Expedition },

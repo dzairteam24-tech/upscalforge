@@ -972,6 +972,7 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		events = data.events,
 		bounty = data.bounty,
 		journey = data.journey,
+		arcade = data.arcade,
 		wheel = data.wheel,
 		rides = data.rides,
 		equippedRide = data.equippedRide,

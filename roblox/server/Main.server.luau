@@ -31,6 +31,7 @@ local BossService = require(Services.BossService)
 local ArtService = require(Services.ArtService)
 local BountyService = require(Services.BountyService)
 local JourneyService = require(Services.JourneyService)
+local MinigameService = require(Services.MinigameService)
 local DataService = require(Services.DataService)
 
 Net.init()
@@ -60,6 +61,7 @@ EventService.init()
 BossService.init()
 BountyService.init()
 JourneyService.init()
+MinigameService.init()
 
 DataService.init()
 
