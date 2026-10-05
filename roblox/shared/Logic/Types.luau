@@ -44,6 +44,7 @@ export type PlayerData = {
 	codes: { [string]: boolean }, -- redeemed codes
 	journey: { step: number, progress: number },
 	arcade: { day: number, plays: number, best: number },
+	gifts: { day: number, sent: boolean, received: number },
 	bounty: { day: number, targets: { { tier: number, species: string, variant: string } }, done: { boolean } },
 	reloads: number,
 	expeditions: { Expedition },

@@ -39,6 +39,7 @@ local EVENTS = {
 	"StackStart",
 	"StackGo",
 	"StackEnd",
+	"SendGift",
 	"Reload",
 	"StartExpedition",
 	"ClaimExpedition",

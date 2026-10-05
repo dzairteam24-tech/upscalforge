@@ -229,16 +229,33 @@ function TradePanel.mount(gui: ScreenGui)
 					MaxTextSize = 20,
 				})
 				name.Parent = row
+				name.Size = UDim2.new(0.45, 0, 1, -8)
 				local b = Theme.button({
 					Text = "Trade",
-					Size = UDim2.new(0.3, 0, 1, -12),
-					Position = UDim2.new(0.68, 0, 0, 6),
+					Size = UDim2.new(0.25, 0, 1, -12),
+					Position = UDim2.new(0.73, 0, 0, 6),
 					BackgroundColor3 = Theme.purple,
 				})
 				b.Activated:Connect(function()
 					Net.event("TradeRequest"):FireServer(player.UserId)
 				end)
 				b.Parent = row
+				-- Daily gift for friends (the server checks the friendship and the limits)
+				local gifts = data and (data :: any).gifts
+				local sentToday = gifts ~= nil and gifts.day == os.time() // 86400 and gifts.sent
+				local gift = Theme.button({
+					Text = if sentToday then "🎁 Sent" else "🎁 Gift",
+					Size = UDim2.new(0.22, 0, 1, -12),
+					Position = UDim2.new(0.49, 0, 0, 6),
+					BackgroundColor3 = if sentToday then Theme.panel else Theme.gold,
+					MaxTextSize = 16,
+				})
+				gift.Activated:Connect(function()
+					if not sentToday then
+						Net.event("SendGift"):FireServer(player.UserId)
+					end
+				end)
+				gift.Parent = row
 				row.Parent = playerList
 			end
 		end
