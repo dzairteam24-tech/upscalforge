@@ -93,7 +93,8 @@ end
 
 local function spawnGuardian(zoneId: number, eligible: { Player })
 	local zone = World1.zonesById[zoneId]
-	local speciesId = zone.species[#zone.species]
+	-- The guardian is the zone's 1% creature (the Legendary stays an egg-only find)
+	local speciesId = zone.species[math.min(4, #zone.species)]
 	local pet = { s = speciesId, v = "Normal", z = "Titan" }
 	local coins = zone.restoreGoal * Hunt.GUARDIAN_COINS
 	local center = MapLayout.center(zoneId) + Vector3.new(0, 0, -12)

@@ -1,0 +1,28 @@
+{
+ "cells": 7,
+ "roles": [
+  [
+   "body"
+  ],
+  [
+   "belly"
+  ],
+  [
+   "screen"
+  ],
+  [
+   "glow",
+   "eye",
+   "mouth"
+  ],
+  [
+   "shine"
+  ],
+  [
+   "glow2"
+  ],
+  [
+   "glow3"
+  ]
+ ]
+}

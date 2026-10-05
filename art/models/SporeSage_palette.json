@@ -1,0 +1,36 @@
+{
+ "cells": 10,
+ "roles": [
+  [
+   "body"
+  ],
+  [
+   "belly"
+  ],
+  [
+   "legs"
+  ],
+  [
+   "cap"
+  ],
+  [
+   "glow"
+  ],
+  [
+   "cap_rim"
+  ],
+  [
+   "eye",
+   "mouth"
+  ],
+  [
+   "beard"
+  ],
+  [
+   "glow2"
+  ],
+  [
+   "blush"
+  ]
+ ]
+}

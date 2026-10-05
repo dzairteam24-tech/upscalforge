@@ -123,24 +123,37 @@ function EggPanel.mount(gui: ScreenGui)
 		end
 	end
 
-	local function show(zoneId: number)
-		zoneShown = zoneId
-		local zone = World1.zonesById[zoneId]
-		title.Text = ("%s Egg · 🪙 %s"):format(zone.name, Format.abbrev(zone.eggPrice))
+	-- `eggId`: a zone's egg (the zone's id) or the Legendary Egg
+	local function show(eggId: number)
+		zoneShown = eggId
+		local egg = World1.eggs[eggId]
+		title.Text = ("%s · 🪙 %s%s"):format(egg.name, Format.abbrev(egg.price), if egg.fixedOdds then " · Luck can't change these odds" else "")
 		for _, child in odds:GetChildren() do
 			if child:IsA("GuiObject") then
 				child:Destroy()
 			end
 		end
-		for order, speciesId in zone.species do
+		-- The Legendary Egg has 14 creatures: smaller cells on two rows
+		local many = #egg.species > 5
+		local cellSize = if many then UDim2.fromOffset(84, 100) else UDim2.fromOffset(110, 110)
+		oddsLayout.Wraps = many
+		odds.Size = UDim2.new(1, -16, 0, if many then 208 else 110)
+		panel.Size = UDim2.fromOffset(if many then 680 else 640, if many then 318 else 220)
+		for order, speciesId in egg.species do
 			local species = World1.species[speciesId]
-			local cell = Theme.frame({ Size = UDim2.fromOffset(110, 110), BackgroundColor3 = Theme.card, LayoutOrder = order })
+			local chance = egg.chances[order]
+			local cell = Theme.frame({ Size = cellSize, BackgroundColor3 = Theme.card, LayoutOrder = order })
 			Theme.corner(cell, 10)
 			local iconHolder = Theme.frame({ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0.72, 0) })
 			iconHolder.Parent = cell
 			PetCard.icon({ s = speciesId, v = "Normal", z = "Normal" }, iconHolder)
+			local legendary = species.legendary
+			if legendary then
+				Theme.stroke(cell, Theme.gold, 2)
+			end
 			local text = Theme.label({
-				Text = ("%s · %s"):format(speciesId, Format.chance(species.chance)),
+				Text = ("%s%s · %s"):format(if legendary then "★ " else "", speciesId, Format.chance(chance)),
+				TextColor3 = if legendary then Theme.gold else Theme.text,
 				Size = UDim2.new(1, -6, 0.26, 0),
 				Position = UDim2.new(0, 3, 0.72, 0),
 				MaxTextSize = 14,
@@ -168,8 +181,9 @@ function EggPanel.mount(gui: ScreenGui)
 				for _, egg in CollectionService:GetTagged("EggStand") do
 					if egg:IsA("BasePart") and (egg.Position - root.Position).Magnitude <= Constants.EGG_RANGE then
 						local zoneId = egg:GetAttribute("ZoneId")
-						if type(zoneId) == "number" and Store.isUnlocked(zoneId) then
-							nearest = zoneId
+						local eggId = egg:GetAttribute("EggId") or zoneId
+						if type(zoneId) == "number" and type(eggId) == "number" and Store.isUnlocked(zoneId) then
+							nearest = eggId
 						end
 					end
 				end

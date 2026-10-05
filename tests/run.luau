@@ -80,9 +80,9 @@ end)
 
 -- Config ---------------------------------------------------------------------------------------------------
 
-test("World 1 has 10 zones + hub and 40 species", function()
+test("World 1 has 10 zones + hub and 50 species (with 10 Legendaries)", function()
 	eq(#World1.zones, 11, "zones")
-	eq(#World1.speciesOrder, 40, "species")
+	eq(#World1.speciesOrder, 50, "species")
 end)
 
 test("Every egg's chances add up to 100%", function()
@@ -1302,7 +1302,7 @@ test("Events: UTC dates, the running event, tokens, bonus and the shop", functio
 	end
 end)
 
-test("Every creature model builds: 40 species x 6 variants x 3 sizes", function()
+test("Every creature model builds: 50 species x 6 variants x 3 sizes", function()
 	local PetModel = R(Shared.PetModel)
 	local Sizes = R(Shared.Config.Sizes)
 	local built = 0
@@ -1316,7 +1316,7 @@ test("Every creature model builds: 40 species x 6 variants x 3 sizes", function(
 			end
 		end
 	end
-	eq(built, 40 * 6 * 3)
+	eq(built, 50 * 6 * 3)
 	-- Stickers add two parts on the back
 	local plain = PetModel.build({ s = "Kitty", v = "Normal", z = "Normal" })
 	local stickered = PetModel.build({ s = "Kitty", v = "Normal", z = "Normal", st = "Sticker_Star_3" })
@@ -1435,6 +1435,37 @@ test("3D models: parts are cloned, scaled, face forward and get their colors", f
 	local blocks = PetModel.build({ s = "Bee", v = "Normal", z = "Normal" })
 	eq(blocks.body.Name, "Body")
 	PetModel.useModels(nil)
+end)
+
+test("Legendary Egg: in the last zone, near-impossible odds that luck can't change", function()
+	local egg = World1.eggs[World1.LEGENDARY_EGG]
+	eq(egg.zone, 10)
+	local total = 0
+	for _, chance in egg.chances do
+		total += chance
+	end
+	near(total, 1, 1e-9, "odds add up to 100%")
+	local plain = EggRoll.speciesWeights(World1.LEGENDARY_EGG, 1)
+	local lucky = EggRoll.speciesWeights(World1.LEGENDARY_EGG, 1000)
+	for i, entry in plain do
+		near(lucky[i].weight, entry.weight, 1e-12, "luck doesn't change " .. entry.id)
+	end
+	local legendaries = 0
+	for _, speciesId in egg.species do
+		local species = World1.species[speciesId]
+		if species.legendary then
+			legendaries += 1
+			assert(species.chance <= 1 / 200000, speciesId .. " is near impossible")
+			eq(species.egg, World1.LEGENDARY_EGG)
+		end
+	end
+	eq(legendaries, 10)
+	-- Zone eggs never give a Legendary
+	for _, zone in World1.zones do
+		for _, speciesId in zone.species do
+			assert(not World1.species[speciesId].legendary, speciesId .. " is not in a zone egg")
+		end
+	end
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))

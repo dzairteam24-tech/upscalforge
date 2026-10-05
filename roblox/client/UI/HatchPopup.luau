@@ -5,6 +5,7 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Cosmetics = require(Shared.Config.Cosmetics)
+local World1 = require(Shared.Config.World1)
 local Variants = require(Shared.Config.Variants)
 local Net = require(Shared.Net)
 
@@ -133,7 +134,9 @@ function HatchPopup.mount(gui: ScreenGui)
 			TweenService:Create(card, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Size = UDim2.fromOffset(100, 130) }):Play()
 			local variant = Variants.byId[pet.v]
 			if variant then
-				local score = variant.order + (if pet.z == "Titan" then 10 elseif pet.z == "Big" then 5 else 0)
+				local species = World1.species[pet.s]
+				local legendary = species ~= nil and species.legendary
+				local score = variant.order + (if pet.z == "Titan" then 10 elseif pet.z == "Big" then 5 else 0) + (if legendary then 9 else 0)
 				if score > best then
 					best = score
 					bestPet = pet

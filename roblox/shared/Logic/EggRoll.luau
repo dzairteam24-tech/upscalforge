@@ -1,5 +1,5 @@
 --!strict
--- Rolls a hatch result for a zone egg. `rng` returns a number in [0, 1).
+-- Rolls a hatch result for an egg (zone eggs use the zone's id, see World1.eggs). `rng` returns a number in [0, 1).
 
 local Config = script.Parent.Parent.Config
 local Sizes = require(Config.Sizes)
@@ -19,14 +19,15 @@ export type RollContext = {
 local EggRoll = {}
 
 -- Rare species (below 10%) get sqrt(luck): luck helps, but common species stay common.
-function EggRoll.speciesWeights(zoneId: number, luck: number): { { id: string, weight: number } }
-	local zone = World1.zonesById[zoneId]
+-- Eggs with fixed odds (the Legendary Egg) ignore luck for the species.
+function EggRoll.speciesWeights(eggId: number, luck: number): { { id: string, weight: number } }
+	local egg = World1.eggs[eggId]
 	local weights = {}
 	local total = 0
-	for _, speciesId in zone.species do
-		local species = World1.species[speciesId]
-		local weight = species.chance
-		if species.chance < 0.1 then
+	for index, speciesId in egg.species do
+		local chance = egg.chances[index]
+		local weight = chance
+		if chance < 0.1 and not egg.fixedOdds then
 			weight *= math.sqrt(math.max(1, luck))
 		end
 		total += weight
@@ -50,9 +51,9 @@ function EggRoll.sizeChance(sizeId: string, context: RollContext): number
 	return math.min(1, size.chance * math.max(1, context.luck))
 end
 
-function EggRoll.roll(zoneId: number, context: RollContext, rng: () -> number): Roll
+function EggRoll.roll(eggId: number, context: RollContext, rng: () -> number): Roll
 	-- Species
-	local weights = EggRoll.speciesWeights(zoneId, context.luck)
+	local weights = EggRoll.speciesWeights(eggId, context.luck)
 	local pick = rng()
 	local speciesId = weights[#weights].id
 	local acc = 0

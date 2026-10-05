@@ -61,8 +61,10 @@ type Template = { parts: { TemplatePart }, width: number, height: number, radius
 
 -- Parts of the face keep their look in every variant
 local FACE = { eye = true, shine = true, mouth = true, teeth = true, tongue = true, brow = true, shades = true, white = true, screen = true }
--- Parts that always glow
-local GLOW = { glow = true }
+-- Parts that always glow: every role whose name starts with "glow" (glow, glow2, glow3...)
+local function isGlow(role: string): boolean
+	return string.sub(role, 1, 4) == "glow"
+end
 
 local templates: { [string]: Template | false } = {}
 local indexed: { [string]: { BasePart } }? = nil
@@ -129,7 +131,7 @@ local function template(speciesId: string): Template?
 	local minY, maxY = math.huge, -math.huge
 	for _, part in list do
 		local role = string.match(part.Name, "__([%w_]+)$")
-		if role == "body" then
+		if role == "body" or (role == "jelly" and not body) then
 			body = part
 		elseif role == "eye" then
 			eyeSum += part.CFrame.Position
@@ -186,8 +188,16 @@ local function styleMesh(part: BasePart, role: string, variant: string, normal: 
 	part.Color = normal
 	part.Transparency = 0
 	part.Reflectance = 0
-	if GLOW[role] then
+	if isGlow(role) then
+		-- Glowing parts keep glowing in every variant
 		part.Material = Enum.Material.Neon
+		return
+	end
+	if role == "jelly" and variant == "Normal" then
+		-- The Slime King's see-through body
+		part.Material = Enum.Material.Glass
+		part.Transparency = 0.35
+		return
 	end
 	if FACE[role] then
 		if role == "eye" and variant == "Lava" then
@@ -259,7 +269,7 @@ local function buildFromMeshes(pet: { s: string, v: string, z: string }, t: Temp
 		part.Parent = model
 		table.insert(parts, part)
 		table.insert(offsets, CFrame.new(entry.offset.Position * scale) * entry.offset.Rotation)
-		if entry.role == "body" then
+		if entry.role == "body" or (entry.role == "jelly" and not body) then
 			body = part
 		end
 	end

@@ -168,7 +168,7 @@ function PetsPanel.mount(gui: ScreenGui)
 			table.insert(lines, "Titan skill: " .. species.titan.text)
 		end
 		if species then
-			table.insert(lines, ("From %s · %s chance"):format(World1.zonesById[species.zone].name, Format.chance(species.chance)))
+			table.insert(lines, ("From the %s · %s chance"):format(World1.eggs[species.egg].name, Format.chance(species.chance)))
 		end
 		detailsText.Text = table.concat(lines, "\n")
 

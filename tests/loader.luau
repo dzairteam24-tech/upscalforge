@@ -72,6 +72,11 @@ local function load(path: string, node: any): any
 			Enum = roblox.Enum,
 			UDim = roblox.UDim,
 			UDim2 = roblox.UDim2,
+			ColorSequence = roblox.ColorSequence,
+			ColorSequenceKeypoint = roblox.ColorSequenceKeypoint,
+			NumberSequence = roblox.NumberSequence,
+			NumberSequenceKeypoint = roblox.NumberSequenceKeypoint,
+			NumberRange = roblox.NumberRange,
 	}
 	for key, value in Loader.extraEnv do
 		environment[key] = value

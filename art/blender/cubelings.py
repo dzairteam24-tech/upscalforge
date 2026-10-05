@@ -116,7 +116,7 @@ SPECIES = {
 }
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from species_zoo import SPECIES as _MORE_SPECIES, ZONES  # noqa: E402
+from species_zoo import LEGENDARIES, SPECIES as _MORE_SPECIES, ZONES  # noqa: E402
 
 SPECIES.update(_MORE_SPECIES)
 
@@ -143,6 +143,16 @@ def material(name: str, color, roughness=0.55, gloss=False):
     bsdf = mat.node_tree.nodes["Principled BSDF"]
     bsdf.inputs["Base Color"].default_value = (*color, 1)
     bsdf.inputs["Roughness"].default_value = 0.15 if gloss else roughness
+    if name.startswith("glow"):
+        # Glowing parts (Neon in the game)
+        bsdf.inputs["Emission Color"].default_value = (*color, 1)
+        bsdf.inputs["Emission Strength"].default_value = 2.2
+    elif name == "jelly":
+        # See-through jelly (Glass in the game)
+        bsdf.inputs["Transmission Weight"].default_value = 0.85
+        bsdf.inputs["Roughness"].default_value = 0.06
+        bsdf.inputs["IOR"].default_value = 1.25
+        bsdf.inputs["Coat Weight"].default_value = 0.6
     mat["palette_color"] = color
     mat["key"] = name
     materials[name] = mat
@@ -312,7 +322,7 @@ class Mats(dict):
     def __missing__(self, key):
         colors = self.spec["colors"]
         value = colors.get(key) or DEFAULT_COLORS.get(key) or colors["body"]
-        made = material(key, hex_color(value), gloss=key in ("eye", "shine", "nose", "gem", "gem2", "crystal", "screen", "glow"))
+        made = material(key, hex_color(value), gloss=key in ("eye", "shine", "nose", "gem", "gem2", "crystal", "screen") or key.startswith("glow"))
         self[key] = made
         return made
 
@@ -1157,6 +1167,277 @@ def brows(c, angry=True):
     sym(one)
 
 
+
+# ----- Legendary parts -----------------------------------------------------------------------------------------
+
+def feat_core(c):
+    # A darker heart inside the jelly body
+    c.add(rounded_box("Core", (1.15, 1.15, 1.05), (0, 0.05, BODY_Z - 0.05), 0.35, segments=4), "core")
+
+
+def feat_bubbles(c):
+    for x, y, z, r in [(-0.55, -0.45, 0.45, 0.13), (0.6, 0.3, -0.35, 0.1), (-0.3, 0.5, -0.55, 0.09), (0.45, -0.5, 0.62, 0.07), (0.7, -0.2, 0.2, 0.06), (-0.7, 0.1, -0.1, 0.08)]:
+        c.add(ellipsoid("Bubble", (r, r, r), (x, y, BODY_Z + z), segments=14, rings=8), "bubble")
+
+
+def feat_drips(c):
+    # Jelly running down the sides into a puddle
+    for x, y, h in [(-0.65, -1.0, 0.45), (0.2, -1.0, 0.3), (1.0, 0.3, 0.5), (-1.0, -0.2, 0.38), (0.55, 1.0, 0.42), (-0.4, 1.0, 0.3)]:
+        c.add(ellipsoid("Drip", (0.14, 0.14, h), (x, y, LEG_H + h * 0.5), segments=14, rings=10), "jelly")
+        c.add(ellipsoid("DripEnd", (0.17, 0.17, 0.17), (x, y, LEG_H + 0.05), segments=14, rings=10), "jelly")
+    puddle = ellipsoid("Puddle", (1.45, 1.4, 0.2), (0, 0, 0.12), segments=36, rings=12)
+    c.add(puddle, "jelly")
+
+
+def feat_halo(c):
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.62, minor_radius=0.07, location=(0, 0.1, c.top + c.spec.get("halo_height", 0.85)), rotation=(math.radians(-12), 0, 0))
+    c.add(bpy.context.active_object, "glow")
+
+
+def feat_orbs(c):
+    for x, y, z, r in c.spec.get("orb_list", [(-1.35, -0.3, 0.75, 0.13), (1.4, 0.2, 0.95, 0.11), (1.25, -0.6, -0.2, 0.09), (-1.3, 0.5, -0.1, 0.1), (0.2, -0.9, 1.65, 0.08)]):
+        c.add(ellipsoid("Orb", (r, r, r), (x, y, BODY_Z + z), segments=14, rings=8), "glow2")
+
+
+def feat_flower_crown(c):
+    for i in range(10):
+        a = math.radians(i * 36)
+        x, y = math.cos(a) * 0.82, math.sin(a) * 0.82
+        key = "flower" if i % 2 == 0 else "flower2"
+        for j in range(5):
+            b = math.radians(j * 72)
+            c.add(ellipsoid("Petal", (0.11, 0.08, 0.04), (x + math.cos(b) * 0.1, y + math.sin(b) * 0.1, c.top + 0.06), segments=10, rings=6, rotation=(0, 0, b)), key)
+        c.add(ellipsoid("FlowerCenter", (0.06, 0.06, 0.05), (x, y, c.top + 0.1), segments=10, rings=6), "flower_center")
+
+
+def feat_wings_fairy(c):
+    # Four see-through petal wings that glow at the edges
+    def one(side):
+        for w, h, z, lean in ((0.75, 0.42, 0.45, 32), (0.55, 0.32, -0.15, -18)):
+            for key, scale, dy in (("glow2", 1.06, 0.03), ("wing", 1.0, 0.0)):
+                wing = ellipsoid("Wing", (w * scale, 0.04, h * scale), (0, 0, 0), segments=24, rings=10)
+                wing.data.transform(Matrix.Translation((w * 0.85 * side, dy, 0)))
+                wing.location = (0.3 * side, 1.08, BODY_Z + z)
+                wing.rotation_euler = (0, -math.radians(lean) * side, 0)
+                bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+                c.add(wing, key)
+    sym(one)
+
+
+def feat_bark(c):
+    # Vertical grooves on the sides and back
+    for side in (-1, 1):
+        for y in (-0.5, 0.0, 0.5):
+            c.add(rounded_box("Groove", (0.05, 0.1, 1.25), (side * (BODY_W / 2 + 0.01), y + 0.05 * side, BODY_Z + 0.05), 0.02, segments=1), "bark")
+    for x in (-0.55, 0.0, 0.55):
+        c.add(rounded_box("Groove", (0.1, 0.05, 1.2), (x, BODY_D / 2 + 0.01, BODY_Z), 0.02, segments=1), "bark")
+
+
+def ears_branches(c):
+    def one(side):
+        main = curve_points((0.45 * side, 0.0, c.top - 0.05), (0.7 * side, 0.0, c.top + 0.55), (1.15 * side, 0.1, c.top + 0.95), 10)
+        c.add(tapered("Branch", main, 0.14, 0.4), "bark")
+        twig = curve_points(main[4], (0.45 * side, -0.05, c.top + 0.8), (0.4 * side, -0.05, c.top + 1.1), 8)
+        c.add(tapered("Twig", twig, 0.08, 0.5), "bark")
+        for p, r in ((main[-1], 0.32), (twig[-1], 0.26), (main[6], 0.2)):
+            c.add(ellipsoid("Leaves", (r, r, r * 0.85), p, segments=16, rings=10), "leaf")
+    sym(one)
+
+
+def feat_moss(c):
+    for x, y, r in [(-0.4, -0.2, 0.42), (0.35, 0.35, 0.35), (0.0, 0.6, 0.3)]:
+        c.add(ellipsoid("Moss", (r, r, 0.1), (x, y, c.top + 0.02), segments=18, rings=8), "moss")
+    sym(lambda s_: c.add(ellipsoid("Moss", (0.06, 0.4, 0.28), (s_ * (BODY_W / 2 + 0.02), 0.2, BODY_Z + 0.6), segments=14, rings=8), "moss"))
+
+
+def feat_side_mushrooms(c):
+    for x, y, z, r in [(1.0, -0.35, -0.3, 0.2), (1.0, -0.1, -0.5, 0.14), (-1.0, 0.4, 0.1, 0.17)]:
+        side = 1 if x > 0 else -1
+        stem = rounded_box("Stem", (0.14, 0.08, 0.08), (x + side * 0.06, y, BODY_Z + z), 0.03, segments=1)
+        c.add(stem, "mushroom_stem")
+        cap = ellipsoid("MushCap", (r * 0.6, r, r), (x + side * (0.12 + r * 0.25), y, BODY_Z + z), segments=14, rings=8)
+        c.add(cap, "glow2")
+
+
+def feat_coral_crown(c):
+    for i, (x, y, h, lean) in enumerate([(0, -0.3, 0.75, 0), (-0.45, -0.1, 0.55, -25), (0.45, -0.1, 0.55, 25), (-0.25, 0.35, 0.5, -15), (0.25, 0.35, 0.5, 15)]):
+        base = (x, y, c.top - 0.05)
+        end = (x + math.sin(math.radians(lean)) * h, y, c.top + h)
+        pts = curve_points(base, (x, y, c.top + h * 0.5), end, 8)
+        key = "coral" if i % 2 == 0 else "coral2"
+        c.add(tapered("Coral", pts, 0.09, 0.6), key)
+        c.add(ellipsoid("CoralTip", (0.07, 0.07, 0.07), end, segments=10, rings=6), key)
+        if h > 0.52:
+            side_end = (end[0] + 0.18, y, c.top + h * 0.7)
+            c.add(tapered("Coral", curve_points(pts[4], (side_end[0], y, pts[4][2] + 0.1), side_end, 6), 0.06, 0.6), key)
+
+
+def feat_pearl(c):
+    c.add(ellipsoid("Pearl", (0.14, 0.14, 0.14), face_point(0, 0.62, 0.06), segments=16, rings=10), "glow")
+
+
+def feat_suckers(c):
+    for i in range(6):
+        a = math.radians(30 + i * 60)
+        x, y = math.cos(a), math.sin(a)
+        for t in (0.35, 0.6, 0.82):
+            px = x * (0.72 + 0.83 * t)
+            py = y * (0.72 + 0.83 * t)
+            pz = 0.55 - 0.45 * t + 0.1 * t * t
+            c.add(ellipsoid("Sucker", (0.06, 0.06, 0.03), (px, py, max(0.05, pz - 0.14)), segments=10, rings=6), "sucker")
+
+
+def ears_wizard(c):
+    # A tall bent wizard hat that is also a mushroom cap, with glowing spots
+    pts = curve_points((0, 0.05, c.top - 0.25), (0, 0.15, c.top + 1.0), (0.45, 0.45, c.top + 1.3), 14)
+    c.add(tapered("Hat", pts, 1.05, 0.04), "cap")
+    for i, t in enumerate((0.25, 0.45, 0.62)):
+        p = Vector(pts[int(t * (len(pts) - 1))])
+        r = 1.05 * (1 - 0.96 * t)
+        c.add(ellipsoid("Spot", (0.13, 0.13, 0.13), (p.x + r * 0.7, p.y - r * 0.7, p.z), segments=12, rings=8), "glow")
+        c.add(ellipsoid("Spot", (0.1, 0.1, 0.1), (p.x - r * 0.75, p.y - r * 0.5, p.z + 0.05), segments=12, rings=8), "glow")
+    bpy.ops.mesh.primitive_torus_add(major_radius=1.05, minor_radius=0.09, location=(0, 0.05, c.top - 0.12))
+    c.add(bpy.context.active_object, "cap_rim")
+
+
+def feat_beard(c):
+    for x, z, r in [(0, -0.42, 0.26), (-0.22, -0.32, 0.2), (0.22, -0.32, 0.2), (-0.1, -0.62, 0.18), (0.1, -0.62, 0.18), (0, -0.8, 0.14)]:
+        c.add(ellipsoid("Beard", (r, r * 0.8, r), face_point(x, z, 0.08), segments=14, rings=8), "beard")
+
+
+def feat_spores(c):
+    for x, y, z, r in [(-1.3, -0.4, 0.4, 0.07), (1.35, -0.2, 0.7, 0.06), (1.2, 0.5, 1.3, 0.08), (-1.2, 0.3, 1.2, 0.06), (-0.6, -1.1, 1.5, 0.05), (0.8, -1.0, 0.1, 0.05), (0.2, -1.2, 1.0, 0.06)]:
+        c.add(ellipsoid("Spore", (r, r, r), (x, y, BODY_Z + z), segments=10, rings=6), "glow2")
+
+
+def feat_scarab_shell(c):
+    # Two shiny shell halves on top with a seam
+    for side in (-1, 1):
+        half = ellipsoid("Shell", (0.47, 0.92, 0.36), (side * 0.49, 0.08, c.top - 0.06), segments=28, rings=14)
+        c.add(half, "shell")
+        c.add(ellipsoid("ShellShine", (0.1, 0.42, 0.04), (side * 0.52, -0.05, c.top + 0.27), segments=12, rings=6, rotation=(0, math.radians(-12 * side), 0)), "glow2")
+    for side in (-1, 1):
+        for y in (-0.4, 0.15, 0.6):
+            c.add(rounded_box("Lapis", (0.1, 0.18, 0.5), (side * (BODY_W / 2 + 0.03), y, BODY_Z + 0.15), 0.04, segments=1), "lapis")
+
+
+def feat_sun_disk(c):
+    # A sun disk standing behind the head, ringed in gold
+    bpy.ops.mesh.primitive_cylinder_add(vertices=40, radius=0.62, depth=0.1, location=(0, 0.75, c.top + 0.85), rotation=(math.radians(90), 0, 0))
+    c.add(bpy.context.active_object, "glow")
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.68, minor_radius=0.08, location=(0, 0.75, c.top + 0.85), rotation=(math.radians(90), 0, 0))
+    c.add(bpy.context.active_object, "gold")
+    for i in range(12):
+        a = math.radians(i * 30)
+        c.add(cone("Ray", 0.06, 0.0, 0.28, (math.cos(a) * 0.74, 0.75, c.top + 0.85 + math.sin(a) * 0.74), rotation=(0, math.radians(90) - a, 0), verts=6), "gold")
+
+
+def feat_mane(c):
+    # A fluffy collar all around the neck line
+    for i in range(16):
+        a = math.radians(i * 22.5)
+        x, y = math.cos(a) * 1.02, math.sin(a) * 1.02
+        if y < -0.7 and abs(x) < 0.6:
+            continue  # keep the face free
+        c.add(ellipsoid("Mane", (0.24, 0.24, 0.2), (x * 0.93, y * 0.93, c.top - 0.12), segments=14, rings=8), "mane" if i % 2 else "mane2")
+
+
+def feat_aurora(c):
+    for i, (z0, z1) in enumerate([(0.55, 0.68), (0.78, 0.86)]):
+        c.add(shell_of_body("Aurora", 0.03 + i * 0.005, slab(z0, z1, front_cut=-0.55)), "glow" if i == 0 else "glow2")
+
+
+def feat_lava_cracks(c):
+    paths = [
+        [(-0.85, 0.7), (-0.6, 0.5), (-0.7, 0.25), (-0.45, 0.05)],
+        [(0.85, -0.6), (0.6, -0.45), (0.7, -0.2)],
+        [(-0.3, -0.85), (-0.15, -0.65), (-0.3, -0.5)],
+    ]
+    for pts in paths:
+        c.add(tube("Crack", [face_point(x, z, 0.005) for x, z in pts], 0.035), "glow")
+    for side in (-1, 1):
+        for pts in ([(-0.7, 0.6), (-0.3, 0.3), (-0.45, -0.1), (0.1, -0.4)], [(0.2, 0.75), (0.5, 0.4), (0.4, 0.1)]):
+            c.add(tube("Crack", [(side * (BODY_W / 2 + 0.005), y, BODY_Z + z) for y, z in pts], 0.035), "glow")
+    for pts in ([(-0.6, 0.6), (-0.2, 0.2), (0.3, 0.4), (0.6, -0.2)], [(-0.4, -0.3), (0.0, -0.6)]):
+        c.add(tube("Crack", [(x, BODY_D / 2 + 0.005, BODY_Z + z) for x, z in pts], 0.035), "glow")
+    for pts in ([(-0.6, -0.5), (-0.1, -0.1), (0.4, 0.2), (0.7, 0.6)],):
+        c.add(tube("Crack", [(x, y, c.top + 0.005) for x, y in pts], 0.035), "glow")
+
+
+def feat_ice_crown(c):
+    for x, y, h, lean in [(0, -0.3, 0.75, 0), (-0.35, -0.2, 0.5, -20), (0.35, -0.2, 0.5, 20), (-0.6, 0.1, 0.35, -30), (0.6, 0.1, 0.35, 30), (0, 0.25, 0.45, 0)]:
+        c.add(cone("Crystal", 0.16, 0.0, h, (x, y, c.top - 0.08), rotation=(0, math.radians(lean), 0), verts=5), "glow")
+
+
+def feat_float_ring(c):
+    bpy.ops.mesh.primitive_torus_add(major_radius=1.0, minor_radius=0.06, location=(0, 0, 0.05))
+    c.add(bpy.context.active_object, "glow2")
+
+
+def feat_glitch(c):
+    import random
+
+    rng = random.Random(11)
+    keys = ["glow", "glow2", "glow3"]
+    for i in range(18):
+        face = rng.choice(["top", "side", "side", "front", "back", "float"])
+        s_ = rng.uniform(0.12, 0.3)
+        if face == "top":
+            loc = (rng.uniform(-0.8, 0.8), rng.uniform(-0.8, 0.8), c.top + s_ * 0.2)
+        elif face == "side":
+            loc = (rng.choice([-1, 1]) * (BODY_W / 2 + s_ * 0.2), rng.uniform(-0.8, 0.8), BODY_Z + rng.uniform(-0.8, 0.8))
+        elif face == "front":
+            loc = (rng.choice([-0.85, 0.85]), FRONT_Y - s_ * 0.2, BODY_Z + rng.uniform(-0.8, 0.8))
+        elif face == "back":
+            loc = (rng.uniform(-0.8, 0.8), BODY_D / 2 + s_ * 0.2, BODY_Z + rng.uniform(-0.8, 0.8))
+        else:
+            loc = (rng.uniform(-1.6, 1.6), rng.uniform(-1.0, 1.0), BODY_Z + rng.uniform(0.6, 1.6))
+            if abs(loc[0]) < 1.2:
+                loc = (math.copysign(1.35, loc[0]), loc[1], loc[2])
+        c.add(rounded_box("GlitchBit", (s_, s_, s_), loc, 0.015, segments=1), keys[i % 3])
+    # RGB split edges: thin glowing outlines offset on the front
+    c.add(rounded_box("Split", (0.06, 0.05, 1.5), (-1.02, FRONT_Y - 0.02, BODY_Z), 0.02, segments=1), "glow")
+    c.add(rounded_box("Split", (0.06, 0.05, 1.5), (1.02, FRONT_Y - 0.02, BODY_Z), 0.02, segments=1), "glow2")
+
+
+def tail_flame_tip(c):
+    tail_dragon(c)
+    pts = curve_points((0, BODY_D / 2 - 0.1, BODY_Z - 0.45), (0, BODY_D / 2 + 1.0, BODY_Z - 0.75), (0.7, BODY_D / 2 + 1.1, BODY_Z - 0.3), 14)
+    end = Vector(pts[-1])
+    for i, (h, key) in enumerate(((0.6, "glow"), (0.42, "glow2"))):
+        c.add(cone("TailFlame", 0.2 - i * 0.06, 0.0, h, tuple(end + Vector((0.05, 0.05, 0.05))), rotation=(math.radians(-15), math.radians(25), 0), verts=10), key)
+
+
+LEGEND_FEATURES = {
+    "core": feat_core,
+    "bubbles": feat_bubbles,
+    "drips": feat_drips,
+    "halo": feat_halo,
+    "orbs": feat_orbs,
+    "flower_crown": feat_flower_crown,
+    "wings_fairy": feat_wings_fairy,
+    "bark": feat_bark,
+    "moss": feat_moss,
+    "side_mushrooms": feat_side_mushrooms,
+    "coral_crown": feat_coral_crown,
+    "pearl": feat_pearl,
+    "suckers": feat_suckers,
+    "beard": feat_beard,
+    "spores": feat_spores,
+    "scarab_shell": feat_scarab_shell,
+    "sun_disk": feat_sun_disk,
+    "mane": feat_mane,
+    "aurora": feat_aurora,
+    "lava_cracks": feat_lava_cracks,
+    "ice_crown": feat_ice_crown,
+    "float_ring": feat_float_ring,
+    "glitch": feat_glitch,
+}
+FEATURES.update(LEGEND_FEATURES)
+EARS.update({"branches": ears_branches, "wizard": ears_wizard})
+TAILS["flame_tip"] = tail_flame_tip
+
+
 # ---------------------------------------------------------------------------------------------------------------
 # Building
 
@@ -1171,7 +1452,7 @@ def build(spec):
 
     # Body: one rounded cube
     body = rounded_box("Body", (BODY_W, BODY_D, BODY_H), (0, 0, BODY_Z), BEVEL, segments=5)
-    parts.append(finish(body, mat["body"]))
+    parts.append(finish(body, mat[spec.get("body_key", "body")]))
 
     # Belly: a shell of the body (slightly bigger) cut by an ellipse at the front, so it wraps the bevel
     if "belly" in spec["colors"]:
@@ -1452,7 +1733,7 @@ def setup_render(resolution=640):
     world = bpy.data.worlds.new("World")
     scene.world = world
     world.use_nodes = True
-    world.node_tree.nodes["Background"].inputs["Color"].default_value = (*hex_color("#B9B9B9"), 1)
+    world.node_tree.nodes["Background"].inputs["Color"].default_value = (*hex_color(os.environ.get("BG", "#B9B9B9")), 1)
     world.node_tree.nodes["Background"].inputs["Strength"].default_value = 1.0
 
     bpy.ops.object.light_add(type="SUN", location=(4, -6, 8))
@@ -1582,7 +1863,7 @@ def export_roblox():
     species; inside, one mesh per part role ("Kitty__body", "Kitty__eye"...), so the game can recolor every role
     for the variants. Also writes roblox/shared/Config/CreatureLooks.luau with each role's normal color."""
     reset()
-    order = [name for zone in ZONES for name in zone]
+    order = [name for zone in ZONES for name in zone] + LEGENDARIES
     looks = {}
     for index, name in enumerate(order):
         materials.clear()
@@ -1641,7 +1922,10 @@ def main():
         export_roblox()
         return
     lineup_name = "lineup"
-    if args[0] == "zone":
+    if args[0] == "legendary":
+        args = LEGENDARIES
+        lineup_name = "legendaries_lineup"
+    elif args[0] == "zone":
         index = int(args[1])
         args = ZONES[index - 1]
         lineup_name = f"zone{index}_lineup"

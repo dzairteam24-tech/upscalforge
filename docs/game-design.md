@@ -446,3 +446,25 @@
 ## 16. مازال ما تقررش
 
 - حتى حاجة دركا. الشخصية هي الـ Avatar تاع Roblox، ونركزو على اللعبة.
+
+
+## الأسطوريين و الـ Legendary Egg
+
+- كل منطقة عندها بيضتها (4 مخلوقات: 60% / 30% / 9% / 1%)، ما فيهاش أسطوريين
+- في آخر منطقة (Pixel Zone) كاين **★ Legendary Egg** (ثمنها 5 مرات بيضة المنطقة). أغلب الوقت تعطي مخلوقات المنطقة، و فيها 10 أسطوريين بحظ قريب من المستحيل:
+
+| الأسطوري | المنطقة (الشكل) | الحظ | القوة (Titan) |
+|---|---|---|---|
+| Slime King | Spawn Meadow | 1 in 200K | Power x3، كل دقيقة 5 slimes يكسرو مصادر |
+| Blossom Queen | Flower Field | 1 in 300K | Luck x6، كل 2 دقايق 3 بيضات بحظ x10 |
+| Elder Treant | Forest | 1 in 400K | Power x3، كل 30 ثانية الأرض تهتز |
+| Kraken | Beach | 1 in 600K | Power x3.5، موجة تكسر المنطقة كل 45 ثانية |
+| Spore Sage | Mushroom Cave | 1 in 800K | Gems x3، مطر جواهر |
+| Pharaoh Scarab | Desert | 1 in 1M | Coins x3، كل 2 دقايق Coins x15 |
+| Aurora Wolf | Snow Peak | 1 in 1.5M | Power x4، 10 ذئاب أشباح |
+| Inferno Drake | Volcano | 1 in 2.5M | Power x5، نيزك كل 20 ثانية |
+| Frost Leviathan | Frozen Lake | 1 in 4M | يعطي الكل قوة أقوى مخلوق، 20 صندوق ذهبي كل دقيقة |
+| Glitch | Pixel Zone | 1 in 10M | Power x6، Coins x25 و بيضة بحظ x100 |
+
+- **الـ Luck ما يبدّلش حظ الأسطوريين** (لا الفيديو، لا الإكسيرات، لا الكروت). يبدّل غير الـ variant و الحجم، يعني Golden Glitch ممكن
+- كي يخرج أسطوري: رسالة للسيرفر كامل و احتفال كبير

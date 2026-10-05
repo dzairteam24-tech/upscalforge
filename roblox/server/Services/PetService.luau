@@ -40,8 +40,13 @@ local function random(): number
 end
 
 -- Only the rarest hatches are told to the whole server, so the chat doesn't fill up.
+local function isLegendary(roll: Types.Roll): boolean
+	local species = World1.species[roll.s]
+	return species ~= nil and species.legendary
+end
+
 local function isRare(roll: Types.Roll): boolean
-	return roll.z == "Titan" or roll.v == "Pixel"
+	return roll.z == "Titan" or roll.v == "Pixel" or isLegendary(roll)
 end
 
 local function describe(roll: Types.Roll): string
@@ -60,7 +65,7 @@ end
 local function grant(
 	player: Player,
 	data: PlayerData,
-	zoneId: number,
+	eggId: number,
 	eggs: number,
 	extraLuck: number,
 	minVariant: string?,
@@ -79,9 +84,9 @@ local function grant(
 		for _ = 1, count do
 			local forceGolden = not data.flags.gotGolden
 				and (data.stats.hatches or 0) + 1 >= Constants.GUARANTEED_GOLDEN_BY_HATCH
-			local roll = EggRoll.roll(zoneId, {
+			local roll = EggRoll.roll(eggId, {
 				luck = luck,
-				variantChance = GameService.variantChance(player, zoneId),
+				variantChance = GameService.variantChance(player, World1.eggs[eggId].zone),
 				forceGolden = forceGolden,
 				minVariant = minVariant,
 			}, random)
@@ -101,7 +106,9 @@ local function grant(
 			if roll.z == "Titan" then
 				GameService.progress(player, "Titan", 1)
 			end
-			if isRare(roll) then
+			if isLegendary(roll) then
+				GameService.notifyAll(("★ LEGENDARY! %s hatched a %s!"):format(player.DisplayName, describe(roll)), "rare")
+			elseif isRare(roll) then
 				GameService.notifyAll(("%s hatched a %s!"):format(player.DisplayName, describe(roll)), "rare")
 			end
 		end
@@ -115,14 +122,15 @@ local function grant(
 	return results
 end
 
-local function hatch(player: Player, zoneId: any, amount: any)
+-- `eggId`: a zone's id for its egg, or World1.LEGENDARY_EGG.
+local function hatch(player: Player, eggId: any, amount: any)
 	local data = DataService.get(player)
 	local runtime = State.get(player)
-	if not data or not runtime or type(zoneId) ~= "number" or type(amount) ~= "number" then
+	if not data or not runtime or type(eggId) ~= "number" or type(amount) ~= "number" then
 		return
 	end
-	local zone = World1.zonesById[zoneId]
-	if not zone or zone.eggPrice <= 0 then
+	local egg = World1.eggs[eggId]
+	if not egg then
 		return
 	end
 	if amount ~= 1 and amount ~= 3 and amount ~= 8 then
@@ -136,7 +144,7 @@ local function hatch(player: Player, zoneId: any, amount: any)
 		GameService.notify(player, "Buy Octo Hatch in the shop first", "error")
 		return
 	end
-	if not data.unlockedZones[tostring(zoneId)] then
+	if not data.unlockedZones[tostring(egg.zone)] then
 		return
 	end
 	local now = os.clock()
@@ -145,7 +153,7 @@ local function hatch(player: Player, zoneId: any, amount: any)
 	end
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	local eggPos = WorldBuilder.eggPositions[zoneId]
+	local eggPos = WorldBuilder.eggPositions[eggId]
 	if not root or not eggPos or (root.Position - eggPos).Magnitude > Constants.EGG_RANGE + 6 then
 		GameService.notify(player, "Walk up to the egg", "error")
 		return
@@ -156,7 +164,7 @@ local function hatch(player: Player, zoneId: any, amount: any)
 		GameService.notify(player, "Your storage is full. Delete or fuse some creatures.", "error")
 		return
 	end
-	local cost = zone.eggPrice * amount
+	local cost = egg.price * amount
 	if data.coins < cost then
 		GameService.notify(player, "Not enough coins", "error")
 		return
@@ -168,11 +176,11 @@ local function hatch(player: Player, zoneId: any, amount: any)
 	local paid = 0
 	for _ = 1, amount do
 		if rng:NextNumber() >= freeChance then
-			paid += zone.eggPrice
+			paid += egg.price
 		end
 	end
 	data.coins -= paid
-	grant(player, data, zoneId, amount, 1, nil, false)
+	grant(player, data, eggId, amount, 1, nil, false)
 end
 
 function PetService.init()

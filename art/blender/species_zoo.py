@@ -347,3 +347,117 @@ ZONES = [
     ["Ice Fox", "Narwhal", "Frost Owl", "Ice Dragon"],
     ["Bot", "Byte", "Cursor", "King"],
 ]
+
+# ----- Legendaries: the 5th creature of every zone, 1 egg in 1,000 --------------------------------------------------
+# Same cube, more detail: glowing parts ("glow" keys -> Neon in the game), jelly (Glass), halos, orbs, crowns.
+
+LEGENDARY_SPECIES = {
+    # Spawn Meadow: a wobbly see-through slime with a dark heart, bubbles, drips and a little crown
+    "Slime King": {
+        "colors": {"body": "#6BE36B", "jelly": "#7CF07C", "core": "#2FA84F", "bubble": "#D8FFD8", "gold": "#F5C542", "gem": "#E5534B", "gem2": "#5B9DF5", "tongue": "#FF7A8A", **face("#103A1A", blush="#FF9EB5")},
+        "body_key": "jelly",
+        "ears": "crown",
+        "eyes": 1.15,
+        "mouth": "open",
+        "legs": "none",
+        "features": ["core", "bubbles", "drips"],
+        "tail": "none",
+    },
+    # Flower Field: a fairy queen with a crown of flowers and glowing petal wings
+    "Blossom Queen": {
+        "colors": {"body": "#FFB0D6", "belly": "#FFF0F7", "legs": "#E58AB8", "flower": "#FFFFFF", "flower2": "#FFE27A", "flower_center": "#FFB347", "wing": "#FFE3F2", "glow2": "#FF7AD0", "glow": "#FFF27A", **face("#3A1F35", blush="#FF7AAE")},
+        "ears": "none",
+        "eye_style": "sparkle",
+        "eyes": 1.08,
+        "mouth": "smile",
+        "features": ["flower_crown", "wings_fairy", "orbs"],
+        "tail": "none",
+    },
+    # Forest: an old tree spirit with branch antlers, moss, bark and glowing mushrooms
+    "Elder Treant": {
+        "colors": {"body": "#7A5438", "belly": "#B08A62", "legs": "#5A3C26", "bark": "#4E3422", "leaf": "#4FBF5A", "moss": "#6FCF6A", "mushroom_stem": "#F3E3C8", "glow2": "#7CF0E0", **face("#9CFF6A", mouth="#2B1A10", blush=None)},
+        "ears": "branches",
+        "eye_style": "sleepy",
+        "mouth": "smile",
+        "blush": False,
+        "features": ["bark", "moss", "side_mushrooms"],
+        "tail": "none",
+    },
+    # Beach: the deep-sea king with a coral crown, a glowing pearl and tentacles with suckers
+    "Kraken": {
+        "colors": {"body": "#285A8C", "belly": "#7FC4E8", "coral": "#FF6F91", "coral2": "#FF9F6A", "glow": "#E6F7FF", "sucker": "#FFC9D8", "spot": "#5FB0E0", "brow": "#0E2A44", "white": "#FFFFFF", **face("#7CF0FF", mouth="#0E2A44", blush=None)},
+        "ears": "none",
+        "brows": "angry",
+        "mouth": "fangs",
+        "legs": "tentacles",
+        "blush": False,
+        "features": ["coral_crown", "pearl", "suckers", "spots"],
+        "spot_list": [(1.0, 0.1, 0.35, 1, 0, 0.15), (-1.0, -0.2, 0.3, 1, 0, 0.14), (0.3, 1.0, 0.3, 2, 0, 0.17), (-0.4, 1.0, -0.2, 2, 0, 0.12)],
+        "tail": "none",
+    },
+    # Mushroom Cave: an old sage under a bent wizard mushroom hat, with a beard and floating spores
+    "Spore Sage": {
+        "colors": {"body": "#966CDC", "belly": "#D9C6FF", "legs": "#6E4CB0", "cap": "#5A2E9C", "cap_rim": "#3F1F70", "glow": "#7CFFDA", "glow2": "#B6FF7A", "beard": "#F4F0FF", **face("#24123F", blush="#FF9ED8")},
+        "ears": "wizard",
+        "eye_style": "sleepy",
+        "mouth": "none",
+        "features": ["beard", "spores"],
+        "tail": "none",
+    },
+    # Desert: a golden scarab with a shell, lapis stripes, a sun disk and a horn
+    "Pharaoh Scarab": {
+        "colors": {"body": "#F5C442", "belly": "#FFE9A8", "legs": "#2A3F8F", "shell": "#1F7A6E", "glow2": "#9FFFE8", "lapis": "#2A3F8F", "gold": "#F5C542", "glow": "#FF6A3D", "horn": "#2A3F8F", **face("#1E1A10", blush=None)},
+        "ears": "none",
+        "eye_style": "sparkle",
+        "mouth": "smile",
+        "blush": False,
+        "features": ["scarab_shell", "sun_disk"],
+        "tail": "none",
+    },
+    # Snow Peak: a white wolf with a fluffy mane, glowing aurora bands and an aurora-tipped tail
+    "Aurora Wolf": {
+        "colors": {"body": "#DCF0FF", "belly": "#FFFFFF", "ear_inner": "#8FB7E8", "legs": "#A8C8E8", "mane": "#FFFFFF", "mane2": "#EAF6FF", "glow": "#5BFFB0", "glow2": "#B07CFF", "tail_tip": "#5BFFB0", "crystal": "#E6FBFF", "nose": "#2A3A55", **face("#1E3A66", blush="#FFC0DA")},
+        "ears": "cat",
+        "eye_style": "sparkle",
+        "nose": "oval",
+        "mouth": "smile",
+        "features": ["mane", "aurora", "crystals"],
+        "crystal_list": [(0.0, -0.45, 0.4, 0), (-0.22, -0.35, 0.28, -20), (0.22, -0.35, 0.28, 20)],
+        "tail": "fox",
+    },
+    # Volcano: an obsidian dragon split by glowing lava cracks, with horns, wings and a burning tail
+    "Inferno Drake": {
+        "colors": {"body": "#28202A", "belly": "#4A3438", "legs": "#1A1418", "horn": "#F2E3C6", "wing": "#7A1F1F", "spike": "#FF7A1A", "glow": "#FF7A1A", "glow2": "#FFD23D", "brow": "#120C10", "white": "#FFFFFF", **face("#FFB547", mouth="#120C10", blush=None)},
+        "ears": "horns",
+        "brows": "angry",
+        "mouth": "fangs",
+        "blush": False,
+        "features": ["lava_cracks", "wings_dragon", "back_spikes"],
+        "tail": "flame_tip",
+    },
+    # Frozen Lake: a floating ice whale with a crown of glowing crystals and aurora bands
+    "Frost Leviathan": {
+        "colors": {"body": "#78C8F0", "belly": "#E3F6FF", "fin": "#4FA0D0", "horn": "#F5F0DC", "horn_line": "#C9C0A0", "glow": "#BFF6FF", "glow2": "#7CE0FF", **face("#103050")},
+        "ears": "none",
+        "eye_style": "sparkle",
+        "mouth": "smile",
+        "legs": "none",
+        "features": ["ice_crown", "flippers", "dorsal_fin", "aurora", "float_ring"],
+        "tail": "fluke",
+    },
+    # Pixel Zone: a black glitch cube with RGB pixels breaking off, a halo and a screen face
+    "Glitch": {
+        "colors": {"body": "#18181F", "belly": "#26263A", "legs": "#101016", "screen": "#05050A", "glow": "#3DF0FF", "glow2": "#FF3DD5", "glow3": "#FFF23D", "eye": "#3DF0FF", "shine": "#FFFFFF", "mouth": "#3DF0FF"},
+        "ears": "none",
+        "eye_style": "square",
+        "mouth": "line",
+        "legs": "none",
+        "blush": False,
+        "halo_height": 0.75,
+        "features": ["screen", "glitch", "halo", "float_ring"],
+        "tail": "none",
+    },
+}
+
+LEGENDARIES = list(LEGENDARY_SPECIES)
+SPECIES.update(LEGENDARY_SPECIES)

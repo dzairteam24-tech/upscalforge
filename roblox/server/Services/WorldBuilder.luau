@@ -167,6 +167,57 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 		WorldBuilder.eggPositions[zone.id] = egg.Position
 	end
 
+	-- The Legendary Egg stands next to the last zone's egg
+	local legendary = World1.eggs[World1.LEGENDARY_EGG]
+	if legendary and legendary.zone == zone.id then
+		local eggPos = MapLayout.eggPosition(zone.id) + Vector3.new(26, 0, 0)
+		local pedestal = part({
+			Name = "LegendaryPedestal",
+			Size = Vector3.new(12, 3, 12),
+			Position = eggPos + Vector3.new(0, 1.5, 0),
+			Color = Color3.fromRGB(40, 30, 60),
+			Material = Enum.Material.Marble,
+		})
+		pedestal.Parent = model
+		local ring = part({
+			Name = "LegendaryRing",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.4, 13, 13),
+			CFrame = CFrame.new(eggPos + Vector3.new(0, 3.1, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = Color3.fromRGB(255, 205, 80),
+			Material = Enum.Material.Neon,
+		})
+		ring.Parent = model
+		local egg = part({
+			Name = "LegendaryEgg",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(7, 7, 7),
+			Position = eggPos + Vector3.new(0, 7, 0),
+			Color = Color3.fromRGB(255, 200, 70),
+			Material = Enum.Material.Foil,
+		})
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Scale = Vector3.new(1, 1.3, 1)
+		mesh.Parent = egg
+		local sparkles = Instance.new("ParticleEmitter")
+		sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		sparkles.Color = ColorSequence.new(Color3.fromRGB(255, 230, 140), Color3.fromRGB(200, 140, 255))
+		sparkles.LightEmission = 0.8
+		sparkles.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 0) })
+		sparkles.Lifetime = NumberRange.new(1, 1.8)
+		sparkles.Speed = NumberRange.new(1, 2.5)
+		sparkles.SpreadAngle = Vector2.new(180, 180)
+		sparkles.Rate = 20
+		sparkles.Parent = egg
+		egg:SetAttribute("ZoneId", zone.id)
+		egg:SetAttribute("EggId", legendary.id)
+		egg:AddTag("EggStand")
+		label(egg, legendary.name, UDim2.fromOffset(280, 56), Vector3.new(0, 7, 0))
+		egg.Parent = model
+		WorldBuilder.eggPositions[legendary.id] = egg.Position
+	end
+
 	model.Parent = folder
 end
 

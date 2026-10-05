@@ -49,8 +49,19 @@ export type Species = {
 	face: string,
 	big: Skill,
 	titan: Skill,
+	egg: number, -- the egg it hatches from
+	legendary: boolean,
 }
 
+export type Egg = {
+	id: number, -- zone eggs use the zone's id; special eggs come after the zones
+	name: string,
+	zone: number, -- where it stands, and the zone the player must unlock
+	price: number,
+	species: { string },
+	chances: { number },
+	fixedOdds: boolean, -- luck never changes the species odds (Legendary Egg)
+}
 export type Zone = {
 	id: number,
 	name: string,
@@ -223,7 +234,7 @@ local zones: { Zone } = {
 local CHANCES = { 0.6, 0.3, 0.09, 0.01 }
 
 -- Species rows: id, power, color, top, face, big skill, titan skill.
--- Order inside each zone matches CHANCES (60% / 30% / 9% / 1%).
+-- Order inside each zone matches CHANCES (60% / 30% / 9% / 1%). Legendaries hatch only from the Legendary Egg.
 local rows: { { any } } = {
 	-- 1. Spawn Meadow
 	{
@@ -599,6 +610,100 @@ local rows: { { any } } = {
 			},
 		},
 	},
+	-- Legendaries: one per zone in look, but they only hatch from the Legendary Egg in the last zone
+	{
+		"Slime King", 15, rgb(107, 227, 107), "crown", "happy",
+		{ text = "Coins +60%", passive = passive("Coins", 1.6) },
+		{
+			text = "Power of all creatures x3. Split: every minute, 5 mini slimes break 5 sources.",
+			passive = passive("TeamPower", 3),
+			periodic = { { kind = "Strike", every = 60, count = 5 } :: Periodic },
+		},
+	},
+	{
+		"Blossom Queen", 36, rgb(255, 176, 214), "crown", "sparkle",
+		{ text = "Hatch luck x2", passive = passive("Luck", 2) },
+		{
+			text = "Hatch luck x6. Pollen Storm: every 2 min, 3 free eggs with luck x10.",
+			passive = passive("Luck", 6),
+			periodic = { { kind = "EggDrop", every = 120, count = 3, luck = 10 } :: Periodic },
+		},
+	},
+	{
+		"Elder Treant", 36, rgb(120, 84, 56), "leaf", "round",
+		{ text = "Zones restore +50% faster", passive = passive("Restore", 1.5) },
+		{
+			text = "Power of all creatures x3. Roots: every 30s the ground shakes and breaks everything nearby.",
+			passive = passive("TeamPower", 3),
+			periodic = { { kind = "Area", every = 30, radius = 50, damageMult = 15 } :: Periodic },
+		},
+	},
+	{
+		"Kraken", 90, rgb(40, 90, 140), "crown", "angry",
+		{ text = "Chests +100%", passive = passive("Chest", 2) },
+		{
+			text = "Power of all creatures x3.5. Tidal Wave: every 45s a wave breaks every source in the zone.",
+			passive = passive("TeamPower", 3.5),
+			periodic = { { kind = "Wave", every = 45 } :: Periodic },
+		},
+	},
+	{
+		"Spore Sage", 90, rgb(150, 90, 220), "cap", "sleepy",
+		{ text = "Gems +50%", passive = passive("Gem", 1.5) },
+		{
+			text = "Gems x3. Spore Rain: every 90s, 25 gems fall around you.",
+			passive = passive("Gem", 3),
+			periodic = { { kind = "GemRain", every = 90, amount = 25 } :: Periodic },
+		},
+	},
+	{
+		"Pharaoh Scarab", 225, rgb(245, 196, 66), "horns", "sparkle",
+		{ text = "Jackpot chance x3", passive = passive("Jackpot", 3) },
+		{
+			text = "All coins x3. Sun Blessing: every 2 min, coins x15 for 30s.",
+			passive = passive("Coins", 3),
+			periodic = { { kind = "Boost", every = 120, stat = "Coins", mult = 15, duration = 30 } :: Periodic },
+		},
+	},
+	{
+		"Aurora Wolf", 225, rgb(220, 240, 255), "cat", "sparkle",
+		{ text = "Team speed x3", passive = passive("Speed", 3) },
+		{
+			text = "Power of all creatures x4. Pack Howl: every minute, 10 ghost wolves join for 20s.",
+			passive = passive("TeamPower", 4),
+			periodic = { { kind = "CloneArmy", every = 60, count = 10, duration = 20 } :: Periodic },
+		},
+	},
+	{
+		"Inferno Drake", 570, rgb(40, 30, 34), "horns", "angry",
+		{ text = "Stomp every 4s", periodic = { { kind = "Area", every = 4, radius = 35, damageMult = 6 } :: Periodic } },
+		{
+			text = "Power of all creatures x5. Meteor: every 20s the biggest source is smashed.",
+			passive = passive("TeamPower", 5),
+			periodic = { { kind = "Smash", every = 20 } :: Periodic },
+		},
+	},
+	{
+		"Frost Leviathan", 570, rgb(120, 200, 240), "unihorn", "sparkle",
+		{ text = "Offline earnings x5", passive = passive("Offline", 5) },
+		{
+			text = "Every creature gets your strongest creature's power. Blizzard: every minute, 20 golden chests.",
+			passive = passive("CopyStrongest", 1),
+			periodic = { { kind = "Rain", every = 60, chests = 20 } :: Periodic },
+		},
+	},
+	{
+		"Glitch", 1500, rgb(24, 24, 32), "halo", "square",
+		{ text = "Power of all creatures x2", passive = passive("TeamPower", 2) },
+		{
+			text = "Power of all creatures x6. Overclock: every 3 min, coins x25 for 30s and a free egg with luck x100.",
+			passive = passive("TeamPower", 6),
+			periodic = {
+				{ kind = "Boost", every = 180, stat = "Coins", mult = 25, duration = 30 } :: Periodic,
+				{ kind = "EggDrop", every = 180, count = 1, luck = 100 } :: Periodic,
+			},
+		},
+	},
 }
 
 local zonesById: { [number]: Zone } = {}
@@ -606,34 +711,105 @@ for _, zone in zones do
 	zonesById[zone.id] = zone
 end
 
+local function findRow(speciesId: string): { any }
+	for _, candidate in rows do
+		if candidate[1] == speciesId then
+			return candidate
+		end
+	end
+	error("Missing species row for " .. speciesId)
+end
+
 local species: { [string]: Species } = {}
 local speciesOrder: { string } = {}
+local eggs: { [number]: Egg } = {}
+
+local function addSpecies(speciesId: string, zoneId: number, chance: number, eggId: number, legendary: boolean)
+	local row = findRow(speciesId)
+	species[speciesId] = {
+		id = speciesId,
+		zone = zoneId,
+		chance = chance,
+		power = row[2],
+		color = row[3],
+		top = row[4],
+		face = row[5],
+		big = row[6],
+		titan = row[7],
+		egg = eggId,
+		legendary = legendary,
+	}
+	table.insert(speciesOrder, speciesId)
+end
+
 for _, zone in zones do
 	for index, speciesId in zone.species do
-		local row: { any }? = nil
-		for _, candidate in rows do
-			if candidate[1] == speciesId then
-				row = candidate
-				break
-			end
-		end
-		assert(row, "Missing species row for " .. speciesId)
-		species[speciesId] = {
-			id = speciesId,
+		addSpecies(speciesId, zone.id, CHANCES[index], zone.id, false)
+	end
+	if zone.eggPrice > 0 then
+		eggs[zone.id] = {
+			id = zone.id,
+			name = zone.name .. " Egg",
 			zone = zone.id,
-			chance = CHANCES[index],
-			power = row[2],
-			color = row[3],
-			top = row[4],
-			face = row[5],
-			big = row[6],
-			titan = row[7],
+			price = zone.eggPrice,
+			species = zone.species,
+			chances = CHANCES,
+			fixedOdds = false,
 		}
-		table.insert(speciesOrder, speciesId)
 	end
 end
 
+-- Legendary Egg: stands in the last zone. Almost always one of that zone's creatures; each Legendary is close
+-- to impossible (1 in 200K up to 1 in 10M) and luck never changes these odds, only the variant and size.
+local LEGENDARY_EGG = 11
+local LEGENDARY_ODDS: { { string | number } } = {
+	{ "Slime King", 200000, 1 },
+	{ "Blossom Queen", 300000, 2 },
+	{ "Elder Treant", 400000, 3 },
+	{ "Kraken", 600000, 4 },
+	{ "Spore Sage", 800000, 5 },
+	{ "Pharaoh Scarab", 1000000, 6 },
+	{ "Aurora Wolf", 1500000, 7 },
+	{ "Inferno Drake", 2500000, 8 },
+	{ "Frost Leviathan", 4000000, 9 },
+	{ "Glitch", 10000000, 10 },
+}
+do
+	local lastZone = zones[#zones]
+	local legendaryTotal = 0
+	local legendaryIds: { string } = {}
+	local legendaryChances: { number } = {}
+	for _, entry in LEGENDARY_ODDS do
+		local chance = 1 / (entry[2] :: number)
+		legendaryTotal += chance
+		table.insert(legendaryIds, entry[1] :: string)
+		table.insert(legendaryChances, chance)
+		addSpecies(entry[1] :: string, entry[3] :: number, chance, LEGENDARY_EGG, true)
+	end
+	local ids: { string } = {}
+	local chances: { number } = {}
+	for index, speciesId in lastZone.species do
+		table.insert(ids, speciesId)
+		table.insert(chances, CHANCES[index] * (1 - legendaryTotal))
+	end
+	for index, speciesId in legendaryIds do
+		table.insert(ids, speciesId)
+		table.insert(chances, legendaryChances[index])
+	end
+	eggs[LEGENDARY_EGG] = {
+		id = LEGENDARY_EGG,
+		name = "★ Legendary Egg",
+		zone = lastZone.id,
+		price = lastZone.eggPrice * 5,
+		species = ids,
+		chances = chances,
+		fixedOdds = true,
+	}
+end
+
 return {
+	eggs = eggs,
+	LEGENDARY_EGG = LEGENDARY_EGG,
 	zones = zones,
 	zonesById = zonesById,
 	species = species,

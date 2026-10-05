@@ -1,0 +1,37 @@
+{
+ "cells": 10,
+ "roles": [
+  [
+   "body"
+  ],
+  [
+   "belly"
+  ],
+  [
+   "legs"
+  ],
+  [
+   "eye",
+   "mouth"
+  ],
+  [
+   "flower",
+   "shine"
+  ],
+  [
+   "flower_center"
+  ],
+  [
+   "flower2"
+  ],
+  [
+   "glow2"
+  ],
+  [
+   "wing"
+  ],
+  [
+   "blush"
+  ]
+ ]
+}
