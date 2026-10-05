@@ -1,0 +1,20 @@
+{
+ "cells": 3,
+ "roles": [
+  [
+   "body"
+  ],
+  [
+   "legs",
+   "spot",
+   "antenna_tip",
+   "patch",
+   "dark"
+  ],
+  [
+   "eye",
+   "shine",
+   "mouth"
+  ]
+ ]
+}

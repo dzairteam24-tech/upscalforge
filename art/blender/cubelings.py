@@ -115,6 +115,13 @@ SPECIES = {
     },
 }
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from species_zoo import SPECIES as _MORE_SPECIES, ZONES  # noqa: E402
+
+SPECIES.update(_MORE_SPECIES)
+
+FAST = os.environ.get("FAST") == "1"  # only the 3/4 view (quick previews)
+
 BODY_W, BODY_D, BODY_H = 2.0, 2.0, 1.9
 BEVEL = 0.3
 LEG_H = 0.24  # visible leg height under the body
@@ -181,8 +188,9 @@ def ellipsoid(name, radii, location, segments=16, rings=10, rotation=(0, 0, 0)):
     return obj
 
 
-def tube(name, points, radius):
-    """A round tube along a list of 3D points (mouth lines and such)."""
+def tube(name, points, radius, radii=None):
+    """A round tube along a list of 3D points (mouth lines, horns, tails...). `radii` tapers it: one
+    scale per point, multiplied with `radius`."""
     curve = bpy.data.curves.new(name, "CURVE")
     curve.dimensions = "3D"
     curve.bevel_depth = radius
@@ -190,8 +198,10 @@ def tube(name, points, radius):
     curve.use_fill_caps = True
     spline = curve.splines.new("POLY")
     spline.points.add(len(points) - 1)
-    for point, co in zip(spline.points, points):
+    for i, (point, co) in enumerate(zip(spline.points, points)):
         point.co = (*co, 1)
+        if radii:
+            point.radius = radii[i]
     obj = bpy.data.objects.new(name, curve)
     bpy.context.collection.objects.link(obj)
     bpy.context.view_layer.objects.active = obj
@@ -255,19 +265,908 @@ def face_point(x, z, out=0.0):
 
 
 # ---------------------------------------------------------------------------------------------------------------
+# Parts library: everything a species can add on top of the basic cube (ears, horns, wings, tails...).
+# Each builder takes the build context `c` (c.spec, c.mat, c.parts, c.top) and appends finished parts.
+
+DEFAULT_COLORS = {
+    "horn": "#F3E6C8",
+    "stripe": "#2B2433",
+    "spot": "#FFFFFF",
+    "wing": "#F4FBFF",
+    "wing_spot": "#FFFFFF",
+    "beak": "#F7A93B",
+    "feet": "#F7A93B",
+    "dark": "#2B2433",
+    "white": "#FFFFFF",
+    "gold": "#F5C542",
+    "gem": "#E5534B",
+    "gem2": "#5B9DF5",
+    "leaf": "#6CCB5F",
+    "flower": "#FF8FB1",
+    "flower_center": "#FFD84D",
+    "scarf": "#E5534B",
+    "patch": "#FFFFFF",
+    "glow": "#FFF27A",
+    "pot": "#C8693E",
+    "rock": "#8A847E",
+    "screen": "#1A2230",
+    "metal": "#7D8794",
+    "crystal": "#BFF1FF",
+    "cape": "#C9303E",
+    "fur": "#FFFFFF",
+    "fin": "#5E8CC0",
+    "tongue": "#FF7A8A",
+    "tail": "#FFFFFF",
+    "tail_tip": "#FFFFFF",
+}
+
+
+class Mats(dict):
+    """Materials by color key. Keys a species doesn't define fall back to DEFAULT_COLORS (or the body)."""
+
+    def __init__(self, spec):
+        super().__init__()
+        self.spec = spec
+
+    def __missing__(self, key):
+        colors = self.spec["colors"]
+        value = colors.get(key) or DEFAULT_COLORS.get(key) or colors["body"]
+        made = material(key, hex_color(value), gloss=key in ("eye", "shine", "nose", "gem", "gem2", "crystal", "screen", "glow"))
+        self[key] = made
+        return made
+
+
+class Ctx:
+    def __init__(self, spec, mat, parts):
+        self.spec = spec
+        self.mat = mat
+        self.parts = parts
+        self.top = BODY_Z + BODY_H / 2
+
+    def add(self, obj, key, angle=40):
+        self.parts.append(finish(obj, self.mat[key], angle=angle))
+        return obj
+
+
+def cone(name, r1, r2, depth, location, rotation=(0, 0, 0), verts=16):
+    """A cone standing on its base at `location` (tip up before rotation)."""
+    bpy.ops.mesh.primitive_cone_add(vertices=verts, radius1=r1, radius2=r2, depth=depth, location=(0, 0, 0))
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.transform(Matrix.Translation((0, 0, depth / 2)))
+    obj.location = location
+    obj.rotation_euler = rotation
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    return obj
+
+
+def tapered(name, points, base, tip=0.15):
+    """A tube that narrows from `base` radius to base*tip along the points (horns, tails, tentacles)."""
+    n = len(points)
+    return tube(name, points, base, radii=[1 - (1 - tip) * i / (n - 1) for i in range(n)])
+
+
+def curve_points(a, b, c, count=12):
+    """Quadratic curve from a through control b to c."""
+    out = []
+    for i in range(count):
+        t = i / (count - 1)
+        out.append(tuple((1 - t) ** 2 * a[k] + 2 * (1 - t) * t * b[k] + t * t * c[k] for k in range(3)))
+    return out
+
+
+def shell_of_body(name, inflate, cutter):
+    """A copy of the body a little bigger, cut by `cutter` (bands, patches and caps that hug the body)."""
+    obj = rounded_box(name, (BODY_W + inflate, BODY_D + inflate, BODY_H + inflate), (0, 0, BODY_Z), BEVEL + inflate / 2, segments=5)
+    boolean = obj.modifiers.new("Cut", "BOOLEAN")
+    boolean.operation = "INTERSECT"
+    boolean.object = cutter
+    apply_modifiers(obj)
+    bpy.data.objects.remove(cutter)
+    return obj
+
+
+def slab(z0, z1, front_cut=None):
+    """A box between two heights (in body space), optionally stopping before the front face."""
+    y0 = -2.0 if front_cut is None else front_cut
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, (y0 + 2.0) / 2, BODY_Z + (z0 + z1) / 2))
+    obj = bpy.context.active_object
+    obj.scale = (4, 2.0 - y0, z1 - z0)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    return obj
+
+
+def sym(fn):
+    for side in (-1, 1):
+        fn(side)
+
+
+# ----- Head pieces ------------------------------------------------------------------------------------------------
+
+def ears_antenna(c):
+    def one(side):
+        pts = curve_points((0.35 * side, -0.25, c.top - 0.05), (0.4 * side, -0.35, c.top + 0.45), (0.62 * side, -0.5, c.top + 0.7), 10)
+        c.add(tube("Antenna", pts, 0.045), "dark")
+        c.add(ellipsoid("AntennaTip", (0.13, 0.13, 0.13), pts[-1], segments=16, rings=10), "antenna_tip")
+    sym(one)
+
+
+def ears_unihorn(c):
+    base = (0, -0.45, c.top - 0.08)
+    pts = curve_points(base, (0, -0.55, c.top + 0.45), (0, -0.62, c.top + 0.95), 12)
+    c.add(tapered("Horn", pts, 0.2, 0.08), "horn")
+    # A spiral line wrapped around the horn
+    spiral = []
+    for i in range(40):
+        t = i / 39
+        p = pts[min(len(pts) - 1, int(t * (len(pts) - 1)))]
+        r = 0.2 * (1 - 0.92 * t) + 0.012
+        a = t * math.pi * 7
+        spiral.append((p[0] + math.cos(a) * r, p[1] + math.sin(a) * r, p[2]))
+    c.add(tube("HornSpiral", spiral, 0.02), "horn_line")
+    # Mane: soft puffs along the top and back
+    for i, (x, y, z, r) in enumerate([(0, -0.1, 0.06, 0.32), (0.05, 0.35, 0.02, 0.3), (-0.05, 0.75, -0.08, 0.28), (0, 1.0, -0.4, 0.26), (0.02, 1.05, -0.75, 0.22)]):
+        c.add(ellipsoid("Mane", (r, r, r * 0.85), (x, y, c.top + z), segments=16, rings=10), "mane" if i % 2 == 0 else "mane2")
+
+
+def ears_horns(c):
+    def one(side):
+        pts = curve_points((0.55 * side, -0.25, c.top - 0.08), (1.0 * side, -0.3, c.top + 0.25), (0.82 * side, -0.4, c.top + 0.72), 12)
+        c.add(tapered("Horn", pts, 0.17, 0.1), "horn")
+    sym(one)
+
+
+def ears_antlers(c):
+    def one(side):
+        main = curve_points((0.45 * side, -0.05, c.top - 0.05), (0.6 * side, -0.05, c.top + 0.5), (0.95 * side, 0.0, c.top + 0.85), 10)
+        c.add(tapered("Antler", main, 0.085, 0.5), "horn")
+        branch = curve_points(main[4], (0.45 * side, -0.1, c.top + 0.65), (0.42 * side, -0.12, c.top + 0.9), 8)
+        c.add(tapered("Antler", branch, 0.065, 0.5), "horn")
+        branch2 = curve_points(main[7], (0.95 * side, 0.05, c.top + 0.62), (1.15 * side, 0.05, c.top + 0.62), 6)
+        c.add(tapered("Antler", branch2, 0.06, 0.5), "horn")
+        # Little round ears under the antlers
+        c.add(ellipsoid("Ear", (0.26, 0.12, 0.17), (0.9 * side, -0.2, c.top - 0.08), segments=16, rings=8), "body")
+        c.add(ellipsoid("EarInner", (0.16, 0.05, 0.1), (0.9 * side, -0.31, c.top - 0.08), segments=12, rings=6), "ear_inner")
+    sym(one)
+
+
+def ears_leaf(c):
+    stem = curve_points((0, -0.1, c.top - 0.05), (0.0, -0.1, c.top + 0.3), (0.05, -0.1, c.top + 0.45), 6)
+    c.add(tube("Stem", stem, 0.05), "stem")
+    for side, angle in ((-1, 35), (1, -35)):
+        leaf = ellipsoid("Leaf", (0.38, 0.07, 0.17), (0, 0, 0), segments=18, rings=8)
+        leaf.data.transform(Matrix.Translation((0.36, 0, 0)))
+        leaf.location = (0.05, -0.1, c.top + 0.42)
+        leaf.rotation_euler = (0, math.radians(angle if side > 0 else 180 + angle), math.radians(15 * side))
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        c.add(leaf, "leaf")
+
+
+def ears_cap(c):
+    # Mushroom cap: a wide dome over the top, cut flat underneath, with white spots
+    dome = ellipsoid("Cap", (1.45, 1.45, 0.95), (0, 0, c.top - 0.2), segments=40, rings=20)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, c.top - 0.2 + 1.5))
+    cutter = bpy.context.active_object
+    cutter.scale = (4, 4, 3)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    boolean = dome.modifiers.new("Cut", "BOOLEAN")
+    boolean.operation = "INTERSECT"
+    boolean.object = cutter
+    apply_modifiers(dome)
+    bpy.data.objects.remove(cutter)
+    c.add(dome, "cap")
+    for theta, phi, r in [(0, 30, 0.26), (70, 55, 0.2), (145, 35, 0.24), (215, 55, 0.2), (290, 35, 0.23), (0, 80, 0.2), (180, 75, 0.17), (110, 12, 0.16), (250, 12, 0.16), (330, 65, 0.15)]:
+        t, p = math.radians(theta), math.radians(phi)
+        nx, ny, nz = math.cos(p) * math.sin(t), -math.cos(p) * math.cos(t), math.sin(p)
+        pos = Vector((1.45 * nx, 1.45 * ny, c.top - 0.2 + 0.95 * nz))
+        spot = ellipsoid("Spot", (r, r, 0.04), (0, 0, 0), segments=14, rings=6)
+        normal = Vector((nx / 1.45, ny / 1.45, nz / 0.95)).normalized()
+        spot.rotation_euler = normal.to_track_quat("Z", "Y").to_euler()
+        spot.location = pos
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        c.add(spot, "spot")
+
+
+def ears_hat(c):
+    bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.8, depth=0.08, location=(0.05, 0, c.top + 0.04))
+    c.add(bpy.context.active_object, "dark")
+    bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.52, depth=0.8, location=(0.05, 0, c.top + 0.48))
+    hat = bpy.context.active_object
+    soft(hat, 0.04, segments=2, subdiv=0)
+    c.add(hat, "dark")
+    bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.535, depth=0.16, location=(0.05, 0, c.top + 0.2))
+    c.add(bpy.context.active_object, "scarf")
+
+
+def ears_crown(c):
+    bpy.ops.mesh.primitive_cylinder_add(vertices=40, radius=0.62, depth=0.3, location=(0, 0, c.top + 0.12))
+    band = bpy.context.active_object
+    soft(band, 0.03, segments=2, subdiv=0)
+    c.add(band, "gold")
+    for i in range(5):
+        a = math.radians(90 + i * 72)
+        x, y = math.cos(a) * 0.56, -math.sin(a) * 0.56
+        c.add(cone("CrownPoint", 0.17, 0.02, 0.38, (x, y, c.top + 0.25), verts=12), "gold")
+        c.add(ellipsoid("CrownBall", (0.07, 0.07, 0.07), (x * 1.0, y * 1.0, c.top + 0.65), segments=10, rings=6), "gold")
+    c.add(ellipsoid("Gem", (0.12, 0.06, 0.12), (0, -0.62, c.top + 0.13), segments=12, rings=8), "gem")
+    sym(lambda s: c.add(ellipsoid("Gem", (0.08, 0.05, 0.08), (0.44 * s, -0.44, c.top + 0.13), segments=10, rings=6), "gem2"))
+
+
+def ears_flame(c):
+    for i, (x, y, h, lean) in enumerate([(0, -0.3, 1.0, -20), (-0.3, 0.0, 0.8, -35), (0.3, 0.0, 0.8, -35), (0, 0.3, 0.65, -55)]):
+        pts = curve_points((x, y, c.top - 0.05), (x, y - 0.05, c.top + h * 0.6), (x * 1.3, y + math.sin(math.radians(-lean)) * 0.5, c.top + h), 10)
+        c.add(tapered("Flame", pts, 0.2, 0.05), "flame" if i % 2 == 0 else "flame2")
+
+
+def ears_tufts(c):
+    def one(side):
+        ear = triangle_prism("Tuft", half_width=0.22, height=0.55, depth=0.2, tip_shift=0.12 * side)
+        soft(ear, 0.07, segments=2, subdiv=1)
+        place(ear, Vector((0.68 * side, -0.25, c.top - 0.15)), math.radians(-22 * side))
+        c.add(ear, "tuft" if "tuft" in c.spec["colors"] else "body", angle=180)
+    sym(one)
+
+
+def ears_bat(c):
+    # Big pointed ears
+    def one(side):
+        ear = triangle_prism("Ear", half_width=0.42, height=1.0, depth=0.3, tip_shift=0.18 * side)
+        soft(ear, 0.1, segments=3, subdiv=1)
+        place(ear, Vector((0.58 * side, -0.25, c.top - 0.22)), math.radians(-20 * side))
+        c.add(ear, "body", angle=180)
+        inner = triangle_prism("EarInner", half_width=0.22, height=0.58, depth=0.06, tip_shift=0.12 * side)
+        soft(inner, 0.03, segments=2, subdiv=1)
+        place(inner, Vector((0.58 * side, -0.25, c.top - 0.22)) + Vector((0.07 * side, -0.15, 0.2)), math.radians(-20 * side))
+        c.add(inner, "ear_inner", angle=180)
+    sym(one)
+
+
+EARS = {
+    "antenna": ears_antenna,
+    "unihorn": ears_unihorn,
+    "horns": ears_horns,
+    "antlers": ears_antlers,
+    "leaf": ears_leaf,
+    "cap": ears_cap,
+    "hat": ears_hat,
+    "crown": ears_crown,
+    "flame": ears_flame,
+    "tufts": ears_tufts,
+    "bat": ears_bat,
+}
+
+
+# ----- Body features ----------------------------------------------------------------------------------------------
+
+def feat_stripes(c):
+    # Dark bands around the back two thirds of the body (the face stays clean)
+    for z0, z1 in c.spec.get("stripes", [(-0.75, -0.48), (-0.25, 0.0), (0.3, 0.55)]):
+        c.add(shell_of_body("Stripe", 0.025, slab(z0, z1, front_cut=-0.55)), "stripe")
+
+
+def feat_spots(c):
+    # Round spots on the top, the back and the sides
+    spots = c.spec.get("spot_list") or [
+        (0, 0.0, 1.0, 0.0, 0.0, 0.28), (0.45, 0.45, 1.0, 0, 0, 0.2), (-0.5, 0.35, 1.0, 0, 0, 0.18),
+        (1.0, 0.1, 0.2, 1, 0, 0.22), (-1.0, -0.2, -0.1, 1, 0, 0.2), (1.0, 0.45, -0.45, 1, 0, 0.15), (-1.0, 0.5, 0.4, 1, 0, 0.16),
+        (0.3, 1.0, 0.1, 2, 0, 0.24), (-0.4, 1.0, -0.4, 2, 0, 0.18),
+    ]
+    for x, y, z, face, _, r in spots:
+        if face == 0:  # top
+            loc, rot = (x, y, c.top + 0.012), (0, 0, 0)
+        elif face == 1:  # side
+            loc, rot = (math.copysign(BODY_W / 2 + 0.012, x), y, BODY_Z + z), (0, math.radians(90), 0)
+        else:  # back
+            loc, rot = (x, BODY_D / 2 + 0.012, BODY_Z + z), (math.radians(90), 0, 0)
+        c.add(ellipsoid("Spot", (r, r, 0.03), loc, segments=16, rings=6, rotation=rot), "spot")
+
+
+def feat_wings_bee(c):
+    # Two pairs of see-through-looking wings standing up from the back, leaning out and back
+    def one(side):
+        for lean, back, size in ((28, 22, 1.0), (55, 38, 0.72)):
+            wing = ellipsoid("Wing", (0.28 * size, 0.035, 0.5 * size), (0, 0, 0), segments=18, rings=8)
+            wing.data.transform(Matrix.Translation((0, 0, 0.45 * size)))
+            wing.location = (0.28 * side, 0.45, c.top - 0.05)
+            wing.rotation_euler = (math.radians(back), math.radians(lean * side), 0)
+            bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+            c.add(wing, "wing")
+    sym(one)
+
+
+def feat_wings_butterfly(c):
+    # Big wings behind the body, spreading out to both sides (upper pair up, lower pair down)
+    def one(side):
+        for w, h, z, lean in ((0.9, 0.62, 0.35, 28), (0.62, 0.45, -0.3, -24)):
+            for key, scale, dy, shift in (("wing", 1.0, 0.0, 0.85), ("wing_spot", 0.38, -0.05, 1.05)):
+                wing = ellipsoid("Wing", (w * scale, 0.05, h * scale), (0, 0, 0), segments=24, rings=10)
+                wing.data.transform(Matrix.Translation((w * shift * side, dy, 0)))
+                wing.location = (0.3 * side, 1.08, BODY_Z + z)
+                wing.rotation_euler = (0, -math.radians(lean) * side, 0)
+                bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+                c.add(wing, key)
+    sym(one)
+
+
+def wing_sheet(name, side, span, height, location, key, c, droop=0.0):
+    """A flat wing made of a bevelled triangle: bat and dragon wings."""
+    wing = triangle_prism(name, half_width=height / 2, height=span, depth=0.07, tip_shift=droop)
+    soft(wing, 0.05, segments=2, subdiv=1)
+    wing.rotation_euler = (math.radians(90), 0, math.radians(-90 * side))
+    wing.location = location
+    bpy.context.view_layer.objects.active = wing
+    wing.select_set(True)
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    wing.select_set(False)
+    # Fold up and back a little
+    wing.rotation_euler = (math.radians(-20), math.radians(-25 * side), math.radians(18 * side))
+    wing.location = (0, 0, 0)
+    c.add(wing, key, angle=180)
+
+
+def feat_wings_bat(c):
+    def one(side):
+        wing = triangle_prism("Wing", half_width=0.55, height=1.1, depth=0.07, tip_shift=0.2)
+        soft(wing, 0.05, segments=2, subdiv=1)
+        # Lay the triangle sideways so it sticks out of the body's side, then fold it back and up
+        wing.rotation_euler = (0, math.radians(90 * side), 0)
+        bpy.context.view_layer.objects.active = wing
+        wing.select_set(True)
+        bpy.ops.object.transform_apply(rotation=True)
+        wing.location = (0.85 * side, 0.45, BODY_Z + 0.2)
+        wing.rotation_euler = (math.radians(-15), 0, math.radians(-35 * side))
+        bpy.ops.object.transform_apply(location=True, rotation=True)
+        wing.select_set(False)
+        c.add(wing, "wing", angle=180)
+        # Finger bones along the top edge
+        pts = [(0.85 * side, 0.45, BODY_Z + 0.2), (0.85 * side + 0.75 * side * math.cos(math.radians(35)), 0.45 + 0.75 * math.sin(math.radians(35)), BODY_Z + 0.75)]
+        c.add(tube("Bone", curve_points(pts[0], ((pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2, BODY_Z + 0.6), pts[1], 6), 0.05), "dark")
+    sym(one)
+
+
+def feat_wings_bird(c):
+    def one(side):
+        wing = ellipsoid("Wing", (0.12, 0.62, 0.55), (0, 0, 0), segments=20, rings=12)
+        wing.data.transform(Matrix.Translation((0, 0.15, -0.25)))
+        wing.location = (1.02 * side, 0.05, BODY_Z + 0.25)
+        wing.rotation_euler = (math.radians(-20), math.radians(-12 * side), 0)
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        c.add(wing, "wing")
+        for i in range(3):
+            tip = ellipsoid("Feather", (0.08, 0.16, 0.3), (1.06 * side, 0.45 + i * 0.16, BODY_Z - 0.38 - i * 0.04), segments=12, rings=8, rotation=(math.radians(-35), 0, 0))
+            c.add(tip, "wing_tip" if "wing_tip" in c.spec["colors"] else "wing")
+    sym(one)
+
+
+def feat_wings_dragon(c):
+    def one(side):
+        wing = triangle_prism("Wing", half_width=0.75, height=1.6, depth=0.08, tip_shift=0.5)
+        soft(wing, 0.06, segments=2, subdiv=1)
+        wing.rotation_euler = (0, math.radians(90 * side), 0)
+        bpy.context.view_layer.objects.active = wing
+        wing.select_set(True)
+        bpy.ops.object.transform_apply(rotation=True)
+        wing.location = (0.6 * side, 0.6, c.top - 0.1)
+        wing.rotation_euler = (math.radians(-35), math.radians(-30 * side), math.radians(-30 * side))
+        bpy.ops.object.transform_apply(location=True, rotation=True)
+        wing.select_set(False)
+        c.add(wing, "wing", angle=180)
+    sym(one)
+
+
+def feat_claws(c):
+    def one(side):
+        arm = curve_points((0.85 * side, -0.55, BODY_Z - 0.3), (1.35 * side, -0.85, BODY_Z - 0.25), (1.35 * side, -1.15, BODY_Z - 0.05), 8)
+        c.add(tapered("Arm", arm, 0.13, 0.75), "claw")
+        tip = Vector(arm[-1])
+        upper = ellipsoid("Pincer", (0.2, 0.36, 0.14), tip + Vector((0, -0.2, 0.12)), segments=18, rings=10, rotation=(math.radians(-20), 0, 0))
+        lower = ellipsoid("Pincer", (0.17, 0.3, 0.11), tip + Vector((0, -0.18, -0.1)), segments=18, rings=10, rotation=(math.radians(25), 0, 0))
+        c.add(upper, "claw")
+        c.add(lower, "claw")
+    sym(one)
+
+
+def feat_shell(c):
+    dome = ellipsoid("Shell", (1.18, 1.18, 0.7), (0, 0.05, c.top - 0.15), segments=36, rings=18)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, c.top - 0.15 + 1.5))
+    cutter = bpy.context.active_object
+    cutter.scale = (4, 4, 3)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    boolean = dome.modifiers.new("Cut", "BOOLEAN")
+    boolean.operation = "INTERSECT"
+    boolean.object = cutter
+    apply_modifiers(dome)
+    bpy.data.objects.remove(cutter)
+    c.add(dome, "shell")
+    for x, y, r in [(0, 0.05, 0.3), (0.55, 0.0, 0.22), (-0.55, 0.0, 0.22), (0, 0.6, 0.22), (0, -0.5, 0.22), (0.45, 0.55, 0.17), (-0.45, 0.55, 0.17), (0.45, -0.45, 0.17), (-0.45, -0.45, 0.17)]:
+        k = 1 - (x / 1.18) ** 2 - ((y - 0.05) / 1.18) ** 2
+        z = c.top - 0.15 + 0.7 * math.sqrt(max(k, 0))
+        plate = ellipsoid("Plate", (r, r, 0.05), (x, y, z - 0.01), segments=6, rings=4)
+        normal = Vector((x / 1.18 ** 2, (y - 0.05) / 1.18 ** 2, (z - (c.top - 0.15)) / 0.7 ** 2)).normalized()
+        plate.rotation_euler = normal.to_track_quat("Z", "Y").to_euler()
+        c.add(plate, "plate")
+    # Rim
+    bpy.ops.mesh.primitive_torus_add(major_radius=1.12, minor_radius=0.08, location=(0, 0.05, c.top - 0.13))
+    rim = bpy.context.active_object
+    rim.scale = (1.0, 1.0, 1.0)
+    c.add(rim, "plate")
+
+
+def feat_dorsal_fin(c):
+    fin = triangle_prism("Fin", half_width=0.4, height=0.7, depth=0.14, tip_shift=0.32)
+    soft(fin, 0.06, segments=2, subdiv=1)
+    fin.rotation_euler = (0, 0, math.radians(90))
+    fin.location = (0, 0.15, c.top - 0.12)
+    bpy.context.view_layer.objects.active = fin
+    fin.select_set(True)
+    bpy.ops.object.transform_apply(location=True, rotation=True)
+    fin.select_set(False)
+    c.add(fin, "fin", angle=180)
+
+
+def feat_flippers(c):
+    def one(side):
+        flip = ellipsoid("Flipper", (0.1, 0.32, 0.42), (0, 0, 0), segments=18, rings=10)
+        flip.data.transform(Matrix.Translation((0, 0, -0.32)))
+        flip.location = (1.03 * side, -0.15, BODY_Z - 0.05)
+        flip.rotation_euler = (math.radians(15), math.radians(-28 * side), 0)
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        c.add(flip, "fin")
+    sym(one)
+
+
+def feat_whiskers(c):
+    def one(side):
+        for i, dz in enumerate((0.05, -0.05, -0.15)):
+            a = face_point(0.55 * side, -0.12 + dz * 0.3, 0.02)
+            b = face_point(1.05 * side, -0.05 + dz * 1.3, 0.12)
+            c.add(tube("Whisker", [a, b], 0.014), "dark")
+    sym(one)
+
+
+def feat_tusk(c):
+    pts = curve_points(face_point(0, 0.55, 0.0), face_point(0, 0.95, 0.35), face_point(0, 1.35, 0.6), 12)
+    c.add(tapered("Tusk", pts, 0.13, 0.08), "horn")
+    spiral = []
+    for i in range(36):
+        t = i / 35
+        p = Vector(pts[min(len(pts) - 1, int(t * (len(pts) - 1)))])
+        r = 0.13 * (1 - 0.9 * t) + 0.01
+        a = t * math.pi * 8
+        spiral.append((p.x + math.cos(a) * r, p.y + math.sin(a) * r * 0.6, p.z + math.sin(a) * r * 0.6))
+    c.add(tube("TuskLine", spiral, 0.015), "horn_line")
+
+
+def feat_scarf(c):
+    c.add(shell_of_body("Scarf", 0.07, slab(-0.3, -0.05)), "scarf")
+    end = rounded_box("ScarfEnd", (0.28, 0.08, 0.6), (0.55, FRONT_Y - 0.07, BODY_Z - 0.45), 0.05, segments=2, rotation=(0, math.radians(-10), 0))
+    c.add(end, "scarf")
+    for i in range(3):
+        c.add(ellipsoid("Fringe", (0.04, 0.04, 0.08), (0.48 + i * 0.07, FRONT_Y - 0.07, BODY_Z - 0.8), segments=8, rings=6), "scarf")
+
+
+def feat_buttons(c):
+    for z in (-0.35, -0.6):
+        c.add(ellipsoid("Button", (0.07, 0.04, 0.07), face_point(0, z, 0.0), segments=12, rings=8), "dark")
+
+
+def feat_spines(c):
+    import random
+
+    rng = random.Random(7)
+    for _ in range(26):
+        face = rng.choice(["top", "side", "side", "back", "front"])
+        if face == "top":
+            loc, rot = (rng.uniform(-0.75, 0.75), rng.uniform(-0.5, 0.75), c.top), (0, 0, 0)
+        elif face == "side":
+            side = rng.choice([-1, 1])
+            loc, rot = (side * BODY_W / 2, rng.uniform(-0.7, 0.7), BODY_Z + rng.uniform(-0.6, 0.7)), (0, math.radians(90 * side), 0)
+        elif face == "back":
+            loc, rot = (rng.uniform(-0.7, 0.7), BODY_D / 2, BODY_Z + rng.uniform(-0.6, 0.7)), (math.radians(-90), 0, 0)
+        else:
+            x = rng.choice([-0.85, 0.85])
+            loc, rot = (x, FRONT_Y, BODY_Z + rng.uniform(-0.6, 0.75)), (math.radians(90), 0, 0)
+        c.add(cone("Spine", 0.035, 0.0, 0.16, loc, rotation=rot, verts=6), "spine")
+
+
+def feat_flower(c):
+    center = Vector((0.35, -0.1, c.top + 0.05))
+    for i in range(6):
+        a = math.radians(i * 60)
+        petal = ellipsoid("Petal", (0.17, 0.11, 0.05), center + Vector((math.cos(a) * 0.17, math.sin(a) * 0.17, 0.02)), segments=12, rings=6, rotation=(0, 0, a))
+        c.add(petal, "flower")
+    c.add(ellipsoid("FlowerCenter", (0.1, 0.1, 0.07), center + Vector((0, 0, 0.06)), segments=12, rings=8), "flower_center")
+
+
+def feat_nemes(c):
+    # Sphinx headdress: striped cloth on top falling down both sides, and a gold collar
+    c.add(shell_of_body("Nemes", 0.06, slab(0.55, 1.1)), "cloth")
+    for i, (z0, z1) in enumerate([(0.62, 0.72), (0.82, 0.92)]):
+        c.add(shell_of_body("NemesStripe", 0.075, slab(z0, z1)), "cloth2")
+    def one(side):
+        for i in range(4):
+            key = "cloth" if i % 2 == 0 else "cloth2"
+            flap = rounded_box("Flap", (0.12, 0.6, 0.22), (side * (BODY_W / 2 + 0.06), -0.2, BODY_Z + 0.45 - i * 0.22), 0.04, segments=2)
+            c.add(flap, key)
+    sym(one)
+    c.add(shell_of_body("Collar", 0.05, slab(-0.62, -0.5)), "gold")
+
+
+def feat_rocks(c):
+    import random
+
+    rng = random.Random(3)
+    for x, y, z, s in [(-0.6, 0.1, 1.0, 0.4), (0.55, 0.4, 1.0, 0.34), (0.1, 0.7, 1.0, 0.28), (1.0, 0.3, 0.55, 0.32), (-1.0, -0.2, 0.3, 0.3), (0.3, 1.0, 0.2, 0.36), (-0.5, 1.0, -0.4, 0.28)]:
+        loc = (x, y, BODY_Z + z * BODY_H / 2 if z < 1 else c.top)
+        rock = rounded_box("Rock", (s, s * 0.9, s * 0.8), loc, 0.06, segments=2, rotation=(rng.uniform(0, 1), rng.uniform(0, 1), rng.uniform(0, 1)))
+        c.add(rock, "rock")
+    # Glowing cracks on the front
+    for pts in ([(-0.85, 0.65), (-0.6, 0.45), (-0.65, 0.25)], [(0.8, -0.55), (0.6, -0.4), (0.68, -0.2)]):
+        c.add(tube("Crack", [face_point(x, z, 0.005) for x, z in pts], 0.03), "glow")
+
+
+def feat_screen(c):
+    panel = rounded_box("Screen", (1.45, 0.06, 0.95), face_point(0, 0.0, 0.01), 0.12, segments=3)
+    c.add(panel, "screen")
+
+
+def feat_bolts(c):
+    def one(side):
+        bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.17, depth=0.16, location=(side * (BODY_W / 2 + 0.05), 0, BODY_Z + 0.05), rotation=(0, math.radians(90), 0))
+        c.add(bpy.context.active_object, "metal")
+    sym(one)
+
+
+def feat_voxels(c):
+    for x, y, z, s, key in [(0.75, -0.6, 1.0, 0.3, "accent"), (-0.6, 0.6, 1.0, 0.26, "accent2"), (1.0, 0.5, 0.4, 0.28, "accent"), (-1.0, -0.3, -0.35, 0.24, "accent2"),
+                            (0.5, 1.0, 0.5, 0.26, "accent2"), (-0.85, -1.0, 0.75, 0.2, "accent"), (0.45, 0.2, 1.42, 0.18, "accent"), (-0.1, -0.2, 1.65, 0.14, "accent2")]:
+        loc = (x * (BODY_W / 2), y * (BODY_D / 2), BODY_Z + z * BODY_H / 2)
+        c.add(rounded_box("Voxel", (s, s, s), loc, 0.025, segments=1), key)
+
+
+def feat_cursor(c):
+    # A mouse-pointer arrow floating above the head (white with a dark outline)
+    import bmesh
+
+    outline = [(0, 0), (0, -1.0), (0.24, -0.78), (0.42, -1.12), (0.56, -1.05), (0.39, -0.71), (0.7, -0.68)]
+
+    def arrow(name, scale, depth, y, key):
+        mesh = bpy.data.meshes.new(name)
+        bm = bmesh.new()
+        front = [bm.verts.new((x * scale, y - depth / 2, z * scale)) for x, z in outline]
+        back = [bm.verts.new((x * scale, y + depth / 2, z * scale)) for x, z in outline]
+        bm.faces.new(front[::-1])
+        bm.faces.new(back)
+        for i in range(len(outline)):
+            j = (i + 1) % len(outline)
+            bm.faces.new((front[i], front[j], back[j], back[i]))
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        bm.to_mesh(mesh)
+        bm.free()
+        obj = bpy.data.objects.new(name, mesh)
+        bpy.context.collection.objects.link(obj)
+        obj.location = (-0.32 * scale / 0.8, 0, c.top + 1.25)
+        obj.rotation_euler = (0, math.radians(-15), 0)
+        bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+        bpy.ops.object.transform_apply(location=True, rotation=True)
+        obj.select_set(False)
+        soft(obj, 0.015, segments=1, subdiv=0)
+        c.add(obj, key, angle=30)
+
+    arrow("Cursor", 0.8, 0.12, 0.0, "white")
+    arrow("CursorOutline", 0.88, 0.08, 0.05, "dark")
+
+
+def feat_cape(c):
+    cape = rounded_box("Cape", (2.1, 0.08, 1.75), (0, BODY_D / 2 + 0.08, BODY_Z - 0.05), 0.04, segments=2)
+    c.add(cape, "cape")
+    for i in range(9):
+        x = -0.95 + i * 0.2375
+        c.add(ellipsoid("Fur", (0.13, 0.13, 0.13), (x, -0.55 + abs(x) * 0.3 if abs(x) < 0.0 else 0.95, c.top - 0.02), segments=12, rings=8), "white")
+    sym(lambda s: [c.add(ellipsoid("Fur", (0.13, 0.13, 0.13), (s * 1.0, y, c.top - 0.02), segments=12, rings=8), "white") for y in (0.55, 0.15, -0.25)])
+
+
+def feat_fur(c):
+    for x, y, h in [(-0.45, -0.3, 0.45), (0.0, -0.4, 0.55), (0.45, -0.3, 0.45), (-0.25, 0.2, 0.4), (0.25, 0.2, 0.4)]:
+        c.add(cone("Fur", 0.22, 0.02, h, (x, y, c.top - 0.06), rotation=(math.radians(-15), math.radians(-x * 30), 0), verts=10), "fur")
+    sym(lambda s: [c.add(cone("Fur", 0.16, 0.02, 0.3, (s * 1.0, y, BODY_Z + z), rotation=(0, math.radians(70 * s), 0), verts=8), "fur") for y, z in ((-0.3, 0.3), (0.3, -0.1), (0.0, -0.5))])
+
+
+def feat_face_patch(c):
+    patch = ellipsoid("Patch", (0.92, 0.04, 0.62), face_point(0, -0.05, -0.02), segments=28, rings=10)
+    c.add(patch, "patch")
+
+
+def feat_eye_rings(c):
+    sym(lambda s: c.add(ellipsoid("EyeRing", (0.36, 0.04, 0.36), face_point(0.47 * s, 0.1, -0.015), segments=24, rings=8), "patch"))
+
+
+def feat_glow_dots(c):
+    for side in (-1, 1):
+        for y, z in ((-0.45, 0.2), (0.1, -0.3), (0.55, 0.35)):
+            c.add(ellipsoid("Glow", (0.03, 0.15, 0.15), (side * (BODY_W / 2 + 0.01), y, BODY_Z + z), segments=12, rings=8), "glow")
+
+
+def feat_crystals(c):
+    for x, y, h, lean in c.spec.get("crystal_list", [(0.0, -0.35, 0.55, 0), (-0.35, 0.0, 0.4, -18), (0.35, 0.05, 0.42, 18), (0.0, 0.45, 0.35, 0)]):
+        c.add(cone("Crystal", 0.16, 0.0, h, (x, y, c.top - 0.08), rotation=(0, math.radians(lean), 0), verts=5), "crystal")
+
+
+def feat_back_spikes(c):
+    for i, (y, z, h) in enumerate([(-0.45, 0, 0.35), (0.05, 0, 0.42), (0.55, 0, 0.36), (BODY_D / 2, -0.3, 0.3), (BODY_D / 2, -0.75, 0.25)]):
+        if z == 0:
+            c.add(cone("Spike", 0.16, 0.02, h, (0, y, c.top - 0.05), verts=8), "spike")
+        else:
+            c.add(cone("Spike", 0.14, 0.02, h, (0, y - 0.03, BODY_Z + z + BODY_H / 2 - 0.2), rotation=(math.radians(-90), 0, 0), verts=8), "spike")
+
+
+def feat_hump(c):
+    for y, r in c.spec.get("humps", [(-0.15, 0.55), (0.55, 0.45)]):
+        c.add(ellipsoid("Hump", (r, r, r * 0.8), (0, y, c.top - 0.12), segments=24, rings=12), "body")
+
+
+def feat_eye_stalks(c):
+    pass  # handled by the eye style "stalk"
+
+
+def feat_gills(c):
+    def one(side):
+        for i, (dz, length) in enumerate(((0.35, 0.45), (0.1, 0.5), (-0.15, 0.42))):
+            base = (side * 0.95, -0.55, BODY_Z + 0.55 + dz * 0.4)
+            pts = curve_points(base, (side * 1.25, -0.5, base[2] + 0.15), (side * (1.15 + length * 0.6), -0.4, base[2] + 0.35 - i * 0.1), 8)
+            c.add(tapered("Gill", pts, 0.08, 0.4), "gill")
+    sym(one)
+
+
+def feat_halo_flame(c):
+    pass
+
+
+FEATURES = {
+    "stripes": feat_stripes,
+    "spots": feat_spots,
+    "wings_bee": feat_wings_bee,
+    "wings_butterfly": feat_wings_butterfly,
+    "wings_bat": feat_wings_bat,
+    "wings_bird": feat_wings_bird,
+    "wings_dragon": feat_wings_dragon,
+    "claws": feat_claws,
+    "shell": feat_shell,
+    "dorsal_fin": feat_dorsal_fin,
+    "flippers": feat_flippers,
+    "whiskers": feat_whiskers,
+    "tusk": feat_tusk,
+    "scarf": feat_scarf,
+    "buttons": feat_buttons,
+    "spines": feat_spines,
+    "flower": feat_flower,
+    "nemes": feat_nemes,
+    "rocks": feat_rocks,
+    "screen": feat_screen,
+    "bolts": feat_bolts,
+    "voxels": feat_voxels,
+    "cursor": feat_cursor,
+    "cape": feat_cape,
+    "fur": feat_fur,
+    "face_patch": feat_face_patch,
+    "eye_rings": feat_eye_rings,
+    "glow_dots": feat_glow_dots,
+    "crystals": feat_crystals,
+    "back_spikes": feat_back_spikes,
+    "hump": feat_hump,
+    "gills": feat_gills,
+}
+
+
+# ----- Tails --------------------------------------------------------------------------------------------------
+
+def tail_fox(c):
+    pts = curve_points((0, BODY_D / 2 - 0.05, BODY_Z - 0.45), (0, BODY_D / 2 + 0.75, BODY_Z - 0.3), (0.15, BODY_D / 2 + 0.75, BODY_Z + 0.55), 12)
+    n = len(pts)
+    radii = [0.55 + 0.45 * math.sin(math.pi * (i / (n - 1)) * 0.85) for i in range(n)]
+    c.add(tube("Tail", pts[:9], 0.32, radii=radii[:9]), "body")
+    tip = tube("TailTip", pts[8:], 0.32, radii=[radii[8 + i] * (1 - 0.7 * i / (n - 9)) for i in range(n - 8)])
+    c.add(tip, "tail_tip")
+
+
+def tail_stinger(c):
+    pts = curve_points((0, BODY_D / 2 - 0.1, BODY_Z - 0.4), (0, BODY_D / 2 + 1.1, BODY_Z + 0.2), (0, BODY_D / 2 + 0.2, c.top + 0.9), 7)
+    for i, p in enumerate(pts):
+        r = 0.26 - i * 0.022
+        c.add(ellipsoid("Segment", (r, r, r), p, segments=16, rings=10), "body" if i % 2 == 0 else "segment")
+    end = Vector(pts[-1])
+    sting = cone("Stinger", 0.13, 0.0, 0.45, tuple(end + Vector((0, -0.05, 0.05))), rotation=(math.radians(-120), 0, 0), verts=12)
+    c.add(sting, "stinger")
+
+
+def tail_devil(c):
+    pts = curve_points((0, BODY_D / 2 - 0.05, BODY_Z - 0.5), (0, BODY_D / 2 + 1.0, BODY_Z - 0.6), (0.2, BODY_D / 2 + 0.85, BODY_Z + 0.35), 12)
+    c.add(tube("Tail", pts, 0.06), "body")
+    spade = triangle_prism("Spade", half_width=0.2, height=0.35, depth=0.06)
+    soft(spade, 0.03, segments=2, subdiv=1)
+    spade.location = pts[-1]
+    spade.rotation_euler = (math.radians(-20), 0, 0)
+    bpy.context.view_layer.objects.active = spade
+    spade.select_set(True)
+    bpy.ops.object.transform_apply(location=True, rotation=True)
+    spade.select_set(False)
+    c.add(spade, "body", angle=180)
+
+
+def tail_lizard(c):
+    pts = curve_points((0, BODY_D / 2 - 0.1, BODY_Z - 0.5), (0, BODY_D / 2 + 0.9, BODY_Z - 0.75), (0.75, BODY_D / 2 + 1.0, BODY_Z - 0.55), 14)
+    c.add(tapered("Tail", pts, 0.28, 0.1), "body")
+
+
+def tail_dragon(c):
+    pts = curve_points((0, BODY_D / 2 - 0.1, BODY_Z - 0.45), (0, BODY_D / 2 + 1.0, BODY_Z - 0.75), (0.7, BODY_D / 2 + 1.1, BODY_Z - 0.3), 14)
+    c.add(tapered("Tail", pts, 0.3, 0.1), "body")
+    for i in (3, 6, 9):
+        p = Vector(pts[i])
+        c.add(cone("TailSpike", 0.1, 0.0, 0.25, tuple(p + Vector((0, 0, 0.22 - i * 0.012))), verts=6), "spike")
+    tip = triangle_prism("TailTip", half_width=0.2, height=0.32, depth=0.06)
+    soft(tip, 0.03, segments=2, subdiv=1)
+    tip.location = pts[-1]
+    tip.rotation_euler = (0, math.radians(-90), math.radians(30))
+    bpy.context.view_layer.objects.active = tip
+    tip.select_set(True)
+    bpy.ops.object.transform_apply(location=True, rotation=True)
+    tip.select_set(False)
+    c.add(tip, "spike", angle=180)
+
+
+def tail_fluke(c):
+    pts = curve_points((0, BODY_D / 2 - 0.1, BODY_Z - 0.3), (0, BODY_D / 2 + 0.55, BODY_Z - 0.35), (0, BODY_D / 2 + 0.8, BODY_Z + 0.0), 8)
+    c.add(tapered("Tail", pts, 0.3, 0.4), "body")
+    end = Vector(pts[-1])
+    sym(lambda s: c.add(ellipsoid("Fluke", (0.38, 0.2, 0.06), tuple(end + Vector((0.28 * s, 0.1, 0.05))), segments=16, rings=8, rotation=(math.radians(-25), 0, math.radians(-25 * s))), "fin"))
+
+
+def tail_flame(c):
+    for i, (x, h) in enumerate([(-0.3, 0.9), (0.0, 1.15), (0.3, 0.9)]):
+        pts = curve_points((x * 0.5, BODY_D / 2 - 0.1, BODY_Z - 0.35), (x, BODY_D / 2 + 0.6, BODY_Z - 0.3), (x * 1.4, BODY_D / 2 + 0.75, BODY_Z - 0.3 + h), 10)
+        c.add(tapered("TailFeather", pts, 0.2, 0.05), "flame" if i != 1 else "flame2")
+
+
+def tail_wisp(c):
+    pass
+
+
+TAILS = {
+    "fox": tail_fox,
+    "stinger": tail_stinger,
+    "devil": tail_devil,
+    "lizard": tail_lizard,
+    "dragon": tail_dragon,
+    "fluke": tail_fluke,
+    "flame": tail_flame,
+}
+
+
+# ----- Legs -------------------------------------------------------------------------------------------------------
+
+def legs_feet(c):
+    sym(lambda s: c.add(ellipsoid("Foot", (0.3, 0.42, 0.13), (0.52 * s, -0.55, 0.13), segments=18, rings=8), "feet"))
+
+
+def legs_pot(c):
+    bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=1.12, radius2=1.42, depth=0.85, location=(0, 0, 0.42), rotation=(0, 0, math.radians(45)))
+    pot = bpy.context.active_object
+    soft(pot, 0.08, segments=3, subdiv=0)
+    c.add(pot, "pot")
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0.9))
+    rim = bpy.context.active_object
+    rim.scale = (2.16, 2.16, 0.16)
+    bpy.ops.object.transform_apply(scale=True)
+    soft(rim, 0.06, segments=2, subdiv=0)
+    c.add(rim, "pot_rim")
+
+
+def legs_crab(c):
+    def one(side):
+        for i, y in enumerate((-0.45, 0.05, 0.55)):
+            pts = curve_points((0.9 * side, y, 0.55), (1.35 * side, y, 0.6), (1.45 * side, y + 0.05, 0.0), 8)
+            c.add(tapered("Leg", pts, 0.08, 0.5), "legs")
+    sym(one)
+
+
+def legs_tentacles(c):
+    for i in range(6):
+        a = math.radians(30 + i * 60)
+        x, y = math.cos(a), math.sin(a)
+        base = (x * 0.72, y * 0.72, 0.55)
+        mid = (x * 1.15, y * 1.15, 0.12)
+        end = (x * 1.55 + y * 0.25 * (1 if i % 2 else -1), y * 1.55 - x * 0.25 * (1 if i % 2 else -1), 0.32)
+        c.add(tapered("Tentacle", curve_points(base, mid, end, 12), 0.2, 0.25), "body")
+
+
+def legs_wisp(c):
+    for x, y in ((-0.55, -0.55), (0.55, -0.55), (-0.55, 0.55), (0.55, 0.55), (0, 0)):
+        c.add(cone("Wisp", 0.32, 0.02, 0.55, (x, y, 0.62), rotation=(math.radians(180), 0, 0), verts=12), "body")
+
+
+LEGS = {"feet": legs_feet, "pot": legs_pot, "crab": legs_crab, "tentacles": legs_tentacles, "wisp": legs_wisp}
+
+
+# ----- Faces: extra eye and mouth styles ---------------------------------------------------------------------------
+
+def eye_arc(c, side, down):
+    """Closed eyes: an arc ^ (down=False) or a sleepy ‿ curve (down=True)."""
+    pts = []
+    for i in range(11):
+        a = math.pi * i / 10
+        x = 0.47 * side + math.cos(a) * 0.17
+        z = 0.08 + (-1 if down else 1) * math.sin(a) * 0.09
+        pts.append(face_point(x, z, 0.015))
+    c.add(tube("EyeArc", pts, 0.035), "eye")
+
+
+def eyes_square(c, scale):
+    def one(side):
+        c.add(rounded_box("Eye", (0.32 * scale, 0.07, 0.36 * scale), face_point(0.45 * side, 0.08, 0.0), 0.06, segments=2), "eye")
+        c.add(rounded_box("Shine", (0.08, 0.04, 0.08), face_point(0.45 * side + 0.06, 0.18, 0.04), 0.02, segments=1), "shine")
+    sym(one)
+
+
+def eyes_shades(c):
+    def one(side):
+        c.add(rounded_box("Lens", (0.62, 0.08, 0.36), face_point(0.43 * side, 0.12, 0.02), 0.12, segments=3), "shades")
+        c.add(rounded_box("Glint", (0.18, 0.03, 0.05), face_point(0.43 * side + 0.08, 0.2, 0.065), 0.02, segments=1, rotation=(0, math.radians(-25), 0)), "shine")
+    sym(one)
+    c.add(rounded_box("Bridge", (0.3, 0.06, 0.07), face_point(0, 0.17, 0.02), 0.02, segments=1), "shades")
+
+
+def eyes_stalk(c, scale):
+    def one(side):
+        base = (0.45 * side, -0.55, c.top - 0.05)
+        top = (0.55 * side, -0.62, c.top + 0.55)
+        c.add(tube("Stalk", curve_points(base, (0.45 * side, -0.6, c.top + 0.3), top, 6), 0.07), "body")
+        c.add(ellipsoid("EyeBall", (0.2, 0.2, 0.2), top, segments=18, rings=10), "white")
+        c.add(ellipsoid("Eye", (0.12 * scale, 0.07, 0.14 * scale), (top[0], top[1] - 0.15, top[2]), segments=14, rings=8), "eye")
+        c.add(ellipsoid("Shine", (0.04, 0.03, 0.04), (top[0] + 0.04, top[1] - 0.22, top[2] + 0.05), segments=8, rings=6), "shine")
+    sym(one)
+
+
+def brows(c, angry=True):
+    def one(side):
+        a = face_point(0.25 * side, 0.36 if angry else 0.42, 0.02)
+        b = face_point(0.7 * side, 0.46 if angry else 0.42, 0.02)
+        c.add(tube("Brow", [a, b], 0.045), "brow" if "brow" in c.spec["colors"] else "mouth")
+    sym(one)
+
+
+# ---------------------------------------------------------------------------------------------------------------
 # Building
 
 
 def build(spec):
     colors = {key: hex_color(value) for key, value in spec["colors"].items()}
-    mat = {key: material(key, value, gloss=key in ("eye", "shine", "nose")) for key, value in colors.items()}
+    mat = Mats(spec)
+    for key, value in colors.items():
+        mat[key] = material(key, value, gloss=key in ("eye", "shine", "nose"))
     parts = []
+    c = Ctx(spec, mat, parts)
 
     # Body: one rounded cube
     body = rounded_box("Body", (BODY_W, BODY_D, BODY_H), (0, 0, BODY_Z), BEVEL, segments=5)
     parts.append(finish(body, mat["body"]))
 
     # Belly: a shell of the body (slightly bigger) cut by an ellipse at the front, so it wraps the bevel
+    if "belly" in spec["colors"]:
+        build_belly(spec, mat, parts)
+
+    legs_kind = spec.get("legs", "normal")
+    if legs_kind in LEGS:
+        LEGS[legs_kind](c)
+    elif legs_kind == "normal":
+        build_legs(mat, parts)
+
+    build_head(spec, mat, parts, c)
+    return parts
+
+
+def build_belly(spec, mat, parts):
     belly = rounded_box("Belly", (BODY_W + 0.03, BODY_D + 0.03, BODY_H + 0.03), (0, 0, BODY_Z), BEVEL + 0.015, segments=5)
     bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=1, depth=1.2, location=(0, FRONT_Y + 0.25, LEG_H), rotation=(math.radians(90), 0, 0))
     cutter = bpy.context.active_object
@@ -280,12 +1179,16 @@ def build(spec):
     bpy.data.objects.remove(cutter)
     parts.append(finish(belly, mat["belly"]))
 
+
+def build_legs(mat, parts):
     # Legs: four short rounded blocks at the corners
     for x in (-0.62, 0.62):
         for y in (-0.62, 0.62):
             leg = rounded_box("Leg", (0.46, 0.46, LEG_H + 0.3), (x, y, (LEG_H + 0.3) / 2), 0.1, segments=3)
             parts.append(finish(leg, mat["legs"]))
 
+
+def build_head(spec, mat, parts, c):
     # Ears: thick rounded triangles on the top corners, leaning out a little, with a soft pink triangle
     # set into the front. Bevel + one level of subdivision keeps every edge soft (no sharp cone tips).
     if spec["ears"] == "cat":
@@ -330,6 +1233,9 @@ def build(spec):
             inner = ellipsoid("EarInner", (0.2, 0.06, 0.19), (0.66 * side, -0.33, top + 0.06), segments=16, rings=8)
             parts.append(finish(inner, mat["ear_inner"]))
 
+    if spec["ears"] in EARS:
+        EARS[spec["ears"]](c)
+
     # Tuft: a little curl of hair on top
     if spec.get("tuft"):
         # A curl that rises from the head, loops forward and ends in a little hook
@@ -342,13 +1248,34 @@ def build(spec):
         hair = tube("Tuft", curl, 0.11)
         parts.append(finish(hair, mat["tuft"]))
 
+    for feature in spec.get("features", []):
+        if feature in ("face_patch", "eye_rings", "screen"):
+            FEATURES[feature](c)
+
     # Eyes with a white shine
     eye_scale = spec.get("eyes", 1.0)
-    for side in (-1, 1):
-        eye = ellipsoid("Eye", (0.19 * eye_scale, 0.07, 0.24 * eye_scale), face_point(0.47 * side, 0.1, 0.0))
-        parts.append(finish(eye, mat["eye"]))
-        shine = ellipsoid("Shine", (0.055 * eye_scale, 0.03, 0.055 * eye_scale), face_point(0.47 * side + 0.06 * eye_scale, 0.1 + 0.09 * eye_scale, 0.06), segments=10, rings=6)
-        parts.append(finish(shine, mat["shine"]))
+    eye_style = spec.get("eye_style", "oval")
+    if eye_style in ("oval", "sparkle"):
+        for side in (-1, 1):
+            eye = ellipsoid("Eye", (0.19 * eye_scale, 0.07, 0.24 * eye_scale), face_point(0.47 * side, 0.1, 0.0))
+            parts.append(finish(eye, mat["eye"]))
+            shine = ellipsoid("Shine", (0.055 * eye_scale, 0.03, 0.055 * eye_scale), face_point(0.47 * side + 0.06 * eye_scale, 0.1 + 0.09 * eye_scale, 0.06), segments=10, rings=6)
+            parts.append(finish(shine, mat["shine"]))
+            if eye_style == "sparkle":
+                small = ellipsoid("Shine", (0.032 * eye_scale, 0.03, 0.032 * eye_scale), face_point(0.47 * side - 0.07 * eye_scale, 0.1 - 0.1 * eye_scale, 0.06), segments=8, rings=6)
+                parts.append(finish(small, mat["shine"]))
+    elif eye_style == "closed":
+        sym(lambda s_: eye_arc(c, s_, down=False))
+    elif eye_style == "sleepy":
+        sym(lambda s_: eye_arc(c, s_, down=True))
+    elif eye_style == "square":
+        eyes_square(c, eye_scale)
+    elif eye_style == "shades":
+        eyes_shades(c)
+    elif eye_style == "stalk":
+        eyes_stalk(c, eye_scale)
+    if spec.get("brows"):
+        brows(c, angry=spec["brows"] == "angry")
 
     # Muzzle: a soft lighter bump on the lower face that the nose and mouth sit on
     muzzle_out = 0.0
@@ -385,11 +1312,19 @@ def build(spec):
     elif nose_kind == "bear":
         nose = ellipsoid("Nose", (0.15, 0.08, 0.1), on_face(0, -0.08, 0.02), segments=16, rings=10)
         parts.append(finish(nose, mat["nose"]))
+    elif nose_kind == "beak":
+        beak = cone("Beak", 0.17, 0.0, 0.32, face_point(0, -0.05, -0.02), rotation=(math.radians(100), 0, 0), verts=12)
+        beak.scale = (1, 1, 1)
+        c.add(beak, "beak")
+    elif nose_kind == "carrot":
+        c.add(cone("Carrot", 0.12, 0.0, 0.6, face_point(0, -0.02, -0.02), rotation=(math.radians(95), 0, 0), verts=12), "carrot")
 
     # Mouth: a cat "w" or a simple smile
     mouth_kind = spec.get("mouth", "cat")
     points = []
-    if mouth_kind == "cat":
+    if mouth_kind in ("open", "frown", "line", "fangs", "none", "dots"):
+        build_mouth(c, mouth_kind, on_face)
+    elif mouth_kind == "cat":
         radius = 0.09
         for center in (-radius, radius):
             for i in range(9):
@@ -402,8 +1337,9 @@ def build(spec):
         for i in range(13):
             angle = math.pi * 1.15 + math.pi * 0.7 * i / 12
             points.append(on_face(radius * math.cos(angle), z0 + radius * math.sin(angle), 0.015))
-    mouth = tube("Mouth", points, 0.026)
-    parts.append(finish(mouth, mat["mouth"]))
+    if points:
+        mouth = tube("Mouth", points, 0.026)
+        parts.append(finish(mouth, mat["mouth"]))
 
     # Buck teeth under the mouth
     if spec.get("teeth"):
@@ -414,8 +1350,12 @@ def build(spec):
             tooth = rounded_box("Tooth", (0.075, 0.04, 0.11), face_point(0.043 * side, -0.29, 0.025), 0.018, segments=2)
             parts.append(finish(tooth, mat["teeth"]))
 
+    for feature in spec.get("features", []):
+        if feature not in ("face_patch", "eye_rings", "screen"):
+            FEATURES[feature](c)
+
     # Blush
-    for side in (-1, 1):
+    for side in (-1, 1) if spec.get("blush", True) else ():
         blush = ellipsoid("Blush", (0.13, 0.02, 0.09), face_point(0.76 * side, -0.07, 0.0), segments=14, rings=6)
         parts.append(finish(blush, mat["blush"]))
 
@@ -429,6 +1369,44 @@ def build(spec):
     elif spec["tail"] == "nub":
         tail = ellipsoid("Tail", (0.18, 0.16, 0.18), (0, BODY_D / 2 + 0.04, BODY_Z - 0.4), segments=16, rings=10)
         parts.append(finish(tail, mat["tail"]))
+    elif spec["tail"] in TAILS:
+        TAILS[spec["tail"]](c)
+
+
+def build_mouth(c, kind, on_face):
+    if kind == "open":
+        # A happy open mouth: a half disc with a tongue
+        mouth = ellipsoid("Mouth", (0.17, 0.05, 0.14), on_face(0, -0.15, 0.0), segments=20, rings=10)
+        bpy.ops.mesh.primitive_cube_add(size=1, location=on_face(0, -0.15 - 0.5, 0.0))
+        cutter = bpy.context.active_object
+        cutter.scale = (1, 1, 1.0)
+        bpy.ops.object.transform_apply(scale=True)
+        boolean = mouth.modifiers.new("Cut", "BOOLEAN")
+        boolean.operation = "INTERSECT"
+        boolean.object = cutter
+        apply_modifiers(mouth)
+        bpy.data.objects.remove(cutter)
+        c.add(mouth, "mouth")
+        c.add(ellipsoid("Tongue", (0.09, 0.04, 0.05), on_face(0, -0.24, 0.015), segments=12, rings=6), "tongue")
+    elif kind in ("frown", "line", "fangs", "dots"):
+        if kind == "dots":
+            for x, z in ((-0.2, -0.18), (-0.1, -0.24), (0.0, -0.26), (0.1, -0.24), (0.2, -0.18)):
+                c.add(ellipsoid("Coal", (0.045, 0.03, 0.045), on_face(x, z, 0.0), segments=8, rings=6), "dark")
+            return
+        pts = []
+        for i in range(11):
+            t = i / 10
+            x = -0.13 + 0.26 * t
+            if kind == "frown":
+                z = -0.2 + math.sin(math.pi * t) * 0.06
+            elif kind == "line":
+                z = -0.17
+            else:
+                z = -0.13 - math.sin(math.pi * t) * 0.07
+            pts.append(on_face(x, z, 0.015))
+        c.add(tube("Mouth", pts, 0.026), "mouth")
+        if kind == "fangs":
+            sym(lambda s_: c.add(cone("Fang", 0.04, 0.0, 0.1, on_face(0.07 * s_, -0.18, 0.02), rotation=(math.radians(180), 0, 0), verts=8), "white"))
 
     return parts
 
@@ -478,7 +1456,8 @@ def setup_render(resolution=640):
 
 def render_views(name, camera):
     target = Vector((0, 0, 1.6))
-    views = [("front", 0), ("side", 90), ("back", 180), ("three_quarter", 35)]
+    views = [("three_quarter", 35)] if FAST else [("front", 0), ("side", 90), ("back", 180), ("three_quarter", 35)]
+    name = name.replace(" ", "")
     paths = []
     for view, angle in views:
         rad = math.radians(angle)
@@ -520,6 +1499,7 @@ def export(name, parts):
     for i, color in enumerate(palette):
         srgb = tuple(int(round(255 * (c * 12.92 if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055))) for c in color)
         image.paste(srgb, (i * cell, 0, (i + 1) * cell, cell))
+    name = name.replace(" ", "")
     palette_path = os.path.join(ROOT, "models", f"{name}_palette.png")
     image.save(palette_path)
     # Which part of the creature each palette cell is (viewers and variant shaders use it)
@@ -574,29 +1554,34 @@ def export(name, parts):
 
 
 def main():
-    names = sys.argv[1:] or ["Kitty"]
-    for name in names:
+    args = sys.argv[1:] or ["Kitty"]
+    lineup_name = "lineup"
+    if args[0] == "zone":
+        index = int(args[1])
+        args = ZONES[index - 1]
+        lineup_name = f"zone{index}_lineup"
+    for name in args:
         reset()
         parts = build(SPECIES[name])
         camera = setup_render()
         render_views(name, camera)
         triangles = export(name, parts)
         print(f"[cubelings] {name}: {triangles} triangles")
-    if len(names) > 1:
+    if len(args) > 1:
         # Lineup: the 3/4 view of each creature side by side
         from PIL import Image
 
         views = []
-        for name in names:
-            sheet = Image.open(os.path.join(ROOT, "renders", f"{name}.png"))
-            w = sheet.width // 4
-            views.append(sheet.crop((3 * w, 0, 4 * w, sheet.height)))
+        for name in args:
+            sheet = Image.open(os.path.join(ROOT, "renders", f"{name.replace(' ', '')}.png"))
+            w = sheet.width if FAST else sheet.width // 4
+            views.append(sheet.crop((sheet.width - w, 0, sheet.width, sheet.height)))
         lineup = Image.new("RGB", (sum(v.width for v in views), views[0].height))
         x = 0
         for view in views:
             lineup.paste(view, (x, 0))
             x += view.width
-        lineup.save(os.path.join(ROOT, "renders", "lineup.png"))
+        lineup.save(os.path.join(ROOT, "renders", f"{lineup_name}.png"))
 
 
 if __name__ == "__main__":
