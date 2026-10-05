@@ -99,17 +99,28 @@ function EggPanel.mount(gui: ScreenGui)
 			task.wait(2)
 		end
 	end)
-	auto.Activated:Connect(function()
-		autoHatch = not autoHatch
+	local function showAuto()
 		auto.Text = if autoHatch then "Auto: ON" else "Auto: OFF"
 		auto.BackgroundColor3 = if autoHatch then Theme.green else Theme.card
+	end
+	-- Remembered in settings, so auto hatch is back on after a rejoin
+	auto.Activated:Connect(function()
+		autoHatch = not autoHatch
+		showAuto()
+		Net.event("SetSetting"):FireServer("autoHatch", autoHatch)
 	end)
+	local restored = false
 
 	local function updateButtons()
 		local data = Store.data
 		x3.Visible = data ~= nil and (data.upgrades.Hatch3 or 0) > 0
 		x8.Visible = data ~= nil and (data.upgrades.Hatch8 or 0) > 0
 		auto.Visible = data ~= nil and (data.upgrades.AutoHatch or 0) > 0
+		if data and not restored then
+			restored = true
+			autoHatch = data.settings.autoHatch == true and (data.upgrades.AutoHatch or 0) > 0
+			showAuto()
+		end
 	end
 
 	local function show(zoneId: number)

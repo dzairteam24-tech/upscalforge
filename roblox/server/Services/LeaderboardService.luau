@@ -49,7 +49,7 @@ local BOARDS: { Board } = {
 		color = Color3.fromRGB(245, 197, 66),
 		log = true,
 		value = function(data)
-			return data.stats.coinsEarned or 0
+			return data.stats.boardCoins or data.stats.coinsEarned or 0
 		end,
 		format = Format.abbrev,
 	},

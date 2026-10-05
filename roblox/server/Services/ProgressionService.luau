@@ -3,6 +3,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Codes = require(Shared.Config.Codes)
 local Cosmetics = require(Shared.Config.Cosmetics)
 local Items = require(Shared.Config.Items)
 local Progression = require(Shared.Config.Progression)
@@ -273,7 +274,34 @@ function ProgressionService.grant(player: Player, reward: Progression.Reward): s
 	return grant(player, data, reward)
 end
 
+-- Codes from Config/Codes: once per player, until they end.
+local function redeemCode(player: Player, text: any)
+	local data = DataService.get(player)
+	local runtime = State.get(player)
+	if not data or not runtime or type(text) ~= "string" or #text > Codes.MAX_LENGTH * 2 then
+		return
+	end
+	if not State.throttle(runtime, "RedeemCode", 2) then
+		GameService.notify(player, "Wait a moment before trying another code", "error")
+		return
+	end
+	local key = Codes.normalize(text)
+	local entry = Codes.byCode[key]
+	if not entry or (entry.ends and os.time() >= entry.ends) then
+		GameService.notify(player, if entry then "That code has ended" else "That code doesn't exist", "error")
+		return
+	end
+	if data.codes[key] then
+		GameService.notify(player, "You already used that code", "error")
+		return
+	end
+	data.codes[key] = true
+	GameService.notify(player, ("Code %s: %s"):format(key, grant(player, data, entry.reward)), "success")
+	GameService.markDirty(player)
+end
+
 function ProgressionService.init()
+	Net.event("RedeemCode").OnServerEvent:Connect(redeemCode)
 	GameService.Progress:Connect(onProgress)
 	DataService.Loaded:Connect(function(player)
 		refresh(player)

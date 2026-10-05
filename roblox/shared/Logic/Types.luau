@@ -40,6 +40,8 @@ export type PlayerData = {
 	equippedTitle: string?,
 	equippedTrail: string?,
 	cartridges: { string }, -- equipped cartridge item ids
+	loadouts: { { string } }, -- saved Boost Card sets
+	codes: { [string]: boolean }, -- redeemed codes
 	reloads: number,
 	expeditions: { Expedition },
 	ads: AdState,

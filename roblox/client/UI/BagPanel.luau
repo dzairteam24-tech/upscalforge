@@ -20,6 +20,8 @@ local PetCard = require(script.Parent.PetCard)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
 
+local BULK_KEYS: { [string]: number } = { Key_Zone = 25, Key_Golden = 10 }
+
 local BagPanel = {}
 
 type Tab = "Elixirs" | "Cartridges" | "Keys" | "Stickers" | "Gadgets"
@@ -267,7 +269,8 @@ function BagPanel.mount(gui: ScreenGui)
 	local useButton = Theme.button({ Text = "Use", Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = Theme.green, LayoutOrder = 1 })
 	local mergeButton = Theme.button({ Text = "Merge", Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = Theme.purple, LayoutOrder = 2 })
 	local mixButton = Theme.button({ Text = "Mix with...", Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = Theme.accent, LayoutOrder = 3 })
-	for _, b in { useButton, mergeButton, mixButton } do
+	local bulkButton = Theme.button({ Text = "Open all", Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = Theme.gold, LayoutOrder = 2 })
+	for _, b in { useButton, bulkButton, mergeButton, mixButton } do
 		b.Parent = buttons
 	end
 
@@ -280,6 +283,8 @@ function BagPanel.mount(gui: ScreenGui)
 	end
 
 	local boostsLabel: TextLabel? = nil
+	local savingLoadout = false
+	local rebuild: () -> ()
 
 	local function buildHeader(data: { [string]: any })
 		clear(header)
@@ -350,6 +355,45 @@ function BagPanel.mount(gui: ScreenGui)
 				MaxTextSize = 14,
 			})
 			setsLabel.Parent = header
+
+			-- Loadouts: tap a set to put it on; "Save" then a set number stores what's equipped now
+			local loadoutRow = Theme.frame({ BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 94), Size = UDim2.new(1, 0, 0, 30) })
+			Theme.list(loadoutRow, 6, true)
+			loadoutRow.Parent = header
+			local saveButton = Theme.button({
+				Text = if savingLoadout then "Pick a set…" else "💾 Save",
+				Size = UDim2.fromOffset(96, 30),
+				BackgroundColor3 = if savingLoadout then Theme.gold else Theme.card,
+				LayoutOrder = 0,
+				MaxTextSize = 14,
+			})
+			saveButton.Parent = loadoutRow
+			saveButton.Activated:Connect(function()
+				savingLoadout = not savingLoadout
+				rebuild()
+			end)
+			local loadouts = data.loadouts or {}
+			for i = 1, Gear.LOADOUTS do
+				local saved = loadouts[i]
+				local filled = saved ~= nil and #saved > 0
+				local b = Theme.button({
+					Text = ("Set %d%s"):format(i, if filled then (" (%d)"):format(#saved) else ""),
+					Size = UDim2.fromOffset(84, 30),
+					BackgroundColor3 = if savingLoadout then Theme.gold elseif filled then Theme.purple else Theme.panel,
+					LayoutOrder = i,
+					MaxTextSize = 14,
+				})
+				b.Parent = loadoutRow
+				b.Activated:Connect(function()
+					if savingLoadout then
+						savingLoadout = false
+						Net.event("CardLoadout"):FireServer("save", i)
+						rebuild()
+					else
+						Net.event("CardLoadout"):FireServer("load", i)
+					end
+				end)
+			end
 		elseif current == "Stickers" then
 			local target = if Bus.stickerTarget then data.pets[Bus.stickerTarget] else nil
 			local label = Theme.label({
@@ -384,7 +428,7 @@ function BagPanel.mount(gui: ScreenGui)
 			})
 			label.Parent = header
 		end
-		local headerHeight = if current == "Cartridges" then 92 else 46
+		local headerHeight = if current == "Cartridges" then 126 else 46
 		header.Size = UDim2.new(0.64, 0, 0, headerHeight)
 		scroll.Position = UDim2.fromOffset(0, 46 + headerHeight)
 		scroll.Size = UDim2.new(0.64, 0, 1, -(46 + headerHeight))
@@ -399,7 +443,7 @@ function BagPanel.mount(gui: ScreenGui)
 		return {}
 	end
 
-	local function rebuild()
+	function rebuild()
 		clear(scroll)
 		local data = Store.data
 		if not data then
@@ -476,6 +520,13 @@ function BagPanel.mount(gui: ScreenGui)
 			then "Equip"
 			elseif item.kind == "Sticker" then (if target then "Stick on " .. PetCard.title(target) else "Stick on a creature")
 			else "Use"
+		-- Zone and Golden keys open in bulk (the server caps it: 25 vaults, 10 golden chests)
+		local have = data.items[item.id] or 0
+		local bulkCap = BULK_KEYS[item.id]
+		bulkButton.Visible = bulkCap ~= nil and have > 1
+		if bulkCap then
+			bulkButton.Text = ("Open x%d"):format(math.min(have, bulkCap))
+		end
 		local upgrade = Items.nextTier(item.id)
 		mergeButton.Visible = upgrade ~= nil
 		if upgrade then
@@ -515,6 +566,13 @@ function BagPanel.mount(gui: ScreenGui)
 			end
 		else
 			Net.event("UseItem"):FireServer(item.id)
+		end
+	end)
+	bulkButton.Activated:Connect(function()
+		local data = Store.data
+		local cap = if selected then BULK_KEYS[selected] else nil
+		if data and selected and cap then
+			Net.event("UseItem"):FireServer(selected, math.min(data.items[selected] or 0, cap))
 		end
 	end)
 	mergeButton.Activated:Connect(function()

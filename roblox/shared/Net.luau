@@ -32,6 +32,8 @@ local EVENTS = {
 	"EquipCosmetic",
 	"EquipCartridge",
 	"UnequipCartridge",
+	"CardLoadout",
+	"RedeemCode",
 	"Reload",
 	"StartExpedition",
 	"ClaimExpedition",

@@ -103,6 +103,38 @@ function SettingsPanel.mount(gui: ScreenGui)
 		toggles[option.key] = toggle
 	end
 
+	-- Codes
+	local codeRow = Theme.frame({ Size = UDim2.new(1, -10, 0, 70), BackgroundColor3 = Theme.card, LayoutOrder = #OPTIONS + 1 })
+	Theme.corner(codeRow, 12)
+	codeRow.Parent = scroll
+	local codeBox = Instance.new("TextBox")
+	codeBox.PlaceholderText = "🎁 Enter a code"
+	codeBox.Text = ""
+	codeBox.ClearTextOnFocus = false
+	codeBox.Font = Theme.font
+	codeBox.TextScaled = true
+	codeBox.TextColor3 = Theme.text
+	codeBox.BackgroundColor3 = Theme.panel
+	codeBox.Position = UDim2.fromOffset(14, 13)
+	codeBox.Size = UDim2.new(0.7, -24, 0, 44)
+	Theme.corner(codeBox, 8)
+	codeBox.Parent = codeRow
+	local redeem = Theme.button({
+		Text = "Redeem",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -14, 0.5, 0),
+		Size = UDim2.new(0.22, 0, 0, 44),
+		BackgroundColor3 = Theme.gold,
+		MaxTextSize = 20,
+	})
+	redeem.Parent = codeRow
+	redeem.Activated:Connect(function()
+		if codeBox.Text ~= "" then
+			Net.event("RedeemCode"):FireServer(codeBox.Text)
+			codeBox.Text = ""
+		end
+	end)
+
 	local function update()
 		local data = Store.data
 		if not data then

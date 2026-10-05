@@ -373,6 +373,13 @@ function GameService.addCoins(player: Player, amount: number, zoneId: number?, r
 		return
 	end
 	data.coins += amount
+	-- The Coins leaderboard leaves out timed boosts (bought, watched or from elixirs) and Premium,
+	-- so it can't be bought: it ranks what you earn by playing.
+	local timed = State.boost(runtime, "Coins", os.clock()) * Boosts.active(data.boosts, "Coins")
+	if runtime.premium then
+		timed *= Products.PREMIUM_COINS
+	end
+	data.stats.boardCoins = (data.stats.boardCoins or data.stats.coinsEarned or 0) + amount / timed
 	data.stats.coinsEarned = (data.stats.coinsEarned or 0) + amount
 	GameService.progress(player, "Coins", amount)
 	if zoneId and zoneId > 0 then
@@ -881,6 +888,8 @@ end
 
 local function onLoaded(player: Player, data: PlayerData)
 	local runtime = State.create(player)
+	-- Auto farm picks up where it was after a rejoin (an AFK kick, a server restart)
+	runtime.auto = data.settings.autoFarm == true
 	giveStarterPack(player, data)
 	leaderstats(player)
 	GameService.refresh(player)
@@ -939,6 +948,7 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		equippedTitle = data.equippedTitle,
 		equippedTrail = data.equippedTrail,
 		cartridges = data.cartridges,
+		loadouts = data.loadouts,
 		cartridgeSlots = Gear.slots(data.reloads, perks.cartridgeSlots),
 		gearSets = (State.get(player) :: State.Runtime).gear.sets,
 		reloads = data.reloads,
@@ -1071,8 +1081,11 @@ function GameService.init()
 
 	Net.event("ToggleAuto").OnServerEvent:Connect(function(player, enabled)
 		local runtime = State.get(player)
-		if runtime and type(enabled) == "boolean" then
+		local data = DataService.get(player)
+		if runtime and data and type(enabled) == "boolean" then
 			runtime.auto = enabled
+			data.settings.autoFarm = enabled
+			GameService.markDirty(player)
 			if enabled then
 				runtime.combo = 0
 			end
@@ -1092,6 +1105,7 @@ function GameService.init()
 			music = true,
 			autoDeleteNormal = true,
 			autoDeleteGolden = true,
+			autoHatch = true,
 		}
 		if type(key) == "string" and allowed[key] then
 			data.settings[key] = value

@@ -497,6 +497,20 @@ test("Gear: multiplicative and additive stats, defaults", function()
 	eq(#gear.sets, 0, "no set without Chest Breaker")
 end)
 
+test("Gear: loadouts swap cards and report missing ones", function()
+	local items: { [string]: number } = { Cart_Lucky_2 = 1 }
+	local equipped = { "Cart_Coins_2", "Cart_Jackpot_3" }
+	local missing = Gear.applyLoadout(items, equipped, { "Cart_Lucky_2", "Cart_Coins_2", "Cart_Combo_4" }, 2)
+	eq(#equipped, 2, "two slots")
+	eq(equipped[1], "Cart_Lucky_2")
+	eq(equipped[2], "Cart_Coins_2")
+	eq(items.Cart_Jackpot_3, 1, "old card back in the bag")
+	eq(items.Cart_Coins_2 or 0, 0, "re-equipped card left the bag")
+	eq(items.Cart_Lucky_2 or 0, 0, "lucky equipped")
+	eq(#missing, 1, "combo didn't fit or wasn't there")
+	eq(missing[1], "Cart_Combo_4")
+end)
+
 test("Gear: completing a set adds its bonus", function()
 	local rich = Gear.compute({ "Cart_Coins_1", "Cart_Jackpot_1", "Cart_ChestBreaker_1" })
 	eq(rich.sets[1], "Rich")
@@ -1330,6 +1344,34 @@ test("Every aura and hatch effect is sold once, cosmetic only", function()
 	end
 	for _, fx in Cosmetics.hatchFx do
 		eq(sold["hatchFx|" .. fx.id], 1, fx.id)
+	end
+end)
+
+test("Trade worth: counts rares and warns on lopsided trades", function()
+	local titan = { s = "Kitty", v = "Normal", z = "Titan" }
+	local pixel = { s = "Kitty", v = "Pixel", z = "Normal" }
+	local normal = { s = "Kitty", v = "Normal", z = "Normal" }
+	local give = TradeLogic.worth({ titan, pixel })
+	eq(give.count, 2)
+	eq(give.titans, 1)
+	eq(give.rare, 1, "pixel is rare")
+	local get = TradeLogic.worth({ normal, normal, normal })
+	assert(TradeLogic.lopsided(give, get), "titan for normals is lopsided")
+	assert(not TradeLogic.lopsided(get, give), "getting more is fine")
+	assert(not TradeLogic.lopsided(TradeLogic.worth({ normal }), TradeLogic.worth({})), "tiny gifts don't warn")
+end)
+
+test("Codes: upper case, real items, no creatures", function()
+	local Codes = R(Shared.Config.Codes)
+	local Items = R(Shared.Config.Items)
+	eq(Codes.normalize("  rel ease "), "RELEASE")
+	for _, entry in Codes.list do
+		eq(entry.code, Codes.normalize(entry.code), "normalized " .. entry.code)
+		assert(#entry.code <= Codes.MAX_LENGTH, "length " .. entry.code)
+		for _, item in entry.reward.items or {} do
+			assert(Items.byId[item.id], "unknown item " .. item.id)
+		end
+		assert(not entry.reward.freeEggs, "codes don't give eggs " .. entry.code)
 	end
 end)
 

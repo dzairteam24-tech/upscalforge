@@ -2,6 +2,7 @@
 -- Equipped cartridges: their bonuses and set bonuses. One cartridge per family.
 
 local Items = require(script.Parent.Parent.Config.Items)
+local Bag = require(script.Parent.Bag)
 
 export type Gear = {
 	values: { [string]: number },
@@ -24,6 +25,7 @@ local Gear = {
 	FIGHTER_EVERY = 20,
 	FIGHTER_DURATION = 5,
 	FIGHTER_MULT = 2,
+	LOADOUTS = 3,
 }
 
 -- Slots from Reloads plus any Rank bonus, up to 6.
@@ -103,6 +105,25 @@ function Gear.canEquip(equipped: { string }, id: string, slots: number): (boolea
 		end
 	end
 	return true, nil
+end
+
+-- Loadouts: swaps the equipped cards for a saved set in one tap. Every equipped card goes back to the bag,
+-- then each saved card is taken out again if it's still there and fits. Returns the cards that were missing.
+function Gear.applyLoadout(items: { [string]: number }, equipped: { string }, wanted: { string }, slots: number): { string }
+	for _, id in equipped do
+		Bag.add(items, id, 1)
+	end
+	table.clear(equipped)
+	local missing = {}
+	for _, id in wanted do
+		if Bag.count(items, id) > 0 and Gear.canEquip(equipped, id, slots) then
+			Bag.take(items, id, 1)
+			table.insert(equipped, id)
+		else
+			table.insert(missing, id)
+		end
+	end
+	return missing
 end
 
 return Gear

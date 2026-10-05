@@ -10,6 +10,7 @@ local Bag = require(Shared.Logic.Bag)
 local Achievements = require(Shared.Logic.Achievements)
 local Gear = require(Shared.Logic.Gear)
 local Unlocks = require(Shared.Logic.Unlocks)
+local Inventory = require(Shared.Logic.Inventory)
 local Loot = require(Shared.Logic.Loot)
 local Format = require(Shared.Logic.Format)
 local Types = require(Shared.Logic.Types)
@@ -31,44 +32,63 @@ local function random(): number
 	return rng:NextNumber()
 end
 
--- Keys return true when they were used (and should be consumed).
-local KEY_ACTIONS: { [string]: (Player, PlayerData, State.Runtime) -> boolean } = {
-	Key_Zone = function(player, _data, runtime)
+-- Keys return how many were used (and should be consumed). Zone and Golden keys can be opened in bulk.
+local MAX_BULK_KEYS = 25
+local MAX_BULK_GOLDEN = 10 -- 3 eggs each
+
+local KEY_ACTIONS: { [string]: (Player, PlayerData, State.Runtime, number) -> number } = {
+	Key_Zone = function(player, _data, runtime, count)
 		local zone = if runtime.zoneId then World1.zonesById[runtime.zoneId] else nil
 		if not zone or zone.eggPrice <= 0 then
 			GameService.notify(player, "Use the Zone Key inside a zone", "error")
-			return false
+			return 0
 		end
-		local raw = 5 * Breakables.byId.Vault.coins * zone.scale
+		count = math.min(count, MAX_BULK_KEYS)
+		local raw = 5 * Breakables.byId.Vault.coins * zone.scale * count
 		local gained = GameService.rewardCoins(player, raw, zone.id)
-		for _ = 1, 2 do
+		for _ = 1, 2 * count do
 			GameService.giveItem(player, Loot.randomElixir(2, 3 + Loot.zoneTierBonus(zone.id), random), 1, false)
 		end
-		GameService.notify(player, ("Treasure vault opened! 🪙 %s and 2 elixirs"):format(Format.abbrev(gained)), "success")
-		return true
+		GameService.notify(
+			player,
+			("%s opened! 🪙 %s and %d elixirs"):format(
+				if count > 1 then count .. " treasure vaults" else "Treasure vault",
+				Format.abbrev(gained),
+				2 * count
+			),
+			"success"
+		)
+		return count
 	end,
-	Key_Golden = function(player, _data, _runtime)
-		GameService.grantFreeEggs(player, 3, 1, "Golden")
-		GameService.notify(player, "Golden chest opened!", "success")
-		return true
+	Key_Golden = function(player, data, _runtime, count)
+		-- Only open as many as storage can hold, so a key is never wasted
+		local room = GameService.capacity(player) - Inventory.count(data)
+		count = math.min(count, MAX_BULK_GOLDEN, room // 3)
+		if count <= 0 then
+			GameService.notify(player, "Your storage is full. Delete or fuse some creatures first.", "error")
+			return 0
+		end
+		GameService.grantFreeEggs(player, 3 * count, 1, "Golden")
+		GameService.notify(player, if count > 1 then count .. " golden chests opened!" else "Golden chest opened!", "success")
+		return count
 	end,
-	Key_Titan = function(player, data, runtime)
+	Key_Titan = function(player, data, runtime, _count)
 		local zone = if runtime.zoneId then World1.zonesById[runtime.zoneId] else nil
 		if not zone or zone.restoreGoal <= 0 then
 			GameService.notify(player, "Use the Titan Key inside a zone", "error")
-			return false
+			return 0
 		end
 		if (data.zoneProgress[tostring(zone.id)] or 0) < zone.restoreGoal then
 			GameService.notify(player, "Restore this zone to 100% first", "error")
-			return false
+			return 0
 		end
 		if os.time() >= (data.guardians[tostring(zone.id)] or 0) then
 			GameService.notify(player, "The guardian is already ready here", "error")
-			return false
+			return 0
 		end
 		HuntService.resetGuardian(player, zone.id)
 		GameService.notify(player, "The guardian of " .. zone.name .. " is coming!", "rare")
-		return true
+		return 1
 	end,
 }
 
@@ -260,12 +280,13 @@ local function removeSticker(player: Player, petId: any)
 	GameService.refresh(player)
 end
 
-local function useItem(player: Player, itemId: any)
+local function useItem(player: Player, itemId: any, amount: any)
 	local data = DataService.get(player)
 	local runtime = State.get(player)
 	if not data or not runtime or type(itemId) ~= "string" then
 		return
 	end
+	local wanted = if type(amount) == "number" and amount == amount then math.clamp(math.floor(amount), 1, MAX_BULK_KEYS) else 1
 	if not State.throttle(runtime, "UseItem", 0.2) then
 		return
 	end
@@ -281,8 +302,9 @@ local function useItem(player: Player, itemId: any)
 		GameService.notify(player, item.name .. " active: " .. item.description, "success")
 	elseif item.kind == "Key" then
 		local action = KEY_ACTIONS[itemId]
-		if action and action(player, data, runtime) then
-			Bag.take(data.items, itemId, 1)
+		local used = if action then action(player, data, runtime, math.min(wanted, Bag.count(data.items, itemId))) else 0
+		if used > 0 then
+			Bag.take(data.items, itemId, used)
 		end
 	elseif item.kind == "Gadget" then
 		local action = GADGET_ACTIONS[itemId]
@@ -358,7 +380,51 @@ local function unequipCartridge(player: Player, itemId: any)
 	GameService.refresh(player)
 end
 
+-- Boost Card loadouts: "save" stores what's equipped now, "load" swaps to a saved set.
+local function cardLoadout(player: Player, action: any, index: any)
+	local data = DataService.get(player)
+	local runtime = State.get(player)
+	if not data or not runtime or type(index) ~= "number" or index ~= math.floor(index) then
+		return
+	end
+	if index < 1 or index > Gear.LOADOUTS or not State.throttle(runtime, "CardLoadout", 0.5) then
+		return
+	end
+	if not Unlocks.has(data, "Cartridges") then
+		GameService.notify(player, Unlocks.lockedText("Cartridges"), "error")
+		return
+	end
+	if action == "save" then
+		if #data.cartridges == 0 then
+			GameService.notify(player, "Equip some cards first, then save them", "error")
+			return
+		end
+		data.loadouts[index] = table.clone(data.cartridges)
+		-- Keep the list without holes so it saves as an array
+		for i = 1, index - 1 do
+			data.loadouts[i] = data.loadouts[i] or {}
+		end
+		GameService.notify(player, ("Saved as set %d"):format(index), "success")
+		GameService.refresh(player)
+	elseif action == "load" then
+		local wanted = data.loadouts[index]
+		if not wanted or #wanted == 0 then
+			GameService.notify(player, ("Set %d is empty. Equip cards and save them there."):format(index), "error")
+			return
+		end
+		local _, perks = Achievements.forData(data)
+		local missing = Gear.applyLoadout(data.items, data.cartridges, wanted, Gear.slots(data.reloads, perks.cartridgeSlots))
+		if #missing > 0 then
+			GameService.notify(player, ("Set %d on, but %d card(s) are missing"):format(index, #missing), "error")
+		else
+			GameService.notify(player, ("Set %d on!"):format(index), "success")
+		end
+		GameService.refresh(player)
+	end
+end
+
 function ItemService.init()
+	Net.event("CardLoadout").OnServerEvent:Connect(cardLoadout)
 	Net.event("UseItem").OnServerEvent:Connect(useItem)
 	Net.event("MergeItems").OnServerEvent:Connect(mergeItems)
 	Net.event("MixItems").OnServerEvent:Connect(mixItems)

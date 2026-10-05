@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PetMath = require(Shared.Logic.PetMath)
+local TradeLogic = require(Shared.Logic.TradeLogic)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
@@ -295,6 +296,34 @@ function TradePanel.mount(gui: ScreenGui)
 			end
 		end
 
+		-- Totals for each side, and a warning when you give much rarer creatures than you get
+		local function listOf(map: { [string]: any }): { any }
+			local out = {}
+			for _, pet in map do
+				table.insert(out, pet)
+			end
+			return out
+		end
+		local function worthText(worth: TradeLogic.Worth): string
+			local parts = { tostring(worth.count) }
+			if worth.titans > 0 then
+				table.insert(parts, "👑" .. worth.titans)
+			end
+			if worth.bigs > 0 then
+				table.insert(parts, "⭐" .. worth.bigs)
+			end
+			if worth.rare > 0 then
+				table.insert(parts, "💎" .. worth.rare)
+			end
+			return table.concat(parts, " · ")
+		end
+		local give = TradeLogic.worth(listOf(s.mine))
+		local get = TradeLogic.worth(listOf(s.theirs))
+		local unfair = TradeLogic.lopsided(give, get)
+		mineLabel.Text = "You give: " .. worthText(give)
+		theirsLabel.Text = "You get: " .. worthText(get)
+		mineLabel.TextColor3 = if unfair then Theme.red else Theme.text
+
 		local function names(list: { [string]: any }): string
 			local out = {}
 			for _, pet in list do
@@ -303,10 +332,13 @@ function TradePanel.mount(gui: ScreenGui)
 			return if #out == 0 then "nothing" else table.concat(out, ", ")
 		end
 		confirm.Visible = s.stage == "Confirm"
-		summary.Text = ("Trading with %s\n\nYou GIVE: %s\n\nYou GET: %s\n\nCheck carefully. Trades can't be undone."):format(
+		summary.Text = ("Trading with %s\n\nYou GIVE: %s\n\nYou GET: %s\n\n%s"):format(
 			s.otherName,
 			names(s.mine),
-			names(s.theirs)
+			names(s.theirs),
+			if unfair
+				then "⚠️ You're giving much rarer creatures than you get. Trades can't be undone!"
+				else "Check carefully. Trades can't be undone."
 		)
 		confirmButton.Text = if s.myConfirmed then "Waiting..." else "Confirm trade"
 	end

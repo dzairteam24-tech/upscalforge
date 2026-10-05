@@ -6,6 +6,8 @@
 
 local Config = script.Parent.Parent.Config
 local Constants = require(Config.Constants)
+local Sizes = require(Config.Sizes)
+local Variants = require(Config.Variants)
 local Inventory = require(script.Parent.Inventory)
 local Types = require(script.Parent.Types)
 
@@ -189,6 +191,36 @@ function TradeLogic.execute(session: Session, sideA: Side, sideB: Side): ({ Type
 	session.stage = "Done"
 	session.version += 1
 	return movedA, movedB
+end
+
+-- What one side of a trade is worth, shown in the trade window. `rarity` is how many hatches it takes on
+-- average to get each creature (a Golden is 50, a Titan 2M), summed. It's only for the scam warning.
+export type Worth = { count: number, titans: number, bigs: number, rare: number, rarity: number }
+
+function TradeLogic.worth(pets: { { s: string, v: string, z: string } }): Worth
+	local worth = { count = 0, titans = 0, bigs = 0, rare = 0, rarity = 0 }
+	for _, pet in pets do
+		local variant = Variants.byId[pet.v]
+		local size = Sizes.byId[pet.z]
+		worth.count += 1
+		if pet.z == "Titan" then
+			worth.titans += 1
+		elseif pet.z == "Big" then
+			worth.bigs += 1
+		end
+		if variant and variant.order >= 4 then -- Lava, Neon, Pixel
+			worth.rare += 1
+		end
+		local variantOdds = if variant and variant.chance > 0 then 1 / variant.chance else 1
+		local sizeOdds = if size and size.chance > 0 then 1 / size.chance else 1
+		worth.rarity += variantOdds * sizeOdds
+	end
+	return worth
+end
+
+-- True when you give much rarer creatures than you get back (3x or more), so the window warns you.
+function TradeLogic.lopsided(give: Worth, get: Worth): boolean
+	return give.rarity >= 50 and give.rarity >= 3 * get.rarity
 end
 
 return TradeLogic
