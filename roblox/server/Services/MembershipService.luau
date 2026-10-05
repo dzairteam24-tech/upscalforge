@@ -1,5 +1,5 @@
--- Paid memberships: game passes (VIP, Auto Tap, +2 Team Slots, Big Storage, Teleport, Extra Trip), the
--- monthly Cubelings Club subscription and Roblox Premium perks. Their effects are read from the player's
+-- Paid memberships: game passes (VIP, Auto Tap, +2 Team Slots, Big Storage, Teleport, Extra Trip) and
+-- Roblox Premium perks. Their effects are read from the player's
 -- runtime by GameService (slots, storage, coins, auto tap) and ExpeditionService (trip slots).
 -- Premium members also earn the game Premium Payouts while they play.
 
@@ -10,7 +10,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Products = require(Shared.Config.Products)
 local MapLayout = require(Shared.Logic.MapLayout)
-local Progress = require(Shared.Logic.Progress)
 local Types = require(Shared.Logic.Types)
 local Net = require(Shared.Net)
 
@@ -27,39 +26,6 @@ local function ownsPass(player: Player, passId: number): boolean
 		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, passId)
 	end)
 	return ok and owns == true
-end
-
-local function isClubMember(player: Player): boolean
-	local club = Products.club
-	if club.id == "" then
-		return false
-	end
-	local ok, status = pcall(function()
-		return MarketplaceService:GetUserSubscriptionStatusAsync(player, club.id)
-	end)
-	return ok and type(status) == "table" and status.IsSubscribed == true
-end
-
--- Daily Club bonus, once per UTC day while subscribed.
-local function clubDaily(player: Player)
-	local data = DataService.get(player)
-	local runtime = State.get(player)
-	if not data or not runtime or not runtime.club then
-		return
-	end
-	local today = Progress.day(os.time())
-	if data.club.lastDay == today then
-		return
-	end
-	data.club.lastDay = today
-	data.gems += Products.CLUB_DAILY_GEMS
-	data.tickets += Products.CLUB_DAILY_TICKETS
-	GameService.notify(
-		player,
-		("Club bonus: 💎 %d and 🎟️ %d. Thanks for being a member!"):format(Products.CLUB_DAILY_GEMS, Products.CLUB_DAILY_TICKETS),
-		"success"
-	)
-	GameService.markDirty(player)
 end
 
 local function apply(player: Player)
@@ -82,10 +48,8 @@ local function load(player: Player)
 			runtime.passes[pass.key] = true
 		end
 	end
-	runtime.club = isClubMember(player)
 	runtime.premium = player.MembershipType == Enum.MembershipType.Premium
 	apply(player)
-	clubDaily(player)
 end
 
 -- Teleport pass: jump to the middle of any unlocked zone (or the hub).
@@ -130,32 +94,6 @@ function MembershipService.init()
 		end
 	end)
 
-	local function recheckClub(player: Player)
-		local runtime = State.get(player)
-		if not runtime then
-			return
-		end
-		local member = isClubMember(player)
-		if member ~= runtime.club then
-			runtime.club = member
-			if member then
-				GameService.notify(player, "Welcome to the Cubelings Club!", "success")
-			end
-			apply(player)
-			clubDaily(player)
-		end
-	end
-	Players.UserSubscriptionStatusChanged:Connect(function(player, subscriptionId)
-		if subscriptionId == Products.club.id then
-			recheckClub(player)
-		end
-	end)
-	MarketplaceService.PromptSubscriptionPurchaseFinished:Connect(function(player, subscriptionId, _purchased)
-		if subscriptionId == Products.club.id then
-			recheckClub(player)
-		end
-	end)
-
 	Players.PlayerMembershipChanged:Connect(function(player)
 		local runtime = State.get(player)
 		if runtime then
@@ -168,16 +106,6 @@ function MembershipService.init()
 	end)
 
 	Net.event("Teleport").OnServerEvent:Connect(teleport)
-
-	-- New day while playing: Club bonus
-	task.spawn(function()
-		while true do
-			task.wait(60)
-			for player in State.all() do
-				pcall(clubDaily, player)
-			end
-		end
-	end)
 end
 
 return MembershipService

@@ -9,6 +9,7 @@ local World1 = require(Shared.Config.World1)
 local Bag = require(Shared.Logic.Bag)
 local Achievements = require(Shared.Logic.Achievements)
 local Gear = require(Shared.Logic.Gear)
+local Unlocks = require(Shared.Logic.Unlocks)
 local Loot = require(Shared.Logic.Loot)
 local Format = require(Shared.Logic.Format)
 local Types = require(Shared.Logic.Types)
@@ -176,7 +177,7 @@ local GADGET_ACTIONS: { [string]: (Player, PlayerData, State.Runtime) -> boolean
 		end
 		GameService.placeTotem(zone.id, "Coins", TOTEM_SECONDS)
 		placeTotemModel(position, Items.byId.Gadget_CoinTotem, TOTEM_SECONDS)
-		GameService.notifyAll(("🗿 %s placed a Coin Totem in %s: coins +50%% for 5 min!"):format(player.DisplayName, zone.name), "rare")
+		GameService.notifyZone(zone.id, ("🗿 %s placed a Coin Totem: coins +50%% here for 5 min!"):format(player.DisplayName), "success")
 		return true
 	end,
 	Gadget_LuckTotem = function(player, _data, runtime)
@@ -187,7 +188,7 @@ local GADGET_ACTIONS: { [string]: (Player, PlayerData, State.Runtime) -> boolean
 		end
 		GameService.placeTotem(zone.id, "Luck", TOTEM_SECONDS)
 		placeTotemModel(position, Items.byId.Gadget_LuckTotem, TOTEM_SECONDS)
-		GameService.notifyAll(("🍀 %s placed a Luck Totem in %s: luck +50%% for 5 min!"):format(player.DisplayName, zone.name), "rare")
+		GameService.notifyZone(zone.id, ("🍀 %s placed a Luck Totem: luck +50%% here for 5 min!"):format(player.DisplayName), "success")
 		return true
 	end,
 	Gadget_TimeSkip = function(player, _data, runtime)
@@ -221,6 +222,10 @@ local function applySticker(player: Player, petId: any, itemId: any)
 		return
 	end
 	if not State.throttle(runtime, "Sticker", 0.3) then
+		return
+	end
+	if not Unlocks.has(data, "Stickers") then
+		GameService.notify(player, Unlocks.lockedText("Stickers"), "error")
 		return
 	end
 	local pet = data.pets[petId]
@@ -281,7 +286,9 @@ local function useItem(player: Player, itemId: any)
 		end
 	elseif item.kind == "Gadget" then
 		local action = GADGET_ACTIONS[itemId]
-		if action and action(player, data, runtime) then
+		if not Unlocks.has(data, "Gadgets") then
+			GameService.notify(player, Unlocks.lockedText("Gadgets"), "error")
+		elseif action and action(player, data, runtime) then
 			Bag.take(data.items, itemId, 1)
 		end
 	end
@@ -320,6 +327,10 @@ end
 local function equipCartridge(player: Player, itemId: any)
 	local data = DataService.get(player)
 	if not data or type(itemId) ~= "string" or Bag.count(data.items, itemId) < 1 then
+		return
+	end
+	if not Unlocks.has(data, "Cartridges") then
+		GameService.notify(player, Unlocks.lockedText("Cartridges"), "error")
 		return
 	end
 	local _, perks = Achievements.forData(data)

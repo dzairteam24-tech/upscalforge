@@ -11,6 +11,7 @@ local WheelConfig = require(Shared.Config.Wheel)
 local World1 = require(Shared.Config.World1)
 local Loot = require(Shared.Logic.Loot)
 local Progress = require(Shared.Logic.Progress)
+local Unlocks = require(Shared.Logic.Unlocks)
 local Types = require(Shared.Logic.Types)
 local Wheel = require(Shared.Logic.Wheel)
 local Net = require(Shared.Net)
@@ -105,6 +106,10 @@ local function spinRequest(player: Player, mode: any)
 	if not data or not runtime or not State.throttle(runtime, "SpinWheel", 2.5) then
 		return
 	end
+	if not Unlocks.has(data, "Spin") then
+		GameService.notify(player, Unlocks.lockedText("Spin"), "error")
+		return
+	end
 	local today = Progress.day(os.time())
 	if mode == "free" then
 		if not Wheel.freeReady(data.wheel.lastFree, today) then
@@ -127,7 +132,11 @@ end
 function ArcadeService.init()
 	Net.event("SpinWheel").OnServerEvent:Connect(spinRequest)
 	RewardService.register("Spin", {
-		canUse = function()
+		canUse = function(player)
+			local data = DataService.get(player)
+			if not data or not Unlocks.has(data, "Spin") then
+				return false, Unlocks.lockedText("Spin")
+			end
 			return true, nil
 		end,
 		grant = function(player)

@@ -11,7 +11,9 @@ local Boosts = require(Shared.Logic.Boosts)
 local Effects = require(Shared.Logic.Effects)
 local Gear = require(Shared.Logic.Gear)
 local EggRoll = require(Shared.Logic.EggRoll)
+local Format = require(Shared.Logic.Format)
 local Inventory = require(Shared.Logic.Inventory)
+local Pity = require(Shared.Logic.Pity)
 local MapLayout = require(Shared.Logic.MapLayout)
 
 local BreakableService = require(script.Parent.BreakableService)
@@ -127,34 +129,52 @@ local function onBroken(source: BreakableService.Source, contributors: { [Player
 		end
 		if special.type == "Big" then
 			GameService.progress(player, "Big", 1)
-			local chance = math.min(Hunt.BIG_CATCH_CAP, Hunt.BIG_CATCH_CHANCE * Effects.get(runtime.effects, "BigSpawn"))
-			if rng:NextNumber() < chance then
-				if Inventory.count(data) >= GameService.capacity(player) then
-					GameService.notify(player, "Your storage is full, the Big got away!", "error")
-				else
-					Inventory.add(data, special.pet, newId)
-					GameService.progress(player, "BigCatch", 1)
-					GameService.notifyAll(("%s caught a %s!"):format(player.DisplayName, describe(special.pet)), "rare")
-					GameService.refresh(player)
-				end
+			local base = math.min(Hunt.BIG_CATCH_CAP, Hunt.BIG_CATCH_CHANCE * Effects.get(runtime.effects, "BigSpawn"))
+			local chance = Pity.chance(base, data.pity.big, Hunt.BIG_PITY, 0)
+			if Inventory.count(data) >= GameService.capacity(player) then
+				-- Full storage doesn't count as a miss
+				GameService.notify(player, "Your storage is full, the Big got away! Make room to catch the next one.", "error")
+			elseif rng:NextNumber() < chance then
+				data.pity.big = 0
+				Inventory.add(data, special.pet, newId)
+				GameService.progress(player, "BigCatch", 1)
+				GameService.notify(player, ("You caught a %s!"):format(describe(special.pet)), "rare")
+				GameService.refresh(player)
 			else
-				GameService.notify(player, "The Big dropped its loot and ran away!", "info")
+				data.pity.big += 1
+				local left = Pity.left(data.pity.big, Hunt.BIG_PITY)
+				GameService.notify(
+					player,
+					if left == 1
+						then "The Big ran away! The next one is a sure catch."
+						else ("The Big ran away! Sure catch in %d tries."):format(left),
+					"info"
+				)
 			end
 		elseif special.type == "Guardian" then
 			GameService.progress(player, "Guardian", 1)
 			data.gems += Hunt.GUARDIAN_GEMS * zoneId
 			if special.eligible[player] then
 				data.guardians[tostring(zoneId)] = os.time() + Hunt.GUARDIAN_COOLDOWN
-				if rng:NextNumber() < Hunt.GUARDIAN_TAME_CHANCE then
-					if Inventory.count(data) >= GameService.capacity(player) then
-						GameService.notify(player, "Your storage is full, the Titan couldn't join you!", "error")
-					else
-						Inventory.add(data, special.pet, newId)
-						GameService.progress(player, "Titan", 1)
-						GameService.notifyAll(("👑 %s TAMED %s!"):format(player.DisplayName, describe(special.pet)), "rare")
-					end
+				local chance = Pity.chance(Hunt.GUARDIAN_TAME_CHANCE, data.pity.titan, Hunt.TITAN_PITY, Hunt.TITAN_PITY_STEP)
+				if Inventory.count(data) >= GameService.capacity(player) then
+					GameService.notify(player, "Your storage is full, so the Titan couldn't join you. Make room first!", "error")
+				elseif rng:NextNumber() < chance then
+					data.pity.titan = 0
+					Inventory.add(data, special.pet, newId)
+					GameService.progress(player, "Titan", 1)
+					GameService.notifyAll(("👑 %s TAMED %s!"):format(player.DisplayName, describe(special.pet)), "rare")
 				else
-					GameService.notify(player, "Guardian defeated! It will be back in 4 hours.", "success")
+					data.pity.titan += 1
+					local nextChance = Pity.chance(Hunt.GUARDIAN_TAME_CHANCE, data.pity.titan, Hunt.TITAN_PITY, Hunt.TITAN_PITY_STEP)
+					GameService.notify(
+						player,
+						("Guardian defeated! Next tame chance: %s (sure in %d). Back in 4 hours."):format(
+							Format.chance(nextChance),
+							Pity.left(data.pity.titan, Hunt.TITAN_PITY)
+						),
+						"success"
+					)
 				end
 			end
 			GameService.refresh(player)

@@ -39,8 +39,9 @@ local function random(): number
 	return rng:NextNumber()
 end
 
+-- Only the rarest hatches are told to the whole server, so the chat doesn't fill up.
 local function isRare(roll: Types.Roll): boolean
-	return roll.z ~= "Normal" or Variants.byId[roll.v].order >= Variants.byId.Neon.order
+	return roll.z == "Titan" or roll.v == "Pixel"
 end
 
 local function describe(roll: Types.Roll): string
@@ -64,7 +65,7 @@ local function grant(
 	extraLuck: number,
 	minVariant: string?,
 	free: boolean
-): { { id: string, s: string, v: string, z: string } }
+): { { id: string, s: string, v: string, z: string, deleted: boolean? } }
 	local runtime = State.get(player)
 	if not runtime then
 		return {}
@@ -84,12 +85,16 @@ local function grant(
 				forceGolden = forceGolden,
 				minVariant = minVariant,
 			}, random)
-			local id = Inventory.add(data, roll, newId)
+			-- Auto-delete: plain Normal/Golden hatches the player already has in the index
+			local deleted = roll.z == "Normal"
+				and data.settings["autoDelete" .. roll.v] == true
+				and data.index[roll.s .. "|" .. roll.v] == true
+			local id = if deleted then "" else Inventory.add(data, roll, newId)
 			data.stats.hatches = (data.stats.hatches or 0) + 1
 			if Variants.byId[roll.v].order >= 2 then
 				data.flags.gotGolden = true
 			end
-			table.insert(results, { id = id, s = roll.s, v = roll.v, z = roll.z })
+			table.insert(results, { id = id, s = roll.s, v = roll.v, z = roll.z, deleted = if deleted then true else nil })
 			if roll.v == "Golden" or roll.v == "Pixel" then
 				GameService.progress(player, roll.v, 1)
 			end

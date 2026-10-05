@@ -9,6 +9,7 @@ local Items = require(Shared.Config.Items)
 local World1 = require(Shared.Config.World1)
 local Expedition = require(Shared.Logic.Expedition)
 local Format = require(Shared.Logic.Format)
+local Unlocks = require(Shared.Logic.Unlocks)
 local Types = require(Shared.Logic.Types)
 local Net = require(Shared.Net)
 
@@ -40,6 +41,10 @@ local function startExpedition(player: Player, kindId: any, petIds: any)
 		return
 	end
 	if not State.throttle(runtime, "StartExpedition", 0.5) then
+		return
+	end
+	if not Unlocks.has(data, "Trips") then
+		GameService.notify(player, Unlocks.lockedText("Trips"), "error")
 		return
 	end
 	local ids: { string } = {}

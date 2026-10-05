@@ -22,7 +22,6 @@
 2. **منتجات Robux:** صنعهم في Creator Dashboard وحط الأرقام في `roblox/shared/Config/Products.luau`. كل منتج رقمو 0 يبان "Soon" ولا ما يبانش، و `price` لازم يكون نفس الثمن اللي في Dashboard.
    - **Game Passes:** VIP، Auto Tap، +2 Team Slots، Big Storage، Teleport، Extra Trip
    - **Developer Products:** Coins x2، Power x2، Server Boost، TripSkip، TripDouble، StreakSave، QuestSwap، Supporter Title، Battle Pass Premium
-   - **اشتراك:** Cubelings Club (حط الـ id اللي يبدا بـ `EXP-` في `club.id`)
    - **Developer Products للإعلانات:** AdCoins، AdLuck، AdPower، AdEggs، AdElixir، AdTripSkip، AdTripDouble، AdStreak، AdReroll، AdSpin. هذو ما يتباعوش، Roblox يستعملهم باش يعطي مكافأة الفيديو.
 3. **الإعلانات:** الفيديو ولوحات الإعلانات (Immersive Ads) يحتاجو اللعبة تكون مؤهلة عند Roblox (صاحبها 13 سنة وأكثر، هوية موثقة، و 2,000 زائر في الشهر)، ويبانو غير للاعبين 13+. لوحات الإعلانات راهم في المدينة (`Workspace.AdBoards`) ويخدمو وحدهم كي تكون مؤهل.
 4. **الأصوات:** في `roblox/shared/Config/Sounds.luau`. دركا فيها أصوات Roblox الأساسية، بدّلهم بأصوات من Creator Store، وحط id تاع موسيقى في `MUSIC`.
@@ -219,12 +218,18 @@ tests/                     اختبارات Lune
 - **المغناطيس:** مهارات Magnet دركا تخدم: الفريق يروح وحدو للمصدر الجاي حتى في الوضع اليدوي (و Combo يبقى)، في دائرة أكبر حسب المهارة
 - **كشك الرحلات** في المدينة
 - **الأرباح (Robux):**
-  - 6 Game Passes، 7 Developer Products (boosts، Server Boost للكل، وتسريع الوقت)، واشتراك Cubelings Club الشهري
+  - 6 Game Passes، 7 Developer Products (boosts، Server Boost للكل، وتسريع الوقت)
   - Premium: عملات +10%، و Roblox يخلصنا على وقتهم (Premium Payouts)
   - جوج لوحات Immersive Ads في المدينة
   - كل مكافأة فيديو مهمة عندها نسخة بـ Robux، وأزرار الفيديو تتخبى كي ما يكونش فيديو للاعب
   - Teleport: نافذة 🌀 تروح بيها لأي منطقة مفتوحة
   - اختبار يتأكد أن حتى منتج Robux ما يبيع بيض، حظ، ولا جوائز عشوائية
+- **تصليحات بعد المراجعة (شكاوي لاعبين PS99):**
+  - **الأنظمة تتفتح بالتدريج:** الرحلات في المنطقة 2، الكاسيطات و Lucky Spin في 3، الملصقات والأدوات في 4، و Reload في 10. الزر يبان غير كي يتفتح، مع إعلان "✨ New!"، و Reload ما يسكّرهمش
+  - **Pity (ضمان):** Big مضمون في المحاولة 10. Titan من الحارس: كل مرة تخسر الفرصة تزيد 0.2%، ومضمون في المحاولة 100. المخزن العامر ما يتحسبش خسارة
+  - **Auto-Delete:** في الإعدادات، احذف وحدهم الـ Normal ولا الـ Golden اللي عندك ديجا. الجداد ديما يتخلاو
+  - **إعلانات السيرفر قلال:** غير Titan، Pixel، Jackpot و Server Boost. الباقي لصاحبو برك، والـ Totems لللاعبين في المنطقة
+  - **Cubelings Club تنحى**
 - **لوحات الترتيب (Leaderboards):**
   - 4 لوحات في المدينة: أقوى فريق، أكثر عملات، أكثر Titans، أعلى Rank
   - عالمية (كل السيرفرات)، تتحدث كل دقيقتين

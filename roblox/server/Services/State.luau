@@ -24,7 +24,6 @@ export type Runtime = {
 	strongest: number,
 	vip: boolean,
 	passes: { [string]: boolean }, -- owned game passes by key
-	club: boolean, -- Cubelings Club subscriber
 	premium: boolean, -- Roblox Premium member
 	dirtyData: boolean, -- full data snapshot needs to be sent
 	lastAction: { [string]: number }, -- simple rate limits
@@ -51,7 +50,6 @@ function State.create(player: Player): Runtime
 		strongest = 0,
 		vip = false,
 		passes = {},
-		club = false,
 		premium = false,
 		dirtyData = true,
 		lastAction = {},

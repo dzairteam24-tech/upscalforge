@@ -9,7 +9,6 @@ export type Ride = { id: string, name: string, style: string, color: Color3, glo
 local titles: { Title } = {
 	{ id = "VIP", text = "VIP", color = Color3.fromRGB(255, 215, 90) },
 	{ id = "Supporter", text = "Supporter", color = Color3.fromRGB(255, 215, 90) },
-	{ id = "Club", text = "Cubelings Club", color = Color3.fromRGB(120, 230, 255) },
 	{ id = "S1_Rookie", text = "Cube Rookie", color = Color3.fromRGB(150, 220, 255) },
 	{ id = "S1_Collector", text = "Collector", color = Color3.fromRGB(120, 230, 160) },
 	{ id = "S1_Hunter", text = "Big Hunter", color = Color3.fromRGB(240, 138, 45) },

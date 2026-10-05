@@ -1,5 +1,5 @@
 -- Coin shop (upgrades, zone gates) and Robux developer products (boosts, time skips, cosmetics).
--- Robux never buys eggs, luck, creatures or currency. Game passes, the Club and Premium live in
+-- Robux never buys eggs, luck, creatures or currency. Game passes and Premium live in
 -- MembershipService.
 
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -11,6 +11,7 @@ local Products = require(Shared.Config.Products)
 local Upgrades = require(Shared.Config.Upgrades)
 local World1 = require(Shared.Config.World1)
 local Format = require(Shared.Logic.Format)
+local Unlocks = require(Shared.Logic.Unlocks)
 local Net = require(Shared.Net)
 
 local AdsService = require(script.Parent.AdsService)
@@ -74,10 +75,17 @@ local function unlockZone(player: Player, zoneId: any)
 		GameService.notify(player, ("You need %s coins"):format(Format.abbrev(zone.gateCost)), "error")
 		return
 	end
+	local bestBefore = Unlocks.bestZone(data)
 	data.coins -= zone.gateCost
 	data.unlockedZones[tostring(zoneId)] = true
 	GameService.progress(player, "Zone", zoneId)
 	GameService.notify(player, ("Unlocked %s!"):format(zone.name), "success")
+	-- New systems open as the player goes further
+	for reached = bestBefore + 1, zoneId do
+		for _, unlock in Unlocks.openedAt(reached) do
+			GameService.notify(player, ("✨ New: %s! %s"):format(unlock.label, unlock.text), "rare")
+		end
+	end
 	GameService.markDirty(player)
 end
 

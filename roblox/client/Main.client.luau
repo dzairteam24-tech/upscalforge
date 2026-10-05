@@ -2,11 +2,15 @@
 
 local Players = game:GetService("Players")
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Store = require(script.Parent:WaitForChild("Store"))
+local Unlocks = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Logic"):WaitForChild("Unlocks"))
 local UI = script.Parent:WaitForChild("UI")
 local Controllers = script.Parent:WaitForChild("Controllers")
 
 local Notify = require(UI.Notify)
+local Windows = require(UI.Windows)
 local HUD = require(UI.HUD)
 local PetsPanel = require(UI.PetsPanel)
 local ShopPanel = require(UI.ShopPanel)
@@ -27,6 +31,18 @@ local TutorialClient = require(Controllers.TutorialClient)
 local SoundClient = require(Controllers.SoundClient)
 
 Store.init()
+
+-- Windows of systems that aren't open yet explain when they open instead
+local WINDOW_FEATURES = { Trips = "Trips", Spin = "Spin" }
+Windows.setGate(function(name: string): boolean
+	local feature = WINDOW_FEATURES[name]
+	local data = Store.data
+	if feature and data and not Unlocks.has(data :: any, feature) then
+		Notify.show(Unlocks.lockedText(feature), "error", 3)
+		return false
+	end
+	return true
+end)
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "CubelingsUI"

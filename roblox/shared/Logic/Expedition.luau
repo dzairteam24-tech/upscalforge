@@ -27,7 +27,7 @@ function Expedition.slots(reloads: number, bonus: number?): number
 	return math.min(Expeditions.MAX_SLOTS, Expeditions.BASE_SLOTS + math.floor(reloads / 2) + (bonus or 0))
 end
 
--- `extra` = slots from the Extra Trip pass and the Club.
+-- `extra` = slots from the Extra Trip pass.
 function Expedition.slotsFor(data: PlayerData, extra: number?): number
 	local _, perks = Achievements.forData(data)
 	return Expedition.slots(data.reloads, perks.tripSlots + (extra or 0))

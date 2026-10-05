@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared.Config.Items)
 local Format = require(Shared.Logic.Format)
 local Gear = require(Shared.Logic.Gear)
+local Unlocks = require(Shared.Logic.Unlocks)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
@@ -23,12 +24,13 @@ local BagPanel = {}
 
 type Tab = "Elixirs" | "Cartridges" | "Keys" | "Stickers" | "Gadgets"
 
-local TABS: { { id: Tab, label: string, kinds: { [string]: boolean } } } = {
+-- `feature`: the tab shows once that system is open (Config/Unlocks)
+local TABS: { { id: Tab, label: string, kinds: { [string]: boolean }, feature: string? } } = {
 	{ id = "Elixirs", label = "🧪 Elixirs", kinds = { Elixir = true } },
-	{ id = "Cartridges", label = "🕹️ Carts", kinds = { Cartridge = true } },
+	{ id = "Cartridges", label = "🕹️ Carts", kinds = { Cartridge = true }, feature = "Cartridges" },
 	{ id = "Keys", label = "🗝️ Keys", kinds = { Key = true, KeyHalf = true } },
-	{ id = "Stickers", label = "⭐ Stickers", kinds = { Sticker = true } },
-	{ id = "Gadgets", label = "💣 Gadgets", kinds = { Gadget = true } },
+	{ id = "Stickers", label = "⭐ Stickers", kinds = { Sticker = true }, feature = "Stickers" },
+	{ id = "Gadgets", label = "💣 Gadgets", kinds = { Gadget = true }, feature = "Gadgets" },
 }
 
 local HINTS: { [Tab]: string } = {
@@ -410,7 +412,21 @@ function BagPanel.mount(gui: ScreenGui)
 		if not data then
 			return
 		end
-		for id, b in tabButtons do
+		-- Only open systems get a tab; the visible tabs share the row
+		local shown = {}
+		for _, tab in TABS do
+			local open = tab.feature == nil or Unlocks.has(data :: any, tab.feature)
+			tabButtons[tab.id].Visible = open
+			if open then
+				table.insert(shown, tab.id)
+			elseif current == tab.id then
+				current = "Elixirs"
+			end
+		end
+		for i, id in shown do
+			local b = tabButtons[id]
+			b.Size = UDim2.new(1 / #shown, -6, 1, -4)
+			b.Position = UDim2.new((i - 1) / #shown, 3, 0, 0)
 			b.BackgroundColor3 = if id == current then Theme.gold else Theme.card
 		end
 		buildHeader(data)

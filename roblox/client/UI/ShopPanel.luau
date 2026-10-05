@@ -177,15 +177,6 @@ function ShopPanel.mount(gui: ScreenGui)
 			})
 			note.Parent = scroll
 
-			-- Monthly Club
-			local club = Products.club
-			section("🏅 " .. club.name)
-			order += 1
-			local member = data.club == true
-			row(order, club.name .. " · " .. club.price, table.concat(club.perks, " · "), if member then "Member ✓" elseif club.id == "" then "Soon" else "Join", not member and club.id ~= "", function()
-				MarketplaceService:PromptSubscriptionPurchase(Players.LocalPlayer, club.id)
-			end)
-
 			-- Game passes
 			section("🎫 Game Passes (forever)")
 			for _, pass in Products.gamePasses do

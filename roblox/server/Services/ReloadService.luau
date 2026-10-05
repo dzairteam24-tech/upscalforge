@@ -42,12 +42,9 @@ local function reload(player: Player, confirmed: any)
 	end
 
 	GameService.progress(player, "Reload", 1)
-	GameService.notifyAll(
-		("🔄 %s reloaded the world! (Reload %d, coins %s)"):format(
-			player.DisplayName,
-			data.reloads,
-			Format.mult(Reload.coinMult(data.reloads))
-		),
+	GameService.notify(
+		player,
+		("🔄 World reloaded! Reload %d, coins %s forever"):format(data.reloads, Format.mult(Reload.coinMult(data.reloads))),
 		"rare"
 	)
 	GameService.refresh(player)

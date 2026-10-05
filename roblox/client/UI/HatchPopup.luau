@@ -45,6 +45,17 @@ function HatchPopup.mount(gui: ScreenGui)
 			local card = PetCard.create(pet :: any)
 			card.Size = UDim2.fromOffset(100, 0)
 			card.LayoutOrder = i
+			if pet.deleted then
+				card.BackgroundTransparency = 0.6
+				local gone = Theme.label({
+					Text = "🗑️ Auto-deleted",
+					TextColor3 = Theme.muted,
+					Size = UDim2.new(1, 0, 0.2, 0),
+					Position = UDim2.fromScale(0, 0.4),
+					MaxTextSize = 13,
+				})
+				gone.Parent = card
+			end
 			card.Parent = holder
 			TweenService:Create(card, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Size = UDim2.fromOffset(100, 130) }):Play()
 			local variant = Variants.byId[pet.v]

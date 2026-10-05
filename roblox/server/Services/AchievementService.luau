@@ -98,9 +98,6 @@ local function check(player: Player)
 			end
 		end
 		GameService.notify(player, table.concat(lines, " · "), "rare")
-		if rankAfter >= 10 then
-			GameService.notifyAll(("⭐ %s reached Rank %d!"):format(player.DisplayName, rankAfter), "rare")
-		end
 	end
 	if newTitles or rankAfter > rankBefore then
 		GameService.refreshTitles(player)

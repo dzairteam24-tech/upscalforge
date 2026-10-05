@@ -6,12 +6,21 @@ type Entry = { frame: GuiObject, onOpen: (() -> ())? }
 
 local entries: { [string]: Entry } = {}
 local current: string? = nil
+local gate: ((name: string) -> boolean)? = nil
+
+-- A check run before a window opens (locked systems say why and stay closed).
+function Windows.setGate(fn: (name: string) -> boolean)
+	gate = fn
+end
 
 function Windows.register(name: string, frame: GuiObject, onOpen: (() -> ())?)
 	entries[name] = { frame = frame, onOpen = onOpen }
 end
 
 function Windows.open(name: string)
+	if gate and not gate(name) then
+		return
+	end
 	if current and current ~= name and entries[current] then
 		entries[current].frame.Visible = false
 	end

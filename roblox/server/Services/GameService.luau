@@ -93,6 +93,16 @@ function GameService.notify(player: Player, text: string, kind: string?)
 	NotifyRemote:FireClient(player, text, kind or "info")
 end
 
+-- Tells everyone standing in a zone (totems and other zone events).
+function GameService.notifyZone(zoneId: number, text: string, kind: string?)
+	for player, runtime in State.all() do
+		if runtime.zoneId == zoneId and player.Parent then
+			GameService.notify(player, text, kind)
+		end
+	end
+end
+
+-- Whole server. Kept for the big moments only: Titans, Pixels, jackpots and Server Boosts.
 function GameService.notifyAll(text: string, kind: string?)
 	NotifyRemote:FireAllClients(text, kind or "info")
 end
@@ -110,13 +120,13 @@ function GameService.maxSlots(player: Player): number
 	return slots
 end
 
--- Trip slots from the Extra Trip pass and the Club.
+-- Trip slots from the Extra Trip pass.
 function GameService.extraTripSlots(player: Player): number
 	local runtime = State.get(player)
 	if not runtime then
 		return 0
 	end
-	return (if runtime.passes.TripSlot then Products.PASS_TRIP_SLOTS else 0) + (if runtime.club then Products.CLUB_TRIP_SLOTS else 0)
+	return if runtime.passes.TripSlot then Products.PASS_TRIP_SLOTS else 0
 end
 
 function GameService.capacity(player: Player): number
@@ -325,9 +335,6 @@ local function coinMultiplier(
 	mult *= Gear.get(runtime.gear, "Coins")
 	mult *= GameService.reloadMult(data)
 	mult *= GameService.totem(zoneId, "Coins")
-	if runtime.club then
-		mult *= Products.CLUB_COINS
-	end
 	if runtime.premium then
 		mult *= Products.PREMIUM_COINS
 	end
@@ -602,8 +609,6 @@ local function applyTitles(player: Player, character: Model)
 		title = Cosmetics.titleById[data.equippedTitle]
 	elseif runtime.vip then
 		title = Cosmetics.titleById.VIP
-	elseif runtime.club then
-		title = Cosmetics.titleById.Club
 	elseif data.titles.Supporter then
 		title = Cosmetics.titleById.Supporter
 	end
@@ -858,7 +863,6 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		expeditionSlots = Expedition.slots(data.reloads, perks.tripSlots + GameService.extraTripSlots(player)),
 		nextExpeditionSlots = Expedition.slots(data.reloads + 1, perks.tripSlots + GameService.extraTripSlots(player)),
 		passes = (State.get(player) :: State.Runtime).passes,
-		club = (State.get(player) :: State.Runtime).club,
 		premium = (State.get(player) :: State.Runtime).premium,
 		achievements = data.achievements,
 		index = data.index,
@@ -987,7 +991,16 @@ function GameService.init()
 		if not data or type(value) ~= "boolean" then
 			return
 		end
-		if key == "allowTrades" or key == "autoEquipBest" or key == "lowEnd" or key == "sfx" or key == "music" then
+		local allowed = {
+			allowTrades = true,
+			autoEquipBest = true,
+			lowEnd = true,
+			sfx = true,
+			music = true,
+			autoDeleteNormal = true,
+			autoDeleteGolden = true,
+		}
+		if type(key) == "string" and allowed[key] then
 			data.settings[key] = value
 			GameService.markDirty(player)
 		end

@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local World1 = require(Shared.Config.World1)
 local Format = require(Shared.Logic.Format)
+local Unlocks = require(Shared.Logic.Unlocks)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
@@ -145,7 +146,10 @@ function HUD.mount(gui: ScreenGui)
 			local x = if giftButton.Visible then 354 else 236
 			spinButton.Position = UDim2.fromOffset(x, 12)
 			teleportButton.Position = UDim2.fromOffset(x + 46, 12)
+			local data = Store.data
+			spinButton.Visible = data ~= nil and Unlocks.has(data :: any, "Spin")
 			spinDot.Visible = SpinPanel.freeReady()
+			teleportButton.Position = UDim2.fromOffset(if spinButton.Visible then x + 46 else x, 12)
 			task.wait(0.5)
 		end
 	end)
@@ -320,6 +324,8 @@ function HUD.mount(gui: ScreenGui)
 		riftLabel.Text = if rift then "🟪 Pixel Rift today: " .. rift.name else ""
 		questsDot.Visible = QuestsPanel.hasClaimable()
 		dailyDot.Visible = DailyPanel.claimable() ~= nil
+		local data = Store.data
+		tripsButton.Visible = data ~= nil and Unlocks.has(data :: any, "Trips")
 		tripsDot.Visible = TripsPanel.hasReady()
 		reloadDot.Visible = ReloadPanel.canReload()
 	end

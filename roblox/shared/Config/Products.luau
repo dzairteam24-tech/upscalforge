@@ -1,6 +1,6 @@
 --!strict
--- Everything that earns money: Robux game passes, developer products, the monthly Club subscription,
--- Roblox Premium perks and rewarded video ads.
+-- Everything that earns money: Robux game passes, developer products, Roblox Premium perks and
+-- rewarded video ads.
 --
 -- Rule: eggs, luck, creatures and currencies are never sold for Robux. We sell time, comfort and looks.
 -- (Selling eggs would also make them "paid random items" under Roblox rules.)
@@ -42,14 +42,6 @@ export type AdReward = {
 	inShop: boolean?, -- listed in the shop's Free tab
 	dailyLimit: number?, -- watches per UTC day
 	cooldown: number?, -- seconds between watches
-}
-
-export type Subscription = {
-	key: string,
-	id: string, -- "EXP-..." from the Creator Dashboard; "" hides it
-	price: string,
-	name: string,
-	perks: { string },
 }
 
 local gamePasses: { GamePass } = {
@@ -99,20 +91,6 @@ local adRewards: { AdReward } = {
 	{ key = "AdSpin", label = "Lucky Spin", reward = "Spin", dailyLimit = 3 },
 }
 
--- Monthly subscription (Creator Dashboard → Monetization → Subscriptions)
-local club: Subscription = {
-	key = "Club",
-	id = "",
-	price = "$4.99 / month",
-	name = "Cubelings Club",
-	perks = {
-		"💎 40 gems and 🎟️ 2 tickets every day",
-		"🪙 Coins +10%",
-		"🧭 +1 trip slot",
-		"🏷️ Club title",
-	},
-}
-
 local passByKey: { [string]: GamePass } = {}
 for _, pass in gamePasses do
 	passByKey[pass.key] = pass
@@ -136,7 +114,6 @@ return {
 	gamePasses = gamePasses,
 	devProducts = devProducts,
 	adRewards = adRewards,
-	club = club,
 	passByKey = passByKey,
 	productByKey = productByKey,
 	productById = productById,
@@ -146,10 +123,6 @@ return {
 	PASS_TEAM_SLOTS = 2,
 	PASS_STORAGE = 500,
 	PASS_TRIP_SLOTS = 1,
-	CLUB_DAILY_GEMS = 40,
-	CLUB_DAILY_TICKETS = 2,
-	CLUB_COINS = 1.1,
-	CLUB_TRIP_SLOTS = 1,
 	PREMIUM_COINS = 1.1,
 	SERVER_BOOST = { stat = "Coins", mult = 2, seconds = 900 },
 }

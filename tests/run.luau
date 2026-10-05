@@ -1081,12 +1081,50 @@ test("Robux never buys eggs, luck, creatures or random prizes", function()
 	end
 end)
 
-test("Trip slots from the pass and the Club stack with Rank and Reloads", function()
+test("Trip slots from the pass stack with Rank and Reloads", function()
 	local data = awardData()
 	eq(Expedition.slotsFor(data), 2)
-	eq(Expedition.slotsFor(data, Products.PASS_TRIP_SLOTS + Products.CLUB_TRIP_SLOTS), 4)
+	eq(Expedition.slotsFor(data, Products.PASS_TRIP_SLOTS), 3)
 	data.expeditions = { {}, {}, {} } :: any
 	eq((Expedition.validate(data, "Short", { "x", "y", "z" }, 0)), false, "full without extras")
+end)
+
+-- Review fixes: unlocks and pity -----------------------------------------------------------------------------
+
+local UnlockLogic = R(Shared.Logic.Unlocks)
+local Pity = R(Shared.Logic.Pity)
+local Hunt = R(Shared.Config.Hunt)
+
+test("Unlocks: systems open by best zone and stay open after a Reload", function()
+	local data = { stats = {}, unlockedZones = { ["0"] = true, ["1"] = true } }
+	eq(UnlockLogic.has(data, "Trips"), false)
+	eq(UnlockLogic.has(data, "Daily"), true, "features without an unlock are always open")
+	data.unlockedZones["3"] = true
+	eq(UnlockLogic.has(data, "Trips"), true, "zone 3 is past zone 2")
+	eq(UnlockLogic.has(data, "Cartridges"), true)
+	eq(UnlockLogic.has(data, "Stickers"), false)
+	-- After a Reload the gates close, but the lifetime best zone keeps systems open
+	data.unlockedZones = { ["0"] = true, ["1"] = true }
+	data.stats.bestZone = 4
+	eq(UnlockLogic.has(data, "Stickers"), true)
+	eq(#UnlockLogic.openedAt(3), 2, "Cartridges and Spin")
+end)
+
+test("Pity: Big is sure on the 10th try, Titan chance grows and is sure on the 100th", function()
+	eq(Pity.chance(0.1, 0, Hunt.BIG_PITY, 0), 0.1)
+	eq(Pity.chance(0.1, Hunt.BIG_PITY - 1, Hunt.BIG_PITY, 0), 1)
+	eq(Pity.left(3, Hunt.BIG_PITY), 7)
+	near(Pity.chance(Hunt.GUARDIAN_TAME_CHANCE, 10, Hunt.TITAN_PITY, Hunt.TITAN_PITY_STEP), 0.025, 1e-9)
+	eq(Pity.chance(Hunt.GUARDIAN_TAME_CHANCE, Hunt.TITAN_PITY - 1, Hunt.TITAN_PITY, Hunt.TITAN_PITY_STEP), 1)
+	-- Simulate: no player ever needs more than 10 Bigs
+	local rng = makeRng(4)
+	for _ = 1, 2000 do
+		local misses = 0
+		while rng() >= Pity.chance(0.1, misses, Hunt.BIG_PITY, 0) do
+			misses += 1
+		end
+		assert(misses < Hunt.BIG_PITY, "pity cap")
+	end
 end)
 
 test("Every creature model builds: 40 species x 6 variants x 3 sizes", function()

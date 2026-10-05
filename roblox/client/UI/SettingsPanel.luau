@@ -27,6 +27,16 @@ local OPTIONS = {
 		text = "Put stronger creatures on your team right after hatching.",
 	},
 	{
+		key = "autoDeleteNormal",
+		label = "Auto-delete Normal",
+		text = "Normal creatures you already have are deleted when hatched. New ones are always kept.",
+	},
+	{
+		key = "autoDeleteGolden",
+		label = "Auto-delete Golden",
+		text = "Same for Golden creatures you already have.",
+	},
+	{
 		key = "sfx",
 		label = "Sound effects",
 		text = "Coins, hatching, rewards and buttons.",
@@ -42,13 +52,21 @@ function SettingsPanel.mount(gui: ScreenGui)
 	local window, content = Theme.window(gui, "Settings", function()
 		Windows.close("Settings")
 	end)
-	Theme.list(content, 10)
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.Size = UDim2.fromScale(1, 1)
+	scroll.ScrollBarThickness = 6
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new()
+	Theme.list(scroll, 10)
+	scroll.Parent = content
 
 	local toggles: { [string]: TextButton } = {}
 	for i, option in OPTIONS do
-		local row = Theme.frame({ Size = UDim2.new(1, 0, 0, 70), BackgroundColor3 = Theme.card, LayoutOrder = i })
+		local row = Theme.frame({ Size = UDim2.new(1, -10, 0, 70), BackgroundColor3 = Theme.card, LayoutOrder = i })
 		Theme.corner(row, 12)
-		row.Parent = content
+		row.Parent = scroll
 		local name = Theme.label({
 			Text = option.label,
 			Font = Theme.titleFont,

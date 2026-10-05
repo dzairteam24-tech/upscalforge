@@ -61,7 +61,7 @@ local function template(): PlayerData
 		purchases = {},
 		titles = {},
 		tradeHistory = {},
-		settings = { allowTrades = true, autoEquipBest = true, lowEnd = false, sfx = true, music = true },
+		settings = { allowTrades = true, autoEquipBest = true, lowEnd = false, sfx = true, music = true, autoDeleteNormal = false, autoDeleteGolden = false },
 		lastSeen = 0,
 		lastPower = 0,
 		items = {},
@@ -82,7 +82,7 @@ local function template(): PlayerData
 		tickets = 0,
 		wheel = { lastFree = -1 },
 		rides = {},
-		club = { lastDay = -1 },
+		pity = { big = 0, titan = 0 },
 	}
 end
 
