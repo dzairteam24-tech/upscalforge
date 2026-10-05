@@ -26,3 +26,11 @@ python art/blender/cubelings.py Kitty
 `python art/viewer/build.py Kitty Kitty-3d.html 4,864` يصنع صفحة HTML فيها الموديل يدور، يرمّش ويقفز،
 والـ variants حيين: Golden (ذهب يلمع)، Crystal (جليد)، Lava (حجرة فيها شقوق تشعل)، Neon (يضوي)، Pixel (مربعات تبدّل اللون).
 هذا معاينة برك: في اللعبة لازم نديرو نفس الستيل بـ SurfaceAppearance و particles تاع Roblox.
+
+## كل المخلوقات (40)
+
+`renders/all_creatures.jpg`: كل المناطق في صورة وحدة. التصاميم في `blender/species_zoo.py`، والقطع (ذنين، قرون، جوانح، ذيول، كلاليب...) في `blender/cubelings.py`.
+
+- منطقة كاملة: `python art/blender/cubelings.py zone 3`
+- معاينة سريعة (الزاوية 3/4 برك): `FAST=1 python art/blender/cubelings.py zone 3`
+- مخلوقات بالاسم: `python art/blender/cubelings.py Bee "Ice Fox"`
