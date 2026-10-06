@@ -29,6 +29,9 @@ local rng = Random.new()
 local nextBig: { [number]: number } = {}
 local activeBig: { [number]: BreakableService.Source } = {}
 local activeGuardian: { [number]: BreakableService.Source } = {}
+-- After a guardian is beaten or leaves, the zone rests before the next one (os.clock())
+local guardianRest: { [number]: number } = {}
+local GUARDIAN_REST = 60
 
 local function newId(): string
 	return string.sub(HttpService:GenerateGUID(false):gsub("-", ""), 1, 16)
@@ -155,6 +158,11 @@ local function onBroken(source: BreakableService.Source, contributors: { [Player
 				)
 			end
 		elseif special.type == "Guardian" then
+			-- Rewards only for players whose fight counts; others helped but are on their cooldown
+			if not special.eligible[player] then
+				GameService.notify(player, "You helped! Your own guardian reward comes back after your cooldown.", "info")
+				continue
+			end
 			GameService.progress(player, "Guardian", 1)
 			data.gems += Hunt.GUARDIAN_GEMS * zoneId
 			if special.eligible[player] then
@@ -200,6 +208,7 @@ local function onBroken(source: BreakableService.Source, contributors: { [Player
 	end
 	if activeGuardian[zoneId] == source then
 		activeGuardian[zoneId] = nil
+		guardianRest[zoneId] = os.clock() + GUARDIAN_REST
 	end
 	BreakableService.despawn(source)
 end
@@ -232,9 +241,10 @@ local function step()
 		-- Guardian
 		local guardian = activeGuardian[zoneId]
 		if guardian and guardian.alive and now > (guardian.special :: BreakableService.Special).expires then
-			notifyZone(zoneId, "The guardian left. It will come back when you return.", "info")
+			notifyZone(zoneId, "The guardian left. It will be back in a minute.", "info")
 			BreakableService.despawn(guardian)
 			activeGuardian[zoneId] = nil
+			guardianRest[zoneId] = now + GUARDIAN_REST
 			guardian = nil
 		end
 		local eligible = {}
@@ -247,7 +257,7 @@ local function step()
 			for _, player in eligible do
 				(guardian.special :: BreakableService.Special).eligible[player] = true
 			end
-		elseif #eligible > 0 then
+		elseif #eligible > 0 and now >= (guardianRest[zoneId] or 0) then
 			spawnGuardian(zoneId, eligible)
 		end
 	end

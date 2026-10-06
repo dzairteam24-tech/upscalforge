@@ -267,13 +267,19 @@ local function leave(player: Player)
 	end
 	local id = data.clan.id
 	local empty = false
-	update(id, function(old)
+	local gone = false
+	local saved = update(id, function(old)
 		if not old then
+			gone = true -- the clan no longer exists
 			return nil, false
 		end
 		empty = not Clans.removeMember(old, player.UserId)
 		return old, true
 	end)
+	if not saved and not gone then
+		GameService.notify(player, "Couldn't leave right now, try again", "error")
+		return
+	end
 	if empty and store then
 		pcall(function()
 			(store :: DataStore):RemoveAsync(key(id))
@@ -389,7 +395,6 @@ local function weeklyReward(player: Player, data: PlayerData)
 	if data.clan.id == "" or data.clan.rewardWeek >= lastWeek then
 		return
 	end
-	data.clan.rewardWeek = lastWeek
 	local board = weekBoard(lastWeek)
 	if not board then
 		return
@@ -398,8 +403,9 @@ local function weeklyReward(player: Player, data: PlayerData)
 		return (board :: OrderedDataStore):GetSortedAsync(false, 10)
 	end)
 	if not ok then
-		return
+		return -- try again next join
 	end
+	data.clan.rewardWeek = lastWeek
 	for rank, entry in (pages :: DataStorePages):GetCurrentPage() do
 		if entry.key == data.clan.id then
 			local gems = Clans.rewardFor(rank)

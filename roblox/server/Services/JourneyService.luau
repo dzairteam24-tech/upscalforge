@@ -30,9 +30,12 @@ local function onProgress(player: Player, event: string, amount: number)
 	if not data then
 		return
 	end
+	local step = Journey.current(data.journey)
 	if Journey.onEvent(data.journey, event, amount) then
 		GameService.notify(player, "📖 Journey step done! Claim it in Quests.", "success")
 		GameService.refresh(player)
+	elseif step and step.event == event then
+		GameService.markDirty(player) -- so the progress bar moves
 	end
 end
 

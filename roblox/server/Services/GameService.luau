@@ -516,10 +516,15 @@ BreakableService.Broken:Connect(function(source: BreakableService.Source, contri
 			data.gems += math.max(1, source.zoneId)
 		end
 
-		for _, drop in Loot.rollAll(source.kind.id, source.zoneId, function()
-			return rng:NextNumber()
-		end) do
-			GameService.giveItem(player, drop, 1, true)
+		-- A guardian's loot only goes to players whose fight counts (not on their 4h cooldown)
+		local special = source.special
+		local lootAllowed = not (special and special.type == "Guardian" and not special.eligible[player])
+		if lootAllowed then
+			for _, drop in Loot.rollAll(source.kind.id, source.zoneId, function()
+				return rng:NextNumber()
+			end) do
+				GameService.giveItem(player, drop, 1, true)
+			end
 		end
 
 		if Effects.get(runtime.effects, "InstantRespawn") > 0 or State.boost(runtime, "Respawn", now) > 1 then

@@ -111,9 +111,15 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 		local angle = (i / 10) * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
 		local radius = half - 8
 		local pos = center + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-		local pond = MapLayout.center(0) + FishingConfig.POND_OFFSET
-		if zone.id == 0 and (pos - pond).Magnitude < FishingConfig.POND_RADIUS + 8 then
-			continue -- keep the Fishing Pond clear
+		if zone.id == 0 then
+			-- Keep the Hub's pond, leaderboards (south row) and ad boards (east and west walls) clear
+			local localPos = pos - center
+			local nearPond = (localPos - FishingConfig.POND_OFFSET).Magnitude < FishingConfig.POND_RADIUS + 8
+			local nearBoards = math.abs(localPos.Z - 55) < 10
+			local nearAds = math.abs(localPos.X) > 48 and math.abs(localPos.Z) < 14
+			if nearPond or nearBoards or nearAds then
+				continue
+			end
 		end
 		local trunk = part({
 			Name = "Decor",
