@@ -5,6 +5,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local FirstClearConfig = require(Shared.Config.FirstClear)
+local FirstClear = require(Shared.Logic.FirstClear)
 local Hunt = require(Shared.Config.Hunt)
 local World1 = require(Shared.Config.World1)
 local Boosts = require(Shared.Logic.Boosts)
@@ -157,6 +159,18 @@ local function onBroken(source: BreakableService.Source, contributors: { [Player
 			data.gems += Hunt.GUARDIAN_GEMS * zoneId
 			if special.eligible[player] then
 				data.guardians[tostring(zoneId)] = os.time() + Hunt.GUARDIAN_COOLDOWN
+				if FirstClear.mark(data.clears, FirstClear.guardianKey(zoneId)) then
+					data.gems += FirstClearConfig.GUARDIAN_GEMS * zoneId
+					GameService.notify(
+						player,
+						("⭐ First clear! Coins +%d%% forever (now +%d%%) and 💎 %d"):format(
+							FirstClearConfig.GUARDIAN_COINS * 100,
+							math.floor((FirstClear.coinMult(data.clears) - 1) * 100 + 0.5),
+							FirstClearConfig.GUARDIAN_GEMS * zoneId
+						),
+						"rare"
+					)
+				end
 				local chance = Pity.chance(Hunt.GUARDIAN_TAME_CHANCE, data.pity.titan, Hunt.TITAN_PITY, Hunt.TITAN_PITY_STEP)
 				if Inventory.count(data) >= GameService.capacity(player) then
 					GameService.notify(player, "Your storage is full, so the Titan couldn't join you. Make room first!", "error")

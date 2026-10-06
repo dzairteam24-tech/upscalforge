@@ -30,6 +30,7 @@ local Expedition = require(Shared.Logic.Expedition)
 local GemShop = require(Shared.Logic.GemShop)
 local Events = require(Shared.Logic.Events)
 local LiveEvent = require(Shared.Logic.LiveEvent)
+local FirstClear = require(Shared.Logic.FirstClear)
 local EventConfig = require(Shared.Config.Events)
 local Reload = require(Shared.Logic.Reload)
 local Types = require(Shared.Logic.Types)
@@ -191,6 +192,7 @@ function GameService.luck(player: Player): number
 		* Gear.get(runtime.gear, "Luck")
 		* GameService.totem(runtime.zoneId, "Luck")
 		* GameService.liveBonus("Luck")
+		* (if data then FirstClear.luckMult(data.clears) else 1)
 end
 
 -- Extra multiplier per variant for hatching: skills plus the saved Pixel boost.
@@ -377,6 +379,7 @@ local function coinMultiplier(
 	mult *= GameService.totem(zoneId, "Coins")
 	mult *= Events.bonus(GameService.event(), "Coins")
 	mult *= GameService.liveBonus("Coins")
+	mult *= FirstClear.coinMult(data.clears)
 	if runtime.premium then
 		mult *= Products.PREMIUM_COINS
 	end
@@ -972,6 +975,7 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		quests = data.quests,
 		pass = data.pass,
 		guardians = data.guardians,
+		clears = data.clears,
 		trails = data.trails,
 		equippedTitle = data.equippedTitle,
 		equippedTrail = data.equippedTrail,

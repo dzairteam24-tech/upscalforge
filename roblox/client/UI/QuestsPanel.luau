@@ -10,6 +10,8 @@ local JourneyConfig = require(Shared.Config.Journey)
 local Cosmetics = require(Shared.Config.Cosmetics)
 local Products = require(Shared.Config.Products)
 local Progression = require(Shared.Config.Progression)
+local FirstClearConfig = require(Shared.Config.FirstClear)
+local FirstClear = require(Shared.Logic.FirstClear)
 local Format = require(Shared.Logic.Format)
 local Progress = require(Shared.Logic.Progress)
 local Net = require(Shared.Net)
@@ -252,6 +254,31 @@ function QuestsPanel.mount(gui: ScreenGui)
 	end
 
 	-- Daily Bounty: three creatures to hatch today
+	-- First clears: permanent bonuses for the first win against each guardian and the World Boss
+	local function clearRows(order: number): number
+		local data = Store.data
+		local clears = data and (data :: any).clears
+		if not clears then
+			return order
+		end
+		local guardians = FirstClear.guardians(clears)
+		local label = Theme.label({
+			Text = ("⭐ First clears · guardians %d/10 (Coins +%d%% forever) · World Boss %s"):format(
+				guardians,
+				math.floor(guardians * FirstClearConfig.GUARDIAN_COINS * 100 + 0.5),
+				if clears.Boss then ("✓ (Luck +%d%%)"):format(FirstClearConfig.BOSS_LUCK * 100) else "not yet"
+			),
+			Font = Enum.Font.GothamMedium,
+			TextColor3 = Theme.gold,
+			Size = UDim2.new(1, -12, 0, 24),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			LayoutOrder = order,
+			MaxTextSize = 15,
+		})
+		label.Parent = body
+		return order + 1
+	end
+
 	local function bountyRows(order: number): number
 		local data = Store.data
 		local bounty = data and (data :: any).bounty
@@ -315,6 +342,7 @@ function QuestsPanel.mount(gui: ScreenGui)
 		setLayout(false)
 		local now = os.time()
 		local order = journeyRows(1)
+		order = clearRows(order)
 		order = bountyRows(order)
 		order = questRows("daily", ("Daily · new in %s"):format(Format.time(Progress.secondsToNextDay(now))), order)
 		questRows("weekly", "Weekly · new every Monday", order)

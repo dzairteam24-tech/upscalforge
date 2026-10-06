@@ -70,6 +70,7 @@ local function template(): PlayerData
 		quests = { day = -1, week = -1, daily = {}, weekly = {} },
 		pass = { season = 0, xp = 0, premium = false, claimedFree = {}, claimedPremium = {} },
 		guardians = {},
+		clears = {},
 		trails = {},
 		cartridges = {},
 		loadouts = {},

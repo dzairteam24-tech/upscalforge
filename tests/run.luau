@@ -1299,6 +1299,20 @@ test("Live Event: admins, the chat command and caps", function()
 	eq(Live.valid("x"), false)
 end)
 
+test("First clears: once per guardian and boss, bonuses last", function()
+	local FC = R(Shared.Logic.FirstClear)
+	local clears = {}
+	eq(FC.mark(clears, FC.guardianKey(3)), true)
+	eq(FC.mark(clears, FC.guardianKey(3)), false, "only once")
+	FC.mark(clears, FC.guardianKey(10))
+	eq(FC.guardians(clears), 2)
+	near(FC.coinMult(clears), 1.1, 1e-9)
+	eq(FC.luckMult(clears), 1)
+	FC.mark(clears, "Boss")
+	near(FC.luckMult(clears), 1.1, 1e-9)
+	eq(FC.guardians(clears), 2, "the boss isn't a guardian")
+end)
+
 -- Events -----------------------------------------------------------------------------------------------------
 
 local EventLogic = R(Shared.Logic.Events)

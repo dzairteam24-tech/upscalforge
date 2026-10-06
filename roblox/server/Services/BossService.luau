@@ -8,6 +8,8 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local FirstClearConfig = require(Shared.Config.FirstClear)
+local FirstClear = require(Shared.Logic.FirstClear)
 local BossConfig = require(Shared.Config.Boss)
 local Items = require(Shared.Config.Items)
 local World1 = require(Shared.Config.World1)
@@ -86,6 +88,14 @@ local function payOut(contributors: { [Player]: number }, defeated: boolean)
 		local parts = { "💎 " .. reward.gems }
 		if reward.tickets > 0 then
 			table.insert(parts, "🎟️ " .. reward.tickets)
+		end
+		if defeated and tier == "full" and FirstClear.mark(data.clears, "Boss") then
+			data.gems += FirstClearConfig.BOSS_GEMS
+			GameService.notify(
+				player,
+				("⭐ First Boss win! Luck +%d%% forever and 💎 %d"):format(FirstClearConfig.BOSS_LUCK * 100, FirstClearConfig.BOSS_GEMS),
+				"rare"
+			)
 		end
 		if defeated and tier == "full" then
 			if rng:NextNumber() < BossConfig.GOLDEN_KEY_CHANCE then
