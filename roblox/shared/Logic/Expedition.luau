@@ -83,7 +83,7 @@ function Expedition.validate(data: PlayerData, kindId: string, petIds: { string 
 end
 
 -- Marks the creatures as away and stores the trip. Call `validate` first.
-function Expedition.start(data: PlayerData, kindId: string, petIds: { string }, now: number): Types.Expedition
+function Expedition.start(data: PlayerData, kindId: string, petIds: { string }, now: number, paid: boolean?): Types.Expedition
 	local kind = Expeditions.byId[kindId]
 	local pets: { Pet } = {}
 	local power = 0
@@ -100,6 +100,7 @@ function Expedition.start(data: PlayerData, kindId: string, petIds: { string }, 
 		ends = now + kind.duration,
 		power = power,
 		element = Expedition.sharedElement(pets),
+		paid = if paid then true else nil,
 	}
 	table.insert(data.expeditions, trip)
 	return trip
@@ -117,6 +118,10 @@ function Expedition.rewards(trip: Types.Expedition, zoneId: number, rng: () -> n
 
 	reward.coins = trip.power * kind.duration * kind.coinFactor * bonus
 	reward.gems = math.floor(kind.gemsPerZone * math.max(1, zoneId) * bonus)
+	-- Robux never buys random prizes (items, or tickets for the Lucky Spin)
+	if trip.paid then
+		return reward
+	end
 	reward.tickets = math.floor(kind.tickets * bonus)
 	for _ = 1, kind.elixirs do
 		local maxTier = kind.elixirTiers[2] + tierBonus

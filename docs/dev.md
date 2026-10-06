@@ -21,7 +21,7 @@
 1. **حفظ البيانات:** في Studio، **Game Settings ← Security ← Enable Studio Access to API Services**. بلا هذا، اللعبة تخدم لكن ما تحفظش، وتكتب تحذير في الـ Output. لوحات الترتيب تاني يحتاجو هذا.
 2. **منتجات Robux:** صنعهم في Creator Dashboard وحط الأرقام في `roblox/shared/Config/Products.luau`. كل منتج رقمو 0 يبان "Soon" ولا ما يبانش، و `price` لازم يكون نفس الثمن اللي في Dashboard.
    - **Game Passes:** VIP، Auto Tap، +2 Team Slots، Big Storage، Teleport، Extra Trip
-   - **Developer Products:** Coins x2، Power x2، Server Boost، TripSkip، TripDouble، StreakSave، QuestSwap، Supporter Title، Battle Pass Premium، 6 Auras (`Aura_*`) و 4 Hatch effects (`Hatch_*`)
+   - **Developer Products:** Coins x2، Power x2، Server Boost، TripSkip، TripDouble، QuestSwap، Supporter Title، Battle Pass Premium، 6 Auras (`Aura_*`) و 4 Hatch effects (`Hatch_*`)
    - **Developer Products للإعلانات:** AdCoins، AdLuck، AdPower، AdEggs، AdElixir، AdTripSkip، AdTripDouble، AdStreak، AdReroll، AdSpin. هذو ما يتباعوش، Roblox يستعملهم باش يعطي مكافأة الفيديو.
 3. **الإعلانات:** الفيديو ولوحات الإعلانات (Immersive Ads) يحتاجو اللعبة تكون مؤهلة عند Roblox (صاحبها 13 سنة وأكثر، هوية موثقة، و 2,000 زائر في الشهر)، ويبانو غير للاعبين 13+. لوحات الإعلانات راهم في المدينة (`Workspace.AdBoards`) ويخدمو وحدهم كي تكون مؤهل.
 4. **الأصوات:** في `roblox/shared/Config/Sounds.luau`. دركا فيها أصوات Roblox الأساسية، بدّلهم بأصوات من Creator Store، وحط id تاع موسيقى في `MUSIC`.

@@ -145,14 +145,15 @@ end
 function GameService.maxSlots(player: Player): number
 	local data = DataService.get(player)
 	local runtime = State.get(player)
-	local slots = math.min(Constants.MAX_TEAM_SLOTS, Constants.BASE_TEAM_SLOTS + (if data then data.upgrades.TeamSlots or 0 else 0))
+	local slots = Constants.BASE_TEAM_SLOTS + (if data then data.upgrades.TeamSlots or 0 else 0)
 	if runtime and runtime.vip then
 		slots += Products.VIP_EXTRA_SLOTS
 	end
 	if runtime and runtime.passes.TeamSlots then
 		slots += Products.PASS_TEAM_SLOTS
 	end
-	return slots
+	-- Passes give slots sooner, never more than free players can reach: the Strongest Team board stays fair
+	return math.min(Constants.MAX_TEAM_SLOTS, slots)
 end
 
 -- Trip slots from the Extra Trip pass.

@@ -46,12 +46,12 @@ export type AdReward = {
 }
 
 local gamePasses: { GamePass } = {
-	{ key = "VIP", id = 0, price = 199, name = "VIP", description = "+1 team slot, +4h offline earnings, VIP title" },
+	{ key = "VIP", id = 0, price = 199, name = "VIP", description = "+1 team slot now (max stays 12), +4h offline earnings, VIP title" },
 	{ key = "AutoTap", id = 0, price = 149, name = "Auto Tap", description = "You tap by yourself twice a second, forever" },
-	{ key = "TeamSlots", id = 0, price = 299, name = "+2 Team Slots", description = "Two more creatures walk with you" },
+	{ key = "TeamSlots", id = 0, price = 299, name = "+2 Team Slots", description = "Two team slots right away, before you buy them with coins (max stays 12)" },
 	{ key = "Storage", id = 0, price = 99, name = "Big Storage", description = "+500 creature storage" },
 	{ key = "Teleport", id = 0, price = 79, name = "Teleport", description = "Jump to any zone you unlocked" },
-	{ key = "TripSlot", id = 0, price = 149, name = "Extra Trip", description = "+1 trip slot for expeditions" },
+	{ key = "TripSlot", id = 0, price = 149, name = "Extra Trip", description = "+1 trip slot (that trip brings back coins and gems)" },
 }
 
 local devProducts: { DevProduct } = {
@@ -72,9 +72,9 @@ local devProducts: { DevProduct } = {
 	{ key = "CoinBoost", id = 0, price = 49, name = "Coins x2 · 30 min", description = "Double coins for 30 minutes of play", boost = { stat = "Coins", mult = 2, seconds = 1800 }, inShop = true },
 	{ key = "PowerBoost", id = 0, price = 49, name = "Power x2 · 30 min", description = "Double team power for 30 minutes of play", boost = { stat = "Power", mult = 2, seconds = 1800 }, inShop = true },
 	{ key = "ServerBoost", id = 0, price = 149, name = "Server Boost", description = "Coins x2 for EVERYONE in the server for 15 minutes", reward = "ServerBoost", inShop = true },
-	{ key = "TripSkip", id = 0, price = 25, name = "Finish a trip now", description = "Your creatures come back right away", reward = "TripSkip" },
+	{ key = "TripSkip", id = 0, price = 25, name = "Finish a trip now", description = "Your creatures come back right away (coins and gems only)", reward = "TripSkip" },
 	{ key = "TripDouble", id = 0, price = 35, name = "Double trip coins", description = "Claim a trip with its coins x2", reward = "TripDouble" },
-	{ key = "StreakSave", id = 0, price = 25, name = "Save your streak", description = "Keep your daily streak after missing a few days", reward = "StreakSave" },
+	-- No Robux streak save: day 7 gives Luck elixirs, and luck is never sold. The ad version stays.
 	{ key = "QuestSwap", id = 0, price = 10, name = "Swap a quest", description = "Get a different daily quest", reward = "QuestSwap" },
 	-- Rewarded video ads (never sold)
 	{ key = "AdCoins", id = 0, price = 0, name = "Ad: Coins x2", description = "", adOnly = true },

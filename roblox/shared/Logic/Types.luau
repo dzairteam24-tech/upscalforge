@@ -90,6 +90,7 @@ export type Expedition = {
 	ends: number, -- os.time()
 	power: number, -- total base power when it started
 	element: boolean, -- all creatures share one strong element (+50%)
+	paid: boolean?, -- Robux helped (finished early, or the Extra Trip pass slot): coins and gems only
 }
 
 export type Quest = {

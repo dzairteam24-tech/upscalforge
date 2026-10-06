@@ -1096,10 +1096,25 @@ test("Robux never buys eggs, luck, creatures or random prizes", function()
 			adHandlers[reward.reward] = true
 		end
 	end
-	for _, key in { "TripSkip", "TripDouble", "StreakSave", "QuestSwap" } do
+	for _, key in { "TripSkip", "TripDouble", "QuestSwap" } do
 		assert(adHandlers[key], "no video version for " .. key)
 		assert(Products.productByKey[key].reward == key, "no Robux version for " .. key)
 	end
+	-- The streak save leads to Luck elixirs (day 7), so it is ad-only
+	assert(adHandlers.StreakSave, "no video version for StreakSave")
+	eq(Products.productByKey.StreakSave, nil, "no Robux streak save")
+end)
+
+test("A trip Robux helped with brings back coins and gems only", function()
+	local trip = { kind = Expeditions.list[#Expeditions.list].id, pets = {}, started = 0, ends = 0, power = 100, element = false }
+	local free = Expedition.rewards(trip, 10, function() return 0 end)
+	trip.paid = true
+	local paid = Expedition.rewards(trip, 10, function() return 0 end)
+	eq(paid.coins, free.coins)
+	eq(paid.gems, free.gems)
+	eq(paid.tickets, 0)
+	eq(#paid.items, 0)
+	assert(#free.items > 0, "a free trip brings items")
 end)
 
 test("Trip slots from the pass stack with Rank and Reloads", function()

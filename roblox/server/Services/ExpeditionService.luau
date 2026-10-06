@@ -59,9 +59,14 @@ local function startExpedition(player: Player, kindId: any, petIds: any)
 		GameService.notify(player, err or "Can't start this trip", "error")
 		return
 	end
-	local trip = Expedition.start(data, kindId, ids, os.time())
+	-- A trip in the Extra Trip pass slot (beyond the free slots) brings back coins and gems only
+	local paidSlot = #data.expeditions >= Expedition.slotsFor(data, 0)
+	local trip = Expedition.start(data, kindId, ids, os.time(), paidSlot)
 	local kind = Expeditions.byId[kindId]
 	local note = if trip.element then " Same element: +50%!" else ""
+	if paidSlot then
+		note ..= " (Pass slot: coins and gems.)"
+	end
 	GameService.notify(player, ("%s started! Back in %s.%s"):format(kind.name, Format.time(kind.duration), note), "success")
 	GameService.progress(player, "Expedition", 1)
 	GameService.refresh(player)
@@ -160,13 +165,17 @@ function ExpeditionService.init()
 			end
 			return true, nil
 		end,
-		grant = function(player, started)
+		grant = function(player, started, paid)
 			local data = DataService.get(player)
 			local index = data and findTrip(data, started, isAway)
 			if not data or not index or not isAway(data.expeditions[index]) then
 				return false
 			end
 			data.expeditions[index].ends = os.time()
+			-- Finished with Robux: coins and gems only (watching an ad keeps the full rewards)
+			if paid then
+				data.expeditions[index].paid = true
+			end
 			GameService.notify(player, "Your creatures are back! Claim the trip.", "success")
 			GameService.refresh(player)
 			return true
