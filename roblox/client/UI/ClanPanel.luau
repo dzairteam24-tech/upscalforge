@@ -99,6 +99,7 @@ function ClanPanel.mount(gui: ScreenGui)
 					{ TextColor3 = Theme.text }
 				)
 				if isOwner and member.id ~= info.owner then
+					row.Size = UDim2.new(1, -112, 0, row.Size.Y.Offset)
 					local kick = Theme.button({
 						Text = "Remove",
 						Size = UDim2.new(0, 90, 0, 22),
@@ -106,8 +107,22 @@ function ClanPanel.mount(gui: ScreenGui)
 						BackgroundColor3 = Theme.red,
 						MaxTextSize = 13,
 					})
+					kick.Position = UDim2.new(1, 6, 0, 2)
 					kick.Parent = row
+					-- Tap twice: it can't be undone and uses today's removal
+					local armed = false
 					kick.Activated:Connect(function()
+						if not armed then
+							armed = true
+							kick.Text = "Sure?"
+							task.delay(3, function()
+								armed = false
+								if kick.Parent then
+									kick.Text = "Remove"
+								end
+							end)
+							return
+						end
 						Net.event("ClanKick"):FireServer(member.id)
 					end)
 				end

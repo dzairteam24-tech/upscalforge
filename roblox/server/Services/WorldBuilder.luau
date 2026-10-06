@@ -111,6 +111,10 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 		local angle = (i / 10) * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
 		local radius = half - 8
 		local pos = center + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+		local pond = MapLayout.center(0) + FishingConfig.POND_OFFSET
+		if zone.id == 0 and (pos - pond).Magnitude < FishingConfig.POND_RADIUS + 8 then
+			continue -- keep the Fishing Pond clear
+		end
 		local trunk = part({
 			Name = "Decor",
 			Size = Vector3.new(2, 6, 2),

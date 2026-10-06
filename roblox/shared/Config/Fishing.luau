@@ -23,11 +23,11 @@ export type Rarity = {
 }
 
 local rarities: { Rarity } = {
-	{ id = "Common", weight = 60, color = Color3.fromRGB(200, 200, 200), coinSeconds = 2, gems = 0, ticketChance = 0, elixirChance = 0, elixirTiers = { 1, 1 } },
-	{ id = "Uncommon", weight = 25, color = Color3.fromRGB(120, 220, 120), coinSeconds = 4, gems = 0, ticketChance = 0.3, elixirChance = 0, elixirTiers = { 1, 1 } },
-	{ id = "Rare", weight = 10.5, color = Color3.fromRGB(91, 184, 245), coinSeconds = 10, gems = 1, ticketChance = 0.5, elixirChance = 0, elixirTiers = { 1, 1 } },
-	{ id = "Epic", weight = 4, color = Color3.fromRGB(185, 120, 245), coinSeconds = 25, gems = 5, ticketChance = 1, elixirChance = 0.25, elixirTiers = { 1, 2 } },
-	{ id = "Legendary", weight = 0.5, color = Color3.fromRGB(255, 200, 60), coinSeconds = 60, gems = 25, ticketChance = 1, elixirChance = 1, elixirTiers = { 2, 3 } },
+	{ id = "Common", weight = 60, color = Color3.fromRGB(200, 200, 200), coinSeconds = 1, gems = 0, ticketChance = 0, elixirChance = 0, elixirTiers = { 1, 1 } },
+	{ id = "Uncommon", weight = 25, color = Color3.fromRGB(120, 220, 120), coinSeconds = 2, gems = 0, ticketChance = 0.3, elixirChance = 0, elixirTiers = { 1, 1 } },
+	{ id = "Rare", weight = 10.5, color = Color3.fromRGB(91, 184, 245), coinSeconds = 5, gems = 1, ticketChance = 0.5, elixirChance = 0, elixirTiers = { 1, 1 } },
+	{ id = "Epic", weight = 4, color = Color3.fromRGB(185, 120, 245), coinSeconds = 12, gems = 5, ticketChance = 1, elixirChance = 0.25, elixirTiers = { 1, 2 } },
+	{ id = "Legendary", weight = 0.5, color = Color3.fromRGB(255, 200, 60), coinSeconds = 30, gems = 25, ticketChance = 1, elixirChance = 1, elixirTiers = { 2, 3 } },
 }
 
 local fish: { Fish } = {
@@ -58,9 +58,11 @@ return {
 	REACH = 32, -- you must stand this close to the pond's middle to fish
 	BITE_MIN = 2, -- seconds until a bite
 	BITE_MAX = 6,
-	AUTO_SLOWER = 1.6, -- Auto Fish waits this much longer
+	AUTO_SLOWER = 2.5, -- Auto Fish waits this much longer, and gives no tickets
+	MIN_CYCLE = 4, -- seconds between casts, however fast you reel
 	REEL_WINDOW = 2.5, -- seconds to tap after the bite
 	LATENCY = 0.6, -- extra time allowed for the network
+	PERFECT_SLACK = 0.35, -- the server accepts a Perfect if the marker was in the green this long before it heard the tap
 	PERFECT_LUCK = 2, -- rare fish weights x this on a Perfect
 	MARKER_SPEED = 1.4, -- bar widths per second
 	GREEN = 0.22, -- width of the green zone (0-1)

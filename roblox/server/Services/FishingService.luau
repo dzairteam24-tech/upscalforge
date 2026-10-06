@@ -25,6 +25,7 @@ type Cast = { id: number, bite: number?, auto: boolean }
 local rng = Random.new()
 local casts: { [Player]: Cast } = {}
 local autoOn: { [Player]: boolean? } = {}
+local lastCast: { [Player]: number } = {}
 local nextId = 0
 
 local function rand(): number
@@ -52,14 +53,14 @@ local function setAuto(player: Player, on: boolean)
 	Net.event("FishAuto"):FireClient(player, on)
 end
 
-local function catch(player: Player, perfect: boolean)
+local function catch(player: Player, perfect: boolean, auto: boolean)
 	local data = DataService.get(player)
 	local runtime = State.get(player)
 	if not data or not runtime then
 		return
 	end
 	local fish = Fishing.roll(perfect, rand)
-	local reward = Fishing.reward(fish, runtime.power, rand)
+	local reward = Fishing.reward(fish, runtime.power, auto, rand)
 	local isNew, complete = Fishing.record(data.fishing, fish.id)
 	GameService.addCoins(player, reward.coins, nil)
 	data.gems += reward.gems
@@ -115,11 +116,14 @@ cast = function(player: Player)
 		return
 	end
 	nextId += 1
+	-- Casting again right away just waits longer for the bite: one catch per MIN_CYCLE at most
+	local early = math.max(0, FishingConfig.MIN_CYCLE - (os.clock() - (lastCast[player] or -math.huge)))
+	lastCast[player] = os.clock()
 	local auto = autoOn[player] == true
 	local current: Cast = { id = nextId, bite = nil, auto = auto }
 	casts[player] = current
 	Net.event("FishCast"):FireClient(player)
-	task.delay(Fishing.biteDelay(rand(), auto), function()
+	task.delay(early + Fishing.biteDelay(rand(), auto), function()
 		if casts[player] ~= current then
 			return
 		end
@@ -128,7 +132,7 @@ cast = function(player: Player)
 		if auto then
 			task.delay(0.8, function()
 				if casts[player] == current then
-					catch(player, false)
+					catch(player, false, true)
 					done(player)
 				end
 			end)
@@ -153,24 +157,28 @@ local function reel(player: Player, perfect: any)
 		done(player)
 		return
 	end
-	if not Fishing.inTime(os.clock() - (current.bite :: number)) then
+	local sinceBite = os.clock() - (current.bite :: number)
+	if not Fishing.inTime(sinceBite) then
 		return -- the timeout above handles it
 	end
-	catch(player, perfect == true)
+	-- The client says Perfect; the server checks the marker could really have been in the green
+	catch(player, perfect == true and Fishing.perfectPlausible(sinceBite), false)
 	done(player)
 end
 
 function FishingService.init()
 	Net.event("FishCast").OnServerEvent:Connect(function(player)
 		local runtime = State.get(player)
-		if runtime and State.throttle(runtime, "FishCast", 0.5) then
+		-- Auto Fish casts by itself
+		if runtime and not autoOn[player] and State.throttle(runtime, "FishCast", 0.5) then
 			cast(player)
 		end
 	end)
 	Net.event("FishReel").OnServerEvent:Connect(reel)
 	Net.event("FishAuto").OnServerEvent:Connect(function(player, on: any)
 		local runtime = State.get(player)
-		if not runtime or not State.throttle(runtime, "FishAuto", 0.5) then
+		-- Turning it off always works (closing the window right after turning it on)
+		if not runtime or (on == true and not State.throttle(runtime, "FishAuto", 0.5)) then
 			return
 		end
 		setAuto(player, on == true)
@@ -197,6 +205,7 @@ function FishingService.init()
 	Players.PlayerRemoving:Connect(function(player)
 		casts[player] = nil
 		autoOn[player] = nil
+		lastCast[player] = nil
 	end)
 end
 

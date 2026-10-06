@@ -41,9 +41,19 @@ local function apply(live: LiveEvent.Live?, announce: boolean)
 	end
 end
 
+local function isOwner(player: Player): boolean
+	if game.CreatorType == Enum.CreatorType.Group then
+		local ok, rank = pcall(function()
+			return player:GetRankInGroup(game.CreatorId)
+		end)
+		return ok and rank >= 255
+	end
+	return game.CreatorId > 0 and player.UserId == game.CreatorId
+end
+
 local function start(player: Player, text: string)
 	local isStudio = RunService:IsStudio()
-	if not LiveEvent.isAdmin(player.UserId, game.CreatorId, isStudio) then
+	if not LiveEvent.isAdmin(player.UserId, isOwner(player), isStudio) then
 		return
 	end
 	local command, why = LiveEvent.parse(text)
@@ -62,7 +72,8 @@ local function start(player: Player, text: string)
 	apply(live, true)
 	-- Tell the other servers, and remember it for servers that start later
 	if not isStudio then
-		local payload = live or { stop = true }
+		local payload: { [string]: any } = if live then table.clone(live) else { stop = true }
+		payload.from = game.JobId -- this server already applied it
 		pcall(function()
 			MessagingService:PublishAsync(TOPIC, payload)
 		end)
@@ -80,7 +91,7 @@ end
 
 function LiveEventService.init()
 	-- The chat command (only admins get a reply; everyone else's "/live" does nothing)
-	local ok = pcall(function()
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
 		local command = Instance.new("TextChatCommand")
 		command.Name = "LiveCommand"
 		command.PrimaryAlias = "/live"
@@ -91,8 +102,7 @@ function LiveEventService.init()
 				start(player, text)
 			end
 		end)
-	end)
-	if not ok then
+	else
 		Players.PlayerAdded:Connect(function(player)
 			player.Chatted:Connect(function(text)
 				if string.sub(string.lower(text), 1, 5) == "/live" then
@@ -111,6 +121,9 @@ function LiveEventService.init()
 	pcall(function()
 		MessagingService:SubscribeAsync(TOPIC, function(message)
 			local data = message.Data
+			if type(data) == "table" and data.from == game.JobId then
+				return
+			end
 			if type(data) == "table" and data.stop then
 				apply(nil, true)
 			elseif LiveEvent.valid(data) then

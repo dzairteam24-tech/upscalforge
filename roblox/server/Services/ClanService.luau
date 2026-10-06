@@ -47,20 +47,24 @@ local function weekBoard(week: number): OrderedDataStore?
 	return if ok then board else nil
 end
 
-local function load(id: string, fresh: boolean?): Clan?
+-- Returns the clan (nil when it doesn't exist) and whether the read worked.
+local function load(id: string, fresh: boolean?): (Clan?, boolean)
 	local cached = cache[id]
 	if cached and not fresh and os.clock() - cached.at < CACHE_SECONDS then
-		return cached.clan
+		return cached.clan, true
 	end
 	if not store then
-		return nil
+		return nil, false
 	end
 	local ok, result = pcall(function()
 		return (store :: DataStore):GetAsync(key(id))
 	end)
-	local clan = if ok and type(result) == "table" then result :: Clan else nil
+	if not ok then
+		return if cached then cached.clan else nil, false
+	end
+	local clan = if type(result) == "table" then result :: Clan else nil
 	cache[id] = { clan = clan, at = os.clock() }
-	return clan
+	return clan, true
 end
 
 -- Runs `change` on the stored clan; it returns false to cancel. Returns the saved clan or nil.
@@ -69,9 +73,11 @@ local function update(id: string, change: (Clan?) -> (Clan?, boolean)): Clan?
 		return nil
 	end
 	local saved: Clan? = nil
+	local kept = false
 	local ok, err = pcall(function()
 		(store :: DataStore):UpdateAsync(key(id), function(old)
 			local clan, keep = change(old)
+			kept = keep
 			if not keep then
 				return nil
 			end
@@ -83,7 +89,10 @@ local function update(id: string, change: (Clan?) -> (Clan?, boolean)): Clan?
 		warn("[Clans] update failed", err)
 		return nil
 	end
-	cache[id] = { clan = saved, at = os.clock() }
+	-- A cancelled change (full clan, second kick today...) leaves the cache as it was
+	if kept then
+		cache[id] = { clan = saved, at = os.clock() }
+	end
 	return saved
 end
 
@@ -112,7 +121,7 @@ local function send(player: Player, message: string?)
 	if not data then
 		return
 	end
-	local clan = if data.clan.id ~= "" then load(data.clan.id) else nil
+	local clan = if data.clan.id ~= "" then (load(data.clan.id)) else nil
 	-- Removed by the owner while away
 	if clan and not clan.members[tostring(player.UserId)] then
 		data.clan.id = ""
@@ -413,9 +422,9 @@ function ClanService.init()
 		if data.clan.id == "" then
 			return
 		end
-		local clan = load(data.clan.id, true)
-		-- Removed from a clan that no longer exists, or kicked while away
-		if store and (clan == nil or not (clan :: Clan).members[tostring(player.UserId)]) then
+		local clan, readOk = load(data.clan.id, true)
+		-- Removed from a clan that no longer exists, or kicked while away (not when the read failed)
+		if store and readOk and (clan == nil or not (clan :: Clan).members[tostring(player.UserId)]) then
 			data.clan.id = ""
 			return
 		end

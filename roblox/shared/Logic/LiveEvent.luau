@@ -9,8 +9,9 @@ export type Command = { stop: boolean, stat: string?, mult: number?, minutes: nu
 
 local LiveEvent = {}
 
-function LiveEvent.isAdmin(userId: number, creatorId: number, isStudio: boolean): boolean
-	if isStudio or (creatorId > 0 and userId == creatorId) then
+-- `isOwner`: the game's owner, or the top rank of the group that owns it.
+function LiveEvent.isAdmin(userId: number, isOwner: boolean, isStudio: boolean): boolean
+	if isStudio or isOwner then
 		return true
 	end
 	return table.find(Config.ADMINS, userId) ~= nil

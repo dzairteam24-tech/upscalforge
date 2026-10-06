@@ -58,17 +58,32 @@ function Fishing.isPerfect(position: number): boolean
 	return math.abs(position - 0.5) <= Config.GREEN / 2
 end
 
+-- The server's check of a Perfect: the marker must have been in the green at some moment between
+-- `sinceBite - PERFECT_SLACK` (the tap travelled over the network) and `sinceBite`.
+function Fishing.perfectPlausible(sinceBite: number): boolean
+	local from = math.max(0, sinceBite - Config.PERFECT_SLACK)
+	local t = from
+	while t <= sinceBite do
+		if Fishing.isPerfect(Fishing.marker(t)) then
+			return true
+		end
+		t += 0.01
+	end
+	return Fishing.isPerfect(Fishing.marker(sinceBite))
+end
+
 -- The reel counts if it comes after the bite and before the window (plus network time) closes.
 function Fishing.inTime(sinceBite: number): boolean
 	return sinceBite >= 0 and sinceBite <= Config.REEL_WINDOW + Config.LATENCY
 end
 
-function Fishing.reward(f: Config.Fish, power: number, rng: () -> number): { coins: number, gems: number, tickets: number, elixir: { number }? }
+function Fishing.reward(f: Config.Fish, power: number, auto: boolean, rng: () -> number): { coins: number, gems: number, tickets: number, elixir: { number }? }
 	local rarity = Config.raritiesById[f.rarity]
+	local ticketRoll = rng()
 	return {
 		coins = math.floor(math.max(1, power) * rarity.coinSeconds),
 		gems = rarity.gems,
-		tickets = if rng() < rarity.ticketChance then 1 else 0,
+		tickets = if not auto and ticketRoll < rarity.ticketChance then 1 else 0,
 		elixir = if rng() < rarity.elixirChance then rarity.elixirTiers else nil,
 	}
 end
