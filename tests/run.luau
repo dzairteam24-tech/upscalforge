@@ -132,10 +132,14 @@ end)
 -- PetMath / Effects ----------------------------------------------------------------------------------------
 
 test("Power = species x variant x size", function()
-	eq(PetMath.basePower({ s = "Kitty", v = "Normal", z = "Normal" }), 2)
-	eq(PetMath.basePower({ s = "Kitty", v = "Pixel", z = "Normal" }), 20)
-	eq(PetMath.basePower({ s = "Kitty", v = "Pixel", z = "Big" }), 60)
-	eq(PetMath.basePower({ s = "Kitty", v = "Pixel", z = "Titan" }), 200)
+	local VariantsT = R(Shared.Config.Variants)
+	local SizesT = R(Shared.Config.Sizes)
+	local kitty = World1.species.Kitty.power
+	local pixel = VariantsT.byId.Pixel.mult
+	eq(PetMath.basePower({ s = "Kitty", v = "Normal", z = "Normal" }), kitty)
+	eq(PetMath.basePower({ s = "Kitty", v = "Pixel", z = "Normal" }), kitty * pixel)
+	eq(PetMath.basePower({ s = "Kitty", v = "Pixel", z = "Big" }), kitty * pixel * SizesT.byId.Big.mult)
+	eq(PetMath.basePower({ s = "Kitty", v = "Pixel", z = "Titan" }), kitty * pixel * SizesT.byId.Titan.mult)
 end)
 
 test("Big Uni hits twice", function()
@@ -145,8 +149,9 @@ end)
 test("Element bonus: Lava is x2 in Ice zones only", function()
 	local pets = { a = { s = "Cubby", v = "Lava", z = "Normal" } }
 	local none = Effects.empty()
-	eq((PetMath.teamPower(pets, { "a" }, "Ice", none)), 8)
-	eq((PetMath.teamPower(pets, { "a" }, "Fire", none)), 4)
+	local lava = World1.species.Cubby.power * R(Shared.Config.Variants).byId.Lava.mult
+	eq((PetMath.teamPower(pets, { "a" }, "Ice", none)), lava * R(Shared.Config.Constants).ELEMENT_BONUS)
+	eq((PetMath.teamPower(pets, { "a" }, "Fire", none)), lava)
 end)
 
 test("Titan Glowworm raises the element bonus to x4", function()
