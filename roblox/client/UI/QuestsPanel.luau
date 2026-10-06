@@ -1,7 +1,5 @@
 -- Quests (daily + weekly), the Battle Pass, and character style (titles and trails).
 
-local MarketplaceService = game:GetService("MarketplaceService")
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -383,8 +381,9 @@ function QuestsPanel.mount(gui: ScreenGui)
 			MaxTextSize = 17,
 		})
 		premiumButton.Activated:Connect(function()
+			-- Through the server like every product, so its checks (already owned...) run
 			if not pass.premium and product and product.id ~= 0 then
-				MarketplaceService:PromptProductPurchase(Players.LocalPlayer, product.id)
+				AdButton.buy(product.key)
 			end
 		end)
 		premiumButton.Parent = header

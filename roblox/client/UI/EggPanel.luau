@@ -218,7 +218,8 @@ function EggPanel.mount(gui: ScreenGui)
 					local unlocked = amount == 1
 						or (amount == 8 and (data.upgrades.Hatch8 or 0) > 0)
 						or (amount == 3 and (data.upgrades.Hatch3 or 0) > 0)
-					if chosen == 0 and unlocked and data.coins >= egg.price * amount and room >= amount then
+					-- Store.currency has the live coin count (the full snapshot is only re-sent on changes)
+					if chosen == 0 and unlocked and Store.currency.coins >= egg.price * amount and room >= amount then
 						chosen = amount
 					end
 				end
@@ -227,7 +228,7 @@ function EggPanel.mount(gui: ScreenGui)
 				elseif room < 1 then
 					autoHatch = false
 					Net.event("SetSetting"):FireServer("autoHatch", false)
-					updateButtons()
+					showAuto()
 					Notify.show("Auto hatch stopped: your storage is full", "error", 4)
 				end
 			end

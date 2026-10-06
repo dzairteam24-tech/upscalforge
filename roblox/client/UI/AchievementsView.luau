@@ -76,13 +76,17 @@ function AchievementsView.build(body: Instance, data: { [string]: any })
 	-- Achievements: unfinished first, then finished
 	local order = 1
 	local sorted = table.clone(AchievementConfig.list)
+	local position = {}
+	for i, achievement in AchievementConfig.list do
+		position[achievement.id] = i
+	end
 	table.sort(sorted, function(a, b)
 		local fa = (done[a.id] or 0) >= #a.goals
 		local fb = (done[b.id] or 0) >= #b.goals
 		if fa ~= fb then
 			return not fa
 		end
-		return false
+		return position[a.id] < position[b.id] -- stable: keep the config order
 	end)
 	for _, achievement in sorted do
 		order += 1

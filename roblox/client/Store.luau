@@ -33,11 +33,11 @@ function Store.init()
 	Net.event("Data").OnClientEvent:Connect(function(snapshot)
 		Store.data = snapshot
 		Store.dataTime = os.clock()
-		dataChanged:Fire(snapshot)
+		dataChanged:Fire() -- no argument: listeners read Store.data (a BindableEvent would copy the table per listener)
 	end)
 	Net.event("Currency").OnClientEvent:Connect(function(currency)
 		Store.currency = currency
-		currencyChanged:Fire(currency)
+		currencyChanged:Fire()
 	end)
 end
 

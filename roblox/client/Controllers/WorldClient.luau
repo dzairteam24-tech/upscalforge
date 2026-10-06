@@ -251,6 +251,7 @@ local SKILL_COLORS = {
 	EggDrop = Color3.fromRGB(180, 255, 140),
 	ComboAdd = Color3.fromRGB(255, 140, 60),
 	CloneArmy = Color3.fromRGB(190, 160, 255),
+	Drain = Color3.fromRGB(150, 255, 120),
 }
 
 ---------------------------------------------------------------------------------------------------------------
