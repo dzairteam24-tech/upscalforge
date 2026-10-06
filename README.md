@@ -11,6 +11,7 @@
 - **[العوالم الـ 15](docs/worlds.md):** الموضوع، الميكانيكية، المناطق والحراس
 - **[الأدوات والأنظمة](docs/items.md):** Boost Cards، Elixirs، Keys، Stickers، Gadgets، Expeditions، Arcade، Reload...
 - **[آراء اللاعبين](docs/player-feedback.md):** بحث على Pet Simulator 99 والألعاب المشابهة: واش يطلبو، واش يقلّقهم، وواش عندنا
+- **[صفحة اللعبة](docs/store-page.md):** الأيقونة، الصور، الاسم والوصف، وكيفاش ترفعهم
 - **[الـ Art](art/README.md):** الموديلات 3D وكيفاش تدخل للعبة
 - **[البرمجة](docs/dev.md):** كيفاش تشغل اللعبة، واش مبرمج، وواش باقي
 
