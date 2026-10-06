@@ -34,7 +34,7 @@ local steps: { Step } = {
 	{ event = "Hatch", goal = 300, text = "Hatch 300 eggs", say = "Every egg is a chance at something rare.", reward = { gems = 60, items = { { id = "Elixir_Luck_2", amount = 2 } } } },
 	{ event = "Boss", goal = 1, text = "Defeat a World Boss", say = "Every hour a boss lands in the town. Fight it with everyone!", reward = { gems = 80, tickets = 3 } },
 	{ event = "Zone", goal = 6, max = true, text = "Reach the Desert", say = "The Desert hides a Sphinx. Careful in the heat!", reward = { gems = 70 } },
-	{ event = "Trade", goal = 1, text = "Trade or sell at the Plaza", say = "Other players might have what you need. Try a trade!", reward = { gems = 60 } },
+	{ event = "Fish", goal = 10, text = "Catch 10 fish at the pond", say = "Need a break? The Fishing Pond in the town is very relaxing.", reward = { gems = 60 } },
 	{ event = "Restore", goal = 3, text = "Fully restore 3 zones", say = "The valley is coming back to life thanks to you.", reward = { gems = 90 } },
 	{ event = "Zone", goal = 7, max = true, text = "Reach Snow Peak", say = "Snow Peak is cold, but the Yeti is warm-hearted. Mostly.", reward = { gems = 90 } },
 	{ event = "Guardian", goal = 5, text = "Defeat 5 guardians", say = "Guardians may join you as Titans. Keep at it!", reward = { gems = 110, items = { { id = "Key_Golden", amount = 1 } } } },
@@ -45,7 +45,7 @@ local steps: { Step } = {
 	{ event = "Zone", goal = 10, max = true, text = "Reach the Pixel Zone", say = "The Pixel Zone! The Legendary Egg is there.", reward = { gems = 220 } },
 	{ event = "Boss", goal = 10, text = "Defeat 10 World Bosses", say = "The valley's bosses fear your team now.", reward = { gems = 250, tickets = 6 } },
 	{ event = "Reload", goal = 1, max = true, text = "Reload once", say = "A Reload makes you stronger for good. Ready for a fresh start?", reward = { gems = 300 } },
-	{ event = "Titan", goal = 1, text = "Get a Titan creature", say = "The last step: a Titan. Tame a guardian or hatch one. You can do it!", reward = { gems = 1000, title = "J_Hero", items = { { id = "Key_Golden", amount = 3 } } } },
+	{ event = "Guardian", goal = 25, text = "Defeat 25 guardians", say = "The last step: show every guardian of the valley who's the hero. You can do it!", reward = { gems = 1000, title = "J_Hero", items = { { id = "Key_Golden", amount = 3 } } } },
 }
 
 return {

@@ -332,6 +332,10 @@ function HUD.mount(gui: ScreenGui)
 			else
 				bossButton.Visible = false
 			end
+			-- New players (before zone 2) don't get pulled to the Hub
+			if not (Store.data and Unlocks.has(Store.data :: any, "Boss")) then
+				bossButton.Visible = false
+			end
 			local y = bannerTop() + (if liveLabel.Text ~= "" then 26 else 0) + (if riftLabel.Text ~= "" then 26 else 0)
 			bossButton.Position = UDim2.new(0.5, 0, 0, y)
 			task.wait(0.5)

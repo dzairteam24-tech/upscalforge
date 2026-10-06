@@ -1137,14 +1137,15 @@ test("Unlocks: systems open by best zone and stay open after a Reload", function
 	eq(UnlockLogic.has(data, "Trips"), false)
 	eq(UnlockLogic.has(data, "Daily"), true, "features without an unlock are always open")
 	data.unlockedZones["3"] = true
-	eq(UnlockLogic.has(data, "Trips"), true, "zone 3 is past zone 2")
-	eq(UnlockLogic.has(data, "Cartridges"), true)
-	eq(UnlockLogic.has(data, "Stickers"), false)
+	eq(UnlockLogic.has(data, "Trips"), true, "Trips open at zone 3")
+	eq(UnlockLogic.has(data, "Boss"), true, "zone 3 is past zone 2")
+	eq(UnlockLogic.has(data, "Cartridges"), false)
 	-- After a Reload the gates close, but the lifetime best zone keeps systems open
 	data.unlockedZones = { ["0"] = true, ["1"] = true }
-	data.stats.bestZone = 4
+	data.stats.bestZone = 6
 	eq(UnlockLogic.has(data, "Stickers"), true)
-	eq(#UnlockLogic.openedAt(3), 3, "Boost Cards, Spin and Clans")
+	eq(UnlockLogic.has(data, "Gadgets"), false)
+	eq(#UnlockLogic.openedAt(4), 2, "Boost Cards and Spin")
 end)
 
 test("Pity: Big is sure on the 10th try, Titan chance grows and is sure on the 100th", function()
@@ -1186,7 +1187,7 @@ end)
 
 test("Gem shop: buying, locked items, and Storage getting dearer", function()
 	local holder = shopper(1000)
-	eq((GemShopLogic.canBuy(holder, "CoinsCard", false, 10)), false, "Boost Cards open at zone 3")
+	eq((GemShopLogic.canBuy(holder, "CoinsCard", false, 10)), false, "Boost Cards are locked early")
 	assert(GemShopLogic.canBuy(holder, "CoinElixir2", false, 10))
 	GemShopLogic.buy(holder, "CoinElixir2", false, 10)
 	eq(holder.gems, 1000 - 30)
@@ -1435,12 +1436,12 @@ test("Events: UTC dates, the running event, tokens, bonus and the shop", functio
 	eq(EventLogic.bonus(spooky, "Coins"), 1)
 	eq(EventLogic.bonus(nil, "Gem"), 1)
 	local rng = makeRng(6)
-	eq(EventLogic.tokensFor(spooky, "Vault", rng), 5)
+	eq(EventLogic.tokensFor(spooky, "Vault", rng), spooky.tokens.Vault)
 	local piles = 0
 	for _ = 1, 10000 do
 		piles += EventLogic.tokensFor(spooky, "Pile", rng)
 	end
-	near(piles / 10000, 0.15, 0.02, "fractional tokens are a chance")
+	near(piles / 10000, spooky.tokens.Pile, 0.01, "fractional tokens are a chance")
 
 	local state = { tokens = 400, bought = {} }
 	assert(EventLogic.canBuy(spooky, state, "Title"))

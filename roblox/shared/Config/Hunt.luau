@@ -20,5 +20,5 @@ return {
 	GUARDIAN_TAME_CHANCE = 0.001,
 	TITAN_PITY = 500, -- the 500th guardian in a row is a sure tame
 	TITAN_PITY_STEP = 0.00005, -- +0.005% tame chance after every miss
-	GUARDIAN_GEMS = 25, -- x zone id
+	GUARDIAN_GEMS = 10, -- x zone id (first clears give more)
 }

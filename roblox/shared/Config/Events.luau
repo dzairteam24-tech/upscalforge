@@ -39,7 +39,8 @@ local function utc(year: number, month: number, day: number): number
 	return (era * 146097 + doe - 719468) * 86400
 end
 
-local TOKENS = { Pile = 0.15, Chest = 1, Safe = 2, Vault = 5, Big = 10, Guardian = 25, Boss = 40 }
+-- Tuned so the event shop takes days of play, not an hour
+local TOKENS = { Pile = 0.05, Chest = 0.4, Safe = 1, Vault = 2, Big = 5, Guardian = 15, Boss = 20 }
 
 local list: { Event } = {
 	{

@@ -41,6 +41,16 @@ local function publish()
 	ReplicatedStorage:SetAttribute("BossSource", if active then active.name else "")
 end
 
+-- Boss news goes to players who have the World Boss unlocked (zone 2), not to brand new players.
+local function announce(text: string, kind: string)
+	for _, player in Players:GetPlayers() do
+		local data = DataService.get(player)
+		if data and Unlocks.has(data, "Boss") then
+			GameService.notify(player, text, kind)
+		end
+	end
+end
+
 local function hubPosition(): Vector3
 	return MapLayout.center(0) + Vector3.new(0, 0, -12)
 end
@@ -65,7 +75,7 @@ local function spawn()
 	active = BreakableService.spawnSpecial(0, "Boss", pet, hubPosition(), Boss.health(total), BossConfig.LIFETIME)
 	endsAt = os.time() + BossConfig.LIFETIME
 	table.clear(powerSeen)
-	GameService.notifyAll(("👹 The World Boss %s landed in the Hub! Everyone, fight it together!"):format(pet.s), "rare")
+	announce(("👹 The World Boss %s landed in the Hub! Everyone, fight it together!"):format(pet.s), "rare")
 end
 
 local function payOut(contributors: { [Player]: number }, defeated: boolean)
@@ -130,9 +140,9 @@ local function finish(defeated: boolean, contributors: { [Player]: number })
 	endsAt = 0
 	local count = payOut(contributors, defeated)
 	if defeated then
-		GameService.notifyAll(("👹 The World Boss was defeated by %d player%s!"):format(count, if count == 1 then "" else "s"), "rare")
+		announce(("👹 The World Boss was defeated by %d player%s!"):format(count, if count == 1 then "" else "s"), "rare")
 	else
-		GameService.notifyAll("👹 The World Boss escaped... Next one in an hour!", "info")
+		announce("👹 The World Boss escaped... Next one in an hour!", "info")
 		if source then
 			BreakableService.despawn(source)
 		end
@@ -159,7 +169,7 @@ local function step()
 	end
 	if not warned and now >= nextAt - BossConfig.WARNING and #Players:GetPlayers() > 0 then
 		warned = true
-		GameService.notifyAll(("👹 A World Boss lands in the Hub in %s!"):format(Format.time(math.max(0, nextAt - now))), "rare")
+		announce(("👹 A World Boss lands in the Hub in %s!"):format(Format.time(math.max(0, nextAt - now))), "rare")
 	end
 	if now >= nextAt then
 		if #Players:GetPlayers() > 0 then

@@ -24,9 +24,9 @@ export type Rarity = {
 
 local rarities: { Rarity } = {
 	{ id = "Common", weight = 60, color = Color3.fromRGB(200, 200, 200), coinSeconds = 1, gems = 0, ticketChance = 0, elixirChance = 0, elixirTiers = { 1, 1 } },
-	{ id = "Uncommon", weight = 25, color = Color3.fromRGB(120, 220, 120), coinSeconds = 2, gems = 0, ticketChance = 0.3, elixirChance = 0, elixirTiers = { 1, 1 } },
-	{ id = "Rare", weight = 10.5, color = Color3.fromRGB(91, 184, 245), coinSeconds = 5, gems = 1, ticketChance = 0.5, elixirChance = 0, elixirTiers = { 1, 1 } },
-	{ id = "Epic", weight = 4, color = Color3.fromRGB(185, 120, 245), coinSeconds = 12, gems = 5, ticketChance = 1, elixirChance = 0.25, elixirTiers = { 1, 2 } },
+	{ id = "Uncommon", weight = 25, color = Color3.fromRGB(120, 220, 120), coinSeconds = 2, gems = 0, ticketChance = 0, elixirChance = 0, elixirTiers = { 1, 1 } },
+	{ id = "Rare", weight = 10.5, color = Color3.fromRGB(91, 184, 245), coinSeconds = 5, gems = 1, ticketChance = 0.2, elixirChance = 0, elixirTiers = { 1, 1 } },
+	{ id = "Epic", weight = 4, color = Color3.fromRGB(185, 120, 245), coinSeconds = 12, gems = 5, ticketChance = 0.5, elixirChance = 0.25, elixirTiers = { 1, 2 } },
 	{ id = "Legendary", weight = 0.5, color = Color3.fromRGB(255, 200, 60), coinSeconds = 30, gems = 25, ticketChance = 1, elixirChance = 1, elixirTiers = { 2, 3 } },
 }
 

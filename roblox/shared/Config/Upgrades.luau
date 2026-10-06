@@ -27,7 +27,7 @@ local list: { Upgrade } = {
 	{
 		id = "CoinMult",
 		name = "Coin Multiplier",
-		description = "+10% coins per level",
+		description = "+25% coins per level",
 		costs = geometric(1e3, 5, 10),
 	},
 	{
@@ -46,7 +46,7 @@ local list: { Upgrade } = {
 		id = "Storage",
 		name = "Storage",
 		description = "+50 creature storage",
-		costs = geometric(1e3, 3, 18),
+		costs = geometric(1e3, 2.5, 18), -- the last level is about 6B, reachable in World 1
 	},
 	{
 		id = "OfflineTime",
@@ -99,7 +99,7 @@ function Upgrades.maxLevel(id: string): number
 end
 
 function Upgrades.coinMult(level: number): number
-	return 1 + 0.1 * level
+	return 1 + 0.25 * level
 end
 
 function Upgrades.walkSpeedMult(level: number): number
