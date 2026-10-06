@@ -32,9 +32,6 @@ type Booth = { part: BasePart, owner: Player?, listings: { Listing } }
 
 local booths: { [number]: Booth } = {}
 
-local function newId(): string
-	return string.sub(HttpService:GenerateGUID(false):gsub("-", ""), 1, 16)
-end
 
 local function boothOf(player: Player): (number?, Booth?)
 	for id, booth in booths do
@@ -192,7 +189,7 @@ local function buy(player: Player, boothId: any, petId: any, seenPrice: any)
 	end
 
 	local moved = Inventory.remove(sellerData, petId) :: Pet
-	Inventory.add(buyerData, { s = moved.s, v = moved.v, z = moved.z, st = moved.st }, newId)
+	Inventory.add(buyerData, { s = moved.s, v = moved.v, z = moved.z, st = moved.st }, GameService.newId)
 	local earned = math.floor(listing.price * (1 - TAX))
 	buyerData.gems -= listing.price
 	sellerData.gems += earned

@@ -356,9 +356,7 @@ local Items = {
 	list = list,
 	byId = byId,
 	MAX_TIER = MAX_TIER,
-	MERGE_COST = 3,
 	BOOST_CAP_SECONDS = 4 * 3600,
-	baseFamilies = ELIXIRS,
 	cartridgeFamilies = CARTRIDGES,
 	sets = SETS,
 	ROMAN = ROMAN,
@@ -368,10 +366,6 @@ local Items = {
 
 function Items.stickerId(family: string, tier: number): string
 	return stickerId(family, tier)
-end
-
-function Items.stickerFamily(id: string): StickerFamily?
-	return stickerFamilies[id]
 end
 
 function Items.elixirId(family: string, tier: number): string

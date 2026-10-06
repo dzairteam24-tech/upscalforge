@@ -21,7 +21,6 @@ export type Runtime = {
 	effects: Effects.Effects,
 	gear: Gear.Gear, -- equipped cartridges
 	power: number, -- current coins per second in the player's zone
-	strongest: number,
 	vip: boolean,
 	passes: { [string]: boolean }, -- owned game passes by key
 	premium: boolean, -- Roblox Premium member
@@ -48,7 +47,6 @@ function State.create(player: Player): Runtime
 		effects = Effects.empty(),
 		gear = Gear.empty(),
 		power = 0,
-		strongest = 0,
 		vip = false,
 		passes = {},
 		premium = false,

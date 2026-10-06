@@ -350,7 +350,7 @@ function WorldClient.init()
 		floatingText(position + Vector3.new(0, 3, 0), prefix .. Format.abbrev(coins), color, if jackpot then 60 else 36)
 	end)
 
-	Net.event("SkillFx").OnClientEvent:Connect(function(kind: string, speciesId: string, size: string, _text: string, position: Vector3?)
+	Net.event("SkillFx").OnClientEvent:Connect(function(kind: string, speciesId: string, size: string, position: Vector3?)
 		local color = SKILL_COLORS[kind] or Color3.new(1, 1, 1)
 		if position then
 			ring(position, color)

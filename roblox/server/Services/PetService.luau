@@ -1,6 +1,5 @@
 -- Hatching, team management, locking, deleting and fusion.
 
-local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -31,9 +30,6 @@ end
 local HatchResult = Net.event("HatchResult")
 local rng = Random.new()
 
-local function newId(): string
-	return string.sub(HttpService:GenerateGUID(false):gsub("-", ""), 1, 16)
-end
 
 local function random(): number
 	return rng:NextNumber()
@@ -94,7 +90,7 @@ local function grant(
 			local deleted = roll.z == "Normal"
 				and data.settings["autoDelete" .. roll.v] == true
 				and data.index[roll.s .. "|" .. roll.v] == true
-			local id = if deleted then "" else Inventory.add(data, roll, newId)
+			local id = if deleted then "" else Inventory.add(data, roll, GameService.newId)
 			data.stats.hatches = (data.stats.hatches or 0) + 1
 			GameService.Hatched:Fire(player, roll.s, roll.v)
 			if Variants.byId[roll.v].order >= 2 then
@@ -286,7 +282,7 @@ function PetService.init()
 		if fromSkill and fromSkill < cost then
 			cost = fromSkill
 		end
-		local id, err = Inventory.fuse(data, speciesId, variantId, cost, newId)
+		local id, err = Inventory.fuse(data, speciesId, variantId, cost, GameService.newId)
 		if not id then
 			GameService.notify(player, err or "Can't fuse", "error")
 			return

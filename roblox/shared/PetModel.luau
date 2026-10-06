@@ -110,11 +110,6 @@ function PetModel.useModels(root: Instance?)
 	PetModel.reset()
 end
 
-function PetModel.hasModels(): boolean
-	local found = index()
-	return found ~= nil and next(found) ~= nil
-end
-
 -- Measures a species' parts once: which way the face looks, the size of the body, and each part's offset
 -- from the model's center (front is -Z, like the block version).
 local function template(speciesId: string): Template?

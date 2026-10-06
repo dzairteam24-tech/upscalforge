@@ -27,10 +27,6 @@ function RewardService.register(key: string, handler: Handler)
 	handlers[key] = handler
 end
 
-function RewardService.has(key: string): boolean
-	return handlers[key] ~= nil
-end
-
 function RewardService.canUse(player: Player, key: string, context: any): (boolean, string?)
 	local handler = handlers[key]
 	if not handler then

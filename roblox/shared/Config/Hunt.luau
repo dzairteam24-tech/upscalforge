@@ -15,6 +15,7 @@ return {
 	-- Guardian
 	GUARDIAN_COOLDOWN = 4 * 3600,
 	GUARDIAN_LIFETIME = 300,
+	GUARDIAN_REST = 60, -- seconds a zone waits for its next guardian after one is beaten or leaves
 	GUARDIAN_COINS = 0.5, -- x zone restore goal
 	-- About 200 guardian wins per Titan on average (several days of play), so Titans stay rare
 	GUARDIAN_TAME_CHANCE = 0.001,

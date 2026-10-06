@@ -24,7 +24,7 @@ local State = require(script.Parent.State)
 
 type PlayerData = Types.PlayerData
 
-local ArcadeService = {}
+local SpinService = {}
 
 local rng = Random.new()
 
@@ -129,7 +129,7 @@ local function spinRequest(player: Player, mode: any)
 	spin(player)
 end
 
-function ArcadeService.init()
+function SpinService.init()
 	Net.event("SpinWheel").OnServerEvent:Connect(spinRequest)
 	RewardService.register("Spin", {
 		canUse = function(player)
@@ -146,4 +146,4 @@ function ArcadeService.init()
 	})
 end
 
-return ArcadeService
+return SpinService

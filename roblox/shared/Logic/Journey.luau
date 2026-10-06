@@ -12,10 +12,6 @@ function Journey.current(state: State): JourneyConfig.Step?
 	return JourneyConfig.steps[state.step]
 end
 
-function Journey.finished(state: State): boolean
-	return state.step > #JourneyConfig.steps
-end
-
 function Journey.isDone(state: State): boolean
 	local step = Journey.current(state)
 	return step ~= nil and state.progress >= step.goal

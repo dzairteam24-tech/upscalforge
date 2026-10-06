@@ -2,7 +2,6 @@
 -- (tame chance, 4 hour cooldown per player and zone).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local FirstClearConfig = require(Shared.Config.FirstClear)
@@ -31,11 +30,6 @@ local activeBig: { [number]: BreakableService.Source } = {}
 local activeGuardian: { [number]: BreakableService.Source } = {}
 -- After a guardian is beaten or leaves, the zone rests before the next one (os.clock())
 local guardianRest: { [number]: number } = {}
-local GUARDIAN_REST = 60
-
-local function newId(): string
-	return string.sub(HttpService:GenerateGUID(false):gsub("-", ""), 1, 16)
-end
 
 local function playersInZone(zoneId: number): { Player }
 	local out = {}
@@ -45,12 +39,6 @@ local function playersInZone(zoneId: number): { Player }
 		end
 	end
 	return out
-end
-
-local function notifyZone(zoneId: number, text: string, kind: string)
-	for _, player in playersInZone(zoneId) do
-		GameService.notify(player, text, kind)
-	end
 end
 
 local function describe(pet: { s: string, v: string, z: string }): string
@@ -93,7 +81,7 @@ local function spawnBig(zoneId: number)
 	local pet = { s = roll.s, v = roll.v, z = "Big" }
 	local coins = zone.restoreGoal * Hunt.BIG_COINS
 	activeBig[zoneId] = BreakableService.spawnSpecial(zoneId, "Big", pet, randomSpot(zoneId), coins, Hunt.BIG_LIFETIME)
-	notifyZone(zoneId, ("A %s appeared! Collect from it to catch it."):format(describe(pet)), "rare")
+	GameService.notifyZone(zoneId, ("A %s appeared! Collect from it to catch it."):format(describe(pet)), "rare")
 end
 
 local function spawnGuardian(zoneId: number, eligible: { Player })
@@ -108,7 +96,7 @@ local function spawnGuardian(zoneId: number, eligible: { Player })
 		(source.special :: BreakableService.Special).eligible[player] = true
 	end
 	activeGuardian[zoneId] = source
-	notifyZone(zoneId, ("The guardian of %s, %s, has appeared!"):format(zone.name, describe(pet)), "rare")
+	GameService.notifyZone(zoneId, ("The guardian of %s, %s, has appeared!"):format(zone.name, describe(pet)), "rare")
 end
 
 local function guardianReady(player: Player, zoneId: number): boolean
@@ -142,7 +130,7 @@ local function onBroken(source: BreakableService.Source, contributors: { [Player
 				GameService.notify(player, "Your storage is full, the Big got away! Make room to catch the next one.", "error")
 			elseif rng:NextNumber() < chance then
 				data.pity.big = 0
-				Inventory.add(data, special.pet, newId)
+				Inventory.add(data, special.pet, GameService.newId)
 				GameService.progress(player, "BigCatch", 1)
 				GameService.notify(player, ("You caught a %s!"):format(describe(special.pet)), "rare")
 				GameService.refresh(player)
@@ -165,40 +153,39 @@ local function onBroken(source: BreakableService.Source, contributors: { [Player
 			end
 			GameService.progress(player, "Guardian", 1)
 			data.gems += Hunt.GUARDIAN_GEMS * zoneId
-			if special.eligible[player] then
-				data.guardians[tostring(zoneId)] = os.time() + Hunt.GUARDIAN_COOLDOWN
-				if FirstClear.mark(data.clears, FirstClear.guardianKey(zoneId)) then
-					data.gems += FirstClearConfig.GUARDIAN_GEMS * zoneId
-					GameService.notify(
-						player,
-						("⭐ First clear! Coins +%d%% forever (now +%d%%) and 💎 %d"):format(
-							FirstClearConfig.GUARDIAN_COINS * 100,
-							math.floor((FirstClear.coinMult(data.clears) - 1) * 100 + 0.5),
-							FirstClearConfig.GUARDIAN_GEMS * zoneId
-						),
-						"rare"
-					)
-				end
-				local chance = Pity.chance(Hunt.GUARDIAN_TAME_CHANCE, data.pity.titan, Hunt.TITAN_PITY, Hunt.TITAN_PITY_STEP)
-				if Inventory.count(data) >= GameService.capacity(player) then
-					GameService.notify(player, "Your storage is full, so the Titan couldn't join you. Make room first!", "error")
-				elseif rng:NextNumber() < chance then
-					data.pity.titan = 0
-					Inventory.add(data, special.pet, newId)
-					GameService.progress(player, "Titan", 1)
-					GameService.notifyAll(("👑 %s TAMED %s!"):format(player.DisplayName, describe(special.pet)), "rare")
-				else
-					data.pity.titan += 1
-					local nextChance = Pity.chance(Hunt.GUARDIAN_TAME_CHANCE, data.pity.titan, Hunt.TITAN_PITY, Hunt.TITAN_PITY_STEP)
-					GameService.notify(
-						player,
-						("Guardian defeated! Next tame chance: %s (sure in %d). Back in 4 hours."):format(
-							Format.chance(nextChance),
-							Pity.left(data.pity.titan, Hunt.TITAN_PITY)
-						),
-						"success"
-					)
-				end
+			data.guardians[tostring(zoneId)] = os.time() + Hunt.GUARDIAN_COOLDOWN
+			if FirstClear.mark(data.clears, FirstClear.guardianKey(zoneId)) then
+				data.gems += FirstClearConfig.GUARDIAN_GEMS * zoneId
+				GameService.notify(
+					player,
+					("⭐ First clear! Coins +%d%% forever (now +%d%%) and 💎 %d"):format(
+						FirstClearConfig.GUARDIAN_COINS * 100,
+						math.floor((FirstClear.coinMult(data.clears) - 1) * 100 + 0.5),
+						FirstClearConfig.GUARDIAN_GEMS * zoneId
+					),
+					"rare"
+				)
+			end
+			local chance = Pity.chance(Hunt.GUARDIAN_TAME_CHANCE, data.pity.titan, Hunt.TITAN_PITY, Hunt.TITAN_PITY_STEP)
+			if Inventory.count(data) >= GameService.capacity(player) then
+				GameService.notify(player, "Your storage is full, so the Titan couldn't join you. Make room first!", "error")
+			elseif rng:NextNumber() < chance then
+				data.pity.titan = 0
+				Inventory.add(data, special.pet, GameService.newId)
+				GameService.progress(player, "Titan", 1)
+				GameService.notifyAll(("👑 %s TAMED %s!"):format(player.DisplayName, describe(special.pet)), "rare")
+			else
+				data.pity.titan += 1
+				local nextChance = Pity.chance(Hunt.GUARDIAN_TAME_CHANCE, data.pity.titan, Hunt.TITAN_PITY, Hunt.TITAN_PITY_STEP)
+				GameService.notify(
+					player,
+					("Guardian defeated! Next tame chance: %s (sure in %d). Back in %s."):format(
+						Format.chance(nextChance),
+						Pity.left(data.pity.titan, Hunt.TITAN_PITY),
+						Format.time(Hunt.GUARDIAN_COOLDOWN)
+					),
+					"success"
+				)
 			end
 			GameService.refresh(player)
 		end
@@ -208,7 +195,7 @@ local function onBroken(source: BreakableService.Source, contributors: { [Player
 	end
 	if activeGuardian[zoneId] == source then
 		activeGuardian[zoneId] = nil
-		guardianRest[zoneId] = os.clock() + GUARDIAN_REST
+		guardianRest[zoneId] = os.clock() + Hunt.GUARDIAN_REST
 	end
 	BreakableService.despawn(source)
 end
@@ -225,7 +212,7 @@ local function step()
 		-- Big
 		local big = activeBig[zoneId]
 		if big and big.alive and now > (big.special :: BreakableService.Special).expires then
-			notifyZone(zoneId, "The Big ran away...", "info")
+			GameService.notifyZone(zoneId, "The Big ran away...", "info")
 			BreakableService.despawn(big)
 			activeBig[zoneId] = nil
 			big = nil
@@ -241,10 +228,10 @@ local function step()
 		-- Guardian
 		local guardian = activeGuardian[zoneId]
 		if guardian and guardian.alive and now > (guardian.special :: BreakableService.Special).expires then
-			notifyZone(zoneId, "The guardian left. It will be back in a minute.", "info")
+			GameService.notifyZone(zoneId, "The guardian left. It will be back in a minute.", "info")
 			BreakableService.despawn(guardian)
 			activeGuardian[zoneId] = nil
-			guardianRest[zoneId] = now + GUARDIAN_REST
+			guardianRest[zoneId] = now + Hunt.GUARDIAN_REST
 			guardian = nil
 		end
 		local eligible = {}

@@ -17,7 +17,6 @@ type Profile = {
 	data: PlayerData,
 	canSave: boolean,
 	saving: boolean,
-	released: boolean,
 }
 
 local DataService = {}
@@ -219,15 +218,11 @@ function DataService.canSave(player: Player): boolean
 	return profile ~= nil and profile.canSave
 end
 
-function DataService.isLoaded(player: Player): boolean
-	return profiles[player] ~= nil
-end
-
 local function onPlayerAdded(player: Player)
 	local data, canSave = loadFromStore(player)
 	if not player.Parent then
 		if data and canSave then
-			profiles[player] = { data = data, canSave = canSave, saving = false, released = false }
+			profiles[player] = { data = data, canSave = canSave, saving = false }
 			DataService.save(player, true)
 			profiles[player] = nil
 		end
@@ -237,7 +232,7 @@ local function onPlayerAdded(player: Player)
 		player:Kick("We couldn't load your data. Please rejoin in a minute.")
 		return
 	end
-	profiles[player] = { data = data, canSave = canSave, saving = false, released = false }
+	profiles[player] = { data = data, canSave = canSave, saving = false }
 	DataService.Loaded:Fire(player, data)
 end
 
@@ -253,7 +248,6 @@ local function onPlayerRemoving(player: Player)
 		end
 	end
 	DataService.save(player, true)
-	profile.released = true
 	profiles[player] = nil
 end
 

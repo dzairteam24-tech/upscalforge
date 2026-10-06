@@ -124,6 +124,11 @@ local hatchEggs: ((Player, number, number, number, string?) -> ())? = nil
 ---------------------------------------------------------------------------------------------------------------
 -- Helpers
 
+-- Short unique id for a new creature.
+function GameService.newId(): string
+	return string.sub(HttpService:GenerateGUID(false):gsub("-", ""), 1, 16)
+end
+
 function GameService.notify(player: Player, text: string, kind: string?)
 	NotifyRemote:FireClient(player, text, kind or "info")
 end
@@ -353,16 +358,13 @@ function GameService.refresh(player: Player)
 	runtime.dirtyData = true
 end
 
-local function computePower(player: Player, runtime: State.Runtime, data: PlayerData, now: number)
+local function computePower(runtime: State.Runtime, data: PlayerData, now: number)
 	local boosts = {
 		Power = State.boost(runtime, "Power", now) * Boosts.active(data.boosts, "Power") * Gear.get(runtime.gear, "Power"),
 		Element = if State.boost(runtime, "Element", now) > 1 then State.boost(runtime, "Element", now) else nil,
 		CloneCount = if State.boost(runtime, "Clone", now) > 1 then State.boost(runtime, "Clone", now) else nil,
 	}
-	local power, strongest =
-		PetMath.teamPower(data.pets, data.equipped, zoneElement(runtime.zoneId), runtime.effects, boosts)
-	runtime.power = power
-	runtime.strongest = strongest
+	runtime.power = PetMath.teamPower(data.pets, data.equipped, zoneElement(runtime.zoneId), runtime.effects, boosts)
 end
 
 local function comboActive(runtime: State.Runtime, now: number): boolean
@@ -572,7 +574,7 @@ local function runPeriodic(player: Player, runtime: State.Runtime, data: PlayerD
 	local zone = if zoneId then World1.zonesById[zoneId] else nil
 	local inPlayZone = zone ~= nil and zone.id > 0
 	local kind = spec.kind
-	local fxText: string? = nil
+	local showFx = true
 
 	if kind == "Strike" or kind == "Wave" or kind == "Smash" then
 		if not inPlayZone then
@@ -605,7 +607,7 @@ local function runPeriodic(player: Player, runtime: State.Runtime, data: PlayerD
 		for _, source in picked do
 			GameService.collectFrom(player, source, source.coinsLeft)
 		end
-		fxText = if #picked > 0 then nil else ""
+		showFx = #picked > 0
 	elseif kind == "Area" or kind == "Drain" then
 		if not inPlayZone then
 			return
@@ -626,9 +628,6 @@ local function runPeriodic(player: Player, runtime: State.Runtime, data: PlayerD
 	elseif kind == "Boost" then
 		local stat = spec.stat or "Coins"
 		State.addBoost(runtime, stat, spec.mult or 1, spec.duration or 10, now)
-		if stat == "Respawn" then
-			State.addBoost(runtime, "Respawn", 2, spec.duration or 10, now)
-		end
 	elseif kind == "CloneArmy" then
 		State.addBoost(runtime, "Clone", spec.count or 1, spec.duration or 10, now)
 	elseif kind == "Rain" then
@@ -648,9 +647,8 @@ local function runPeriodic(player: Player, runtime: State.Runtime, data: PlayerD
 	end
 
 	local pet = data.pets[entry.petId]
-	if pet and fxText ~= "" then
-		local skill = Effects.skillFor(pet)
-		SkillFx:FireClient(player, kind, pet.s, pet.z, if skill then skill.text else "", center(player, runtime))
+	if pet and showFx then
+		SkillFx:FireClient(player, kind, pet.s, pet.z, center(player, runtime))
 	end
 end
 
@@ -922,9 +920,7 @@ local function giveStarterPack(player: Player, data: PlayerData)
 	end
 	data.flags.starterGiven = true
 	for _, speciesId in STARTER_PETS do
-		Inventory.add(data, { s = speciesId, v = "Normal", z = "Normal" }, function()
-			return string.sub(HttpService:GenerateGUID(false):gsub("-", ""), 1, 16)
-		end)
+		Inventory.add(data, { s = speciesId, v = "Normal", z = "Normal" }, GameService.newId)
 	end
 	data.coins += STARTER_COINS
 	Inventory.equipBest(data, GameService.maxSlots(player))
@@ -989,7 +985,6 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		stats = data.stats,
 		titles = data.titles,
 		settings = data.settings,
-		tradeHistory = data.tradeHistory,
 		items = data.items,
 		boosts = data.boosts,
 		daily = data.daily,
@@ -1037,7 +1032,6 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		playtime = data.playtime,
 		maxSlots = GameService.maxSlots(player),
 		capacity = GameService.capacity(player),
-		vip = (State.get(player) :: State.Runtime).vip,
 	}
 end
 
@@ -1081,7 +1075,7 @@ local function tickPlayer(player: Player, runtime: State.Runtime, data: PlayerDa
 		runtime.combo = 0
 	end
 
-	computePower(player, runtime, data, now)
+	computePower(runtime, data, now)
 
 	-- Pick a target
 	local source = if runtime.target then BreakableService.get(runtime.target) else nil

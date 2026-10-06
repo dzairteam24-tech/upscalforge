@@ -62,9 +62,9 @@ local KEY_ACTIONS: { [string]: (Player, PlayerData, State.Runtime, number) -> nu
 		)
 		return count
 	end,
-	Key_Golden = function(player, data, _runtime, count)
+	Key_Golden = function(player, data, runtime, count)
 		-- Only open as many as storage can hold, so a key is never wasted
-		local perEgg = 1 + math.floor(Effects.get(_runtime.effects, "EggExtra"))
+		local perEgg = 1 + math.floor(Effects.get(runtime.effects, "EggExtra"))
 		local room = GameService.capacity(player) - Inventory.count(data)
 		count = math.min(count, MAX_BULK_GOLDEN, room // (3 * perEgg))
 		if count <= 0 then

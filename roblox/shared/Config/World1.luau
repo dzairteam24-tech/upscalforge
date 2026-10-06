@@ -467,7 +467,7 @@ local rows: { { any } } = {
 		{
 			text = "Lava chance x5. Freeze: every minute, sources respawn instantly for 20s.",
 			passive = passive("VariantChance", 5, "Lava"),
-			periodic = { { kind = "Boost", every = 60, stat = "Respawn", mult = 1, duration = 20 } :: Periodic },
+			periodic = { { kind = "Boost", every = 60, stat = "Respawn", mult = 2, duration = 20 } :: Periodic },
 		},
 	},
 	{
