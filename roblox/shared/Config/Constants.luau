@@ -60,7 +60,7 @@ local Constants = {
 	-- Data
 	AUTOSAVE_SECONDS = 60,
 	DATASTORE_NAME = "Cubelings_PlayerData_v1",
-	SESSION_LOCK_SECONDS = 1800,
+	SESSION_LOCK_SECONDS = 300, -- autosave renews it every minute; a crashed server frees players within 5 min
 }
 
 return Constants

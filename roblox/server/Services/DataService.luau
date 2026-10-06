@@ -165,26 +165,44 @@ function DataService.save(player: Player, release: boolean?): boolean
 	if not profile or not profile.canSave or not store then
 		return false
 	end
-	if profile.saving and not release then
+	-- One write at a time: wait for a save in progress (autosave, trade) instead of skipping this one
+	local waited = 0
+	while profile.saving and waited < 15 do
+		waited += task.wait(0.1)
+	end
+	if profile.saving then
 		return false
 	end
 	profile.saving = true
 	local jobId = if game.JobId ~= "" then game.JobId else "studio"
 	profile.data.lastSeen = os.time()
-	local ok, err = pcall(function()
-		(store :: DataStore):UpdateAsync(key(player), function(saved: any)
-			saved = saved or {}
-			if saved.lock and saved.lock.jobId ~= jobId and lockIsFresh(saved.lock) then
-				return nil -- another server owns this player now
-			end
-			saved.data = profile.data
-			saved.lock = if release then nil else { jobId = jobId, time = os.time() }
-			return saved
+	local ok, err, lockLost = false, nil, false
+	-- The last save when leaving is retried, so a hiccup doesn't lose the session or keep the lock
+	for attempt = 1, if release then 3 else 1 do
+		lockLost = false
+		ok, err = pcall(function()
+			(store :: DataStore):UpdateAsync(key(player), function(saved: any)
+				saved = saved or {}
+				if saved.lock and saved.lock.jobId ~= jobId and lockIsFresh(saved.lock) then
+					lockLost = true
+					return nil -- another server owns this player now
+				end
+				saved.data = profile.data
+				saved.lock = if release then nil else { jobId = jobId, time = os.time() }
+				return saved
+			end)
 		end)
-	end)
+		if ok or attempt == 3 then
+			break
+		end
+		task.wait(2)
+	end
 	profile.saving = false
 	if not ok then
 		warn(("[Data] Save failed for %s: %s"):format(player.Name, tostring(err)))
+	elseif lockLost then
+		warn(("[Data] %s is loaded on another server; this save was skipped"):format(player.Name))
+		return false
 	end
 	return ok
 end

@@ -246,6 +246,13 @@ function GameService.markDirty(player: Player)
 	end
 end
 
+-- MembershipService registers how to read game passes and Premium; it runs before the first refresh,
+-- so pass slots and VIP perks count from the start (avoids a require cycle).
+local passLoader: ((Player) -> ())? = nil
+function GameService.setPassLoader(fn: (Player) -> ())
+	passLoader = fn
+end
+
 -- Lets PetService register the hatch function used by EggDrop skills (avoids a require cycle).
 function GameService.setHatcher(fn: (Player, number, number, number, string?) -> ())
 	hatchEggs = fn
@@ -926,6 +933,16 @@ local function onLoaded(player: Player, data: PlayerData)
 	local runtime = State.create(player)
 	-- Auto farm picks up where it was after a rejoin (an AFK kick, a server restart)
 	runtime.auto = data.settings.autoFarm == true
+	-- Passes first: the team size (VIP, Team Slots) and VIP offline hours depend on them
+	if passLoader then
+		local ok, err = pcall(passLoader :: (Player) -> (), player)
+		if not ok then
+			warn("[Game] pass check failed", err)
+		end
+		if not player.Parent or State.get(player) ~= runtime then
+			return
+		end
+	end
 	giveStarterPack(player, data)
 	leaderstats(player)
 	GameService.refresh(player)
@@ -941,11 +958,9 @@ local function onLoaded(player: Player, data: PlayerData)
 end
 
 -- Runs before the final save so offline earnings use the team the player left with.
-local function storeLastPower(player: Player, data: PlayerData)
-	local runtime = State.get(player)
-	if runtime then
-		data.lastPower = PetMath.teamPower(data.pets, data.equipped, "Neutral", runtime.effects)
-	end
+-- Doesn't use the runtime state: it may already be gone when the player leaves.
+local function storeLastPower(_player: Player, data: PlayerData)
+	data.lastPower = PetMath.teamPower(data.pets, data.equipped, "Neutral", Effects.collect(data.pets, data.equipped))
 end
 
 local function onRemoving(player: Player)

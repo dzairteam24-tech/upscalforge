@@ -38,6 +38,7 @@ local function apply(player: Player)
 	GameService.refreshTitles(player)
 end
 
+-- Called by GameService when the player's data loads, before the first refresh.
 local function load(player: Player)
 	local runtime = State.get(player)
 	if not runtime then
@@ -49,7 +50,7 @@ local function load(player: Player)
 		end
 	end
 	runtime.premium = player.MembershipType == Enum.MembershipType.Premium
-	apply(player)
+	runtime.vip = runtime.passes.VIP == true
 end
 
 -- Teleport pass: jump to the middle of any unlocked zone (or the hub).
@@ -76,9 +77,7 @@ local function teleport(player: Player, zoneId: any)
 end
 
 function MembershipService.init()
-	DataService.Loaded:Connect(function(player: Player, _data: PlayerData)
-		load(player)
-	end)
+	GameService.setPassLoader(load)
 
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
 		if not purchased then
