@@ -110,6 +110,22 @@ function Theme.button(props: { [string]: any }): TextButton
 end
 
 -- A centered window with a title and close button. Returns the window and its content frame.
+Theme.WINDOW_MIN_HEIGHT = 440
+
+-- Size in layout units (offsets) of something inside a window that may be scaled down on phones.
+function Theme.layoutSize(gui: GuiObject): Vector2
+	local scale = 1
+	local node: Instance? = gui
+	while node do
+		local scaler = node:FindFirstChildOfClass("UIScale")
+		if scaler then
+			scale *= scaler.Scale
+		end
+		node = node.Parent
+	end
+	return gui.AbsoluteSize / math.max(0.01, scale)
+end
+
 function Theme.window(parent: Instance, title: string, onClose: () -> ()): (Frame, Frame)
 	local window = Theme.frame({
 		Name = title,
@@ -118,6 +134,7 @@ function Theme.window(parent: Instance, title: string, onClose: () -> ()): (Fram
 		Size = UDim2.fromScale(0.62, 0.72),
 		BackgroundColor3 = Theme.bg,
 		Visible = false,
+		ZIndex = 5, -- above the HUD and guide banner; notifications and hatches draw above windows
 	})
 	Theme.corner(window, 16)
 	Theme.stroke(window, Color3.fromRGB(10, 12, 22), 3)
@@ -152,6 +169,32 @@ function Theme.window(parent: Instance, title: string, onClose: () -> ()): (Fram
 		Size = UDim2.new(1, -24, 1, -68),
 	})
 	content.Parent = window
+
+	-- Short screens (phones): the window fills most of the screen and its contents scale down a little,
+	-- so every layout gets at least WINDOW_MIN_HEIGHT of room to work with.
+	local scaler = Instance.new("UIScale")
+	scaler.Parent = window
+	local function fit()
+		local screen = if parent:IsA("GuiBase2d") then (parent :: GuiBase2d).AbsoluteSize else Vector2.zero
+		if screen.Y <= 0 then
+			local camera = workspace.CurrentCamera
+			screen = if camera then camera.ViewportSize else Vector2.new(1280, 720)
+		end
+		if screen.Y < 560 then
+			local s = math.clamp(screen.Y * 0.94 / Theme.WINDOW_MIN_HEIGHT, 0.6, 1)
+			scaler.Scale = s
+			window.Size = UDim2.fromScale(0.96 / s, 0.94 / s)
+			window.Position = UDim2.fromScale(0.5, 0.5)
+		else
+			scaler.Scale = 1
+			window.Size = UDim2.fromScale(0.62, 0.72)
+			window.Position = UDim2.fromScale(0.5, 0.52)
+		end
+	end
+	fit()
+	if parent:IsA("GuiBase2d") then
+		(parent :: GuiBase2d):GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	end
 	window.Parent = parent
 	return window, content
 end

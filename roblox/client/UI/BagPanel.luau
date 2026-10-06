@@ -253,16 +253,18 @@ function BagPanel.mount(gui: ScreenGui)
 		Text = "",
 		Font = Enum.Font.Gotham,
 		TextColor3 = Theme.muted,
-		Size = UDim2.new(1, -12, 0.42, 0),
+		Size = UDim2.new(1, -12, 1, -258), -- down to the buttons
 		Position = UDim2.fromOffset(6, 42),
 		TextYAlignment = Enum.TextYAlignment.Top,
 		MaxTextSize = 15,
 	})
 	info.Parent = side
+	-- Four 44px buttons pinned to the bottom, so they never spill out of the window
 	local buttons = Theme.frame({
 		BackgroundTransparency = 1,
-		Position = UDim2.new(0, 8, 0.55, 0),
-		Size = UDim2.new(1, -16, 0.45, -8),
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 8, 1, -8),
+		Size = UDim2.new(1, -16, 0, 4 * 44 + 3 * 8),
 	})
 	Theme.list(buttons, 8)
 	buttons.Parent = side

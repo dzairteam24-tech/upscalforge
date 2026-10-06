@@ -140,6 +140,7 @@ function TradePanel.mount(gui: ScreenGui)
 		Size = UDim2.fromScale(1, 1),
 		Visible = false,
 		ZIndex = 5,
+		Active = true, -- blocks taps on the offer underneath while confirming
 	})
 	Theme.corner(confirm, 12)
 	confirm.Parent = tradeView

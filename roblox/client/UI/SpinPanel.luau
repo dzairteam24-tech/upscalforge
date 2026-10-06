@@ -92,7 +92,7 @@ function SpinPanel.mount(gui: ScreenGui)
 
 	-- Lines up cell `i` under the marker.
 	local function offsetFor(i: number): number
-		local width = reelWindow.AbsoluteSize.X
+		local width = Theme.layoutSize(reelWindow).X
 		return width / 2 - ((i - 1) * (CELL + GAP) + CELL / 2)
 	end
 

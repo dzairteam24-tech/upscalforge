@@ -85,14 +85,14 @@ function HatchPopup.mount(gui: ScreenGui)
 		BackgroundTransparency = 1,
 		Visible = false,
 	})
-	holder.ZIndex = 2
+	holder.ZIndex = 8
 	local fxLayer = Theme.frame({
 		Name = "HatchFx",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.42),
 		Size = UDim2.fromOffset(600, 160),
 		BackgroundTransparency = 1,
-		ZIndex = 1,
+		ZIndex = 7,
 		Visible = false,
 	})
 	fxLayer.Parent = gui
@@ -100,6 +100,9 @@ function HatchPopup.mount(gui: ScreenGui)
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.VerticalAlignment = Enum.VerticalAlignment.Center
 	holder.Parent = gui
+	-- Up to 8 cards (about 870 wide): shrink them to fit narrow screens
+	local fitScale = Instance.new("UIScale")
+	fitScale.Parent = holder
 
 	local token = 0
 	Net.event("HatchResult").OnClientEvent:Connect(function(results: { { [string]: any } }, _free: boolean)
@@ -110,6 +113,10 @@ function HatchPopup.mount(gui: ScreenGui)
 				child:Destroy()
 			end
 		end
+		local shown = math.min(8, #results)
+		local needed = shown * 110 + 20
+		holder.Size = UDim2.fromOffset(math.max(600, needed), 160)
+		fitScale.Scale = math.min(1, gui.AbsoluteSize.X * 0.95 / math.max(600, needed))
 		local best = 1
 		local bestPet = results[1]
 		for i, pet in results do
@@ -117,6 +124,7 @@ function HatchPopup.mount(gui: ScreenGui)
 				break
 			end
 			local card = PetCard.create(pet :: any)
+			card.Interactable = false -- just a picture: taps go through to the world
 			card.Size = UDim2.fromOffset(100, 0)
 			card.LayoutOrder = i
 			if pet.deleted then

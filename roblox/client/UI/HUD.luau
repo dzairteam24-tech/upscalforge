@@ -261,6 +261,14 @@ function HUD.mount(gui: ScreenGui)
 		MaxTextSize = 18,
 	})
 	liveLabel.Parent = gui
+	-- Narrow screens: the top-left button row reaches the middle, so the zone panel and the banners
+	-- under it move down a row
+	local function bannerTop(): number
+		local width = gui.AbsoluteSize.X
+		local narrow = width > 0 and width < 1200
+		zoneFrame.Position = UDim2.new(0.5, 0, 0, if narrow then 60 else 10)
+		return if narrow then 116 else 66
+	end
 	task.spawn(function()
 		while true do
 			local ends = ReplicatedStorage:GetAttribute("LiveEnds")
@@ -275,8 +283,9 @@ function HUD.mount(gui: ScreenGui)
 			else
 				liveLabel.Text = ""
 			end
-			local y = if liveLabel.Text ~= "" then 92 else 66
-			riftLabel.Position = UDim2.new(0.5, 0, 0, y)
+			local top = bannerTop()
+			liveLabel.Position = UDim2.new(0.5, 0, 0, top)
+			riftLabel.Position = UDim2.new(0.5, 0, 0, top + (if liveLabel.Text ~= "" then 26 else 0))
 			task.wait(0.5)
 		end
 	end)
@@ -323,7 +332,7 @@ function HUD.mount(gui: ScreenGui)
 			else
 				bossButton.Visible = false
 			end
-			local y = 66 + (if liveLabel.Text ~= "" then 26 else 0) + (if riftLabel.Text ~= "" then 26 else 0)
+			local y = bannerTop() + (if liveLabel.Text ~= "" then 26 else 0) + (if riftLabel.Text ~= "" then 26 else 0)
 			bossButton.Position = UDim2.new(0.5, 0, 0, y)
 			task.wait(0.5)
 		end

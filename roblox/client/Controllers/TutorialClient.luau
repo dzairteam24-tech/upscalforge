@@ -69,6 +69,13 @@ function TutorialClient.init(gui: ScreenGui)
 	})
 	Theme.corner(banner, 12)
 	Theme.stroke(banner, Theme.gold, 2)
+	-- On narrow screens the zone panel moves down a row (HUD), so the guide does too
+	local function place()
+		local width = gui.AbsoluteSize.X
+		banner.Position = UDim2.new(0.5, 0, 0, if width > 0 and width < 1200 then 146 else 96)
+	end
+	place()
+	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
 	local text = Theme.label({
 		Text = "",
 		Size = UDim2.new(1, -90, 1, -8),

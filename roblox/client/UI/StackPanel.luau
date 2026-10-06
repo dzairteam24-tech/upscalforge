@@ -92,8 +92,8 @@ function StackPanel.mount(gui: ScreenGui)
 
 	local function rowY(index: number): number
 		-- Keep the top of the stack in view: older rows scroll down
-		local height = field.AbsoluteSize.Y
-		local top = math.max(0, #stack - math.floor((height - 120) / CUBE_H))
+		local height = Theme.layoutSize(field).Y
+		local top = math.max(0, #stack - math.max(1, math.floor((height - 120) / CUBE_H)))
 		return height - (index - top) * CUBE_H
 	end
 

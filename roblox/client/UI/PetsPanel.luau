@@ -116,7 +116,7 @@ function PetsPanel.mount(gui: ScreenGui)
 		Text = "",
 		Font = Enum.Font.Gotham,
 		TextColor3 = Theme.muted,
-		Size = UDim2.new(1, -12, 0.28, 0),
+		Size = UDim2.new(1, -12, 0.68, -154), -- down to the buttons
 		Position = UDim2.new(0, 6, 0.32, 30),
 		TextYAlignment = Enum.TextYAlignment.Top,
 		MaxTextSize = 15,
@@ -124,11 +124,12 @@ function PetsPanel.mount(gui: ScreenGui)
 	detailsText.Parent = details
 	local buttons = Theme.frame({
 		BackgroundTransparency = 1,
-		Position = UDim2.new(0, 8, 0.62, 30),
-		Size = UDim2.new(1, -16, 0.38, -36),
+		-- Fixed-height rows at the bottom, so the buttons stay tappable on short screens
+		Position = UDim2.new(0, 8, 1, -120),
+		Size = UDim2.new(1, -16, 0, 114),
 	})
 	local buttonGrid = Instance.new("UIGridLayout")
-	buttonGrid.CellSize = UDim2.new(0.5, -4, 1 / 3, -6)
+	buttonGrid.CellSize = UDim2.new(0.5, -4, 0, 32)
 	buttonGrid.CellPadding = UDim2.fromOffset(8, 8)
 	buttonGrid.Parent = buttons
 	buttons.Parent = details

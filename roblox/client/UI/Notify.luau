@@ -22,6 +22,7 @@ function Notify.mount(gui: ScreenGui)
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 70),
 		Size = UDim2.new(0.5, 0, 0.4, 0),
+		ZIndex = 10,
 	})
 	local layout = Theme.list(holder, 6)
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center

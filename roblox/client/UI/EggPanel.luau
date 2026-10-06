@@ -12,6 +12,7 @@ local Format = require(Shared.Logic.Format)
 local Net = require(Shared.Net)
 
 local AdButton = require(script.Parent.AdButton)
+local Notify = require(script.Parent.Notify)
 local Store = require(script.Parent.Parent.Store)
 local PetCard = require(script.Parent.PetCard)
 local Theme = require(script.Parent.Theme)
@@ -203,15 +204,32 @@ function EggPanel.mount(gui: ScreenGui)
 	task.spawn(function()
 		while true do
 			task.wait(Constants.HATCH_COOLDOWN + 0.9)
-			if autoHatch and zoneShown then
-				local data = Store.data
-				local amount = 1
-				if data and (data.upgrades.Hatch8 or 0) > 0 then
-					amount = 8
-				elseif data and (data.upgrades.Hatch3 or 0) > 0 then
-					amount = 3
+			local data = Store.data :: any
+			local egg = if zoneShown then World1.eggs[zoneShown] else nil
+			if autoHatch and egg and data then
+				-- The biggest hatch you can pay for and have room for; nothing (no error spam) if none
+				local owned = 0
+				for _ in data.pets do
+					owned += 1
 				end
-				Net.event("Hatch"):FireServer(zoneShown, amount)
+				local room = (data.capacity or math.huge) - owned
+				local chosen = 0
+				for _, amount in { 8, 3, 1 } do
+					local unlocked = amount == 1
+						or (amount == 8 and (data.upgrades.Hatch8 or 0) > 0)
+						or (amount == 3 and (data.upgrades.Hatch3 or 0) > 0)
+					if chosen == 0 and unlocked and data.coins >= egg.price * amount and room >= amount then
+						chosen = amount
+					end
+				end
+				if chosen > 0 then
+					Net.event("Hatch"):FireServer(zoneShown, chosen)
+				elseif room < 1 then
+					autoHatch = false
+					Net.event("SetSetting"):FireServer("autoHatch", false)
+					updateButtons()
+					Notify.show("Auto hatch stopped: your storage is full", "error", 4)
+				end
 			end
 		end
 	end)
