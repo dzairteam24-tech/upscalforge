@@ -1,6 +1,7 @@
 -- Always-on screen: coins, gems, team power, zone progress, combo, boosts and the menu buttons.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local World1 = require(Shared.Config.World1)
@@ -406,6 +407,39 @@ function HUD.mount(gui: ScreenGui)
 	local reloadDot = dot(reloadButton)
 	menu.Parent = gui
 
+	-- Phones and tablets: the left middle is where the thumbstick goes, so the menu folds behind one
+	-- button at the top left (it opens to the right and closes after a pick). Auto stays on screen.
+	local menuDot: Frame? = nil
+	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+		menu.Visible = false
+		menu.AnchorPoint = Vector2.new(0, 0)
+		menu.Position = UDim2.fromOffset(84, 158)
+		menu.Size = UDim2.fromOffset(354, 114)
+		autoButton.Parent = gui
+		autoButton.Size = UDim2.fromOffset(66, 54)
+		autoButton.Position = UDim2.fromOffset(12, 218)
+		local toggle = Theme.button({
+			Name = "MenuToggle",
+			Text = "☰\nMenu",
+			BackgroundColor3 = Theme.accent,
+			Size = UDim2.fromOffset(66, 54),
+			Position = UDim2.fromOffset(12, 158),
+			MaxTextSize = 15,
+		})
+		toggle.Parent = gui
+		toggle.Activated:Connect(function()
+			menu.Visible = not menu.Visible
+		end)
+		for _, child in menu:GetChildren() do
+			if child:IsA("TextButton") then
+				child.Activated:Connect(function()
+					menu.Visible = false
+				end)
+			end
+		end
+		menuDot = dot(toggle)
+	end
+
 	local function update()
 		local c = Store.currency
 		coins.Text = Format.abbrev(c.coins)
@@ -442,6 +476,9 @@ function HUD.mount(gui: ScreenGui)
 		reloadButton.Visible = data ~= nil and Unlocks.has(data :: any, "Reload")
 		tripsDot.Visible = TripsPanel.hasReady()
 		reloadDot.Visible = ReloadPanel.canReload()
+		if menuDot then
+			menuDot.Visible = questsDot.Visible or dailyDot.Visible or tripsDot.Visible or reloadDot.Visible
+		end
 	end
 	Store.CurrencyChanged:Connect(update)
 	update()

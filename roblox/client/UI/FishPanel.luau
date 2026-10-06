@@ -19,6 +19,15 @@ function FishPanel.mount(gui: ScreenGui)
 	local window, content = Theme.window(gui, "Fishing Pond", function()
 		Windows.close("Fish")
 	end)
+	-- Everything sits in a scroll area so it fits short phone screens
+	local body = Instance.new("ScrollingFrame")
+	body.BackgroundTransparency = 1
+	body.BorderSizePixel = 0
+	body.Size = UDim2.fromScale(1, 1)
+	body.ScrollBarThickness = 6
+	body.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	body.CanvasSize = UDim2.new()
+	body.Parent = content
 
 	local info = Theme.label({
 		Text = "",
@@ -26,7 +35,7 @@ function FishPanel.mount(gui: ScreenGui)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		MaxTextSize = 16,
 	})
-	info.Parent = content
+	info.Parent = body
 
 	local water = Theme.button({
 		Name = "Water",
@@ -36,7 +45,7 @@ function FishPanel.mount(gui: ScreenGui)
 		Size = UDim2.new(1, -12, 0, 120),
 		BackgroundColor3 = Color3.fromRGB(40, 110, 175),
 	})
-	water.Parent = content
+	water.Parent = body
 	local bobber = Theme.label({
 		Text = "🎣",
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -64,7 +73,7 @@ function FishPanel.mount(gui: ScreenGui)
 		Visible = false,
 	})
 	Theme.corner(bar, 6)
-	bar.Parent = content
+	bar.Parent = body
 	local green = Theme.frame({
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
@@ -86,7 +95,7 @@ function FishPanel.mount(gui: ScreenGui)
 		BackgroundColor3 = Theme.green,
 		MaxTextSize = 20,
 	})
-	action.Parent = content
+	action.Parent = body
 	local autoButton = Theme.button({
 		Text = "Auto Fish: OFF",
 		Position = UDim2.new(0.6, 0, 0, 182),
@@ -94,17 +103,13 @@ function FishPanel.mount(gui: ScreenGui)
 		BackgroundColor3 = Theme.card,
 		MaxTextSize = 16,
 	})
-	autoButton.Parent = content
+	autoButton.Parent = body
 
-	local index = Instance.new("ScrollingFrame")
+	local index = Instance.new("Frame")
 	index.BackgroundTransparency = 1
-	index.BorderSizePixel = 0
 	index.Position = UDim2.fromOffset(0, 232)
-	index.Size = UDim2.new(1, 0, 1, -232)
-	index.ScrollBarThickness = 6
-	index.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	index.CanvasSize = UDim2.new()
-	index.Parent = content
+	index.Size = UDim2.new(1, -12, 0, math.ceil(#FishingConfig.fish / 2) * 36)
+	index.Parent = body
 	local grid = Instance.new("UIGridLayout")
 	grid.CellSize = UDim2.new(0.5, -8, 0, 30)
 	grid.CellPadding = UDim2.fromOffset(6, 6)

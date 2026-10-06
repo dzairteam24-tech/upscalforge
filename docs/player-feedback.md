@@ -25,14 +25,14 @@
 | 11 | **Loadouts: تبدّل مجموعة Boost Cards بضغطة** | ساعات | PS99 | ✅ |
 | 12 | **Auto-hatch يرجع وحدو بعد ما يطردك AFK ولا يتبدّل السيرفر** | ساعات | PS99، ACS | ✅ |
 | 13 | **Codes (أكواد بهدايا مجانية)** | بزاف | Clicker Sim، عام | ✅ |
-| 14 | **مهام طويلة دائمة مع NPC** (ماشي غير يومية) | بزاف | Bee Swarm | 🆕 |
+| 14 | **مهام طويلة دائمة مع NPC** (ماشي غير يومية) | بزاف | Bee Swarm | ✅ Journey مع Professor Cubo |
 | 15 | **Raids / Boss مع الصحاب (co-op)** | بزاف | AFS، ACS، Bee Swarm | ✅ World Boss كل ساعة |
-| 16 | **Minigames** (obby، Flappy، tower defense، claw machine) | ساعات | PS99، BGSI، Pet Catchers | 🆕 |
+| 16 | **Minigames** (obby، Flappy، tower defense، claw machine) | ساعات | PS99، BGSI، Pet Catchers | ✅ Cube Stack + Fishing |
 | 17 | **دمج المخلوقات المكررة لدرجة أعلى** | بزاف | Tap Sim، PS99، BGSI | ✅ (Fuse) |
 | 18 | إعدادات: screen shake، سرعة المشي، رفض التبادل | ساعات | AFS | ✅ جزئياً |
-| 19 | حد للطرد في الكلان (1 في اليوم) باش ما يتبدّلوش الأعضاء | ساعات | PS99 | 🆕 |
+| 19 | حد للطرد في الكلان (1 في اليوم) باش ما يتبدّلوش الأعضاء | ساعات | PS99 | ✅ |
 | 20 | ما نطلقوش بزاف مخلوقات نادرة باش يبقاو نادرين | ساعات | PS99، PSX | قاعدة تصميم |
-| 21 | Boss / trials أول مرة تكملها تعطيك upgrade دائم | ساعات | ACS | 🆕 |
+| 21 | Boss / trials أول مرة تكملها تعطيك upgrade دائم | ساعات | ACS | ✅ First clears |
 | 22 | Talent tree بالنقاط | قليل | Pet Catchers | 🆕 |
 | 23 | Plaza "Pro" غير للي عندهم مخلوقات نادرة | ساعات | PS99 | 🆕 |
 | 24 | قوانين باند واضحة وطريقة استئناف | ساعات | PS99 | 🆕 (نص برك) |
@@ -58,7 +58,7 @@
 | 15 | Converters تاع حظ يضيعولك مخلوقاتك | قليل | PSX | ✅ Fuse مضمون |
 | 16 | Lag (مخلوقات بزاف، سكريبتات الـ follow) | بزاف | PS99، عام | ⚠️ لازم نجربو بـ 10+ لاعبين |
 | 17 | Popups وإعلانات شراء كل شوية | ساعات | عام | ✅ ما كاش popups بيع |
-| 18 | الـ joystick تاع الموبايل يغطي الأزرار اليسار | ساعات | عام | ⚠️ نتحققو |
+| 18 | الـ joystick تاع الموبايل يغطي الأزرار اليسار | ساعات | عام | ✅ القائمة تتطوى في الهاتف |
 | 19 | Rebirth يرجعك للصفر بلا معنى | ساعات | Bee Swarm | ✅ Reload يعطي slots وبونص دائم |
 | 20 | ما كاش واش تدير كي تكمّل | ساعات | PSX | ⚠️ endgame |
 | 21 | معقدة على الجدد | ساعات | PS99 | ✅ فتح تدريجي للأنظمة |
@@ -79,11 +79,11 @@
 | 6 | Events محدودة بحظ أكبر | PS99، BGSI | ✅ |
 | 7 | اقتصاد تبادل حقيقي | PS99، Clicker Sim | ✅ |
 | 8 | **تحديث في يوم ثابت كل أسبوع** (السبت / الجمعة) | PS99، BGSI | 🆕 |
-| 9 | **Admin Abuse: event مباشر بحظ عالي والكل حاضر** | PS99، BGSI | 🆕 |
-| 10 | **Secret Bounty: بيضة يومية تتبدل فيها مخلوق خاص** | BGSI | 🆕 |
-| 11 | **Minigames بعملة خاصة** | PS99، BGSI | 🆕 |
+| 9 | **Admin Abuse: event مباشر بحظ عالي والكل حاضر** | PS99، BGSI | ✅ Live Event (`/live`) |
+| 10 | **Secret Bounty: بيضة يومية تتبدل فيها مخلوق خاص** | BGSI | ✅ Daily Bounty |
+| 11 | **Minigames بعملة خاصة** | PS99، BGSI | ✅ (تذاكر) |
 | 12 | **Boss مع الصحاب، اللعب الجماعي** | Bee Swarm، Pet Catchers | ✅ World Boss |
-| 13 | Fishing مع auto-fish | BGSI | 🆕 |
+| 13 | Fishing مع auto-fish | BGSI | ✅ Fishing Pond |
 | 14 | Enchants + reroll | PS99، BGSI | ✅ (Boost Cards + Stickers) |
 | 15 | Hoverboard | PS99 | ✅ Rides |
 | 16 | ما كاش حاجة بالـ Robux تفوت الـ grind الطويل | Bee Swarm | ✅ |
@@ -103,7 +103,7 @@
 5. Auto-hatch يرجع وحدو بعد ما ترجع للعبة
 6. لوحة Coins ما تحسبش Coins ×2 المشري (باش ما تكونش pay to win)
 
-**كبار (أنشطة جديدة، يكسرو التكرار):**
+**كبار (أنشطة جديدة، يكسرو التكرار):** ✅ كملو كامل، زيد عليهم Fishing و Live Events و First clears
 1. **Boss co-op**: boss كبير يطلع كل ساعة في المدينة، الكل يضربو، والمكافأة على قد المشاركة.
 2. **Secret Bounty**: كل يوم مخلوق خاص في بيضة، بحظ صغير.
 3. **Minigames** (Arcade) بالتذاكر.
