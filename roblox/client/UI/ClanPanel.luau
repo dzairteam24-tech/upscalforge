@@ -1,5 +1,6 @@
 -- Clan window: create or join a clan, see members and their weekly points, and the top clans.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -67,6 +68,7 @@ function ClanPanel.mount(gui: ScreenGui)
 			MaxTextSize = p.MaxTextSize or 15,
 		})
 		add(label)
+		return label
 	end
 	local function title(value: string)
 		text(value, { Font = Theme.titleFont, TextColor3 = Theme.text, MaxTextSize = 20, height = 30 })
@@ -90,11 +92,28 @@ function ClanPanel.mount(gui: ScreenGui)
 				("This week: %s points%s"):format(Format.abbrev(info.points), if info.rank then (" · #%d"):format(info.rank) else ""),
 				{ TextColor3 = Theme.gold, Font = Theme.font }
 			)
+			local isOwner = info.owner == Players.LocalPlayer.UserId
 			for i, member in info.members do
-				text(
+				local row = text(
 					("%d. %s%s · %s"):format(i, member.name, if member.id == info.owner then " 👑" else "", Format.abbrev(member.points)),
 					{ TextColor3 = Theme.text }
 				)
+				if isOwner and member.id ~= info.owner then
+					local kick = Theme.button({
+						Text = "Remove",
+						Size = UDim2.new(0, 90, 0, 22),
+						Position = UDim2.new(1, -100, 0, 2),
+						BackgroundColor3 = Theme.red,
+						MaxTextSize = 13,
+					})
+					kick.Parent = row
+					kick.Activated:Connect(function()
+						Net.event("ClanKick"):FireServer(member.id)
+					end)
+				end
+			end
+			if isOwner then
+				text("You can remove one member a day. Their points stay with the clan.")
 			end
 			button("Leave clan", Theme.red, function()
 				Net.event("ClanLeave"):FireServer()

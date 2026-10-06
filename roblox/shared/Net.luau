@@ -58,6 +58,7 @@ local EVENTS = {
 	"ClanCreate",
 	"ClanJoin",
 	"ClanLeave",
+	"ClanKick",
 	"ClanRequest",
 	"EventBuy",
 	"Teleport",

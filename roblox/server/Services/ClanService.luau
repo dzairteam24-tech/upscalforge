@@ -4,6 +4,7 @@
 -- Names and tags are shown to everyone, so they go through Roblox's text filter.
 
 local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextService = game:GetService("TextService")
 
@@ -112,6 +113,13 @@ local function send(player: Player, message: string?)
 		return
 	end
 	local clan = if data.clan.id ~= "" then load(data.clan.id) else nil
+	-- Removed by the owner while away
+	if clan and not clan.members[tostring(player.UserId)] then
+		data.clan.id = ""
+		GameService.markDirty(player)
+		setTag(player, nil)
+		clan = nil
+	end
 	local info = nil
 	if clan then
 		local members = {}
@@ -228,7 +236,7 @@ local function join(player: Player, code: any)
 		if not old then
 			return nil, false
 		end
-		local ok, err = Clans.addMember(old, player.UserId, player.DisplayName)
+		local ok, err = Clans.addMember(old, player.UserId, player.DisplayName, os.time())
 		why = err
 		return old, ok
 	end)
@@ -273,6 +281,40 @@ local function leave(player: Player)
 	GameService.markDirty(player)
 	setTag(player, nil)
 	send(player, "You left the clan")
+end
+
+local function kick(player: Player, targetId: any)
+	local data = DataService.get(player)
+	local runtime = State.get(player)
+	if not data or not runtime or data.clan.id == "" or type(targetId) ~= "number" then
+		return
+	end
+	if not State.throttle(runtime, "Clan", 3) then
+		return
+	end
+	local why: string? = nil
+	local clan = update(data.clan.id, function(old)
+		if not old then
+			return nil, false
+		end
+		local ok, err = Clans.kick(old, player.UserId, targetId, os.time())
+		why = err
+		return old, ok
+	end)
+	if not clan then
+		GameService.notify(player, why or "Couldn't remove that member", "error")
+		return
+	end
+	-- If they're in this server, update them now; others find out when they next load
+	local target = Players:GetPlayerByUserId(targetId)
+	local targetData = if target then DataService.get(target) else nil
+	if target and targetData and targetData.clan.id == clan.id then
+		targetData.clan.id = ""
+		GameService.markDirty(target)
+		setTag(target, nil)
+		send(target, "You were removed from the clan")
+	end
+	send(player, "Member removed")
 end
 
 local function onProgress(player: Player, event: string, amount: number)
@@ -372,8 +414,8 @@ function ClanService.init()
 			return
 		end
 		local clan = load(data.clan.id, true)
-		-- Removed from a clan that no longer exists
-		if store and clan == nil then
+		-- Removed from a clan that no longer exists, or kicked while away
+		if store and (clan == nil or not (clan :: Clan).members[tostring(player.UserId)]) then
 			data.clan.id = ""
 			return
 		end
@@ -383,6 +425,7 @@ function ClanService.init()
 	Net.event("ClanCreate").OnServerEvent:Connect(create)
 	Net.event("ClanJoin").OnServerEvent:Connect(join)
 	Net.event("ClanLeave").OnServerEvent:Connect(leave)
+	Net.event("ClanKick").OnServerEvent:Connect(kick)
 	Net.event("ClanRequest").OnServerEvent:Connect(function(player)
 		local runtime = State.get(player)
 		if runtime and State.throttle(runtime, "ClanRequest", 2) then

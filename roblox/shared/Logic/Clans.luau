@@ -14,6 +14,8 @@ export type Clan = {
 	week: number,
 	points: number, -- this week
 	created: number,
+	kickDay: number?, -- day of the owner's last kick (one a day)
+	kicked: { [string]: number }?, -- user id -> week they were kicked (can't rejoin that week)
 }
 
 local Clans = {}
@@ -62,9 +64,12 @@ function Clans.count(clan: Clan): number
 	return n
 end
 
-function Clans.addMember(clan: Clan, userId: number, name: string): (boolean, string?)
+function Clans.addMember(clan: Clan, userId: number, name: string, now: number?): (boolean, string?)
 	if clan.members[tostring(userId)] then
 		return true, nil
+	end
+	if now and clan.kicked and clan.kicked[tostring(userId)] == Clans.week(now) then
+		return false, "You were removed from this clan. Try again next week."
 	end
 	if Clans.count(clan) >= Config.MAX_MEMBERS then
 		return false, "This clan is full"
@@ -90,6 +95,38 @@ function Clans.removeMember(clan: Clan, userId: number): boolean
 		clan.owner = tonumber(best) :: number
 	end
 	return true
+end
+
+-- The owner removes a member: one kick a day, so a clan can't swap people in and out for the weekly reward.
+-- The member's points stay with the clan.
+function Clans.kick(clan: Clan, ownerId: number, targetId: number, now: number): (boolean, string?)
+	if clan.owner ~= ownerId then
+		return false, "Only the clan owner can remove members"
+	end
+	if targetId == ownerId then
+		return false, "You can't remove yourself"
+	end
+	local target = tostring(targetId)
+	if not clan.members[target] then
+		return false, "That player isn't in the clan"
+	end
+	local day = math.floor(now / 86400)
+	if clan.kickDay == day then
+		return false, "You can remove one member a day"
+	end
+	clan.members[target] = nil
+	clan.kickDay = day
+	local week = Clans.week(now)
+	local kicked: { [string]: number } = {}
+	local old: { [string]: number } = clan.kicked or {}
+	for id, w in old do
+		if w == week then
+			kicked[id] = w
+		end
+	end
+	kicked[target] = week
+	clan.kicked = kicked
+	return true, nil
 end
 
 -- Adds points earned this week; a new week starts everyone from zero.

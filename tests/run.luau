@@ -1257,6 +1257,23 @@ test("Clans: weekly points reset on a new week; rewards by rank", function()
 	eq(ClanLogic.rewardFor(11), 0)
 end)
 
+test("Clans: the owner removes one member a day; they can't rejoin that week", function()
+	local now = 1700000000
+	local clan = ClanLogic.new("ABC", "Cube Kings", "CK", 1, "A", now)
+	ClanLogic.addMember(clan, 2, "B")
+	ClanLogic.addMember(clan, 3, "C")
+	ClanLogic.addPoints(clan, { ["2"] = 40 }, now)
+	eq((ClanLogic.kick(clan, 2, 3, now)), false, "only the owner")
+	eq((ClanLogic.kick(clan, 1, 1, now)), false, "not yourself")
+	assert(ClanLogic.kick(clan, 1, 2, now))
+	eq(clan.members["2"], nil)
+	eq(clan.points, 40, "points stay")
+	eq((ClanLogic.kick(clan, 1, 3, now + 60)), false, "one a day")
+	eq((ClanLogic.addMember(clan, 2, "B", now)), false, "can't rejoin this week")
+	assert(ClanLogic.kick(clan, 1, 3, now + 86400))
+	assert(ClanLogic.addMember(clan, 2, "B", now + 7 * 86400))
+end)
+
 -- Events -----------------------------------------------------------------------------------------------------
 
 local EventLogic = R(Shared.Logic.Events)
