@@ -22,6 +22,7 @@ export type QuestTemplate = {
 	goal: number,
 	scaleWithEgg: boolean?, -- goal x best egg price (coin quests)
 	max: boolean?, -- progress keeps the best value instead of adding (combo)
+	needs: string?, -- only offered when the player can do it: "Rift" (today's rift zone is open), "Trips", "Restored"
 }
 
 
@@ -52,8 +53,8 @@ local DAILY_TEMPLATES: { QuestTemplate } = {
 	{ id = "d_combo", event = "Combo", text = "Reach a {goal} combo", goal = 20, max = true },
 	{ id = "d_fuse", event = "Fuse", text = "Fuse {goal} times", goal = 2 },
 	{ id = "d_big", event = "Big", text = "Defeat {goal} Big", goal = 1 },
-	{ id = "d_rift", event = "Rift", text = "Break {goal} sources in the Pixel Rift", goal = 50 },
-	{ id = "d_trip", event = "Expedition", text = "Send creatures on {goal} trip", goal = 1 },
+	{ id = "d_rift", event = "Rift", text = "Break {goal} sources in the Pixel Rift", goal = 50, needs = "Rift" },
+	{ id = "d_trip", event = "Expedition", text = "Send creatures on {goal} trip", goal = 1, needs = "Trips" },
 }
 
 local WEEKLY_TEMPLATES: { QuestTemplate } = {
@@ -61,16 +62,16 @@ local WEEKLY_TEMPLATES: { QuestTemplate } = {
 	{ id = "w_break", event = "Break", text = "Break {goal} coin sources", goal = 1500 },
 	{ id = "w_hatch", event = "Hatch", text = "Hatch {goal} eggs", goal = 300 },
 	{ id = "w_big", event = "Big", text = "Defeat {goal} Bigs", goal = 5 },
-	{ id = "w_guardian", event = "Guardian", text = "Defeat {goal} zone guardian", goal = 1 },
+	{ id = "w_guardian", event = "Guardian", text = "Defeat {goal} zone guardian", goal = 1, needs = "Restored" },
 	{ id = "w_boss", event = "Boss", text = "Defeat {goal} World Bosses", goal = 3 },
 	{ id = "w_restore", event = "Restore", text = "Fully restore {goal} zone", goal = 1 },
-	{ id = "w_rift", event = "Rift", text = "Break {goal} sources in the Pixel Rift", goal = 500 },
-	{ id = "w_trip", event = "Expedition", text = "Send creatures on {goal} trips", goal = 5 },
+	{ id = "w_rift", event = "Rift", text = "Break {goal} sources in the Pixel Rift", goal = 500, needs = "Rift" },
+	{ id = "w_trip", event = "Expedition", text = "Send creatures on {goal} trips", goal = 5, needs = "Trips" },
 }
 
 -- Battle Pass: 30-day seasons, 50 levels.
 local PASS_LEVELS = 50
-local PASS_XP_PER_LEVEL = 300
+local PASS_XP_PER_LEVEL = 200 -- 10,000 XP in all: about 17 days of quests in a 30-day season
 local SEASON_DAYS = 30
 local SEASON_START_DAY = 20730 -- UTC day number of season 1's first day (2026-10-04)
 
@@ -109,6 +110,8 @@ end
 
 -- Playtime gifts: one every 15 minutes played today, bigger as the day goes on.
 local GIFT_SECONDS = 15 * 60
+-- Everyone gets this once a day without an ad (players under 13 can't watch ads)
+local FREE_DAILY_LUCK = { mult = 2, seconds = 30 * 60 }
 local PLAYTIME_GIFTS: { Reward } = {
 	{ coinsInEggs = 2 },
 	{ items = { { id = "Elixir_Luck_2", amount = 1 } } },
@@ -143,6 +146,7 @@ return {
 	RIFT_COINS = RIFT_COINS,
 	RIFT_PIXEL_CHANCE = RIFT_PIXEL_CHANCE,
 	GIFT_SECONDS = GIFT_SECONDS,
+	FREE_DAILY_LUCK = FREE_DAILY_LUCK,
 	PLAYTIME_GIFTS = PLAYTIME_GIFTS,
 	STREAK_SAVE_DAYS = STREAK_SAVE_DAYS,
 }

@@ -19,6 +19,10 @@ return {
 		Restore = 100,
 		Expedition = 5,
 	} :: { [string]: number },
+	-- Break and Hatch points per member per day stop here, so auto farming can't outweigh
+	-- guardians, bosses and restores
+	EVERYDAY_EVENTS = { Break = true, Hatch = true } :: { [string]: boolean },
+	EVERYDAY_CAP = 300,
 	-- Weekly rewards for every member, by the clan's rank
 	REWARDS = {
 		{ upTo = 1, gems = 500 },

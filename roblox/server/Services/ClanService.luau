@@ -337,7 +337,7 @@ local function onProgress(player: Player, event: string, amount: number)
 	if not data or data.clan.id == "" then
 		return
 	end
-	local points = Clans.pointsFor(event, amount)
+	local points = Clans.capped(data.clan, event, Clans.pointsFor(event, amount), math.floor(os.time() / 86400))
 	if points <= 0 then
 		return
 	end

@@ -153,6 +153,20 @@ function Clans.pointsFor(event: string, amount: number): number
 	return if per then per * amount else 0
 end
 
+-- Points a member can still add today from Break/Hatch (the daily cap). `state` is data.clan.
+function Clans.capped(state: { day: number, everyday: number }, event: string, points: number, today: number): number
+	if not Config.EVERYDAY_EVENTS[event] then
+		return points
+	end
+	if state.day ~= today then
+		state.day = today
+		state.everyday = 0
+	end
+	local allowed = math.max(0, math.min(points, Config.EVERYDAY_CAP - state.everyday))
+	state.everyday += allowed
+	return allowed
+end
+
 -- Gems for a clan's weekly rank (1 = best), or 0.
 function Clans.rewardFor(rank: number): number
 	for _, tier in Config.REWARDS do

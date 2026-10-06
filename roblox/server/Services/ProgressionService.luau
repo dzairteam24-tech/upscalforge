@@ -8,6 +8,7 @@ local Cosmetics = require(Shared.Config.Cosmetics)
 local Items = require(Shared.Config.Items)
 local Progression = require(Shared.Config.Progression)
 local World1 = require(Shared.Config.World1)
+local Unlocks = require(Shared.Logic.Unlocks)
 local Format = require(Shared.Logic.Format)
 local Progress = require(Shared.Logic.Progress)
 local Types = require(Shared.Logic.Types)
@@ -99,13 +100,41 @@ local function grant(player: Player, data: PlayerData, reward: Progression.Rewar
 	return table.concat(parts, ", ")
 end
 
+-- Quests the player can actually do today (QuestTemplate.needs)
+local function questFilter(data: PlayerData): Progress.QuestFilter
+	return function(template)
+		if template.needs == "Rift" then
+			return GameService.riftZone > 0 and data.unlockedZones[tostring(GameService.riftZone)] == true
+		elseif template.needs == "Trips" then
+			return Unlocks.has(data, "Trips")
+		elseif template.needs == "Restored" then
+			for _, zone in World1.zones do
+				if zone.restoreGoal > 0 and (data.zoneProgress[tostring(zone.id)] or 0) >= zone.restoreGoal then
+					return true
+				end
+			end
+			return false
+		end
+		return true
+	end
+end
+
 local function refresh(player: Player)
 	local data = DataService.get(player)
 	if not data then
 		return
 	end
 	local now = os.time()
-	local changed = Progress.refreshQuests(data.quests, now, player.UserId, bestEgg(data))
+	local changed = Progress.refreshQuests(data.quests, now, player.UserId, bestEgg(data), questFilter(data))
+	-- Free daily luck for everyone, no ad needed
+	local today = Progress.day(now)
+	if data.freeLuckDay ~= today then
+		data.freeLuckDay = today
+		local luck = Progression.FREE_DAILY_LUCK
+		GameService.addBoost(player, "Luck", luck.mult, luck.seconds)
+		GameService.notify(player, ("🍀 Daily gift: Luck x%g for %d minutes!"):format(luck.mult, luck.seconds // 60), "success")
+		changed = true
+	end
 	changed = Progress.refreshPass(data.pass, now) or changed
 	if changed then
 		GameService.markDirty(player)
@@ -352,7 +381,7 @@ function ProgressionService.init()
 			end
 			refresh(player)
 			local seed = os.time() + player.UserId + math.floor(os.clock() * 1000)
-			if not Progress.rerollQuest(data.quests, index, seed, bestEgg(data)) then
+			if not Progress.rerollQuest(data.quests, index, seed, bestEgg(data), questFilter(data)) then
 				return false
 			end
 			GameService.notify(player, "New quest: " .. questText(data.quests.daily[index]), "success")

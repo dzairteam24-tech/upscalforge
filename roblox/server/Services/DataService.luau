@@ -71,6 +71,7 @@ local function template(): PlayerData
 		pass = { season = 0, xp = 0, premium = false, claimedFree = {}, claimedPremium = {} },
 		guardians = {},
 		clears = {},
+		freeLuckDay = -1,
 		fishing = { caught = {}, total = 0 },
 		trails = {},
 		cartridges = {},
@@ -94,7 +95,7 @@ local function template(): PlayerData
 		hatchFx = {},
 		pity = { big = 0, titan = 0 },
 		gemShop = { day = -1, deals = {}, storage = 0 },
-		clan = { id = "", rewardWeek = 0 },
+		clan = { id = "", rewardWeek = 0, day = -1, everyday = 0 },
 		events = {},
 	}
 end

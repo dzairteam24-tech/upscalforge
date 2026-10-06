@@ -97,6 +97,19 @@ end
 ---------------------------------------------------------------------------------------------------------------
 -- Quests
 
+-- `canDo` filters out quests the player can't do yet (see QuestTemplate.needs).
+export type QuestFilter = (Progression.QuestTemplate) -> boolean
+
+local function usable(templates: { Progression.QuestTemplate }, canDo: QuestFilter?): { Progression.QuestTemplate }
+	local pool = {}
+	for _, template in templates do
+		if not canDo or canDo(template) then
+			table.insert(pool, template)
+		end
+	end
+	return pool
+end
+
 local function pick(templates: { Progression.QuestTemplate }, count: number, seed: number): { Progression.QuestTemplate }
 	local pool = table.clone(templates)
 	local chosen = {}
@@ -125,17 +138,19 @@ local function build(templates: { Progression.QuestTemplate }, bestEgg: number):
 end
 
 -- Rolls new daily/weekly quests when the day or week changes. Same player + day always gets the same set.
-function Progress.refreshQuests(book: QuestBook, now: number, userId: number, bestEgg: number): boolean
+function Progress.refreshQuests(book: QuestBook, now: number, userId: number, bestEgg: number, canDo: QuestFilter?): boolean
 	local changed = false
 	local today, week = Progress.day(now), Progress.week(now)
 	if book.day ~= today then
 		book.day = today
-		book.daily = build(pick(Progression.DAILY_TEMPLATES, Progression.DAILY_QUESTS, userId * 31 + today), bestEgg)
+		local pool = usable(Progression.DAILY_TEMPLATES, canDo)
+		book.daily = build(pick(pool, Progression.DAILY_QUESTS, userId * 31 + today), bestEgg)
 		changed = true
 	end
 	if book.week ~= week then
 		book.week = week
-		book.weekly = build(pick(Progression.WEEKLY_TEMPLATES, Progression.WEEKLY_QUESTS, userId * 17 + week * 7), bestEgg)
+		local pool = usable(Progression.WEEKLY_TEMPLATES, canDo)
+		book.weekly = build(pick(pool, Progression.WEEKLY_QUESTS, userId * 17 + week * 7), bestEgg)
 		changed = true
 	end
 	return changed
@@ -175,7 +190,7 @@ function Progress.addQuestProgress(book: QuestBook, event: string, amount: numbe
 end
 
 -- Swaps an unfinished daily quest for one the player doesn't have today (ad reward).
-function Progress.rerollQuest(book: QuestBook, index: number, seed: number, bestEgg: number): boolean
+function Progress.rerollQuest(book: QuestBook, index: number, seed: number, bestEgg: number, canDo: QuestFilter?): boolean
 	local quest = book.daily[index]
 	if not quest or quest.claimed or quest.progress >= quest.goal then
 		return false
@@ -185,7 +200,7 @@ function Progress.rerollQuest(book: QuestBook, index: number, seed: number, best
 		used[other.id] = true
 	end
 	local pool = {}
-	for _, template in Progression.DAILY_TEMPLATES do
+	for _, template in usable(Progression.DAILY_TEMPLATES, canDo) do
 		if not used[template.id] then
 			table.insert(pool, template)
 		end

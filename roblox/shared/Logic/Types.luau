@@ -37,7 +37,8 @@ export type PlayerData = {
 	pass: PassState,
 	guardians: { [string]: number }, -- zone id -> os.time() when its guardian can be fought again
 	fishing: { caught: { [string]: number }, total: number },
-	clears: { [string]: boolean }, -- first clears ("G3", "Boss"), see Logic/FirstClear
+	clears: { [string]: boolean },
+	freeLuckDay: number, -- UTC day the free daily Luck x2 was given -- first clears ("G3", "Boss"), see Logic/FirstClear
 	trails: { [string]: boolean },
 	equippedTitle: string?,
 	equippedTrail: string?,
@@ -65,7 +66,7 @@ export type PlayerData = {
 	equippedHatchFx: string?,
 	pity: { big: number, titan: number }, -- misses in a row (bad-luck protection)
 	gemShop: { day: number, deals: { [string]: boolean }, storage: number },
-	clan: { id: string, rewardWeek: number }, -- "" when not in a clan
+	clan: { id: string, rewardWeek: number, day: number, everyday: number }, -- "" when not in a clan; everyday = today's Break/Hatch points
 	events: { [string]: { tokens: number, bought: { [string]: boolean } } }, -- event id -> tokens and shop buys
 }
 

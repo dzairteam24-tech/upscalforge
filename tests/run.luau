@@ -1391,6 +1391,33 @@ test("Luck for variants and sizes is full up to x10, then softened and capped", 
 	near(titan, Sizes.byId.Titan.chance * 25, 1e-12, "Titan stays rare with huge luck")
 end)
 
+test("Quests only offer what the player can do", function()
+	local ProgressT = R(Shared.Logic.Progress)
+	local ProgressionT = R(Shared.Config.Progression)
+	for day = 1, 40 do
+		local book = { day = -1, week = -1, daily = {}, weekly = {} }
+		ProgressT.refreshQuests(book, day * 86400 * 3, 12345, 100, function(template)
+			return template.needs == nil
+		end)
+		for _, quest in book.daily do
+			eq(ProgressT.template(quest.id).needs, nil, quest.id)
+		end
+		for _, quest in book.weekly do
+			eq(ProgressT.template(quest.id).needs, nil, quest.id)
+		end
+		eq(#book.daily, ProgressionT.DAILY_QUESTS)
+	end
+end)
+
+test("Clans: Break and Hatch points stop at the daily cap; big wins don't", function()
+	local state = { day = -1, everyday = 0 }
+	eq(ClanLogic.capped(state, "Hatch", ClanConfig.EVERYDAY_CAP - 10, 5), ClanConfig.EVERYDAY_CAP - 10)
+	eq(ClanLogic.capped(state, "Break", 50, 5), 10, "only what's left")
+	eq(ClanLogic.capped(state, "Break", 50, 5), 0)
+	eq(ClanLogic.capped(state, "Guardian", 50, 5), 50, "not capped")
+	eq(ClanLogic.capped(state, "Break", 50, 6), 50, "new day")
+end)
+
 -- Events -----------------------------------------------------------------------------------------------------
 
 local EventLogic = R(Shared.Logic.Events)
