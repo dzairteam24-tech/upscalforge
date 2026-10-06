@@ -1,14 +1,21 @@
-"""Builds Cubelings creatures in Blender from a small spec, renders a turnaround sheet and exports
-a Roblox-ready mesh.
+"""Builds Cubelings creatures in Blender from a small spec, renders a view sheet and exports 3D models.
 
 Run (Blender's Python, no window needed):
-    python art/blender/cubelings.py Kitty
+    python art/blender/cubelings.py Kitty "Ice Fox"   one or more creatures by name
+    python art/blender/cubelings.py zone 3            the 4 creatures of a zone, plus renders/zone3_lineup.png
+    python art/blender/cubelings.py legendary         the 10 Legendaries, plus renders/legendaries_lineup.png
+    python art/blender/cubelings.py roblox            the file the game uses (see export_roblox)
+    FAST=1 python art/blender/cubelings.py ...        only the 3/4 view (quick previews)
 
-Outputs:
-    art/renders/<Name>.png     front / side / back / 3-4 views, to compare with art/concepts/<Name>.png
-    art/models/<Name>.fbx      one mesh, colors come from a small palette texture (embedded)
-    art/models/<Name>.glb      same model as glTF
-    art/models/<Name>_palette.png
+Outputs per creature (name / zone / legendary modes):
+    art/renders/<Name>.png     4 views side by side: front / side / back / 3-4 (only 3-4 with FAST=1),
+                               to compare with art/concepts/<Name>.png
+    art/models/<Name>.glb      one mesh, colors come from a small palette texture (embedded)
+    art/models/<Name>.fbx      same model as FBX (scratch output, not committed)
+    art/models/<Name>_palette.png / _palette.json   the palette and which part role each cell is
+
+The `roblox` mode writes art/models/Cubelings_Roblox.glb (all 50 creatures, split in parts) and
+roblox/shared/Config/CreatureLooks.luau. That is what the game imports.
 
 Units: the body is 2 x 2 x 1.9 (Blender units = studs once imported at scale 1). Front faces -Y.
 """
@@ -599,22 +606,6 @@ def feat_wings_butterfly(c):
     sym(one)
 
 
-def wing_sheet(name, side, span, height, location, key, c, droop=0.0):
-    """A flat wing made of a bevelled triangle: bat and dragon wings."""
-    wing = triangle_prism(name, half_width=height / 2, height=span, depth=0.07, tip_shift=droop)
-    soft(wing, 0.05, segments=2, subdiv=1)
-    wing.rotation_euler = (math.radians(90), 0, math.radians(-90 * side))
-    wing.location = location
-    bpy.context.view_layer.objects.active = wing
-    wing.select_set(True)
-    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-    wing.select_set(False)
-    # Fold up and back a little
-    wing.rotation_euler = (math.radians(-20), math.radians(-25 * side), math.radians(18 * side))
-    wing.location = (0, 0, 0)
-    c.add(wing, key, angle=180)
-
-
 def extruded(name, outline, depth, y=0.0):
     """A flat shape from a 2D outline [(x, z), ...] given some thickness along y."""
     import bmesh
@@ -934,23 +925,6 @@ def feat_hump(c):
         c.add(ellipsoid("Hump", (r, r, r * 0.8), (0, y, c.top - 0.12), segments=24, rings=12), "body")
 
 
-def feat_eye_stalks(c):
-    pass  # handled by the eye style "stalk"
-
-
-def feat_gills(c):
-    def one(side):
-        for i, (dz, length) in enumerate(((0.35, 0.45), (0.1, 0.5), (-0.15, 0.42))):
-            base = (side * 0.95, -0.55, BODY_Z + 0.55 + dz * 0.4)
-            pts = curve_points(base, (side * 1.25, -0.5, base[2] + 0.15), (side * (1.15 + length * 0.6), -0.4, base[2] + 0.35 - i * 0.1), 8)
-            c.add(tapered("Gill", pts, 0.08, 0.4), "gill")
-    sym(one)
-
-
-def feat_halo_flame(c):
-    pass
-
-
 FEATURES = {
     "stripes": feat_stripes,
     "spots": feat_spots,
@@ -983,7 +957,6 @@ FEATURES = {
     "crystals": feat_crystals,
     "back_spikes": feat_back_spikes,
     "hump": feat_hump,
-    "gills": feat_gills,
 }
 
 
@@ -1058,10 +1031,6 @@ def tail_flame(c):
     for i, (x, h) in enumerate([(-0.3, 0.9), (0.0, 1.15), (0.3, 0.9)]):
         pts = curve_points((x * 0.5, BODY_D / 2 - 0.1, BODY_Z - 0.35), (x, BODY_D / 2 + 0.6, BODY_Z - 0.3), (x * 1.4, BODY_D / 2 + 0.75, BODY_Z - 0.3 + h), 10)
         c.add(tapered("TailFeather", pts, 0.2, 0.05), "flame" if i != 1 else "flame2")
-
-
-def tail_wisp(c):
-    pass
 
 
 TAILS = {
@@ -1859,9 +1828,9 @@ def color_hex(spec, key):
 
 
 def export_roblox():
-    """All 40 creatures in one .glb for Roblox Studio's 3D importer. Each creature is a group named after the
-    species; inside, one mesh per part role ("Kitty__body", "Kitty__eye"...), so the game can recolor every role
-    for the variants. Also writes roblox/shared/Config/CreatureLooks.luau with each role's normal color."""
+    """All 50 creatures (40 zone creatures + 10 Legendaries) in one .glb for Roblox Studio's 3D importer.
+    Each creature is a group named after the species; inside, one mesh per part role ("Kitty__body",
+    "Kitty__eye"...), so the game can recolor every role for the variants. Also writes roblox/shared/Config/CreatureLooks.luau with each role's normal color."""
     reset()
     order = [name for zone in ZONES for name in zone] + LEGENDARIES
     looks = {}

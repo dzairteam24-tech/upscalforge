@@ -2,7 +2,8 @@
 
 Every creature is the same rounded cube; what changes is the color and the parts on top:
 ears / head piece, eye style, nose, mouth, features, legs and tail (see the parts library in cubelings.py).
-Body colors come from roblox/shared/Config/World1.luau.
+Colors here are the source for the 3D models and roblox/shared/Config/CreatureLooks.luau. The `color` of each
+species in roblox/shared/Config/World1.luau (UI and block fallback) is close but kept by hand, so it can differ.
 """
 
 
@@ -348,7 +349,7 @@ ZONES = [
     ["Bot", "Byte", "Cursor", "King"],
 ]
 
-# ----- Legendaries: the 5th creature of every zone, 1 egg in 1,000 --------------------------------------------------
+# ----- Legendaries: one per zone in look, but they only hatch from the Legendary Egg (1 in 200K up to 1 in 10M) --
 # Same cube, more detail: glowing parts ("glow" keys -> Neon in the game), jelly (Glass), halos, orbs, crowns.
 
 LEGENDARY_SPECIES = {
