@@ -226,7 +226,8 @@ end)
 test("Luck raises rare variant chances", function()
 	eq(EggRoll.variantChance("Pixel", { luck = 1 }), 1 / 50000)
 	eq(EggRoll.variantChance("Pixel", { luck = 10 }), 10 / 50000)
-	eq(EggRoll.variantChance("Pixel", { luck = 10, variantChance = { Pixel = 5 } }), 50 / 50000)
+	-- x50 in total: full luck to x10, then the square root
+	near(EggRoll.variantChance("Pixel", { luck = 10, variantChance = { Pixel = 5 } }), 10 * math.sqrt(5) / 50000, 1e-12)
 end)
 
 test("forceGolden and minVariant", function()
@@ -1150,7 +1151,7 @@ test("Pity: Big is sure on the 10th try, Titan chance grows and is sure on the 1
 	eq(Pity.chance(0.1, 0, Hunt.BIG_PITY, 0), 0.1)
 	eq(Pity.chance(0.1, Hunt.BIG_PITY - 1, Hunt.BIG_PITY, 0), 1)
 	eq(Pity.left(3, Hunt.BIG_PITY), 7)
-	near(Pity.chance(Hunt.GUARDIAN_TAME_CHANCE, 10, Hunt.TITAN_PITY, Hunt.TITAN_PITY_STEP), 0.025, 1e-9)
+	near(Pity.chance(Hunt.GUARDIAN_TAME_CHANCE, 10, Hunt.TITAN_PITY, Hunt.TITAN_PITY_STEP), Hunt.GUARDIAN_TAME_CHANCE + 10 * Hunt.TITAN_PITY_STEP, 1e-9)
 	eq(Pity.chance(Hunt.GUARDIAN_TAME_CHANCE, Hunt.TITAN_PITY - 1, Hunt.TITAN_PITY, Hunt.TITAN_PITY_STEP), 1)
 	-- Simulate: no player ever needs more than 10 Bigs
 	local rng = makeRng(4)
@@ -1376,6 +1377,18 @@ test("Fishing: rolls, Perfect luck, timing and the Fish Index", function()
 	local _, done = Fish.record(data, "Cubefish")
 	eq(done, true, "index complete")
 	eq(Fish.kinds(data), 10)
+end)
+
+test("Luck for variants and sizes is full up to x10, then softened and capped", function()
+	local EggRollT = R(Shared.Logic.EggRoll)
+	eq(EggRollT.effectiveLuck(1, 100), 1)
+	eq(EggRollT.effectiveLuck(10, 100), 10)
+	near(EggRollT.effectiveLuck(40, 100), 20, 1e-9, "sqrt above x10")
+	eq(EggRollT.effectiveLuck(50000, 100), 100, "capped")
+	eq(EggRollT.effectiveLuck(50000, 25), 25)
+	local Sizes = R(Shared.Config.Sizes)
+	local titan = EggRollT.sizeChance("Titan", { luck = 50000 })
+	near(titan, Sizes.byId.Titan.chance * 25, 1e-12, "Titan stays rare with huge luck")
 end)
 
 -- Events -----------------------------------------------------------------------------------------------------

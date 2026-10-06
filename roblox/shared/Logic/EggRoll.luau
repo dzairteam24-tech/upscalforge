@@ -39,16 +39,31 @@ function EggRoll.speciesWeights(eggId: number, luck: number): { { id: string, we
 	return weights
 end
 
+-- Luck for variants and sizes: full up to x10, then it grows only with the square root, up to a cap.
+-- Boosts stack from many places (skills, elixirs, cards, events); this keeps Pixel and Titan rare.
+EggRoll.LUCK_SOFT = 10
+EggRoll.VARIANT_LUCK_CAP = 100
+EggRoll.SIZE_LUCK_CAP = 25
+
+function EggRoll.effectiveLuck(mult: number, cap: number): number
+	local m = math.max(1, mult)
+	if m > EggRoll.LUCK_SOFT then
+		m = EggRoll.LUCK_SOFT * math.sqrt(m / EggRoll.LUCK_SOFT)
+	end
+	return math.min(cap, m)
+end
+
 -- Effective chance of each variant after luck. Rarest is checked first.
 function EggRoll.variantChance(variantId: string, context: RollContext): number
 	local variant = Variants.byId[variantId]
 	local extra = if context.variantChance then context.variantChance[variantId] or 1 else 1
-	return math.min(1, variant.chance * math.max(1, context.luck) * extra)
+	local mult = EggRoll.effectiveLuck(math.max(1, context.luck) * extra, EggRoll.VARIANT_LUCK_CAP)
+	return math.min(1, variant.chance * mult)
 end
 
 function EggRoll.sizeChance(sizeId: string, context: RollContext): number
 	local size = Sizes.byId[sizeId]
-	return math.min(1, size.chance * math.max(1, context.luck))
+	return math.min(1, size.chance * EggRoll.effectiveLuck(context.luck, EggRoll.SIZE_LUCK_CAP))
 end
 
 function EggRoll.roll(eggId: number, context: RollContext, rng: () -> number): Roll

@@ -63,6 +63,8 @@ local trails: { Trail } = {
 }
 
 local rides: { Ride } = {
+	-- Everyone gets this one early (Journey step 3), so the ride speed is never something you pay for
+	{ id = "Starter", name = "Starter Board", style = "board", color = Color3.fromRGB(107, 203, 119), glow = Color3.fromRGB(220, 255, 220) },
 	{ id = "Skateboard", name = "Skateboard", style = "board", color = Color3.fromRGB(229, 83, 75), glow = Color3.fromRGB(255, 220, 120) },
 	{ id = "S1_Hoverboard", name = "Hoverboard", style = "board", color = Color3.fromRGB(60, 70, 100), glow = Color3.fromRGB(91, 184, 245) },
 	{ id = "PixelBoard", name = "Pixel Board", style = "board", color = Color3.fromRGB(40, 30, 60), glow = Color3.fromRGB(185, 140, 255) },

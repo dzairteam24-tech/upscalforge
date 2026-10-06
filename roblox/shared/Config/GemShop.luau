@@ -20,7 +20,7 @@ local offers: { Offer } = {
 	-- Key halves
 	{ id = "ZoneHalf", itemId = "KeyHalf_Zone", price = 60 },
 	{ id = "GoldenHalf", itemId = "KeyHalf_Golden", price = 120 },
-	{ id = "TitanHalf", itemId = "KeyHalf_Titan", price = 300 },
+	-- No Titan halves: a Titan Key skips the guardian's 4h wait, so it stays a rare drop
 	-- Boost Cards
 	{ id = "CoinsCard", itemId = "Cart_Coins_1", price = 150, feature = "Cartridges" },
 	{ id = "LuckyCard", itemId = "Cart_Lucky_1", price = 150, feature = "Cartridges" },
