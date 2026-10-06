@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Constants = require(Shared.Config.Constants)
 local Format = require(Shared.Logic.Format)
 local Inventory = require(Shared.Logic.Inventory)
 local Types = require(Shared.Logic.Types)
@@ -137,7 +138,7 @@ end
 
 local function record(data: Types.PlayerData, player: Player, other: string, gave: { any }, got: { any })
 	table.insert(data.tradeHistory, 1, { t = os.time(), with = other, gave = gave, got = got })
-	while #data.tradeHistory > 20 do
+	while #data.tradeHistory > Constants.TRADE_HISTORY_SIZE do
 		table.remove(data.tradeHistory)
 	end
 	data.stats.trades = (data.stats.trades or 0) + 1
@@ -205,6 +206,9 @@ local function buy(player: Player, boothId: any, petId: any, seenPrice: any)
 	GameService.notify(seller, ("%s bought your %s %s: +💎 %s"):format(player.DisplayName, moved.v, moved.s, Format.abbrev(earned)), "success")
 	GameService.refresh(player)
 	GameService.refresh(seller)
+	-- Save both now, like a trade, so a crash can't undo one side only
+	task.spawn(DataService.save, player, false)
+	task.spawn(DataService.save, seller, false)
 end
 
 function PlazaService.init()

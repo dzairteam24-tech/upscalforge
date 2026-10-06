@@ -13,6 +13,7 @@ local Net = require(Shared.Net)
 local DataService = require(script.Parent.DataService)
 local GameService = require(script.Parent.GameService)
 local PetService = require(script.Parent.PetService)
+local State = require(script.Parent.State)
 
 local TradeService = {}
 
@@ -37,7 +38,7 @@ local function petsView(data: any, ids: { string }): { [string]: any }
 	for _, petId in ids do
 		local pet = data and data.pets[petId]
 		if pet then
-			view[petId] = { s = pet.s, v = pet.v, z = pet.z }
+			view[petId] = { s = pet.s, v = pet.v, z = pet.z, st = pet.st }
 		end
 	end
 	return view
@@ -134,6 +135,10 @@ local function onRequest(player: Player, targetUserId: any)
 	if type(targetUserId) ~= "number" or targetUserId == player.UserId then
 		return
 	end
+	local runtime = State.get(player)
+	if not runtime or not State.throttle(runtime, "TradeRequest", 2) then
+		return
+	end
 	local target = playerById(targetUserId)
 	local data = DataService.get(player)
 	local targetData = target and DataService.get(target)
@@ -201,7 +206,11 @@ function TradeService.init()
 	Net.event("TradeRespond").OnServerEvent:Connect(onRespond)
 
 	Net.event("TradeOffer").OnServerEvent:Connect(function(player, petIds)
-		if type(petIds) ~= "table" then
+		local runtime = State.get(player)
+		if type(petIds) ~= "table" or not runtime or not State.throttle(runtime, "TradeOffer", 0.3) then
+			return
+		end
+		if #petIds > Constants.TRADE_MAX_PETS * 2 then
 			return
 		end
 		withSession(player, function(session)

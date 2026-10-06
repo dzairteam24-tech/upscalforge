@@ -21,7 +21,12 @@ function Format.abbrev(value: number): string
 			local digits = if scaled < 10 then 2 elseif scaled < 100 then 1 else 0
 			local factor = 10 ^ digits
 			scaled = math.floor(scaled * factor) / factor
-			text = string.format("%." .. digits .. "f", scaled):gsub("%.?0+$", "") .. SUFFIXES[tier]
+			local number = string.format("%." .. digits .. "f", scaled)
+			-- Drop trailing decimal zeros only ("1.50" -> "1.5", "2.00" -> "2"), never whole-number zeros ("150")
+			if digits > 0 then
+				number = (number:gsub("0+$", ""):gsub("%.$", ""))
+			end
+			text = number .. SUFFIXES[tier]
 		else
 			local exponent = math.floor(math.log10(n))
 			local mantissa = math.floor(n / 10 ^ exponent * 100) / 100

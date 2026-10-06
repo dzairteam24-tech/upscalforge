@@ -12,6 +12,7 @@ local Gear = require(Shared.Logic.Gear)
 local Unlocks = require(Shared.Logic.Unlocks)
 local Inventory = require(Shared.Logic.Inventory)
 local Loot = require(Shared.Logic.Loot)
+local Effects = require(Shared.Logic.Effects)
 local Format = require(Shared.Logic.Format)
 local Types = require(Shared.Logic.Types)
 local Net = require(Shared.Net)
@@ -20,6 +21,7 @@ local BreakableService = require(script.Parent.BreakableService)
 local DataService = require(script.Parent.DataService)
 local GameService = require(script.Parent.GameService)
 local HuntService = require(script.Parent.HuntService)
+local PetService = require(script.Parent.PetService)
 local State = require(script.Parent.State)
 
 type PlayerData = Types.PlayerData
@@ -62,8 +64,9 @@ local KEY_ACTIONS: { [string]: (Player, PlayerData, State.Runtime, number) -> nu
 	end,
 	Key_Golden = function(player, data, _runtime, count)
 		-- Only open as many as storage can hold, so a key is never wasted
+		local perEgg = 1 + math.floor(Effects.get(_runtime.effects, "EggExtra"))
 		local room = GameService.capacity(player) - Inventory.count(data)
-		count = math.min(count, MAX_BULK_GOLDEN, room // 3)
+		count = math.min(count, MAX_BULK_GOLDEN, room // (3 * perEgg))
 		if count <= 0 then
 			GameService.notify(player, "Your storage is full. Delete or fuse some creatures first.", "error")
 			return 0
@@ -272,6 +275,10 @@ local function applySticker(player: Player, petId: any, itemId: any)
 		GameService.notify(player, "That creature is away on a trip", "error")
 		return
 	end
+	if PetService.isTrading(player) then
+		GameService.notify(player, "Finish your trade first", "error")
+		return
+	end
 	Bag.take(data.items, itemId, 1)
 	if pet.st then
 		Bag.add(data.items, pet.st, 1)
@@ -283,7 +290,12 @@ end
 
 local function removeSticker(player: Player, petId: any)
 	local data = DataService.get(player)
-	if not data or type(petId) ~= "string" then
+	local runtime = State.get(player)
+	if not data or not runtime or type(petId) ~= "string" or not State.throttle(runtime, "Sticker", 0.3) then
+		return
+	end
+	if PetService.isTrading(player) then
+		GameService.notify(player, "Finish your trade first", "error")
 		return
 	end
 	local pet = data.pets[petId]

@@ -14,6 +14,7 @@ local Format = require(Shared.Logic.Format)
 local Unlocks = require(Shared.Logic.Unlocks)
 local GemShop = require(Shared.Logic.GemShop)
 local Items = require(Shared.Config.Items)
+local Boosts = require(Shared.Logic.Boosts)
 local Progress = require(Shared.Logic.Progress)
 local Net = require(Shared.Net)
 
@@ -140,6 +141,23 @@ local function grantProduct(player: Player, key: string): boolean
 	return false
 end
 
+-- Receipt ids are kept 30 days (Roblox stops retrying long before), so saved data doesn't grow forever.
+local function prunePurchases(purchases: { [string]: any })
+	local count = 0
+	for _ in purchases do
+		count += 1
+	end
+	if count < 200 then
+		return
+	end
+	local cutoff = os.time() - 30 * 86400
+	for id, at in purchases do
+		if type(at) ~= "number" or at < cutoff then
+			purchases[id] = nil
+		end
+	end
+end
+
 local function processReceipt(receipt: { [string]: any }): Enum.ProductPurchaseDecision
 	local player = Players:GetPlayerByUserId(receipt.PlayerId)
 	local data = player and DataService.get(player)
@@ -148,19 +166,23 @@ local function processReceipt(receipt: { [string]: any }): Enum.ProductPurchaseD
 	end
 	local purchaseKey = tostring(receipt.PurchaseId)
 	if data.purchases[purchaseKey] then
+		-- Already granted. If the save after granting failed, this retry saves it now.
+		if not DataService.save(player, false) and DataService.canSave(player) then
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 	local product = Products.productById[receipt.ProductId]
 	if not product or not grantProduct(player, product.key) then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-	data.purchases[purchaseKey] = true
-	-- Save right away so the purchase isn't lost if the server shuts down
+	-- The reward and its receipt id are saved together, so a retry never grants it twice
+	data.purchases[purchaseKey] = os.time()
+	prunePurchases(data.purchases)
+	GameService.markDirty(player)
 	if not DataService.save(player, false) and DataService.canSave(player) then
-		data.purchases[purchaseKey] = nil
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-	GameService.markDirty(player)
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
@@ -205,6 +227,18 @@ local function buyProduct(player: Player, key: any, context: any)
 		return
 	end
 	local data = DataService.get(player)
+	if data and key == "PassPremium" and data.pass.premium then
+		GameService.notify(player, "You already have the Premium track this season", "error")
+		return
+	end
+	-- Timed boosts stop at a cap; don't sell one that would be cut short
+	if data and product.boost then
+		local left = Boosts.left(data.boosts, product.boost.stat, product.boost.mult)
+		if left + product.boost.seconds > Items.BOOST_CAP_SECONDS then
+			GameService.notify(player, "That boost is already full. Use it up a bit first!", "error")
+			return
+		end
+	end
 	local cosmetic = product.cosmetic
 	if data and cosmetic then
 		local owned = if cosmetic.kind == "aura" then data.auras[cosmetic.id] else data.hatchFx[cosmetic.id]

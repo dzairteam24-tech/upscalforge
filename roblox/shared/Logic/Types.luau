@@ -24,7 +24,7 @@ export type PlayerData = {
 	upgrades: { [string]: number },
 	stats: { [string]: number },
 	flags: { [string]: boolean },
-	purchases: { [string]: boolean },
+	purchases: { [string]: any }, -- receipt id -> os.time() it was granted (old saves: true)
 	titles: { [string]: boolean },
 	tradeHistory: { any },
 	settings: { [string]: any },

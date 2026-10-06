@@ -36,9 +36,12 @@ local function isAvailable(): (boolean, string?)
 	end
 	-- The call returns either the enum or an object holding it, depending on the engine version.
 	local status = result
-	if typeof(result) == "Instance" or type(result) == "table" or type(result) == "userdata" then
-		local inner = (result :: any).AdAvailabilityResult
-		if inner ~= nil then
+	if typeof(result) ~= "EnumItem" then
+		-- An object holding the result; reading a missing property throws, so guard it
+		local okInner, inner = pcall(function()
+			return (result :: any).AdAvailabilityResult
+		end)
+		if okInner and inner ~= nil then
 			status = inner
 		end
 	end

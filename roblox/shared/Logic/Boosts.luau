@@ -20,6 +20,12 @@ function Boosts.add(boosts: BoostMap, stat: string, mult: number, seconds: numbe
 	return total
 end
 
+-- Seconds saved on one timer (a stat at one multiplier).
+function Boosts.left(boosts: BoostMap, stat: string, mult: number): number
+	local timers = boosts[stat]
+	return if timers then timers[tostring(mult)] or 0 else 0
+end
+
 -- Strongest active multiplier for a stat, or 1.
 function Boosts.active(boosts: BoostMap, stat: string): number
 	local timers = boosts[stat]
