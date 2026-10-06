@@ -190,7 +190,7 @@ local list: { Achievement } = {
 		icon = "📖",
 		text = "Discover {goal} creatures (species x variant)",
 		stat = "discovered",
-		goals = { 10, 40, 100, 240 },
+		goals = { 10, 40, 100, 240 }, -- 240 = the 40 egg creatures in every variant (Legendaries are a bonus on top)
 		gems = { 10, 40, 150, 1000 },
 		titles = { [4] = "A_Collector" },
 	},
