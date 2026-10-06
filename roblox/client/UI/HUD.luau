@@ -248,6 +248,38 @@ function HUD.mount(gui: ScreenGui)
 	})
 	riftLabel.Parent = gui
 
+	-- Live Event banner (above the rift banner while one runs)
+	local liveLabel = Theme.label({
+		Name = "Live",
+		Text = "",
+		Font = Theme.titleFont,
+		TextColor3 = Color3.fromRGB(255, 90, 90),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 66),
+		Size = UDim2.fromOffset(360, 24),
+		MaxTextSize = 18,
+	})
+	liveLabel.Parent = gui
+	task.spawn(function()
+		while true do
+			local ends = ReplicatedStorage:GetAttribute("LiveEnds")
+			local left = if type(ends) == "number" then ends - workspace:GetServerTimeNow() else 0
+			if left > 0 then
+				liveLabel.Text = ("🔴 LIVE: %s x%g · %d:%02d"):format(
+					tostring(ReplicatedStorage:GetAttribute("LiveStat") or ""),
+					ReplicatedStorage:GetAttribute("LiveMult") or 1,
+					left // 60,
+					math.floor(left) % 60
+				)
+			else
+				liveLabel.Text = ""
+			end
+			local y = if liveLabel.Text ~= "" then 92 else 66
+			riftLabel.Position = UDim2.new(0.5, 0, 0, y)
+			task.wait(0.5)
+		end
+	end)
+
 	-- World Boss: shows 2 minutes before it lands and during the fight. Tap it to go fight (free).
 	local bossButton = Theme.button({
 		Name = "Boss",
@@ -290,7 +322,8 @@ function HUD.mount(gui: ScreenGui)
 			else
 				bossButton.Visible = false
 			end
-			bossButton.Position = UDim2.new(0.5, 0, 0, if riftLabel.Text ~= "" then 92 else 66)
+			local y = 66 + (if liveLabel.Text ~= "" then 26 else 0) + (if riftLabel.Text ~= "" then 26 else 0)
+			bossButton.Position = UDim2.new(0.5, 0, 0, y)
 			task.wait(0.5)
 		end
 	end)

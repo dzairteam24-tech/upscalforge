@@ -1274,6 +1274,31 @@ test("Clans: the owner removes one member a day; they can't rejoin that week", f
 	assert(ClanLogic.addMember(clan, 2, "B", now + 7 * 86400))
 end)
 
+test("Live Event: admins, the chat command and caps", function()
+	local Live = R(Shared.Logic.LiveEvent)
+	eq(Live.isAdmin(5, 5, false), true, "owner")
+	eq(Live.isAdmin(6, 5, false), false)
+	eq(Live.isAdmin(6, 0, true), true, "Studio")
+	local cmd = Live.parse("/live LUCK 3 20")
+	eq(cmd.stat, "Luck")
+	eq(cmd.mult, 3)
+	eq(cmd.minutes, 20)
+	eq(Live.parse("/live coins 100").mult, 5, "capped")
+	eq(Live.parse("/live gem 2").minutes, 30, "default minutes")
+	eq(Live.parse("/live luck 3 999").minutes, 60, "capped minutes")
+	eq(Live.parse("/live stop").stop, true)
+	eq((Live.parse("/live power 3")), nil)
+	eq((Live.parse("/live luck 1")), nil)
+	local live = { stat = "Luck", mult = 3, ends = 1000 }
+	eq(Live.bonus(live, "Luck", 999), 3)
+	eq(Live.bonus(live, "Coins", 999), 1)
+	eq(Live.bonus(live, "Luck", 1000), 1, "over")
+	eq(Live.bonus(nil, "Luck", 0), 1)
+	eq(Live.valid(live), true)
+	eq(Live.valid({ stat = "Luck", mult = 50, ends = 1 }), false, "over the cap")
+	eq(Live.valid("x"), false)
+end)
+
 -- Events -----------------------------------------------------------------------------------------------------
 
 local EventLogic = R(Shared.Logic.Events)

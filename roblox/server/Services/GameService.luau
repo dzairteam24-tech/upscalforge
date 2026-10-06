@@ -29,6 +29,7 @@ local Achievements = require(Shared.Logic.Achievements)
 local Expedition = require(Shared.Logic.Expedition)
 local GemShop = require(Shared.Logic.GemShop)
 local Events = require(Shared.Logic.Events)
+local LiveEvent = require(Shared.Logic.LiveEvent)
 local EventConfig = require(Shared.Config.Events)
 local Reload = require(Shared.Logic.Reload)
 local Types = require(Shared.Logic.Types)
@@ -68,6 +69,13 @@ function GameService.isRift(zoneId: number?): boolean
 	end
 	local ends = GameService.keyRifts[zoneId]
 	return ends ~= nil and os.clock() < ends
+end
+
+-- The running Live Event (LiveEventService sets it), or nil.
+GameService.live = nil :: LiveEvent.Live?
+
+function GameService.liveBonus(stat: string): number
+	return LiveEvent.bonus(GameService.live, stat, os.time())
 end
 
 -- The running limited-time event, or nil. In Studio, Config/Events.TEST_EVENT forces one.
@@ -182,6 +190,7 @@ function GameService.luck(player: Player): number
 		* saved
 		* Gear.get(runtime.gear, "Luck")
 		* GameService.totem(runtime.zoneId, "Luck")
+		* GameService.liveBonus("Luck")
 end
 
 -- Extra multiplier per variant for hatching: skills plus the saved Pixel boost.
@@ -198,6 +207,7 @@ function GameService.variantChance(player: Player, eggZone: number?): { [string]
 	if GameService.isRift(eggZone) then
 		chances.Pixel = (chances.Pixel or 1) * Progression.RIFT_PIXEL_CHANCE
 	end
+	chances.Pixel = (chances.Pixel or 1) * GameService.liveBonus("Pixel")
 	return chances
 end
 
@@ -366,6 +376,7 @@ local function coinMultiplier(
 	mult *= GameService.reloadMult(data)
 	mult *= GameService.totem(zoneId, "Coins")
 	mult *= Events.bonus(GameService.event(), "Coins")
+	mult *= GameService.liveBonus("Coins")
 	if runtime.premium then
 		mult *= Products.PREMIUM_COINS
 	end
@@ -497,6 +508,7 @@ BreakableService.Broken:Connect(function(source: BreakableService.Source, contri
 			* Gear.get(runtime.gear, "Gem")
 			* Effects.get(runtime.effects, "GemMult")
 			* Events.bonus(GameService.event(), "Gem")
+			* GameService.liveBonus("Gem")
 		if rng:NextNumber() < gemChance then
 			data.gems += math.max(1, source.zoneId)
 		end
