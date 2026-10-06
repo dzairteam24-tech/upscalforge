@@ -1313,6 +1313,47 @@ test("First clears: once per guardian and boss, bonuses last", function()
 	eq(FC.guardians(clears), 2, "the boss isn't a guardian")
 end)
 
+test("Fishing: rolls, Perfect luck, timing and the Fish Index", function()
+	local Fish = R(Shared.Logic.Fishing)
+	local FishCfg = R(Shared.Config.Fishing)
+	local total = 0
+	for _, rarity in FishCfg.rarities do
+		total += rarity.weight
+	end
+	near(total, 100, 1e-9, "weights add up to 100")
+	for _, f in FishCfg.fish do
+		assert(FishCfg.raritiesById[f.rarity], f.id)
+	end
+	eq(Fish.roll(false, function() return 0 end).rarity, "Common")
+	eq(Fish.roll(false, function() return 0.999 end).rarity, "Legendary")
+	local w, p = Fish.weights(false), Fish.weights(true)
+	eq(p.Common, w.Common)
+	eq(p.Legendary, w.Legendary * FishCfg.PERFECT_LUCK)
+	eq(Fish.isPerfect(Fish.marker(0.5 / FishCfg.MARKER_SPEED)), true, "middle of the bar")
+	eq(Fish.isPerfect(Fish.marker(0)), false)
+	eq(Fish.inTime(-0.1), false)
+	eq(Fish.inTime(1), true)
+	eq(Fish.inTime(FishCfg.REEL_WINDOW + FishCfg.LATENCY + 0.1), false)
+	assert(Fish.biteDelay(0.5, true) > Fish.biteDelay(0.5, false), "auto is slower")
+	local reward = Fish.reward(FishCfg.fishById.Cubefish, 1000, function() return 0 end)
+	eq(reward.coins, 60000)
+	eq(reward.gems, 25)
+	assert(reward.elixir)
+	local data = { caught = {}, total = 0 }
+	local isNew, complete = Fish.record(data, "Minnow")
+	eq(isNew, true)
+	eq(complete, false)
+	eq((Fish.record(data, "Minnow")), false)
+	for _, f in FishCfg.fish do
+		if f.id ~= "Cubefish" then
+			Fish.record(data, f.id)
+		end
+	end
+	local _, done = Fish.record(data, "Cubefish")
+	eq(done, true, "index complete")
+	eq(Fish.kinds(data), 10)
+end)
+
 -- Events -----------------------------------------------------------------------------------------------------
 
 local EventLogic = R(Shared.Logic.Events)

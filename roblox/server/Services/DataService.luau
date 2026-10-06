@@ -71,6 +71,7 @@ local function template(): PlayerData
 		pass = { season = 0, xp = 0, premium = false, claimedFree = {}, claimedPremium = {} },
 		guardians = {},
 		clears = {},
+		fishing = { caught = {}, total = 0 },
 		trails = {},
 		cartridges = {},
 		loadouts = {},

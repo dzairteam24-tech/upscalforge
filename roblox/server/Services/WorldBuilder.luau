@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local World1 = require(Shared.Config.World1)
+local FishingConfig = require(Shared.Config.Fishing)
 local PetModel = require(Shared.PetModel)
 local MapLayout = require(Shared.Logic.MapLayout)
 
@@ -318,6 +319,61 @@ local function buildHub(folder: Folder)
 	end
 end
 
+-- Fishing Pond in a corner of the Hub (Config/Fishing). The prompt opens the fishing window.
+local function buildPond(folder: Folder)
+	local center = MapLayout.center(0) + FishingConfig.POND_OFFSET
+	local radius = FishingConfig.POND_RADIUS
+	local model = Instance.new("Model")
+	model.Name = "FishingPond"
+	local flat = CFrame.Angles(0, 0, math.rad(90))
+	local rim = part({
+		Name = "Rim",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.4, radius * 2 + 4, radius * 2 + 4),
+		CFrame = CFrame.new(center + Vector3.new(0, 0.2, 0)) * flat,
+		Color = Color3.fromRGB(150, 140, 125),
+		Material = Enum.Material.Slate,
+	})
+	rim.Parent = model
+	local water = part({
+		Name = "Water",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.5, radius * 2, radius * 2),
+		CFrame = CFrame.new(center + Vector3.new(0, 0.3, 0)) * flat,
+		Color = Color3.fromRGB(60, 150, 220),
+		Material = Enum.Material.Glass,
+		Transparency = 0.15,
+		CanCollide = false,
+	})
+	water.Parent = model
+	-- A small wooden dock toward the town
+	local dock = part({
+		Name = "Dock",
+		Size = Vector3.new(4, 0.6, radius + 2),
+		Position = center + Vector3.new(radius * 0.5, 0.7, -radius * 0.45),
+		Color = Color3.fromRGB(150, 105, 65),
+		Material = Enum.Material.WoodPlanks,
+	})
+	dock.Parent = model
+	local sign = part({
+		Name = "Sign",
+		Size = Vector3.new(1, 6, 1),
+		Position = center + Vector3.new(radius + 3, 3, -radius + 2),
+		Color = Color3.fromRGB(120, 85, 55),
+		Material = Enum.Material.Wood,
+	})
+	label(sign, "🎣 Fishing Pond", UDim2.fromOffset(260, 60), Vector3.new(0, 5, 0))
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Fish"
+	prompt.ObjectText = "Fishing Pond"
+	prompt.MaxActivationDistance = 16
+	prompt.RequiresLineOfSight = false
+	prompt:SetAttribute("OpenUI", "Fish")
+	prompt.Parent = sign
+	sign.Parent = model
+	model.Parent = folder
+end
+
 -- Professor Cubo: the Journey's NPC near the spawn. Talking to him opens the Quests window.
 local function buildProfessor(folder: Folder)
 	local center = MapLayout.center(0) + Vector3.new(16, 0, 40)
@@ -502,6 +558,7 @@ function WorldBuilder.build()
 	end
 	buildHub(folder)
 	buildProfessor(folder)
+	buildPond(folder)
 	buildPlaza(folder)
 
 	folder.Parent = workspace

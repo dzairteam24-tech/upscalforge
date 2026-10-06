@@ -36,6 +36,7 @@ export type PlayerData = {
 	quests: QuestBook,
 	pass: PassState,
 	guardians: { [string]: number }, -- zone id -> os.time() when its guardian can be fought again
+	fishing: { caught: { [string]: number }, total: number },
 	clears: { [string]: boolean }, -- first clears ("G3", "Boss"), see Logic/FirstClear
 	trails: { [string]: boolean },
 	equippedTitle: string?,

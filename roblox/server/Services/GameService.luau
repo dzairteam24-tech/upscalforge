@@ -976,6 +976,7 @@ local function snapshot(player: Player, data: PlayerData): { [string]: any }
 		pass = data.pass,
 		guardians = data.guardians,
 		clears = data.clears,
+		fishing = data.fishing,
 		trails = data.trails,
 		equippedTitle = data.equippedTitle,
 		equippedTrail = data.equippedTrail,
