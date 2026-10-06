@@ -1,4 +1,4 @@
--- Items window with three tabs:
+-- Items window with five tabs:
 --   Elixirs:    use, merge 3 -> 1, mix two families, active boosts
 --   Cards:      Boost Cards (equipped slots + set bonuses), equip and merge
 --   Keys:       use keys, merge 2 halves -> 1 key
@@ -20,7 +20,7 @@ local PetCard = require(script.Parent.PetCard)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
 
-local BULK_KEYS: { [string]: number } = { Key_Zone = 25, Key_Golden = 10 }
+local BULK_KEYS = Items.BULK_OPEN
 
 local BagPanel = {}
 
@@ -187,14 +187,6 @@ local function itemTile(item: Items.Item, count: number?, highlight: boolean): T
 	return tile
 end
 
-local function clear(container: Instance)
-	for _, child in container:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
-end
-
 function BagPanel.mount(gui: ScreenGui)
 	local window, content = Theme.window(gui, "Items", function()
 		Windows.close("Items")
@@ -289,7 +281,7 @@ function BagPanel.mount(gui: ScreenGui)
 	local rebuild: () -> ()
 
 	local function buildHeader(data: { [string]: any })
-		clear(header)
+		Theme.clear(header)
 		boostsLabel = nil
 		if current == "Elixirs" then
 			local label = Theme.label({
@@ -446,7 +438,7 @@ function BagPanel.mount(gui: ScreenGui)
 	end
 
 	function rebuild()
-		clear(scroll)
+		Theme.clear(scroll)
 		local data = Store.data
 		if not data then
 			return

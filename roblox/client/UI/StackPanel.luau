@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Progress = require(Shared.Logic.Progress)
 local MinigameConfig = require(Shared.Config.Minigame)
 local Minigame = require(Shared.Logic.Minigame)
 local Net = require(Shared.Net)
@@ -214,7 +215,7 @@ function StackPanel.mount(gui: ScreenGui)
 	local function update()
 		local data = Store.data
 		local arcade = data and (data :: any).arcade
-		local today = os.time() // 86400
+		local today = Progress.day(os.time())
 		local used = if arcade and arcade.day == today then arcade.plays else 0
 		local left = math.max(0, MinigameConfig.PLAYS_PER_DAY - used)
 		info.Text = ("Plays left today: %d · Best: %d · 1 🎟️ every %d cubes"):format(left, arcade and arcade.best or 0, MinigameConfig.TICKETS_EVERY)

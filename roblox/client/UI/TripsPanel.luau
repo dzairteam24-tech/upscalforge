@@ -121,14 +121,6 @@ local function autoPick(data: { [string]: any }, count: number): { string }
 	return best
 end
 
-local function clear(container: Instance)
-	for _, child in container:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
-end
-
 function TripsPanel.mount(gui: ScreenGui)
 	local window, content = Theme.window(gui, "Trips", function()
 		Windows.close("Trips")
@@ -217,7 +209,7 @@ function TripsPanel.mount(gui: ScreenGui)
 	local rebuild: () -> ()
 
 	local function buildPicker(data: { [string]: any })
-		clear(pickScroll)
+		Theme.clear(pickScroll)
 		local kind = if chosenKind then Expeditions.byId[chosenKind] else nil
 		right.Visible = kind ~= nil
 		if not kind then
@@ -270,14 +262,14 @@ function TripsPanel.mount(gui: ScreenGui)
 		end
 		local same = #picked == kind.pets and Expedition.sharedElement(pets)
 		local coins = power * kind.duration * kind.coinFactor * (if same then Expeditions.ELEMENT_BONUS else 1) * (data.reloadMult or 1)
-		preview.Text = ("≈ 🪙 %s%s"):format(Format.abbrev(coins), if same then " · Same element +50%!" else "")
+		preview.Text = ("≈ 🪙 %s%s"):format(Format.abbrev(coins), if same then (" · Same element +%d%%!"):format(math.floor((Expeditions.ELEMENT_BONUS - 1) * 100 + 0.5)) else "")
 		preview.TextColor3 = if same then Theme.gold else Theme.muted
 		sendButton.Text = ("Send (%d/%d)"):format(#picked, kind.pets)
 		sendButton.BackgroundColor3 = if #picked == kind.pets then Theme.green else Theme.card
 	end
 
 	local function buildList(data: { [string]: any })
-		clear(left)
+		Theme.clear(left)
 		timers = {}
 		local trips = data.expeditions or {}
 		local slots: number = data.expeditionSlots or Expeditions.BASE_SLOTS
@@ -306,7 +298,7 @@ function TripsPanel.mount(gui: ScreenGui)
 			Theme.corner(card, 10)
 			Theme.stroke(card, kind.color, 2)
 			local name = Theme.label({
-				Text = ("%s · %d creatures%s"):format(kind.name, #trip.pets, if trip.element then " · +50%" else ""),
+				Text = ("%s · %d creatures%s"):format(kind.name, #trip.pets, if trip.element then (" · +%d%%"):format(math.floor((Expeditions.ELEMENT_BONUS - 1) * 100 + 0.5)) else ""),
 				Position = UDim2.fromOffset(10, 6),
 				Size = UDim2.new(0.62, -10, 0, 24),
 				TextXAlignment = Enum.TextXAlignment.Left,

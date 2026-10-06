@@ -35,8 +35,8 @@ local function random(): number
 end
 
 -- Keys return how many were used (and should be consumed). Zone and Golden keys can be opened in bulk.
-local MAX_BULK_KEYS = 25
-local MAX_BULK_GOLDEN = 10 -- 3 eggs each
+local MAX_BULK_KEYS = Items.BULK_OPEN.Key_Zone
+local MAX_BULK_GOLDEN = Items.BULK_OPEN.Key_Golden
 
 local KEY_ACTIONS: { [string]: (Player, PlayerData, State.Runtime, number) -> number } = {
 	Key_Zone = function(player, _data, runtime, count)

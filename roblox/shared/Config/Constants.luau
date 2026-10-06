@@ -57,6 +57,11 @@ local Constants = {
 	TRADE_REQUEST_TIMEOUT = 30,
 	TRADE_HISTORY_SIZE = 50,
 
+	-- Trading Plaza booths
+	PLAZA_MAX_LISTINGS = 6,
+	PLAZA_TAX = 0.05, -- taken from each sale (a gem sink)
+	PLAZA_MAX_PRICE = 1e9,
+
 	-- Data
 	AUTOSAVE_SECONDS = 60,
 	DATASTORE_NAME = "Cubelings_PlayerData_v1",

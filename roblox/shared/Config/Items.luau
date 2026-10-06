@@ -357,6 +357,8 @@ local Items = {
 	byId = byId,
 	MAX_TIER = MAX_TIER,
 	BOOST_CAP_SECONDS = 4 * 3600,
+	-- Most keys opened in one tap (Golden: 3 eggs each, so fewer)
+	BULK_OPEN = { Key_Zone = 25, Key_Golden = 10 } :: { [string]: number },
 	cartridgeFamilies = CARTRIDGES,
 	sets = SETS,
 	ROMAN = ROMAN,

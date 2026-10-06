@@ -14,14 +14,6 @@ local Windows = require(script.Parent.Windows)
 
 local ClanPanel = {}
 
-local function clear(container: Instance)
-	for _, child in container:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
-end
-
 local function box(placeholder: string): TextBox
 	local b = Instance.new("TextBox")
 	b.PlaceholderText = placeholder
@@ -80,7 +72,7 @@ function ClanPanel.mount(gui: ScreenGui)
 	end
 
 	local function show(info: { [string]: any }?, top: { { [string]: any } }, available: boolean)
-		clear(scroll)
+		Theme.clear(scroll)
 		order = 0
 		if not available then
 			text("Clans turn on when the game is published (they're saved across servers).", { height = 40 })

@@ -48,14 +48,6 @@ function QuestsPanel.hasClaimable(): boolean
 	return false
 end
 
-local function clear(container: Instance)
-	for _, child in container:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
-end
-
 local function progressBar(parent: Instance, fraction: number, position: UDim2, size: UDim2): Frame
 	local back = Theme.frame({ Position = position, Size = size, BackgroundColor3 = Color3.fromRGB(20, 24, 38) })
 	Theme.corner(back, 6)
@@ -510,7 +502,7 @@ function QuestsPanel.mount(gui: ScreenGui)
 				end)
 			end
 		end
-		section("Rides (+25% speed, all the same)")
+		section(("Rides (+%d%% speed, all the same)"):format(math.floor((Cosmetics.RIDE_SPEED - 1) * 100 + 0.5)))
 		row("None", Theme.muted, data.equippedRide == nil, function()
 			Net.event("EquipCosmetic"):FireServer("ride", "")
 		end)
@@ -618,7 +610,7 @@ function QuestsPanel.mount(gui: ScreenGui)
 	end
 
 	local function rebuild()
-		clear(body)
+		Theme.clear(body)
 		for name, b in tabButtons do
 			b.BackgroundColor3 = if name == current then Theme.gold else Theme.card
 		end

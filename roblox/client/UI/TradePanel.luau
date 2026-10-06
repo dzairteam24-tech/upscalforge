@@ -5,6 +5,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Progress = require(Shared.Logic.Progress)
+local Constants = require(Shared.Config.Constants)
 local PetMath = require(Shared.Logic.PetMath)
 local TradeLogic = require(Shared.Logic.TradeLogic)
 local Net = require(Shared.Net)
@@ -41,14 +43,6 @@ local function scrollGrid(parent: Instance, props: { [string]: any }, cell: UDim
 	grid.Parent = scroll
 	scroll.Parent = parent
 	return scroll
-end
-
-local function clear(container: Instance)
-	for _, child in container:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
 end
 
 function TradePanel.mount(gui: ScreenGui)
@@ -211,7 +205,7 @@ function TradePanel.mount(gui: ScreenGui)
 	end
 
 	local function rebuildPlayers()
-		clear(playerList)
+		Theme.clear(playerList)
 		local data = Store.data
 		local allow = data == nil or data.settings.allowTrades
 		allowToggle.Text = if allow then "Trade requests: ON" else "Trade requests: OFF"
@@ -243,7 +237,7 @@ function TradePanel.mount(gui: ScreenGui)
 				b.Parent = row
 				-- Daily gift for friends (the server checks the friendship and the limits)
 				local gifts = data and (data :: any).gifts
-				local sentToday = gifts ~= nil and gifts.day == os.time() // 86400 and gifts.sent
+				local sentToday = gifts ~= nil and gifts.day == Progress.day(os.time()) and gifts.sent
 				local gift = Theme.button({
 					Text = if sentToday then "🎁 Sent" else "🎁 Gift",
 					Size = UDim2.new(0.22, 0, 1, -12),
@@ -273,9 +267,9 @@ function TradePanel.mount(gui: ScreenGui)
 		if not s then
 			return
 		end
-		clear(mineGrid)
-		clear(theirsGrid)
-		clear(picker)
+		Theme.clear(mineGrid)
+		Theme.clear(theirsGrid)
+		Theme.clear(picker)
 		local mine = s.mine :: { [string]: any }
 		for petId, pet in mine do
 			local card = PetCard.create(pet)
@@ -419,7 +413,7 @@ function TradePanel.mount(gui: ScreenGui)
 		incomingFrom = fromUserId
 		incomingText.Text = fromName .. " wants to trade with you"
 		incoming.Visible = true
-		task.delay(30, function()
+		task.delay(Constants.TRADE_REQUEST_TIMEOUT, function()
 			if incomingFrom == fromUserId then
 				incoming.Visible = false
 				incomingFrom = nil

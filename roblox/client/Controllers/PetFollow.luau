@@ -155,8 +155,6 @@ local function groundY(position: Vector3, ignore: { Instance }): number
 	return if hit then hit.Position.Y else position.Y - 3
 end
 
-local frame = 0
-
 local function applyLowEnd()
 	local hide = Store.lowEnd()
 	if hide == othersHidden then
@@ -173,7 +171,6 @@ local function applyLowEnd()
 end
 
 local function step(dt: number)
-	frame += 1
 	applyLowEnd()
 	local parts: { BasePart } = {}
 	local cframes: { CFrame } = {}

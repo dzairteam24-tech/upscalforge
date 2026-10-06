@@ -112,6 +112,15 @@ end
 -- A centered window with a title and close button. Returns the window and its content frame.
 Theme.WINDOW_MIN_HEIGHT = 440
 
+-- Removes every GUI child (rows, cards) but keeps layouts and constraints.
+function Theme.clear(container: Instance)
+	for _, child in container:GetChildren() do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+end
+
 -- Size in layout units (offsets) of something inside a window that may be scaled down on phones.
 function Theme.layoutSize(gui: GuiObject): Vector2
 	local scale = 1

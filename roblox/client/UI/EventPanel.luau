@@ -37,7 +37,7 @@ local function offerText(offer: EventConfig.Offer): (string, string)
 		return "✨ " .. (if trail then trail.name else offer.trail), "A trail behind you"
 	elseif offer.ride then
 		local ride = Cosmetics.rideById[offer.ride]
-		return "🛹 " .. (if ride then ride.name else offer.ride), "A ride (+25% speed, like every ride)"
+		return "🛹 " .. (if ride then ride.name else offer.ride), ("A ride (+%d%% speed, like every ride)"):format(math.floor((Cosmetics.RIDE_SPEED - 1) * 100 + 0.5))
 	end
 	local item = offer.itemId and Items.byId[offer.itemId]
 	return (if item then (item.icon or "🎁") .. " " .. item.name else "?"), if item then item.description else ""

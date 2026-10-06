@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Constants = require(Shared.Config.Constants)
 local Format = require(Shared.Logic.Format)
 local PetMath = require(Shared.Logic.PetMath)
 local Net = require(Shared.Net)
@@ -57,14 +58,6 @@ function BoothPanel.use(id: number)
 	currentBooth = id
 	pickedPet = nil
 	Windows.open("Booth")
-end
-
-local function clear(container: Instance)
-	for _, child in container:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
 end
 
 local function grid(parent: Instance, position: UDim2, size: UDim2): ScrollingFrame
@@ -192,7 +185,7 @@ function BoothPanel.mount(gui: ScreenGui)
 	})
 	listButton.Parent = editor
 	local note = Theme.label({
-		Text = "Buyers pay the price you set. A 5% tax is taken from each sale.",
+		Text = ("Buyers pay the price you set. A %d%% tax is taken from each sale."):format(math.floor(Constants.PLAZA_TAX * 100 + 0.5)),
 		Font = Enum.Font.Gotham,
 		TextColor3 = Theme.muted,
 		Position = UDim2.new(0, 8, 0, 134),
@@ -202,8 +195,8 @@ function BoothPanel.mount(gui: ScreenGui)
 	note.Parent = editor
 
 	local function rebuild()
-		clear(forSale)
-		clear(mine)
+		Theme.clear(forSale)
+		Theme.clear(mine)
 		local id = currentBooth
 		local part = if id then boothPart(id) else nil
 		local data = Store.data
@@ -218,7 +211,7 @@ function BoothPanel.mount(gui: ScreenGui)
 		local own = ownerId == LOCAL.UserId
 		local listings = listingsOf(part)
 		header.Text = if own
-			then ("🏪 Your booth · %d/6 for sale"):format(#listings)
+			then ("🏪 Your booth · %d/%d for sale"):format(#listings, Constants.PLAZA_MAX_LISTINGS)
 			else ("🏪 %s's booth · 💎 %s"):format(tostring(part:GetAttribute("OwnerName")), Format.abbrev(data.gems))
 		closeBooth.Visible = own
 		mineTitle.Visible = own

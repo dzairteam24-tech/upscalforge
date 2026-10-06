@@ -23,9 +23,9 @@ type Pet = Types.Pet
 
 local PlazaService = {}
 
-local MAX_LISTINGS = 6
-local TAX = 0.05
-local MAX_PRICE = 1e9
+local MAX_LISTINGS = Constants.PLAZA_MAX_LISTINGS
+local TAX = Constants.PLAZA_TAX
+local MAX_PRICE = Constants.PLAZA_MAX_PRICE
 
 type Listing = { id: string, price: number, s: string, v: string, z: string, st: string? }
 type Booth = { part: BasePart, owner: Player?, listings: { Listing } }

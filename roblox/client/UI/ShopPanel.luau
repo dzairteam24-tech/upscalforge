@@ -187,7 +187,7 @@ function ShopPanel.mount(gui: ScreenGui)
 			local supported = AdButton.supported()
 			local note = Theme.label({
 				Text = if supported
-					then "Watch a short video to get a reward. Boost time stacks up to 4 hours."
+					then ("Watch a short video to get a reward. Boost time stacks up to %d hours."):format(Items.BOOST_CAP_SECONDS // 3600)
 					else "Videos aren't available for your account (Roblox shows them to players 13+ in some countries). Daily rewards, gifts, quests and the Lucky Spin are always free!",
 				Font = Enum.Font.Gotham,
 				TextColor3 = Theme.muted,
@@ -283,7 +283,7 @@ function ShopPanel.mount(gui: ScreenGui)
 			section("⭐ Roblox Premium")
 			order += 1
 			local premium = data.premium == true
-			row(order, "Premium perks", "Coins +10% while you're a Roblox Premium member", if premium then "Active ✓" else "Get Premium", not premium, function()
+			row(order, "Premium perks", ("Coins +%d%% while you're a Roblox Premium member"):format(math.floor((Products.PREMIUM_COINS - 1) * 100 + 0.5)), if premium then "Active ✓" else "Get Premium", not premium, function()
 				MarketplaceService:PromptPremiumPurchase(Players.LocalPlayer)
 			end)
 		end

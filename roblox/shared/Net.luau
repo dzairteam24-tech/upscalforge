@@ -37,7 +37,6 @@ local EVENTS = {
 	"BossGo",
 	"ClaimJourney",
 	"StackStart",
-	"StackGo",
 	"StackEnd",
 	"SendGift",
 	"Reload",
@@ -59,15 +58,16 @@ local EVENTS = {
 	"ClanJoin",
 	"ClanLeave",
 	"ClanKick",
-	"FishCast",
-	"FishBite",
+	"FishCast", -- both ways: the client asks, the server confirms
 	"FishReel",
-	"FishResult",
-	"FishAuto",
+	"FishAuto", -- both ways
 	"ClanRequest",
 	"EventBuy",
 	"Teleport",
 	-- server -> client
+	"StackGo",
+	"FishBite",
+	"FishResult",
 	"Data",
 	"Currency",
 	"Notify",

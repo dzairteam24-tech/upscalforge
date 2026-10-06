@@ -1419,6 +1419,31 @@ test("Clans: Break and Hatch points stop at the daily cap; big wins don't", func
 	eq(ClanLogic.capped(state, "Break", 50, 6), 50, "new day")
 end)
 
+test("Inventory.sanitize drops missing, away and duplicate creatures and respects the slot count", function()
+	local holder = {
+		pets = {
+			a = { s = "Cubby", v = "Normal", z = "Normal" },
+			b = { s = "Cubby", v = "Normal", z = "Normal", ex = true },
+			c = { s = "Kitty", v = "Normal", z = "Normal" },
+			d = { s = "Kitty", v = "Normal", z = "Normal" },
+		},
+		equipped = { "a", "missing", "b", "a", "c", "d" },
+	}
+	Inventory.sanitize(holder, 2)
+	eq(#holder.equipped, 2)
+	eq(holder.equipped[1], "a")
+	eq(holder.equipped[2], "c")
+end)
+
+test("MapLayout.zoneAt finds the zone under a position", function()
+	local MapLayoutT = R(Shared.Logic.MapLayout)
+	for _, zone in World1.zones do
+		eq(MapLayoutT.zoneAt(MapLayoutT.center(zone.id)), zone.id)
+	end
+	local midway = MapLayoutT.center(0) + (MapLayoutT.center(1) - MapLayoutT.center(0)) * 0.5
+	eq(MapLayoutT.zoneAt(midway), nil, "on the bridge between two platforms")
+end)
+
 -- Events -----------------------------------------------------------------------------------------------------
 
 local EventLogic = R(Shared.Logic.Events)

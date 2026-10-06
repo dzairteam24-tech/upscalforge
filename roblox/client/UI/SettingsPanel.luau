@@ -1,4 +1,4 @@
--- Settings: low-end mode, trade requests, auto equip best. Saved on the server with the player's data.
+-- Settings (graphics, sound, trades, auto options) and codes. Saved on the server with the player's data.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 

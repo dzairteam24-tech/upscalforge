@@ -1,4 +1,4 @@
--- A creature card: 3D icon, name, power and badges. Used by the pets, trade and hatch windows.
+-- A creature card: 3D icon, name, power and badges. Used wherever creatures are shown (pets, trade, hatch, booths, trips, quests).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
