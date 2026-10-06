@@ -18,6 +18,10 @@ export type Built = {
 	offsets: { CFrame }, -- offset of each part from the body
 	height: number, -- full height in studs
 	radius: number, -- footprint radius in studs
+	-- Moving pieces (3D models only): per part, "" or legFL/legFR/legBL/legBR, wingL/wingR, tail, mouthC, mouthO,
+	-- and the point it turns around (model space, studs). Parts without a piece have no entry.
+	anims: { [number]: string },
+	pivots: { [number]: Vector3 },
 }
 
 local PetModel = {}
@@ -56,7 +60,7 @@ local buildBlocks: (pet: { s: string, v: string, z: string }) -> Built
 ---------------------------------------------------------------------------------------------------------------
 -- 3D models
 
-type TemplatePart = { part: BasePart, role: string, offset: CFrame }
+type TemplatePart = { part: BasePart, role: string, anim: string, offset: CFrame }
 type Template = { parts: { TemplatePart }, width: number, height: number, radius: number, bodyOffset: CFrame }
 
 -- Parts of the face keep their look in every variant
@@ -160,8 +164,10 @@ local function template(speciesId: string): Template?
 	local radius = 0
 	for _, part in list do
 		local offset = ref:ToObjectSpace(part.CFrame)
-		local role = string.match((string.gsub(part.Name, "%.%d+$", "")), "__([%w_]+)$") :: string
-		table.insert(parts, { part = part, role = role, offset = offset })
+		local full = string.match((string.gsub(part.Name, "%.%d+$", "")), "__([%w_]+)$") :: string
+		-- "legs__legFL": the color role, then the moving piece it belongs to
+		local role, anim = string.match(full, "^(.-)__(.+)$")
+		table.insert(parts, { part = part, role = role or full, anim = anim or "", offset = offset })
 		radius = math.max(radius, Vector2.new(offset.X, offset.Z).Magnitude + math.max(part.Size.X, part.Size.Z) / 2)
 	end
 	local made: Template = {
@@ -236,12 +242,31 @@ local function styleMesh(part: BasePart, role: string, variant: string, normal: 
 	end
 end
 
+-- The point a moving piece turns around, in model space: the top of a leg, the inner edge of a wing,
+-- the end of a tail nearest the body.
+local function pivotFor(anim: string, offset: CFrame, size: Vector3): Vector3
+	local p = offset.Position
+	local prefix = string.sub(anim, 1, 3)
+	if prefix == "leg" then
+		return (offset * CFrame.new(0, size.Y / 2, 0)).Position
+	elseif prefix == "win" then
+		local inward = if p.X > 0 then -1 else 1
+		return p + Vector3.new(inward * size.X / 2, 0, 0)
+	elseif anim == "tail" then
+		local inward = if p.Z > 0 then -1 else 1
+		return p + Vector3.new(0, 0, inward * size.Z / 2)
+	end
+	return p
+end
+
 local function buildFromMeshes(pet: { s: string, v: string, z: string }, t: Template, b: number): Built
 	local scale = b / t.width
 	local model = Instance.new("Model")
 	model.Name = pet.s
 	local parts: { BasePart } = {}
 	local offsets: { CFrame } = {}
+	local anims: { [number]: string } = {}
+	local pivots: { [number]: Vector3 } = {}
 	local body: BasePart? = nil
 	local looks = CreatureLooks[pet.s] or {}
 	for _, entry in t.parts do
@@ -265,7 +290,16 @@ local function buildFromMeshes(pet: { s: string, v: string, z: string }, t: Temp
 		styleMesh(part, entry.role, pet.v, looks[entry.role] or part.Color)
 		part.Parent = model
 		table.insert(parts, part)
-		table.insert(offsets, CFrame.new(entry.offset.Position * scale) * entry.offset.Rotation)
+		local offset = CFrame.new(entry.offset.Position * scale) * entry.offset.Rotation
+		table.insert(offsets, offset)
+		if entry.anim ~= "" then
+			local index = #parts
+			anims[index] = entry.anim
+			pivots[index] = pivotFor(entry.anim, offset, part.Size)
+			if entry.anim == "mouthO" then
+				part.Transparency = 1 -- the open mouth shows only while the creature "talks"
+			end
+		end
 		if entry.role == "body" or (entry.role == "jelly" and not body) then
 			body = part
 		end
@@ -303,6 +337,8 @@ local function buildFromMeshes(pet: { s: string, v: string, z: string }, t: Temp
 		body = bodyPart,
 		parts = parts,
 		offsets = offsets,
+		anims = anims,
+		pivots = pivots,
 		height = t.height * scale,
 		radius = t.radius * scale,
 	}
@@ -333,6 +369,8 @@ function buildBlocks(pet: { s: string, v: string, z: string }): Built
 	model.Name = pet.s
 	local parts: { BasePart } = {}
 	local offsets: { CFrame } = {}
+	local anims: { [number]: string } = {} -- the block version has no moving pieces
+	local pivots: { [number]: Vector3 } = {}
 
 	local function add(part: BasePart, offset: CFrame)
 		part.Parent = model
@@ -613,6 +651,8 @@ function buildBlocks(pet: { s: string, v: string, z: string }): Built
 		body = body,
 		parts = parts,
 		offsets = offsets,
+		anims = anims,
+		pivots = pivots,
 		height = b * 1.1,
 		radius = b * 0.75,
 	}

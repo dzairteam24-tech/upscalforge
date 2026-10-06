@@ -11,6 +11,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		legs = Color3.fromRGB(60, 138, 203),
 		mouth = Color3.fromRGB(22, 38, 58),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 		tuft = Color3.fromRGB(60, 138, 203),
 	},
 	["Kitty"] = {
@@ -23,6 +24,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(90, 42, 20),
 		nose = Color3.fromRGB(255, 158, 181),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Bunny"] = {
 		belly = Color3.fromRGB(255, 230, 238),
@@ -36,6 +38,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		shine = Color3.fromRGB(255, 255, 255),
 		tail = Color3.fromRGB(255, 255, 255),
 		teeth = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Bear"] = {
 		belly = Color3.fromRGB(233, 201, 160),
@@ -49,6 +52,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		nose = Color3.fromRGB(58, 36, 24),
 		shine = Color3.fromRGB(255, 255, 255),
 		tail = Color3.fromRGB(168, 117, 79),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Bee"] = {
 		antenna_tip = Color3.fromRGB(43, 36, 51),
@@ -61,6 +65,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(36, 22, 28),
 		shine = Color3.fromRGB(255, 255, 255),
 		stripe = Color3.fromRGB(43, 36, 51),
+		tongue = Color3.fromRGB(255, 122, 138),
 		wing = Color3.fromRGB(233, 246, 255),
 	},
 	["Ladybug"] = {
@@ -73,6 +78,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(36, 20, 26),
 		shine = Color3.fromRGB(255, 255, 255),
 		spot = Color3.fromRGB(43, 36, 51),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Butterfly"] = {
 		antenna_tip = Color3.fromRGB(255, 158, 216),
@@ -84,6 +90,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		legs = Color3.fromRGB(91, 74, 140),
 		mouth = Color3.fromRGB(42, 31, 69),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 		wing = Color3.fromRGB(255, 158, 216),
 		wing_spot = Color3.fromRGB(255, 226, 122),
 	},
@@ -100,6 +107,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(58, 35, 64),
 		shine = Color3.fromRGB(255, 255, 255),
 		tail = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Fox"] = {
 		belly = Color3.fromRGB(255, 243, 230),
@@ -138,6 +146,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		shine = Color3.fromRGB(255, 255, 255),
 		spot = Color3.fromRGB(245, 227, 204),
 		tail = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Sprout"] = {
 		belly = Color3.fromRGB(212, 245, 201),
@@ -148,6 +157,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		legs = Color3.fromRGB(78, 158, 91),
 		mouth = Color3.fromRGB(31, 58, 34),
 		stem = Color3.fromRGB(63, 143, 69),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Crab"] = {
 		belly = Color3.fromRGB(255, 201, 184),
@@ -158,6 +168,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		legs = Color3.fromRGB(201, 67, 47),
 		mouth = Color3.fromRGB(43, 20, 16),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 		white = Color3.fromRGB(255, 255, 255),
 	},
 	["Turtle"] = {
@@ -170,6 +181,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		plate = Color3.fromRGB(181, 131, 79),
 		shell = Color3.fromRGB(138, 94, 59),
 		tail = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Dolphin"] = {
 		belly = Color3.fromRGB(227, 241, 255),
@@ -189,6 +201,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(42, 22, 56),
 		shine = Color3.fromRGB(255, 255, 255),
 		spot = Color3.fromRGB(201, 137, 234),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Mushroom"] = {
 		blush = Color3.fromRGB(255, 158, 158),
@@ -199,6 +212,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(58, 36, 24),
 		shine = Color3.fromRGB(255, 255, 255),
 		spot = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Bat"] = {
 		belly = Color3.fromRGB(110, 99, 136),
@@ -211,6 +225,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		legs = Color3.fromRGB(46, 39, 64),
 		mouth = Color3.fromRGB(30, 26, 42),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 		white = Color3.fromRGB(255, 255, 255),
 		wing = Color3.fromRGB(46, 39, 64),
 	},
@@ -226,6 +241,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(36, 52, 26),
 		stripe = Color3.fromRGB(134, 201, 62),
 		tail = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Shade"] = {
 		belly = Color3.fromRGB(126, 93, 170),
@@ -235,6 +251,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		horn = Color3.fromRGB(42, 30, 62),
 		mouth = Color3.fromRGB(26, 16, 40),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Camel"] = {
 		belly = Color3.fromRGB(245, 224, 188),
@@ -245,6 +262,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(43, 28, 16),
 		nose = Color3.fromRGB(107, 74, 46),
 		tail = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Scorpion"] = {
 		belly = Color3.fromRGB(201, 154, 106),
@@ -257,6 +275,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		segment = Color3.fromRGB(168, 112, 63),
 		shine = Color3.fromRGB(255, 255, 255),
 		stinger = Color3.fromRGB(43, 26, 16),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Cactus"] = {
 		blush = Color3.fromRGB(255, 158, 158),
@@ -268,6 +287,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		pot = Color3.fromRGB(200, 105, 62),
 		pot_rim = Color3.fromRGB(168, 85, 47),
 		spine = Color3.fromRGB(255, 246, 216),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Sphinx"] = {
 		belly = Color3.fromRGB(245, 223, 160),
@@ -279,6 +299,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(43, 28, 16),
 		shades = Color3.fromRGB(26, 26, 36),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Penguin"] = {
 		beak = Color3.fromRGB(247, 169, 59),
@@ -310,8 +331,10 @@ local looks: { [string]: { [string]: Color3 } } = {
 		dark = Color3.fromRGB(42, 42, 51),
 		eye = Color3.fromRGB(42, 42, 51),
 		legs = Color3.fromRGB(220, 227, 238),
+		mouth = Color3.fromRGB(42, 42, 51),
 		scarf = Color3.fromRGB(229, 83, 75),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Yeti"] = {
 		belly = Color3.fromRGB(255, 255, 255),
@@ -325,6 +348,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		patch = Color3.fromRGB(143, 183, 232),
 		shine = Color3.fromRGB(255, 255, 255),
 		tail = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 		white = Color3.fromRGB(255, 255, 255),
 	},
 	["Imp"] = {
@@ -337,6 +361,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		legs = Color3.fromRGB(168, 48, 42),
 		mouth = Color3.fromRGB(58, 26, 26),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 		white = Color3.fromRGB(255, 255, 255),
 		wing = Color3.fromRGB(138, 42, 42),
 	},
@@ -361,6 +386,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(58, 53, 48),
 		rock = Color3.fromRGB(138, 132, 126),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Phoenix"] = {
 		beak = Color3.fromRGB(255, 216, 77),
@@ -399,6 +425,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(27, 38, 56),
 		shine = Color3.fromRGB(255, 255, 255),
 		spot = Color3.fromRGB(94, 134, 184),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Frost Owl"] = {
 		beak = Color3.fromRGB(127, 176, 224),
@@ -422,6 +449,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(19, 49, 74),
 		shine = Color3.fromRGB(255, 255, 255),
 		spike = Color3.fromRGB(230, 251, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 		white = Color3.fromRGB(255, 255, 255),
 		wing = Color3.fromRGB(79, 168, 200),
 	},
@@ -436,6 +464,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(91, 240, 255),
 		screen = Color3.fromRGB(22, 32, 46),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Byte"] = {
 		accent = Color3.fromRGB(91, 240, 255),
@@ -447,6 +476,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		legs = Color3.fromRGB(106, 63, 176),
 		mouth = Color3.fromRGB(26, 16, 48),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Cursor"] = {
 		belly = Color3.fromRGB(255, 255, 255),
@@ -457,6 +487,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		legs = Color3.fromRGB(200, 200, 208),
 		mouth = Color3.fromRGB(30, 30, 36),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 		white = Color3.fromRGB(255, 255, 255),
 	},
 	["King"] = {
@@ -470,6 +501,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(20, 20, 30),
 		shades = Color3.fromRGB(20, 20, 30),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 		white = Color3.fromRGB(255, 255, 255),
 	},
 	["Slime King"] = {
@@ -497,6 +529,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		legs = Color3.fromRGB(229, 138, 184),
 		mouth = Color3.fromRGB(58, 31, 53),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 		wing = Color3.fromRGB(255, 227, 242),
 	},
 	["Elder Treant"] = {
@@ -510,6 +543,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		moss = Color3.fromRGB(111, 207, 106),
 		mouth = Color3.fromRGB(43, 26, 16),
 		mushroom_stem = Color3.fromRGB(243, 227, 200),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Kraken"] = {
 		belly = Color3.fromRGB(127, 196, 232),
@@ -523,6 +557,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		shine = Color3.fromRGB(255, 255, 255),
 		spot = Color3.fromRGB(95, 176, 224),
 		sucker = Color3.fromRGB(255, 201, 216),
+		tongue = Color3.fromRGB(255, 122, 138),
 		white = Color3.fromRGB(255, 255, 255),
 	},
 	["Spore Sage"] = {
@@ -549,6 +584,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(30, 26, 16),
 		shell = Color3.fromRGB(31, 122, 110),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Aurora Wolf"] = {
 		belly = Color3.fromRGB(255, 255, 255),
@@ -566,6 +602,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		nose = Color3.fromRGB(42, 58, 85),
 		shine = Color3.fromRGB(255, 255, 255),
 		tail_tip = Color3.fromRGB(91, 255, 176),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Inferno Drake"] = {
 		belly = Color3.fromRGB(74, 52, 56),
@@ -579,6 +616,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(18, 12, 16),
 		shine = Color3.fromRGB(255, 255, 255),
 		spike = Color3.fromRGB(255, 122, 26),
+		tongue = Color3.fromRGB(255, 122, 138),
 		white = Color3.fromRGB(255, 255, 255),
 		wing = Color3.fromRGB(122, 31, 31),
 	},
@@ -592,6 +630,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		glow2 = Color3.fromRGB(124, 224, 255),
 		mouth = Color3.fromRGB(16, 48, 80),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 	["Glitch"] = {
 		belly = Color3.fromRGB(38, 38, 58),
@@ -603,6 +642,7 @@ local looks: { [string]: { [string]: Color3 } } = {
 		mouth = Color3.fromRGB(61, 240, 255),
 		screen = Color3.fromRGB(5, 5, 10),
 		shine = Color3.fromRGB(255, 255, 255),
+		tongue = Color3.fromRGB(255, 122, 138),
 	},
 }
 

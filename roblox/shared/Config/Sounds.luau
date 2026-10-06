@@ -14,6 +14,7 @@ local effects: { [string]: Sound } = {
 	Error = { id = "rbxasset://sounds/button.wav", volume = 0.4, speed = 0.7 },
 	Click = { id = "rbxasset://sounds/button.wav", volume = 0.3 },
 	Spin = { id = "rbxasset://sounds/button.wav", volume = 0.2, speed = 1.4 },
+	Tick = { id = "rbxasset://sounds/button.wav", volume = 0.35, speed = 1.8 }, -- each shake of a hatching egg
 }
 
 return {

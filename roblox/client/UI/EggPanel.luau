@@ -101,6 +101,8 @@ function EggPanel.mount(gui: ScreenGui)
 		end
 	end)
 	local function showAuto()
+		-- The hatch show uses its quick version while auto hatching
+		Players.LocalPlayer:SetAttribute("AutoHatching", autoHatch)
 		auto.Text = if autoHatch then "Auto: ON" else "Auto: OFF"
 		auto.BackgroundColor3 = if autoHatch then Theme.green else Theme.card
 	end

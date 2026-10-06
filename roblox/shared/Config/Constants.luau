@@ -30,7 +30,7 @@ local Constants = {
 
 	-- Hatching
 	HATCH_COOLDOWN = 0.6,
-	EGG_RANGE = 16,
+	EGG_RANGE = 18, -- the eggs are big now (about twice the player's height)
 	GUARANTEED_GOLDEN_BY_HATCH = 5,
 
 	-- Offline earnings

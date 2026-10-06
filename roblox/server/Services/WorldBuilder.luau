@@ -17,6 +17,8 @@ WorldBuilder.eggPositions = {} :: { [number]: Vector3 }
 WorldBuilder.PLAZA_SIDE = Vector3.new(1, 0, 0)
 WorldBuilder.PLAZA_BOOTHS = 8
 
+local buildEgg: (parent: Instance, position: Vector3, color: Color3, size: number, title: string, golden: boolean) -> BasePart
+
 local function part(props: { [string]: any }): Part
 	local p = Instance.new("Part")
 	p.Anchored = true
@@ -153,29 +155,9 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 	-- Egg stand
 	if zone.eggPrice > 0 then
 		local eggPos = MapLayout.eggPosition(zone.id)
-		local pedestal = part({
-			Name = "EggPedestal",
-			Size = Vector3.new(10, 2, 10),
-			Position = eggPos + Vector3.new(0, 1, 0),
-			Color = Color3.fromRGB(70, 75, 95),
-		})
-		pedestal.Parent = model
-		local egg = part({
-			Name = "Egg",
-			Shape = Enum.PartType.Ball,
-			Size = Vector3.new(6, 6, 6),
-			Position = eggPos + Vector3.new(0, 5, 0),
-			Color = zone.color,
-			Material = Enum.Material.SmoothPlastic,
-		})
-		local mesh = Instance.new("SpecialMesh")
-		mesh.MeshType = Enum.MeshType.Sphere
-		mesh.Scale = Vector3.new(1, 1.3, 1)
-		mesh.Parent = egg
+		local egg = buildEgg(model, eggPos, zone.color, 8, zone.name .. " Egg", false)
 		egg:SetAttribute("ZoneId", zone.id)
 		egg:AddTag("EggStand")
-		label(egg, zone.name .. " Egg", UDim2.fromOffset(240, 50), Vector3.new(0, 6, 0))
-		egg.Parent = model
 		WorldBuilder.eggPositions[zone.id] = egg.Position
 	end
 
@@ -183,35 +165,7 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 	local legendary = World1.eggs[World1.LEGENDARY_EGG]
 	if legendary and legendary.zone == zone.id then
 		local eggPos = MapLayout.eggPosition(zone.id) + Vector3.new(26, 0, 0)
-		local pedestal = part({
-			Name = "LegendaryPedestal",
-			Size = Vector3.new(12, 3, 12),
-			Position = eggPos + Vector3.new(0, 1.5, 0),
-			Color = Color3.fromRGB(40, 30, 60),
-			Material = Enum.Material.Marble,
-		})
-		pedestal.Parent = model
-		local ring = part({
-			Name = "LegendaryRing",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.4, 13, 13),
-			CFrame = CFrame.new(eggPos + Vector3.new(0, 3.1, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-			Color = Color3.fromRGB(255, 205, 80),
-			Material = Enum.Material.Neon,
-		})
-		ring.Parent = model
-		local egg = part({
-			Name = "LegendaryEgg",
-			Shape = Enum.PartType.Ball,
-			Size = Vector3.new(7, 7, 7),
-			Position = eggPos + Vector3.new(0, 7, 0),
-			Color = Color3.fromRGB(255, 200, 70),
-			Material = Enum.Material.Foil,
-		})
-		local mesh = Instance.new("SpecialMesh")
-		mesh.MeshType = Enum.MeshType.Sphere
-		mesh.Scale = Vector3.new(1, 1.3, 1)
-		mesh.Parent = egg
+		local egg = buildEgg(model, eggPos, Color3.fromRGB(255, 200, 70), 9, legendary.name, true)
 		local sparkles = Instance.new("ParticleEmitter")
 		sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 		sparkles.Color = ColorSequence.new(Color3.fromRGB(255, 230, 140), Color3.fromRGB(200, 140, 255))
@@ -225,12 +179,69 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 		egg:SetAttribute("ZoneId", zone.id)
 		egg:SetAttribute("EggId", legendary.id)
 		egg:AddTag("EggStand")
-		label(egg, legendary.name, UDim2.fromOffset(280, 56), Vector3.new(0, 7, 0))
-		egg.Parent = model
 		WorldBuilder.eggPositions[legendary.id] = egg.Position
 	end
 
 	model.Parent = folder
+end
+
+-- A big egg (about twice the player's height) on a pedestal with a glowing ring, inside an "EggModel"
+-- with its spots so the client can turn and bob it as one piece (WorldClient).
+function buildEgg(parent: Instance, position: Vector3, color: Color3, size: number, title: string, golden: boolean): BasePart
+	local pedestal = part({
+		Name = "EggPedestal",
+		Size = Vector3.new(size + 5, 2, size + 5),
+		Position = position + Vector3.new(0, 1, 0),
+		Color = Color3.fromRGB(70, 75, 95),
+		Material = Enum.Material.Slate,
+	})
+	pedestal.Parent = parent
+	local ring = part({
+		Name = "EggRing",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.3, size + 3, size + 3),
+		CFrame = CFrame.new(position + Vector3.new(0, 2.05, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = color:Lerp(Color3.new(1, 1, 1), 0.3),
+		Material = Enum.Material.Neon,
+	})
+	ring.Parent = parent
+	local eggModel = Instance.new("Model")
+	eggModel.Name = "EggModel"
+	local height = size * 1.3
+	local center = position + Vector3.new(0, 2.6 + height / 2, 0)
+	local egg = part({
+		Name = "Egg",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * size,
+		Position = center,
+		Color = color,
+		Material = if golden then Enum.Material.Foil else Enum.Material.SmoothPlastic,
+	})
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Scale = Vector3.new(1, 1.3, 1)
+	mesh.Parent = egg
+	egg.Parent = eggModel
+	-- Spots on the shell
+	local spotColor = color:Lerp(Color3.new(1, 1, 1), 0.55)
+	for i = 1, 7 do
+		local y = math.sin(i * 1.7) * height * 0.32
+		local r = size / 2 * math.sqrt(math.max(0.15, 1 - (y / (height / 2)) ^ 2)) - size * 0.03
+		local a = i * 2.1
+		local spot = part({
+			Name = "Spot",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.one * size * (0.16 + (i % 3) * 0.05),
+			Position = center + Vector3.new(math.cos(a) * r, y, math.sin(a) * r),
+			Color = spotColor,
+			CanCollide = false,
+		})
+		spot.Parent = eggModel
+	end
+	eggModel.PrimaryPart = egg
+	eggModel.Parent = parent
+	label(egg, title, UDim2.fromOffset(260, 56), Vector3.new(0, height / 2 + 2.5, 0))
+	return egg
 end
 
 local function buildBridge(a: number, b: number, folder: Folder)

@@ -6,6 +6,7 @@ local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -297,8 +298,35 @@ local function updateRift()
 	riftMarker = marker
 end
 
+-- The big eggs turn slowly and bob on their pedestals (only on this screen; the server keeps them still).
+local function animateEggs()
+	local bases: { [Model]: CFrame } = {}
+	RunService.RenderStepped:Connect(function()
+		local camera = workspace.CurrentCamera
+		local now = os.clock()
+		for _, egg in CollectionService:GetTagged("EggStand") do
+			local model = egg.Parent
+			if not model or not model:IsA("Model") or model.Name ~= "EggModel" then
+				continue
+			end
+			local base = bases[model]
+			if not base then
+				base = model:GetPivot()
+				bases[model] = base
+			end
+			-- Far away eggs don't need to move
+			if camera and (camera.CFrame.Position - base.Position).Magnitude > 220 then
+				continue
+			end
+			local phase = (egg:GetAttribute("ZoneId") or 0) :: number
+			model:PivotTo(base * CFrame.new(0, math.sin(now * 1.6 + phase) * 0.45, 0) * CFrame.Angles(0, now * 0.45 + phase, 0))
+		end
+	end)
+end
+
 function WorldClient.init()
 	fxFolder.Parent = workspace
+	animateEggs()
 	ReplicatedStorage:GetAttributeChangedSignal("RiftZone"):Connect(updateRift)
 	updateRift()
 

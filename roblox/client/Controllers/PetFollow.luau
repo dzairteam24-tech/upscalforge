@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local World1 = require(Shared.Config.World1)
 local PetModel = require(Shared.PetModel)
 
 local Store = require(script.Parent.Parent.Store)
@@ -21,7 +22,39 @@ type Entry = {
 	nextBlink: number,
 	lastHop: number, -- hop height last frame (to squash on landing)
 	squash: number, -- 0..1, fades out after a landing
+	mouthOpen: boolean,
+	openUntil: number, -- the mouth stays open until then
+	nextChirp: number, -- next time it opens its mouth on its own
+	flying: boolean, -- has wings: hovers and flaps
+	legendary: boolean, -- floats higher, glows, chirps more
 }
+
+-- How each moving piece swings. Legs walk in diagonal pairs (front-left with back-right).
+local LEG_PHASE = { legFL = 0, legBR = 0, legFR = math.pi, legBL = math.pi }
+
+-- Shows the open or the closed mouth (3D models have both; one is hidden).
+local function setMouth(entry: Entry, open: boolean)
+	if entry.mouthOpen == open then
+		return
+	end
+	entry.mouthOpen = open
+	for i, anim in entry.built.anims do
+		if anim == "mouthO" then
+			entry.built.parts[i].Transparency = if open then 0 else 1
+		elseif anim == "mouthC" then
+			entry.built.parts[i].Transparency = if open then 1 else 0
+		end
+	end
+end
+
+local function hasPiece(built: PetModel.Built, prefix: string): boolean
+	for _, anim in built.anims do
+		if string.sub(anim, 1, #prefix) == prefix then
+			return true
+		end
+	end
+	return false
+end
 
 -- Eye parts of a built creature (block or 3D version), with their normal size
 local function findEyes(built: PetModel.Built): { { part: BasePart, size: Vector3 } }
@@ -82,6 +115,29 @@ local function startPosition(player: Player): CFrame
 	return if root then root.CFrame else CFrame.new()
 end
 
+-- Legendaries shine: rainbow sparkles around them and a soft light
+local function addAura(built: PetModel.Built)
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparkles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 120, 120)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 230, 120)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 140, 255)),
+	})
+	sparkles.LightEmission = 0.9
+	sparkles.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0) })
+	sparkles.Lifetime = NumberRange.new(0.8, 1.4)
+	sparkles.Speed = NumberRange.new(0.5, 1.5)
+	sparkles.SpreadAngle = Vector2.new(180, 180)
+	sparkles.Rate = 12
+	sparkles.Parent = built.body
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 225, 160)
+	light.Range = 10
+	light.Brightness = 1.2
+	light.Parent = built.body
+end
+
 local function addPet(owner: Owner, value: StringValue)
 	local pet = parse(value.Value)
 	if not pet then
@@ -98,8 +154,16 @@ local function addPet(owner: Owner, value: StringValue)
 		nextBlink = os.clock() + 1 + math.random() * 4,
 		lastHop = 0,
 		squash = 0,
+		mouthOpen = false,
+		openUntil = 0,
+		nextChirp = os.clock() + 2 + math.random() * 6,
+		flying = hasPiece(built, "wing"),
+		legendary = (World1.species[pet.s] and World1.species[pet.s].legendary) == true,
 	}
 	PetModel.place(built, entry.current)
+	if entry.legendary and not Store.lowEnd() then
+		addAura(built)
+	end
 	owner.entries[value.Name] = entry
 	rebuildOrder(owner)
 end
@@ -217,7 +281,13 @@ local function step(dt: number)
 				local pos = (root.CFrame * CFrame.new(offset)).Position
 				local moving = root.AssemblyLinearVelocity.Magnitude > 2
 				hop = if moving then math.abs(math.sin(now * 10 + entry.phase)) * 0.8 else math.sin(now * 2 + entry.phase) * 0.15
-				local y = baseY + built.height / 2 + hop
+				-- Flying creatures and Legendaries hover and bob instead of hopping
+				local hover = 0
+				if entry.flying or entry.legendary then
+					hover = built.height * (if entry.legendary then 0.55 else 0.4) + math.sin(now * 2.2 + entry.phase) * 0.35
+					hop = 0
+				end
+				local y = baseY + built.height / 2 + hop + hover
 				local look = root.CFrame.LookVector
 				goal = CFrame.lookAt(Vector3.new(pos.X, y, pos.Z), Vector3.new(pos.X + look.X, y, pos.Z + look.Z))
 			end
@@ -237,10 +307,38 @@ local function step(dt: number)
 			local lean = if moving then CFrame.Angles(math.rad(-10), 0, math.sin(now * 10 + entry.phase) * math.rad(4)) else CFrame.identity
 			local visual = entry.current * lean
 			local scale = Vector3.new(sxz, sy, sxz)
+			local busy = target ~= nil
+			-- Mouth: open while collecting (on each hop), and now and then on its own ("chirps")
+			if now >= entry.nextChirp then
+				entry.openUntil = now + 0.5 + math.random() * 0.5
+				entry.nextChirp = now + (if entry.legendary then 2 else 4) + math.random() * 5
+			end
+			setMouth(entry, now < entry.openUntil or (busy and hop > built.height * 0.15))
+			local walkSpeed = if busy then 16 elseif moving then 12 else 0
 			for i, p in built.parts do
 				local offset = built.offsets[i]
+				local cf = CFrame.new(offset.Position * scale) * offset.Rotation
+				local anim = built.anims[i]
+				if anim and anim ~= "mouthO" and anim ~= "mouthC" then
+					local swing: CFrame? = nil
+					local leg = LEG_PHASE[anim]
+					if leg and walkSpeed > 0 then
+						swing = CFrame.Angles(math.sin(now * walkSpeed + entry.phase + leg) * math.rad(28), 0, 0)
+					elseif string.sub(anim, 1, 4) == "wing" then
+						local side = if anim == "wingL" then 1 else -1
+						local speed = if moving or busy then 16 else 9
+						swing = CFrame.Angles(0, 0, side * (math.sin(now * speed + entry.phase) * math.rad(32) + math.rad(8)))
+					elseif anim == "tail" then
+						local speed = if moving or busy then 14 else 5
+						swing = CFrame.Angles(0, math.sin(now * speed + entry.phase) * math.rad(22), 0)
+					end
+					if swing then
+						local pivot = built.pivots[i] * scale
+						cf = CFrame.new(pivot) * swing * CFrame.new(-pivot) * cf
+					end
+				end
 				table.insert(parts, p)
-				table.insert(cframes, visual * CFrame.new(offset.Position * scale) * offset.Rotation)
+				table.insert(cframes, visual * cf)
 			end
 			if now >= entry.nextBlink and #entry.eyes > 0 then
 				entry.nextBlink = now + 2.5 + math.random() * 3.5

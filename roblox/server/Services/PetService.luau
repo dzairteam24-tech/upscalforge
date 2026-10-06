@@ -115,7 +115,7 @@ local function grant(
 		Inventory.equipBest(data, GameService.maxSlots(player))
 	end
 	GameService.refresh(player)
-	HatchResult:FireClient(player, results, free)
+	HatchResult:FireClient(player, results, free, eggId)
 	return results
 end
 

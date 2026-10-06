@@ -334,6 +334,12 @@ class Mats(dict):
         return made
 
 
+def tag(parts, start, anim):
+    """Marks the parts added since `start` as one moving piece for the game (legs, wings, tail, mouth)."""
+    for obj in parts[start:]:
+        obj["anim"] = anim
+
+
 class Ctx:
     def __init__(self, spec, mat, parts):
         self.spec = spec
@@ -1428,10 +1434,12 @@ def build(spec):
         build_belly(spec, mat, parts)
 
     legs_kind = spec.get("legs", "normal")
+    start = len(parts)
     if legs_kind in LEGS:
         LEGS[legs_kind](c)
     elif legs_kind == "normal":
         build_legs(mat, parts)
+    tag(parts, start, "leg")
 
     build_head(spec, mat, parts, c)
     return parts
@@ -1590,10 +1598,17 @@ def build_head(spec, mat, parts, c):
     elif nose_kind == "carrot":
         c.add(cone("Carrot", 0.12, 0.0, 0.6, face_point(0, -0.02, -0.02), rotation=(math.radians(95), 0, 0), verts=12), "carrot")
 
-    # Mouth: a cat "w" or a simple smile
+    # Mouth: a cat "w" or a simple smile. "_mouths" picks what gets built:
+    #   "default" the species' own mouth, "open" only the D mouth, "both" (the game) closed + open, tagged
+    mouths = spec.get("_mouths", "default")
     mouth_kind = spec.get("mouth", "cat")
+    if mouths == "open" and mouth_kind != "none":
+        mouth_kind = "d"
+    elif mouths == "both" and mouth_kind == "open":
+        mouth_kind = "smile"  # the closed look of a creature that is drawn with its mouth open
+    mouth_start = len(parts)
     points = []
-    if mouth_kind in ("open", "frown", "line", "fangs", "none", "dots"):
+    if mouth_kind in ("open", "d", "frown", "line", "fangs", "none", "dots"):
         build_mouth(c, mouth_kind, on_face)
     elif mouth_kind == "cat":
         radius = 0.09
@@ -1611,6 +1626,11 @@ def build_head(spec, mat, parts, c):
     if points:
         mouth = tube("Mouth", points, 0.026)
         parts.append(finish(mouth, mat["mouth"]))
+    if mouths == "both" and spec.get("mouth", "cat") != "none":
+        tag(parts, mouth_start, "mouthC")
+        open_start = len(parts)
+        build_mouth(c, "d", on_face)
+        tag(parts, open_start, "mouthO")
 
     # Buck teeth under the mouth
     if spec.get("teeth"):
@@ -1623,7 +1643,10 @@ def build_head(spec, mat, parts, c):
 
     for feature in spec.get("features", []):
         if feature not in ("face_patch", "eye_rings", "screen"):
+            start = len(parts)
             FEATURES[feature](c)
+            if feature.startswith("wings"):
+                tag(parts, start, "wing")
 
     # Blush
     for side in (-1, 1) if spec.get("blush", True) else ():
@@ -1631,6 +1654,12 @@ def build_head(spec, mat, parts, c):
         parts.append(finish(blush, mat["blush"]))
 
     # Tail
+    tail_start = len(parts)
+    build_tail(spec, mat, parts, c)
+    tag(parts, tail_start, "tail")
+
+
+def build_tail(spec, mat, parts, c):
     if spec["tail"] == "stub":
         tail = rounded_box("Tail", (0.34, 0.75, 0.32), (0, BODY_D / 2 + 0.28, BODY_Z - 0.36), 0.1, segments=3, rotation=(math.radians(-18), 0, 0))
         parts.append(finish(tail, mat["legs"]))
@@ -1645,21 +1674,33 @@ def build_head(spec, mat, parts, c):
 
 
 def build_mouth(c, kind, on_face):
-    if kind == "open":
-        # A happy open mouth: a half disc with a tongue
-        mouth = ellipsoid("Mouth", (0.17, 0.05, 0.14), on_face(0, -0.15, 0.0), segments=20, rings=10)
-        bpy.ops.mesh.primitive_cube_add(size=1, location=on_face(0, -0.15 - 0.5, 0.0))
-        cutter = bpy.context.active_object
-        cutter.scale = (1, 1, 1.0)
-        bpy.ops.object.transform_apply(scale=True)
-        boolean = mouth.modifiers.new("Cut", "BOOLEAN")
-        boolean.operation = "INTERSECT"
-        boolean.object = cutter
-        apply_modifiers(mouth)
-        bpy.data.objects.remove(cutter)
+    if kind in ("open", "d"):
+        # The open mouth: a "D" turned on its side (flat top, round bottom), set into the face, with a tongue
+        w, h = 0.25, 0.23
+        top = -0.1
+        outline = [(-w + 0.03, top), (w - 0.03, top)]
+        for i in range(1, 16):
+            a = math.pi * i / 16
+            outline.append((w * math.cos(a), top - h * math.sin(a)))
+        center = on_face(0, top - h * 0.5, 0.0)
+        y = center[1] + 0.012
+        mouth = extruded("MouthD", [(x, BODY_Z + z) for x, z in outline], 0.03, y=y)
+        soft(mouth, 0.008, segments=2, subdiv=0)
         c.add(mouth, "mouth")
-        c.add(ellipsoid("Tongue", (0.09, 0.04, 0.05), on_face(0, -0.24, 0.015), segments=12, rings=6), "tongue")
-    elif kind in ("frown", "line", "fangs", "dots"):
+        # Tongue: follows the bottom of the D, with a soft dome on top
+        tongue_outline = []
+        tw = 0.15
+        for i in range(13):
+            x = tw - 2 * tw * i / 12
+            tongue_outline.append((x, top - h * math.sqrt(max(0.0, 1 - (x / w) ** 2)) + 0.018))
+        for i in range(1, 12):
+            x = -tw + 2 * tw * i / 12
+            tongue_outline.append((x, top - h * 0.5 - 0.05 * (x / tw) ** 2))
+        tongue = extruded("Tongue", [(x, BODY_Z + z) for x, z in tongue_outline], 0.03, y=y - 0.012)
+        soft(tongue, 0.008, segments=2, subdiv=0)
+        c.add(tongue, "tongue")
+        return
+    if kind in ("frown", "line", "fangs", "dots"):
         if kind == "dots":
             for x, z in ((-0.2, -0.18), (-0.1, -0.24), (0.0, -0.26), (0.1, -0.24), (0.2, -0.18)):
                 c.add(ellipsoid("Coal", (0.045, 0.03, 0.045), on_face(x, z, 0.0), segments=8, rings=6), "dark")
@@ -1827,6 +1868,20 @@ def color_hex(spec, key):
     return colors.get(key) or DEFAULT_COLORS.get(key) or colors["body"]
 
 
+def anim_name(obj):
+    """Which moving piece a part belongs to in the game: legFL/legFR/legBL/legBR, wingL/wingR, tail,
+    mouthC (closed) or mouthO (open), or "" for parts that only follow the body. Front is -Y, left is -X."""
+    anim = obj.get("anim", "")
+    if anim in ("leg", "wing"):
+        corners = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
+        center = sum(corners, Vector()) / 8
+        side = "L" if center.x < 0 else "R"
+        if anim == "wing":
+            return "wing" + side
+        return "leg" + ("F" if center.y < 0 else "B") + side
+    return anim
+
+
 def export_roblox():
     """All 50 creatures (40 zone creatures + 10 Legendaries) in one .glb for Roblox Studio's 3D importer.
     Each creature is a group named after the species; inside, one mesh per part role ("Kitty__body",
@@ -1836,17 +1891,18 @@ def export_roblox():
     looks = {}
     for index, name in enumerate(order):
         materials.clear()
-        spec = SPECIES[name]
+        spec = dict(SPECIES[name])
+        spec["_mouths"] = "both"  # closed and open mouths; the game shows one at a time
         parts = build(spec)
         groups = {}
         for part in parts:
-            groups.setdefault(part.data.materials[0]["key"], []).append(part)
+            groups.setdefault((part.data.materials[0]["key"], anim_name(part)), []).append(part)
         root = bpy.data.objects.new(name, None)
         bpy.context.collection.objects.link(root)
         row, col = divmod(index, 8)
         root.location = (col * 5.0, row * 5.0, 0)
         looks[name] = {}
-        for key, group in groups.items():
+        for (key, anim), group in groups.items():
             bpy.ops.object.select_all(action="DESELECT")
             for part in group:
                 part.select_set(True)
@@ -1854,7 +1910,8 @@ def export_roblox():
             if len(group) > 1:
                 bpy.ops.object.join()
             obj = bpy.context.active_object
-            obj.name = f"{name}__{key}"
+            # "Kitty__legs__legFL": role, then the moving piece it belongs to (see roblox/shared/PetModel.luau)
+            obj.name = f"{name}__{key}" + (f"__{anim}" if anim else "")
             obj.data.name = obj.name
             obj.parent = root
             looks[name][key] = color_hex(spec, key)

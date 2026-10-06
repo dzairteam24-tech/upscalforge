@@ -84,9 +84,7 @@ function SoundClient.init()
 	Net.event("BreakFx").OnClientEvent:Connect(function(_position, _coins, jackpot: boolean, golden: boolean)
 		SoundClient.play(if jackpot or golden then "Jackpot" else "Coin")
 	end)
-	Net.event("HatchResult").OnClientEvent:Connect(function()
-		SoundClient.play("Hatch")
-	end)
+	-- Hatch sounds are played by the hatch show (HatchPopup), in time with the egg
 	Net.event("Notify").OnClientEvent:Connect(function(_text: string, kind: string)
 		if kind == "rare" then
 			SoundClient.play("Rare")
