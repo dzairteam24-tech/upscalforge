@@ -156,7 +156,7 @@ local function addPet(owner: Owner, value: StringValue)
 		squash = 0,
 		mouthOpen = false,
 		openUntil = 0,
-		nextChirp = os.clock() + 2 + math.random() * 6,
+		nextChirp = os.clock() + 3 + math.random() * 10,
 		flying = hasPiece(built, "wing"),
 		legendary = (World1.species[pet.s] and World1.species[pet.s].legendary) == true,
 	}
@@ -311,7 +311,8 @@ local function step(dt: number)
 			-- Mouth: open while collecting (on each hop), and now and then on its own ("chirps")
 			if now >= entry.nextChirp then
 				entry.openUntil = now + 0.5 + math.random() * 0.5
-				entry.nextChirp = now + (if entry.legendary then 2 else 4) + math.random() * 5
+				-- Now and then, not all at once: a team of 12 shouldn't flicker
+				entry.nextChirp = now + (if entry.legendary then 5 else 9) + math.random() * 9
 			end
 			setMouth(entry, now < entry.openUntil or (busy and hop > built.height * 0.15))
 			local walkSpeed = if busy then 16 elseif moving then 12 else 0

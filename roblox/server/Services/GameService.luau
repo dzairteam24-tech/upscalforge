@@ -1159,6 +1159,8 @@ function GameService.init()
 			autoDeleteNormal = true,
 			autoDeleteGolden = true,
 			autoHatch = true,
+			quickHatch = true,
+			calmEffects = true,
 		}
 		if type(key) == "string" and allowed[key] then
 			data.settings[key] = value

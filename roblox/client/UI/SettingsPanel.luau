@@ -37,6 +37,16 @@ local OPTIONS = {
 		text = "Same for Golden creatures you already have.",
 	},
 	{
+		key = "quickHatch",
+		label = "Quick hatch",
+		text = "A short hatch for plain creatures. Rare and new ones always get the full show.",
+	},
+	{
+		key = "calmEffects",
+		label = "Calm effects",
+		text = "No screen shake and a softer flash when hatching.",
+	},
+	{
 		key = "sfx",
 		label = "Sound effects",
 		text = "Coins, hatching, rewards and buttons.",

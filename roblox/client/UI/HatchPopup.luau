@@ -334,13 +334,13 @@ function HatchPopup.mount(gui: ScreenGui)
 	local running = 0 -- id of the show that's playing
 	local skipFrom = math.huge
 	local endAt = 0
-	local started = 0
+	local tapped = false -- the show reads it: jump to the reveal, or end it
+	-- Hatches this session: after a while plain results get the quick show (they've seen it plenty)
+	local sessionHatches = 0
+	local FAMILIAR_AFTER = 15
 
 	overlay.Activated:Connect(function()
-		local t = os.clock() - started
-		if t >= skipFrom then
-			endAt = math.min(endAt, t + 0.15)
-		end
+		tapped = true
 	end)
 
 	local function clearStage()
@@ -381,21 +381,30 @@ function HatchPopup.mount(gui: ScreenGui)
 				anyNew = true
 			end
 		end
-		local fast = Players.LocalPlayer:GetAttribute("AutoHatching") == true and bestLevel == 0 and not anyNew
+		-- Not annoying: plain results get the quick show when auto hatching, with Quick hatch on, or
+		-- once the player has seen plenty of hatches this session. Rare or new results always get the full one.
+		local settings = (Store.data and (Store.data :: any).settings) or {}
+		sessionHatches += 1
+		local quick = Players.LocalPlayer:GetAttribute("AutoHatching") == true
+			or settings.quickHatch == true
+			or sessionHatches > FAMILIAR_AFTER
+		local fast = quick and bestLevel == 0 and not anyNew
+		local calm = settings.calmEffects == true or Store.lowEnd()
 		local egg = if eggId then World1.eggs[eggId] else nil
 		local zone = if egg then World1.zonesById[egg.zone] else nil
 		local legendaryEgg = egg ~= nil and egg.fixedOdds == true
 		local eggColor = if legendaryEgg then Color3.fromRGB(255, 200, 70) elseif zone then zone.color else Color3.fromRGB(240, 240, 245)
 
 		-- Timeline (seconds)
-		local shakes = if fast then 1 elseif bestLevel == 2 then 6 elseif bestLevel == 1 then 4 else 3
+		local shakes = if fast then 1 elseif bestLevel == 2 then 6 elseif bestLevel == 1 then 4 else 2
 		local intro = if fast then 0.12 else 0.3
 		local shakeLen, shakeGap = 0.22, 0.12
 		local breakAt = if egg then intro + shakes * (shakeLen + shakeGap) + (if fast then 0 else 0.12) else 0.15
-		local total = if fast then breakAt + 0.6 elseif bestLevel == 2 then breakAt + 4.4 elseif bestLevel == 1 then breakAt + 2.2 else breakAt + 1.3
-		skipFrom = if bestLevel == 2 then breakAt + 1.2 elseif fast then 0 else breakAt + 0.3
+		local total = if fast then breakAt + 0.55 elseif bestLevel == 2 then breakAt + 4.2 elseif bestLevel == 1 then breakAt + 1.9 else breakAt + 1.1
+		-- A tap jumps straight to the reveal (except the Titan/Legendary build-up), and a second tap ends it
+		skipFrom = if bestLevel == 2 then breakAt + 1.2 else breakAt + 0.25
+		tapped = false
 		endAt = total
-		started = os.clock()
 
 		-- Layout: one big egg, a row of 3, or two rows of 4
 		local count = #shown
@@ -403,8 +412,9 @@ function HatchPopup.mount(gui: ScreenGui)
 		local rows = math.ceil(count / cols)
 		local cell = if count == 1 then 0.46 elseif count <= 3 then 0.34 else 0.26 -- share of the screen height
 		overlay.Visible = true
-		overlay.Interactable = true
-		TweenService:Create(overlay, TweenInfo.new(0.15), { BackgroundTransparency = if bestLevel == 2 then 0.3 elseif fast then 0.75 else 0.55 }):Play()
+		-- The quick show doesn't catch taps or darken much, so the player keeps playing underneath
+		overlay.Interactable = not fast
+		TweenService:Create(overlay, TweenInfo.new(0.15), { BackgroundTransparency = if bestLevel == 2 then 0.3 elseif fast then 0.88 else 0.55 }):Play()
 
 		local data = Store.data
 		local fx = if data and (data :: any).equippedHatchFx then Cosmetics.hatchFxById[(data :: any).equippedHatchFx] else nil
@@ -596,6 +606,14 @@ function HatchPopup.mount(gui: ScreenGui)
 			-- Slow motion right after a Titan/Legendary breaks out
 			local speed = if now < played.slowUntil then 0.35 else 1
 			localTime += dt * speed
+			if tapped then
+				tapped = false
+				if localTime < breakAt and bestLevel < 2 then
+					localTime = breakAt
+				elseif localTime >= skipFrom then
+					endAt = math.min(endAt, localTime + 0.15)
+				end
+			end
 			local t = localTime
 			if running ~= myRun then
 				if connection then
@@ -660,10 +678,11 @@ function HatchPopup.mount(gui: ScreenGui)
 							played.broke = true
 							SoundClient.play(if bestLevel > 0 then "Rare" else "Hatch")
 							if not fast then
-								flash.BackgroundTransparency = if bestLevel == 2 then 0 else 0.25
+								-- Never a full white screen (easier on the eyes), softer still with calm effects
+								flash.BackgroundTransparency = if calm then 0.7 elseif bestLevel == 2 then 0.15 else 0.45
 								TweenService:Create(flash, TweenInfo.new(if bestLevel == 2 then 0.45 else 0.25), { BackgroundTransparency = 1 }):Play()
-								shakeUntil = now + (if bestLevel == 2 then 0.35 else 0.15)
-								shakePower = if bestLevel == 2 then 12 else 5
+								shakeUntil = if calm then 0 else now + (if bestLevel == 2 then 0.3 else 0.12)
+								shakePower = if bestLevel == 2 then 9 else 4
 							end
 							if bestLevel == 2 then
 								played.slowUntil = now + 0.6

@@ -60,7 +60,7 @@ local function template(): PlayerData
 		purchases = {},
 		titles = {},
 		tradeHistory = {},
-		settings = { allowTrades = true, autoEquipBest = true, lowEnd = false, sfx = true, music = true, autoDeleteNormal = false, autoDeleteGolden = false, autoFarm = false, autoHatch = false },
+		settings = { allowTrades = true, autoEquipBest = true, lowEnd = false, sfx = true, music = true, autoDeleteNormal = false, autoDeleteGolden = false, autoFarm = false, autoHatch = false, quickHatch = false, calmEffects = false },
 		lastSeen = 0,
 		lastPower = 0,
 		items = {},
