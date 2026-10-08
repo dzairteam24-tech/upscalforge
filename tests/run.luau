@@ -1445,8 +1445,12 @@ test("MapLayout.zoneAt finds the zone under a position", function()
 	for _, zone in World1.zones do
 		eq(MapLayoutT.zoneAt(MapLayoutT.center(zone.id)), zone.id)
 	end
-	local midway = MapLayoutT.center(0) + (MapLayoutT.center(1) - MapLayoutT.center(0)) * 0.5
+	-- The middle of the bridge from Spawn Meadow to the (bigger) Hub
+	local toHub = (MapLayoutT.center(0) - MapLayoutT.center(1)).Unit
+	local midway = MapLayoutT.center(1) + toHub * (MapLayoutT.size(1) / 2 + MapLayoutT.HUB_BRIDGE / 2)
 	eq(MapLayoutT.zoneAt(midway), nil, "on the bridge between two platforms")
+	local between = MapLayoutT.center(2) + (MapLayoutT.center(1) - MapLayoutT.center(2)) * 0.5
+	eq(MapLayoutT.zoneAt(between), nil, "on the bridge between two zones")
 end)
 
 -- Events -----------------------------------------------------------------------------------------------------

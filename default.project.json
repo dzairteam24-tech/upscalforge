@@ -68,9 +68,9 @@
             "CFrame": {
               "CFrame": {
                 "position": [
-                  -92,
+                  -112,
                   10,
-                  205
+                  225
                 ],
                 "orientation": [
                   [
@@ -118,9 +118,9 @@
             "CFrame": {
               "CFrame": {
                 "position": [
-                  92,
+                  112,
                   10,
-                  165
+                  185
                 ],
                 "orientation": [
                   [
@@ -168,9 +168,9 @@
             "CFrame": {
               "CFrame": {
                 "position": [
-                  -92,
+                  -112,
                   3,
-                  199
+                  219
                 ],
                 "orientation": [
                   [
@@ -210,9 +210,9 @@
             "CFrame": {
               "CFrame": {
                 "position": [
-                  -92,
+                  -112,
                   3,
-                  211
+                  231
                 ],
                 "orientation": [
                   [
@@ -252,9 +252,9 @@
             "CFrame": {
               "CFrame": {
                 "position": [
-                  92,
+                  112,
                   3,
-                  159
+                  179
                 ],
                 "orientation": [
                   [
@@ -294,9 +294,9 @@
             "CFrame": {
               "CFrame": {
                 "position": [
-                  92,
+                  112,
                   3,
-                  171
+                  191
                 ],
                 "orientation": [
                   [

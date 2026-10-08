@@ -412,7 +412,7 @@ end
 
 -- Professor Cubo: the Journey's NPC near the spawn. Talking to him opens the Quests window.
 local function buildProfessor(folder: Folder)
-	local center = MapLayout.center(0) + Vector3.new(30, 0, 58)
+	local center = MapLayout.center(0) + Vector3.new(36, 0, 72)
 	local built = PetModel.build({ s = "Cubby", v = "Normal", z = "Big" })
 	local facing = CFrame.lookAt(center + Vector3.new(0, built.height / 2, 0), center + Vector3.new(-16, built.height / 2, -20))
 	PetModel.place(built, facing)

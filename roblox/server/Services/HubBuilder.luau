@@ -15,15 +15,15 @@ local PetModel = require(Shared.PetModel)
 local HubBuilder = {}
 
 -- Sized for a full server: wide plaza and paths, buildings far apart
-local PLAZA_RADIUS = 50
-local BUILDING_RADIUS = 74
-local BUILDING_SCALE = 1.3
-HubBuilder.SPAWN_OFFSET = Vector3.new(0, 0, 22)
+local PLAZA_RADIUS = 54
+local BUILDING_RADIUS = 88
+local BUILDING_SCALE = 2 -- big enough to read as real buildings next to a player, like in the concept
+HubBuilder.SPAWN_OFFSET = Vector3.new(0, 0, 24)
 -- Where the World Boss lands: the north path, between Trading and Fusion
-HubBuilder.BOSS_OFFSET = Vector3.new(0, 0, -58)
+HubBuilder.BOSS_OFFSET = Vector3.new(0, 0, -68)
 -- Leaderboards: along the south rim, two on each side of the pond (they face north)
-HubBuilder.LEADERBOARD_X = { -72, -42, 42, 72 }
-HubBuilder.LEADERBOARD_Z = 88
+HubBuilder.LEADERBOARD_X = { -84, -52, 52, 84 }
+HubBuilder.LEADERBOARD_Z = 106
 
 local FLAT = CFrame.Angles(0, 0, math.rad(90)) -- turns a cylinder to lie flat (axis up)
 
@@ -140,7 +140,7 @@ end
 local function buildIsland(model: Instance, center: Vector3, openings: { Vector3 })
 	local half = MapLayout.HUB_SIZE / 2
 	-- Cliffs: stacked rock slabs, each smaller than the one above, for a floating island silhouette
-	for i, layer in { { size = MapLayout.HUB_SIZE + 2, height = 14 }, { size = 172, height = 14 }, { size = 128, height = 14 }, { size = 76, height = 12 } } do
+	for i, layer in { { size = MapLayout.HUB_SIZE + 2, height = 14 }, { size = 206, height = 16 }, { size = 152, height = 16 }, { size = 90, height = 14 } } do
 		local top = -4 - (i - 1) * 13
 		part(model, {
 			Name = "Cliff",
@@ -190,12 +190,12 @@ end
 -- A few small floating islets around the Hub, away from the bridges
 local function buildIslets(model: Instance, center: Vector3)
 	local islets = {
-		{ offset = Vector3.new(-136, 16, -86), size = 18 },
-		{ offset = Vector3.new(-150, -6, 24), size = 14 },
-		{ offset = Vector3.new(-118, 24, 126), size = 16 },
-		{ offset = Vector3.new(26, -4, 146), size = 20 },
-		{ offset = Vector3.new(134, 20, 118), size = 14 },
-		{ offset = Vector3.new(128, -10, -104), size = 16 },
+		{ offset = Vector3.new(-162, 18, -102), size = 20 },
+		{ offset = Vector3.new(-178, -6, 28), size = 16 },
+		{ offset = Vector3.new(-140, 26, 150), size = 18 },
+		{ offset = Vector3.new(30, -4, 172), size = 22 },
+		{ offset = Vector3.new(160, 22, 140), size = 16 },
+		{ offset = Vector3.new(152, -10, -124), size = 18 },
 	}
 	for i, islet in islets do
 		local top = center + islet.offset
@@ -228,7 +228,7 @@ local function buildPlaza(model: Instance, center: Vector3)
 	-- Planters between the eight paths, each with two round bushes
 	for i = 0, 7 do
 		local angle = math.rad(22.5 + i * 45)
-		local at = center + Vector3.new(math.sin(angle) * 31, 0, -math.cos(angle) * 31)
+		local at = center + Vector3.new(math.sin(angle) * 34, 0, -math.cos(angle) * 34)
 		local frame = CFrame.lookAt(at, center) -- local X runs along the ring
 		part(model, { Name = "Planter", Size = Vector3.new(12, 1.2, 6), CFrame = frame + Vector3.new(0, 0.6, 0), Color = STONE_DARK, Material = Enum.Material.Slate })
 		part(model, { Name = "Planter", Size = Vector3.new(11, 0.4, 5), CFrame = frame + Vector3.new(0, 1.25, 0), Color = GRASS, Material = Enum.Material.Grass })
@@ -249,17 +249,17 @@ local function buildPlaza(model: Instance, center: Vector3)
 	part(model, {
 		Name = "Fountain",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(1.6, 26, 26),
+		Size = Vector3.new(1.6, 32, 32),
 		CFrame = CFrame.new(center + Vector3.new(0, 0.8, 0)) * FLAT,
 		Color = rgb(236, 236, 240),
 		Material = Enum.Material.Marble,
 	})
-	disc(model, "FountainWater", center, 11.5, 1.75, WATER, Enum.Material.Glass)
+	disc(model, "FountainWater", center, 14.5, 1.75, WATER, Enum.Material.Glass)
 	part(model, {
 		Name = "Fountain",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(6, 7, 7),
-		CFrame = CFrame.new(center + Vector3.new(0, 3, 0)) * FLAT,
+		Size = Vector3.new(8, 8, 8),
+		CFrame = CFrame.new(center + Vector3.new(0, 4, 0)) * FLAT,
 		Color = rgb(236, 236, 240),
 		Material = Enum.Material.Marble,
 	})
@@ -291,9 +291,9 @@ local function buildStatue(model: Instance, center: Vector3)
 		end
 	end
 	-- Stand it on the pedestal, then grow it so it reads from across the plaza
-	local base = center + Vector3.new(0, 6, 0)
+	local base = center + Vector3.new(0, 8, 0)
 	PetModel.place(built, CFrame.new(base + Vector3.new(0, built.height / 2, 0)) * CFrame.Angles(0, math.rad(180), 0))
-	local grow = 1.6
+	local grow = 2.4
 	for _, p in built.parts do
 		p.Size *= grow
 		p.CFrame = CFrame.new(base + (p.CFrame.Position - base) * grow) * p.CFrame.Rotation
@@ -349,7 +349,7 @@ local BUILDINGS: { Building } = {
 	{
 		name = "Trading",
 		ui = "Trade",
-		angle = -32,
+		angle = -28,
 		wall = rgb(236, 192, 112),
 		roof = rgb(178, 118, 64),
 		extra = function(model, frame)
@@ -370,7 +370,7 @@ local BUILDINGS: { Building } = {
 	{
 		name = "Fusion",
 		ui = "Pets",
-		angle = 32,
+		angle = 28,
 		wall = rgb(70, 52, 124),
 		roof = rgb(46, 34, 86),
 		extra = function(model, frame)
@@ -394,7 +394,7 @@ local BUILDINGS: { Building } = {
 	{
 		name = "Lucky Spin",
 		ui = "Spin",
-		angle = 60,
+		angle = 64,
 		wall = rgb(236, 84, 120),
 		roof = rgb(190, 50, 90),
 		extra = function(model, frame)
@@ -495,7 +495,7 @@ local function buildBuilding(model: Instance, center: Vector3, building: Buildin
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Open"
 	prompt.ObjectText = building.name
-	prompt.MaxActivationDistance = 20
+	prompt.MaxActivationDistance = 28
 	prompt.RequiresLineOfSight = false
 	prompt:SetAttribute("OpenUI", building.ui)
 	prompt.Parent = body
@@ -569,7 +569,7 @@ local function buildTrees(model: Instance, center: Vector3)
 	local half = MapLayout.HUB_SIZE / 2
 	local rng = Random.new(4242)
 	-- Small groves on the lawns between buildings (angles from north, like the buildings)
-	for _, grove in { { angle = -50, radius = 66 }, { angle = -90, radius = 64 }, { angle = -148, radius = 64 } } do
+	for _, grove in { { angle = -48, radius = 104 }, { angle = -90, radius = 104 }, { angle = -146, radius = 86 } } do
 		local a = math.rad(grove.angle)
 		local at = center + Vector3.new(math.sin(a) * grove.radius, 0, -math.cos(a) * grove.radius)
 		roundTree(model, at, 1.3, rgb(84, 168, 80))
