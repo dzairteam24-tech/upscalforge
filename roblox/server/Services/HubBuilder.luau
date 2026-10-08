@@ -245,34 +245,67 @@ local function buildPlaza(model: Instance, center: Vector3)
 		end
 	end
 
-	-- Fountain: a round basin, water, a pedestal; the cat statue goes on top (buildStatue)
-	part(model, {
-		Name = "Fountain",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(1.6, 42, 42),
-		CFrame = CFrame.new(center + Vector3.new(0, 0.8, 0)) * FLAT,
-		Color = rgb(236, 236, 240),
-		Material = Enum.Material.Marble,
-	})
-	disc(model, "FountainWater", center, 19.5, 1.75, WATER, Enum.Material.Glass)
-	part(model, {
-		Name = "Fountain",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(8, 8, 8),
-		CFrame = CFrame.new(center + Vector3.new(0, 4, 0)) * FLAT,
-		Color = rgb(236, 236, 240),
-		Material = Enum.Material.Marble,
-	})
-	-- Water pouring from the front of the pedestal
-	part(model, {
-		Name = "FountainWater",
-		Size = Vector3.new(3, 4.4, 0.6),
-		Position = center + Vector3.new(0, 3.8, 3.8),
-		Color = rgb(160, 220, 255),
-		Material = Enum.Material.Glass,
-		Transparency = 0.25,
-		CanCollide = false,
-	})
+	-- Fountain, in two tiers: a wide basin with a low marble rim and jets around it, a column holding a
+	-- smaller bowl whose water spills all around it, and a plinth for the cat statue (buildStatue)
+	local MARBLE = rgb(236, 236, 240)
+	local SPRAY = rgb(120, 205, 255)
+	local function cylinder(name: string, radius: number, bottom: number, height: number, color: Color3, props: { [string]: any }?)
+		local c = part(model, {
+			Name = name,
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(height, radius * 2, radius * 2),
+			CFrame = CFrame.new(center + Vector3.new(0, bottom + height / 2, 0)) * FLAT,
+			Color = color,
+			Material = Enum.Material.Marble,
+		})
+		for k, v in props or {} do
+			(c :: any)[k] = v
+		end
+		return c
+	end
+	-- A raised rim around a circle, made of short straight segments so the water inside shows
+	local function rim(radius: number, thickness: number, bottom: number, height: number, segments: number)
+		local length = 2 * math.pi * radius / segments * 1.08
+		for i = 0, segments - 1 do
+			local angle = 2 * math.pi * i / segments
+			local at = center + Vector3.new(math.sin(angle) * radius, bottom + height / 2, -math.cos(angle) * radius)
+			part(model, {
+				Name = "Fountain",
+				Size = Vector3.new(length, height, thickness),
+				CFrame = CFrame.new(at) * CFrame.Angles(0, -angle, 0), -- long side along the circle
+				Color = MARBLE,
+				Material = Enum.Material.Marble,
+			})
+		end
+	end
+	-- Basin: floor, water, rim
+	cylinder("Fountain", 20.4, 0, 0.6, MARBLE)
+	cylinder("FountainWater", 20.2, 0.6, 1.0, WATER, { Material = Enum.Material.Glass, Transparency = 0.1 })
+	rim(20.9, 1.8, 0, 2.4, 28)
+	cylinder("Fountain", 3.2, 0, 6.8, MARBLE) -- column
+	-- Upper bowl: floor, water, rim
+	cylinder("Fountain", 7.6, 6.2, 0.6, MARBLE)
+	cylinder("FountainWater", 7.5, 6.8, 0.8, WATER, { Material = Enum.Material.Glass, Transparency = 0.1 })
+	rim(7.9, 1.2, 6.2, 1.9, 16)
+	-- The water spilling over the bowl's edge, as a thin see-through curtain down to the basin
+	cylinder("FountainWater", 8.6, 1.6, 6.3, SPRAY, { Material = Enum.Material.Glass, Transparency = 0.55, CanCollide = false })
+	cylinder("Fountain", 3.4, 6.8, 2.4, MARBLE) -- plinth for the statue
+	-- Jets around the basin, arching toward the middle
+	for i = 0, 7 do
+		local angle = math.rad(i * 45)
+		local at = center + Vector3.new(math.sin(angle) * 15.5, 0, -math.cos(angle) * 15.5)
+		local lean = CFrame.lookAt(at, center) * CFrame.Angles(math.rad(-28), 0, 0)
+		part(model, {
+			Name = "FountainWater",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(5.5, 0.7, 0.7),
+			CFrame = (lean + Vector3.new(0, 1.6, 0)) * CFrame.new(0, 2.6, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = SPRAY,
+			Material = Enum.Material.Glass,
+			Transparency = 0.15,
+			CanCollide = false,
+		})
+	end
 end
 
 -- The cat statue on the fountain: a Titan Kitty in marble, keeping its face. Rebuilt when the 3D creature
@@ -290,10 +323,10 @@ local function buildStatue(model: Instance, center: Vector3)
 			p.Material = Enum.Material.Marble
 		end
 	end
-	-- Stand it on the pedestal, then grow it so it reads from across the plaza
-	local base = center + Vector3.new(0, 8, 0)
+	-- Stand it on the plinth, a little bigger than a Titan
+	local base = center + Vector3.new(0, 9.2, 0) -- top of the fountain's plinth
 	PetModel.place(built, CFrame.new(base + Vector3.new(0, built.height / 2, 0)) * CFrame.Angles(0, math.rad(180), 0))
-	local grow = 3
+	local grow = 1.5
 	for _, p in built.parts do
 		p.Size *= grow
 		p.CFrame = CFrame.new(base + (p.CFrame.Position - base) * grow) * p.CFrame.Rotation
