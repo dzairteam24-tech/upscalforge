@@ -364,7 +364,7 @@ function RideClient.init()
 	end)
 	-- The creature models and the saddle may arrive after the first build: rebuild everyone's ride then
 	ReplicatedStorage.ChildAdded:Connect(function(child)
-		if child.Name == "CreatureModels" or child.Name == "SaddleModel" then
+		if child.Name == "CreatureModels" or child.Name == "SaddleModel" or child.Name == "PonyModel" or child.Name == "RideModels" then
 			local riding: { [Player]: string } = {}
 			for player, mount in mounts do
 				riding[player] = mount.value

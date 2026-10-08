@@ -66,36 +66,37 @@ local function loadMapArt()
 	print("[Art] Map art loaded")
 end
 
--- The Cubeling Ride saddle (Config/Art SADDLE_ASSET_ID) into ReplicatedStorage.SaddleModel (RideModel)
-local function loadSaddle()
-	if ReplicatedStorage:FindFirstChild("SaddleModel") or Art.SADDLE_ASSET_ID == 0 then
+-- A Cubeling Ride model (Config/Art SADDLE_ASSET_ID, PONY_ASSET_ID) into ReplicatedStorage.<name> (RideModel)
+local function loadRideArt(name: string, id: number)
+	if ReplicatedStorage:FindFirstChild(name) or id == 0 then
 		return
 	end
 	local ok, result = pcall(function()
-		return InsertService:LoadAsset(Art.SADDLE_ASSET_ID)
+		return InsertService:LoadAsset(id)
 	end)
 	if not ok or not result then
-		warn("[Art] Couldn't load the saddle:", result)
+		warn("[Art] Couldn't load " .. name .. ":", result)
 		return
 	end
-	local saddle: Instance = result:FindFirstChild("SaddleModel", true) or result
-	saddle.Name = "SaddleModel"
-	for _, d in saddle:GetDescendants() do
+	local model: Instance = result:FindFirstChild(name, true) or result
+	model.Name = name
+	for _, d in model:GetDescendants() do
 		if d:IsA("BasePart") then
 			d.Anchored = true
 			d.CanCollide = false
 		end
 	end
-	saddle.Parent = ReplicatedStorage
-	if saddle ~= result then
+	model.Parent = ReplicatedStorage
+	if model ~= result then
 		result:Destroy()
 	end
-	print("[Art] Saddle loaded")
+	print("[Art] " .. name .. " loaded")
 end
 
 function ArtService.init()
 	task.spawn(loadMapArt)
-	task.spawn(loadSaddle)
+	task.spawn(loadRideArt, "SaddleModel", Art.SADDLE_ASSET_ID)
+	task.spawn(loadRideArt, "PonyModel", Art.PONY_ASSET_ID)
 	if ReplicatedStorage:FindFirstChild("CreatureModels") then
 		return -- placed by hand in Studio
 	end

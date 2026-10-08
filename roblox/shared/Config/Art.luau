@@ -16,9 +16,12 @@
 -- SaddleModel, right-click > Save to Roblox, paste its ID here). The server loads it into
 -- ReplicatedStorage.SaddleModel. 0 = not uploaded yet: rides use the saddle made of parts, or a SaddleModel
 -- put in ReplicatedStorage by hand.
+-- PONY_ASSET_ID: the same for the Cubeling Ride's pony body (art/models/Pony.glb, model named PonyModel).
+-- 0 = not uploaded yet: rides reshape the creature itself, or use a PonyModel put in ReplicatedStorage.
 
 return {
 	CREATURE_MODELS_ASSET_ID = 91371129157419,
 	MAP_ART_ASSET_ID = 0,
 	SADDLE_ASSET_ID = 0,
+	PONY_ASSET_ID = 0,
 }
