@@ -29,8 +29,8 @@ local POSE = { hipPitch = 55, hipRoll = 65, kneePitch = -70, kneeRoll = -18, arm
 local JUMP_TUCK = 40
 local JUMP_TILT = 12
 local FRONT_LEGS = { legFL = true, legFR = true }
--- How far below the rider's hips their HumanoidRootPart's bottom is (R15), or their legs' length (R6)
-local HIPS_ABOVE_ROOT_BOTTOM = { R15 = 0.6, R6 = 2 }
+-- R6 legs aren't part of HipHeight: the root's bottom stands this high above the ground plus HipHeight
+local R6_LEGS = 2
 
 type Mount = {
 	value: string,
@@ -152,10 +152,26 @@ local function sit(character: Model)
 	seated = character
 end
 
-local function seatHeight(mount: Mount, humanoid: Humanoid): number
-	local hipsAboveGround = Cosmetics.RIDE_CREATURE_HEIGHT / 2 + mount.ride.seat.Y
-	local below = if humanoid.RigType == Enum.HumanoidRigType.R6 then HIPS_ABOVE_ROOT_BOTTOM.R6 else HIPS_ABOVE_ROOT_BOTTOM.R15
-	return hipsAboveGround - below
+-- How far the rider's hip joints are below their HumanoidRootPart's center, measured on the character: the
+-- hip attachments of the R15 LowerTorso (the riding pose bends the legs, not the LowerTorso, so it doesn't
+-- change this). It depends on the avatar's body and scale, which is why it isn't a constant: a fixed guess
+-- sat small avatars inside the saddle. R6, or a rig without those attachments: the hips are at the root's
+-- bottom.
+local function hipsBelowRoot(character: Model, root: BasePart): number
+	local lower = character:FindFirstChild("LowerTorso")
+	local left = lower and lower:FindFirstChild("LeftHipRigAttachment")
+	local right = lower and lower:FindFirstChild("RightHipRigAttachment")
+	if left and right and left:IsA("Attachment") and right:IsA("Attachment") then
+		return root.Position.Y - (left.WorldPosition.Y + right.WorldPosition.Y) / 2
+	end
+	return root.Size.Y / 2
+end
+
+-- The local rider's HipHeight that puts the creature's feet on the ground while their hips are on the saddle
+local function seatHeight(mount: Mount, humanoid: Humanoid, character: Model, root: BasePart): number
+	local rootAboveFeet = hipsBelowRoot(character, root) + mount.ride.seat.Y + Cosmetics.RIDE_CREATURE_HEIGHT / 2
+	local legs = if humanoid.RigType == Enum.HumanoidRigType.R6 then R6_LEGS else 0
+	return rootAboveFeet - root.Size.Y / 2 - legs
 end
 
 ---------------------------------------------------------------------------------------------------------------
@@ -247,7 +263,7 @@ local function draw(dt: number)
 		end
 		built.model.Parent = container
 		if player == LOCAL and seated == character then
-			local hip = seatHeight(mount, humanoid)
+			local hip = seatHeight(mount, humanoid, character, root)
 			if math.abs(humanoid.HipHeight - hip) > 0.01 then
 				humanoid.HipHeight = hip
 			end
@@ -259,8 +275,8 @@ local function draw(dt: number)
 		-- The creature is fixed under the rider, at the exact distance that puts the rider's hips on the saddle:
 		-- they never come apart, so a jump lifts both. (Measuring the ground instead left the creature behind
 		-- at the start of a jump.)
-		local legs = if humanoid.RigType == Enum.HumanoidRigType.R6 then HIPS_ABOVE_ROOT_BOTTOM.R6 else 0
-		local feetY = root.Position.Y - root.Size.Y / 2 - seatHeight(mount, humanoid) - legs
+		-- (the saddle's seat goes exactly where the rider's hips are)
+		local feetY = root.Position.Y - hipsBelowRoot(character, root) - mount.ride.seat.Y - height / 2
 		local look = root.CFrame.LookVector
 		local flat = Vector3.new(look.X, 0, look.Z)
 		flat = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.new(0, 0, -1)
