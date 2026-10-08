@@ -4,8 +4,8 @@
 local World1 = require(script.Parent.Parent.Config.World1)
 
 local MapLayout = {
-	CELL = 170,
-	PLATFORM = 130,
+	CELL = 260,
+	PLATFORM = 200, -- each zone is a 200 x 200 square, 60 studs of bridge apart
 	HUB_SIZE = 240, -- the Hub is bigger than a zone: it's where everyone meets
 	HUB_BRIDGE = 40, -- length of the bridge from the Hub to Spawn Meadow
 	BRIDGE_WIDTH = 24,

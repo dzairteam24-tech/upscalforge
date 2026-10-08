@@ -180,8 +180,8 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 
 	-- A few block "trees" and rocks for decoration, placed on a ring so they don't block sources
 	local rng = Random.new(zone.id * 97)
-	for i = 1, 10 do
-		local angle = (i / 10) * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
+	for i = 1, 18 do
+		local angle = (i / 18) * math.pi * 2 + rng:NextNumber(-0.1, 0.1)
 		local radius = half - 8
 		local pos = center + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
 		local trunk = part({

@@ -16,8 +16,8 @@ local HubBuilder = {}
 
 -- Sized for a full server: wide plaza and paths, buildings far apart
 local PLAZA_RADIUS = 54
-local BUILDING_RADIUS = 88
-local BUILDING_SCALE = 2 -- big enough to read as real buildings next to a player, like in the concept
+local BUILDING_RADIUS = 80
+local BUILDING_SCALE = 1.3
 HubBuilder.SPAWN_OFFSET = Vector3.new(0, 0, 24)
 -- Where the World Boss lands: the north path, between Trading and Fusion
 HubBuilder.BOSS_OFFSET = Vector3.new(0, 0, -68)
@@ -495,7 +495,7 @@ local function buildBuilding(model: Instance, center: Vector3, building: Buildin
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Open"
 	prompt.ObjectText = building.name
-	prompt.MaxActivationDistance = 28
+	prompt.MaxActivationDistance = 20
 	prompt.RequiresLineOfSight = false
 	prompt:SetAttribute("OpenUI", building.ui)
 	prompt.Parent = body
