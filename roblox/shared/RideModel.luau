@@ -40,7 +40,8 @@ local SADDLE_COLORS: { [string]: Color3 } = {
 local PONY = { ref = "body", center = Vector3.new(0, 1.997, -0.422), size = Vector3.new(1.593, 2.686, 3.036) }
 local PONY_BACK = 2.35
 local PONY_BELLY = 0.65 -- where the legs meet the body: the point they swing around
-local PONY_SADDLE_Z = 0.3 -- the saddle's middle, behind the body's middle
+local PONY_SADDLE_Z = 0.2 -- the saddle's middle, behind the body's middle (its front comes up close to the head)
+local SADDLE_STRETCH = 1.2 -- the saddle is made this much longer than modeled
 local PONY_HEAD = { width = 1.6, bottom = 1.0, z = -1.4 } -- the creature as the head
 local PONY_CREAM = Color3.fromRGB(252, 232, 200)
 local PONY_HOOF = Color3.fromRGB(96, 54, 30)
@@ -327,6 +328,15 @@ function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 		-- The Blender saddle, sized to this back, turned like the pony (both come through the same importer)
 		place(saddle, SADDLE, turn)
 		for _, piece in saddle do
+			-- Longer front to back: along whichever of the part's axes lies along the game's Z
+			local along = piece.rotation:VectorToObjectSpace(Vector3.zAxis)
+			local stretch = Vector3.new(
+				1 + (SADDLE_STRETCH - 1) * math.abs(along.X),
+				1 + (SADDLE_STRETCH - 1) * math.abs(along.Y),
+				1 + (SADDLE_STRETCH - 1) * math.abs(along.Z)
+			)
+			piece.size *= stretch
+			piece.at = Vector3.new(piece.at.X, piece.at.Y, piece.at.Z * SADDLE_STRETCH)
 			if piece.role == "cushion" then
 				-- Lower, keeping its bottom on the saddle
 				local h = piece.size.Y

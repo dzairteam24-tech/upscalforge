@@ -48,7 +48,7 @@ ROUND = 0.55  # the body's rounded edges
 LEG_X = 0.45
 LEG_Y = 0.62
 HOOF = 0.26
-SADDLE_Y = 0.3  # the saddle's middle, behind the body's middle (RideModel uses the same)
+SADDLE_Y = 0.2  # the saddle's middle, behind the body's middle (RideModel uses the same)
 HEAD_WIDTH = 1.6  # the creature's head, for the render; the game uses the same numbers (RideModel)
 HEAD_Y = -1.4
 HEAD_BOTTOM = 1.0
@@ -205,6 +205,7 @@ def add_head_and_saddle():
         if o.parent is None:
             o.parent = holder
     holder.location = (0, SADDLE_Y, BACK)
+    holder.scale = (1, SADDLE_STRETCH, 1)
     for o in saddle:
         if o.name.startswith("Saddle__cushion"):
             # lower, keeping its bottom, as the game does
@@ -219,10 +220,11 @@ def add_head_and_saddle():
 # The rider, for the riding sheet: an R15 character of blocks posed like the game poses it (RideClient POSE,
 # degrees), its hips RIDER_HIP above the back in the middle of the saddle. Built in the game's axes (studs,
 # Y up, front -Z) and turned into Blender's (units of STUDS studs, Z up, front -Y).
-POSE = {"waistPitch": -12, "hipPitch": 95, "hipRoll": 45, "kneePitch": -100, "kneeRoll": 20, "armPitch": -8, "armRoll": 52, "elbowPitch": 74}
+POSE = {"waistPitch": -12, "hipPitch": 95, "hipRoll": 45, "kneePitch": -95, "kneeRoll": 15, "armPitch": 0, "armRoll": 48, "elbowPitch": 68}
 RIDER_HIP = 0.2
 STUDS = 1.6  # studs per unit in the game (Cosmetics.RIDE_PONY_SCALE): the rider is this much bigger here
 SEAT_SQUASH = 0.7  # the game makes the padded seat this much lower (RideModel)
+SADDLE_STRETCH = 1.2  # and the saddle this much longer
 
 
 def add_rider():

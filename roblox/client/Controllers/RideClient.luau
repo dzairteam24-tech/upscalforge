@@ -30,11 +30,11 @@ local POSE = {
 	waistPitch = -12,
 	hipPitch = 95,
 	hipRoll = 45,
-	kneePitch = -100,
-	kneeRoll = 20,
-	armPitch = -8,
-	armRoll = 52,
-	elbowPitch = 74,
+	kneePitch = -95,
+	kneeRoll = 15,
+	armPitch = 0,
+	armRoll = 48,
+	elbowPitch = 68,
 }
 -- Jumping: the creature tucks its legs (front forward, back backward) and tilts with its climb or fall
 local JUMP_TUCK = 40
