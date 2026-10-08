@@ -205,13 +205,24 @@ def add_head_and_saddle():
         if o.parent is None:
             o.parent = holder
     holder.location = (0, SADDLE_Y, BACK)
+    for o in saddle:
+        if o.name.startswith("Saddle__cushion"):
+            # lower, keeping its bottom, as the game does
+            bpy.context.view_layer.update()
+            bottom = min((o.matrix_world @ Vector(c)).z for c in o.bound_box)
+            for v in o.data.vertices:
+                w = o.matrix_world @ v.co
+                w.z = bottom + (w.z - bottom) * SEAT_SQUASH
+                v.co = o.matrix_world.inverted() @ w
 
 
 # The rider, for the riding sheet: an R15 character of blocks posed like the game poses it (RideClient POSE,
 # degrees), its hips RIDER_HIP above the back in the middle of the saddle. Built in the game's axes (studs,
-# Y up, front -Z) and turned into Blender's (units of 2 studs, Z up, front -Y).
-POSE = {"waistPitch": -12, "hipPitch": 80, "hipRoll": 50, "kneePitch": -70, "kneeRoll": 10, "armPitch": -6, "armRoll": 60, "elbowPitch": 90}
-RIDER_HIP = 0.1
+# Y up, front -Z) and turned into Blender's (units of STUDS studs, Z up, front -Y).
+POSE = {"waistPitch": -12, "hipPitch": 95, "hipRoll": 45, "kneePitch": -100, "kneeRoll": 20, "armPitch": -8, "armRoll": 52, "elbowPitch": 74}
+RIDER_HIP = 0.2
+STUDS = 1.6  # studs per unit in the game (Cosmetics.RIDE_PONY_SCALE): the rider is this much bigger here
+SEAT_SQUASH = 0.7  # the game makes the padded seat this much lower (RideModel)
 
 
 def add_rider():
@@ -231,10 +242,10 @@ def add_rider():
             pos, rot = waist + lean @ (Vector(pos) - waist), lean @ rot
         bpy.ops.mesh.primitive_cube_add(size=1)
         obj = bpy.context.active_object
-        obj.scale = (size[0] / 2, size[2] / 2, size[1] / 2)
+        obj.scale = (size[0] / STUDS, size[2] / STUDS, size[1] / STUDS)
         bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
         soft(obj, 0.03, 2, 0)
-        obj.matrix_world = Matrix.Translation(seat + swap @ Vector(pos) / 2) @ (swap @ rot @ swap).to_4x4()
+        obj.matrix_world = Matrix.Translation(seat + swap @ Vector(pos) / STUDS) @ (swap @ rot @ swap).to_4x4()
         finish(obj, key)
 
     one = Matrix.Identity(3)

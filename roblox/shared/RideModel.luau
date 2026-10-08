@@ -23,10 +23,11 @@ export type Ride = {
 }
 
 -- The Blender models as exported (front +Z, in the files' units). One part of each, with its box center and
--- width in those units, is how the game finds the scale and origin of an import.
-local SADDLE = { ref = "cushion", center = Vector3.new(0, 0.25, -0.02), width = 1.249 }
+-- size in those units, is how the game finds the scale and origin of an import.
+local SADDLE = { ref = "cushion", center = Vector3.new(0, 0.25, -0.02), size = Vector3.new(1.249, 0.345, 0.959) }
 local SADDLE_BODY = 1.6 -- the saddle is made for a back this wide (the pony's)
-local SADDLE_SEAT_TOP = 0.1 -- the rider's hips: down in the dished seat, its sides rise around the pelvis
+local SADDLE_SEAT_TOP = 0.2 -- the rider's hips: on the seat's surface, a little into it
+local SEAT_SQUASH = 0.7 -- the padded seat is made this much lower than modeled, so its sides don't swallow the rider
 local SADDLE_COLORS: { [string]: Color3 } = {
 	cushion = Color3.fromRGB(232, 88, 40),
 	cream = Color3.fromRGB(244, 230, 208),
@@ -36,7 +37,7 @@ local SADDLE_COLORS: { [string]: Color3 } = {
 	paw = Color3.fromRGB(245, 118, 38),
 }
 -- The pony: 1.6 wide (the saddle's back), its feet at 0, the top of its back at PONY_BACK
-local PONY = { ref = "body", center = Vector3.new(0, 1.997, -0.422), width = 1.593 }
+local PONY = { ref = "body", center = Vector3.new(0, 1.997, -0.422), size = Vector3.new(1.593, 2.686, 3.036) }
 local PONY_BACK = 2.35
 local PONY_BELLY = 0.65 -- where the legs meet the body: the point they swing around
 local PONY_SADDLE_Z = 0.3 -- the saddle's middle, behind the body's middle
@@ -45,7 +46,10 @@ local PONY_CREAM = Color3.fromRGB(252, 232, 200)
 local PONY_HOOF = Color3.fromRGB(96, 54, 30)
 local FLIP = CFrame.Angles(0, math.pi, 0) -- the files' front (+Z) to the game's front (-Z)
 
-type Piece = { role: string, part: BasePart, at: Vector3, rotation: CFrame, size: Vector3 }
+type Model = { ref: string, center: Vector3, size: Vector3 }
+-- A part of an imported model: where it is from the reference part (in the import's own axes, which Studio
+-- may have turned) and, once placed (`place`), where it goes in the game's axes
+type Piece = { role: string, part: BasePart, rel: Vector3, turn: CFrame, size: Vector3, at: Vector3, rotation: CFrame }
 
 local artOverride: Instance? = nil -- tests and previews point this at models of their own
 
@@ -68,7 +72,7 @@ end
 -- it isn't loaded. The model can be anywhere directly in ReplicatedStorage under any name (Studio's importer
 -- calls it "Scene"); when there are several, the last one added wins, so a re-imported model replaces the old
 -- one even when the old one is left there.
-local function meshPieces(prefix: string, model: { ref: string, center: Vector3, width: number }): { Piece }?
+local function meshPieces(prefix: string, model: Model): { Piece }?
 	local refName = prefix .. "__" .. model.ref
 	-- Looked up safely: the offline tests run this module without a full game
 	local ok, roots = pcall(function(): { Instance }
@@ -119,10 +123,10 @@ local function meshPieces(prefix: string, model: { ref: string, center: Vector3,
 	if not base then
 		return nil
 	end
-	local importScale = base.Size.X / model.width
+	-- (the size's length doesn't change if the importer turned the part's axes)
+	local importScale = base.Size.Magnitude / model.size.Magnitude
 	local pieces: { Piece } = {}
 	for role, p in found do
-		local design = base.CFrame:PointToObjectSpace(p.CFrame.Position) / importScale + model.center
 		local clone = p:Clone()
 		for _, child in clone:GetChildren() do
 			if not child:IsA("DataModelMesh") then
@@ -137,12 +141,43 @@ local function meshPieces(prefix: string, model: { ref: string, center: Vector3,
 		table.insert(pieces, {
 			role = role,
 			part = clone,
-			at = Vector3.new(-design.X, design.Y, -design.Z),
-			rotation = FLIP * (base.CFrame.Rotation:Inverse() * p.CFrame.Rotation),
+			rel = base.CFrame:PointToObjectSpace(p.CFrame.Position) / importScale,
+			turn = base.CFrame.Rotation:Inverse() * p.CFrame.Rotation,
 			size = p.Size / importScale,
+			at = Vector3.zero,
+			rotation = CFrame.identity,
 		})
 	end
 	return pieces
+end
+
+-- How Studio's importer turned the pony: the turn about Y that brings its front legs back in front of its
+-- back legs (+Z in the file), in quarter turns. (The creature models don't need this: PetModel finds their
+-- front from their eyes.)
+local function importTurn(pony: { Piece }): CFrame
+	local front, rear
+	for _, piece in pony do
+		if piece.role == "leg__legFL" then
+			front = piece.rel
+		elseif piece.role == "leg__legBL" then
+			rear = piece.rel
+		end
+	end
+	if not front or not rear then
+		return CFrame.identity
+	end
+	local d = (front :: Vector3) - (rear :: Vector3)
+	local angle = math.atan2(d.X, d.Z)
+	return CFrame.Angles(0, -math.round(angle / (math.pi / 2)) * (math.pi / 2), 0)
+end
+
+-- Places a model's pieces in the game's axes: undoing the importer's turn, then the file's front to the game's
+local function place(pieces: { Piece }, model: Model, turn: CFrame)
+	for _, piece in pieces do
+		local design = turn:VectorToWorldSpace(piece.rel) + model.center
+		piece.at = Vector3.new(-design.X, design.Y, -design.Z)
+		piece.rotation = FLIP * turn * piece.turn
+	end
 end
 
 local function quiet(p: BasePart)
@@ -269,8 +304,10 @@ function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 	local offsets: { CFrame } = {}
 	local pivots: { [number]: Vector3 } = {}
 	local pony = meshPieces("Pony", PONY)
+	local turn = if pony then importTurn(pony) else CFrame.identity
 	local back, fit
 	if pony then
+		place(pony, PONY, turn)
 		back, fit = ponyShape(built, pony, offsets, pivots)
 	else
 		back, fit = stretchedShape(built, offsets, pivots)
@@ -287,8 +324,15 @@ function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 	local seat: Vector3
 	local saddle = meshPieces("Saddle", SADDLE)
 	if saddle then
-		-- The Blender saddle, sized to this back
+		-- The Blender saddle, sized to this back, turned like the pony (both come through the same importer)
+		place(saddle, SADDLE, turn)
 		for _, piece in saddle do
+			if piece.role == "cushion" then
+				-- Lower, keeping its bottom on the saddle
+				local h = piece.size.Y
+				piece.size = Vector3.new(piece.size.X, h * SEAT_SQUASH, piece.size.Z)
+				piece.at -= Vector3.new(0, h * (1 - SEAT_SQUASH) / 2, 0)
+			end
 			local p = piece.part
 			p.Name = "Saddle_" .. piece.role
 			p.Color = SADDLE_COLORS[piece.role] or SADDLE_COLORS.leather

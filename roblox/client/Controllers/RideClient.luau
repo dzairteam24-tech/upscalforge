@@ -28,13 +28,13 @@ local LEG_PHASE = { legFL = 0, legBR = 0, legFR = math.pi, legBL = math.pi }
 -- saddle meshes offline; art/blender/pony.py poses its rider with the same numbers.)
 local POSE = {
 	waistPitch = -12,
-	hipPitch = 80,
-	hipRoll = 50,
-	kneePitch = -70,
-	kneeRoll = 10,
-	armPitch = -6,
-	armRoll = 60,
-	elbowPitch = 90,
+	hipPitch = 95,
+	hipRoll = 45,
+	kneePitch = -100,
+	kneeRoll = 20,
+	armPitch = -8,
+	armRoll = 52,
+	elbowPitch = 74,
 }
 -- Jumping: the creature tucks its legs (front forward, back backward) and tilts with its climb or fall
 local JUMP_TUCK = 40
