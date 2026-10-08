@@ -751,7 +751,7 @@ local function applyTitles(player: Player, character: Model)
 		local riding = (player:GetAttribute("RidePetId") or "") ~= ""
 		local legs = if humanoid.RigType == Enum.HumanoidRigType.R6 then 2 else 0
 		if onCreature and riding then
-			humanoid.HipHeight = math.max(baseHip, Cosmetics.RIDE_CREATURE_HEIGHT + Cosmetics.RIDE_SEAT - legs)
+			humanoid.HipHeight = math.max(baseHip, Cosmetics.RIDE_HIP - legs)
 		else
 			humanoid.HipHeight = baseHip + (if rideDef and not onCreature then 0.6 else 0)
 		end
