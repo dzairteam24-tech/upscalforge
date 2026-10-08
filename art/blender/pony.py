@@ -11,9 +11,8 @@ z = BACK. Front is -Y, like the creatures.
                                             saddle
     python art/blender/pony.py ride         renders: art/renders/Ride.png, the same with a rider on the saddle
                                             (3/4 front, front, side, 3/4 rear, back, top, bottom)
-    python art/blender/pony.py roblox       also writes art/models/Pony.glb: Pony__body, Pony__cream, per leg
-                                            Pony__leg__legFL... and Pony__hoof__legFL..., and the bridle
-                                            around the head (Pony__bridle, Pony__ringL, Pony__ringR), for
+    python art/blender/pony.py roblox       also writes art/models/Pony.glb: Pony__body, Pony__cream, and
+                                            per leg Pony__leg__legFL... and Pony__hoof__legFL..., for
                                             Studio's Import 3D
 
 Needs Python with bpy (Blender 4.2+) and pillow.
@@ -35,8 +34,6 @@ COLORS = {
     "cream": (0.95, 0.78, 0.55),
     "mane": (0.8, 0.22, 0.04),
     "hoof": (0.2, 0.08, 0.03),
-    "bridle": (0.22, 0.075, 0.03),
-    "ring": (1.0, 0.62, 0.08),
     # the rider in the riding sheet: a blocky Roblox character
     "shirt": (0.025, 0.025, 0.03),
     "pants": (0.03, 0.06, 0.25),
@@ -140,75 +137,6 @@ def join(objs):
 # The pony
 
 
-def tube(name, points, radius):
-    """A round strap along `points`."""
-    curve = bpy.data.curves.new(name, "CURVE")
-    curve.dimensions = "3D"
-    curve.bevel_depth = radius
-    curve.bevel_resolution = 4
-    curve.use_fill_caps = True
-    spline = curve.splines.new("POLY")
-    spline.points.add(len(points) - 1)
-    for point, co in zip(spline.points, points):
-        point.co = (*co, 1)
-    obj = bpy.data.objects.new(name, curve)
-    bpy.context.collection.objects.link(obj)
-    bpy.context.view_layer.objects.active = obj
-    obj.select_set(True)
-    bpy.ops.object.convert(target="MESH")
-    obj.select_set(False)
-    return bpy.context.view_layer.objects.active
-
-
-def rounded(points, radius, steps=5):
-    """A polyline with its inner corners rounded off by `radius`."""
-    out = [points[0]]
-    for i in range(1, len(points) - 1):
-        p, a, b = Vector(points[i]), Vector(points[i - 1]), Vector(points[i + 1])
-        da, db = (a - p), (b - p)
-        r = min(radius, da.length / 2, db.length / 2)
-        p0, p1 = p + da.normalized() * r, p + db.normalized() * r
-        for k in range(steps + 1):
-            t = k / steps
-            out.append(tuple((1 - t) ** 2 * p0 + 2 * (1 - t) * t * p + t * t * p1))
-    out.append(points[-1])
-    return out
-
-
-def torus(name, location, major, minor):
-    """A ring standing on the side of the head (its hole along X)."""
-    bpy.ops.mesh.primitive_torus_add(major_radius=major, minor_radius=minor, major_segments=24, minor_segments=8, location=location, rotation=(0, math.pi / 2, 0))
-    obj = bpy.context.active_object
-    obj.name = name
-    return obj
-
-
-def bridle():
-    """The bridle, made around the creature's cube head (HEAD_WIDTH wide and deep, its top 0.95 of that above
-    HEAD_BOTTOM, rounded edges): a crown strap over the top behind the ears, down the cheeks to a gold ring on
-    each side, a browband round the top of the face above the eyes, and a strap under the chin. The face
-    stays clear."""
-    parts = []
-    half = HEAD_WIDTH / 2
-    s = half + 0.05  # the straps' middle, just off the head's sides
-    front = HEAD_Y - half - 0.05
-    top = HEAD_BOTTOM + HEAD_WIDTH * 0.95 + 0.05
-    bottom = HEAD_BOTTOM - 0.05
-    crown_y = HEAD_Y + half * 0.5
-    ring_y, ring_z = HEAD_Y - half * 0.45, HEAD_BOTTOM + HEAD_WIDTH * 0.27
-    brow_z = top - 0.2
-    r = 0.22
-    crown = [(-s, ring_y, ring_z), (-s, crown_y, top - 0.3), (-s, crown_y, top), (s, crown_y, top), (s, crown_y, top - 0.3), (s, ring_y, ring_z)]
-    brow = [(-s, crown_y, brow_z), (-s, front, brow_z), (s, front, brow_z), (s, crown_y, brow_z)]
-    chin = [(-s, ring_y, ring_z), (-s, ring_y, bottom), (s, ring_y, bottom), (s, ring_y, ring_z)]
-    straps = [tube(name, rounded(pts, r), 0.05) for name, pts in (("Crown", crown), ("Brow", brow), ("Chin", chin))]
-    parts.append(finish(join(straps), "bridle", "bridle"))
-    for side, name in ((1, "ringL"), (-1, "ringR")):
-        ring = torus(f"Ring_{name}", (side * (s + 0.04), ring_y, ring_z), 0.13, 0.035)
-        parts.append(finish(ring, "ring", name))
-    return parts
-
-
 def build():
     parts = []
 
@@ -239,7 +167,6 @@ def build():
         hoof = post(f"Hoof_{name}", 0.0, HOOF, 0.44, 0.42, x, y)
         soft(hoof, 0.08, 2, 1)
         parts.append(finish(hoof, "hoof", f"hoof__{name}"))
-    parts += bridle()
     return parts
 
 
@@ -301,7 +228,7 @@ SADDLE_STRETCH = 1.2  # and the saddle this much longer
 
 
 def add_rider():
-    """The rider (and the reins) from RIDER, a JSON list of blocks in the game's frame for the ride (studs, Y up,
+    """The rider from RIDER, a JSON list of blocks in the game's frame for the ride (studs, Y up,
     front -Z, origin at the creature's center, its feet RIDE_CREATURE_HEIGHT / 2 below): a standard R15 rig
     posed by the game's own solver (RideIK, as RideClient does it), so the sheet shows what the game does.
     Without it, a rider of blocks in the fixed fallback pose."""
@@ -316,14 +243,14 @@ def add_rider():
     turn = Matrix(((-1, 0, 0), (0, 0, 1), (0, 1, 0)))
     colors = {}
     for block in json.load(open(path))["parts"]:
-        if not (block["n"].startswith("Rider_") or block["n"] == "Rein"):
+        if not block["n"].startswith("Rider_"):
             continue
         bpy.ops.mesh.primitive_cube_add(size=1)
         obj = bpy.context.active_object
         sx, sy, sz = (v / STUDS for v in block["s"])
         obj.scale = (sx, sy, sz)
         bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-        soft(obj, 0.03 if block["n"] != "Rein" else 0.0, 2, 0)
+        soft(obj, 0.03, 2, 0)
         r = block["r"]  # rows: the block's X, Y and Z axes
         rot = Matrix(((r[0], r[3], r[6]), (r[1], r[4], r[7]), (r[2], r[5], r[8])))
         x, y, z = block["p"]

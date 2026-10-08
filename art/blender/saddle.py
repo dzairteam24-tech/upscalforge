@@ -196,8 +196,29 @@ def rounded_rect(cx, cy, hw, hh, r, steps=6):
     return pts
 
 
-def ball(name, radius, location):
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8, radius=radius, location=location)
+def capsule(name, center, length, radius):
+    """A padded grip: a smooth rounded capsule lying across (along X)."""
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=radius, location=center)
+    obj = bpy.context.active_object
+    obj.name = name
+    half = length / 2 - radius
+    for v in obj.data.vertices:
+        v.co.x += half if v.co.x > 0 else -half if v.co.x < 0 else 0
+    return obj
+
+
+def cone(name, r_bottom, r_top, height, location):
+    """A short upright cone, its bottom at `location`."""
+    x, y, z = location
+    bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=r_bottom, radius2=r_top, depth=height, location=(x, y, z + height / 2))
+    obj = bpy.context.active_object
+    obj.name = name
+    return obj
+
+
+def ring_x(name, location, major, minor):
+    """A flat ring lying level (its hole upright), around a post."""
+    bpy.ops.mesh.primitive_torus_add(major_radius=major, minor_radius=minor, major_segments=24, minor_segments=8, location=location)
     obj = bpy.context.active_object
     obj.name = name
     return obj
@@ -349,23 +370,28 @@ def build():
         rim.append((x, cy + 0.06 - 0.12 * (x / 0.57) ** 4, top + 0.39 + seat_z(x) - 0.12 * (x / 0.57) ** 2))
     parts.append(tag(tube("CantleRim", rim, 0.05), "cream", "seat"))
 
-    # The handle: a wide grab bar standing on the pommel, clear from the side, with a cream grip for each hand
-    # and gold caps where it meets the pommel
+    # The handle: one smooth leather arch standing on the pommel (a soft square arch, no sharp bends), leaning a
+    # little forward, with a padded cream grip for each hand, and flared feet with gold collars where it meets
+    # the pommel
     gx, hz = GRIP_X, GRIP_Z
-    half, r = 0.34, 0.09
+    half = 0.34
     base_z = top + 0.27
-    handle = [(-half, py, base_z)]
-    for i in range(7):
-        a = math.pi - (math.pi / 2) * i / 6
-        handle.append((-half + r + r * math.cos(a), py, hz - r + r * math.sin(a)))
-    for i in range(7):
-        a = math.pi / 2 - (math.pi / 2) * i / 6
-        handle.append((half - r + r * math.cos(a), py, hz - r + r * math.sin(a)))
-    handle.append((half, py, base_z))
-    parts.append(tag(tube("Handle", handle, 0.06), "dark", "seat"))
+    rise = hz - base_z
+    arch = []
+    for i in range(41):
+        t = math.pi * i / 40
+        c, sn = math.cos(t), math.sin(t)
+        # a superellipse: |x/half|^4 + |z/rise|^4 = 1, flat on top where the hands go
+        x = half * math.copysign(abs(c) ** 0.5, c)
+        z = rise * abs(sn) ** 0.5
+        arch.append((-x, py - 0.04 * (z / rise), base_z + z))
+    parts.append(tag(tube("Handle", arch, 0.065), "dark", "seat"))
     for sx in (-1, 1):
-        parts.append(tag(tube("Grip", [(sx * (gx - 0.1), py, hz), (sx * (gx + 0.1), py, hz)], 0.075), "cream", "seat"))
-        parts.append(tag(ball("HandleCap", 0.085, (sx * half, py, base_z)), "gold", "seat"))
+        parts.append(tag(capsule("Grip", (sx * gx, py - 0.04, hz), 0.24, 0.082), "cream", "seat"))
+        foot = cone("HandleFoot", 0.1, 0.07, 0.1, (sx * half, py, base_z - 0.02))
+        parts.append(tag(foot, "dark", "seat"))
+        collar = ring_x("HandleCollar", (sx * half, py, base_z + 0.05), 0.075, 0.022)
+        parts.append(tag(collar, "gold", "seat"))
 
     sx, sy, sole = STIRRUP
     for side in (-1, 1):

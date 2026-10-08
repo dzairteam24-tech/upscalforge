@@ -1,12 +1,12 @@
 -- Cubeling Ride: draws the creature each player is riding (player attribute "RidePet", set by the server
 -- from the strongest creature in their team) under their character, every frame on each client.
 --
--- The creature comes from RideModel: a pony with the creature's head, a saddle and a bridle (art: the riding
--- model sheet). Creature and rider move as one body: no hop, the creature walks with its legs and leans a
+-- The creature comes from RideModel: a pony with the creature's head and a saddle (art: the riding model
+-- sheet). Creature and rider move as one body: no hop, the creature walks with its legs and leans a
 -- little into the run, and a jump lifts both. Each client poses every rider itself every frame (the joints'
 -- Transform, so no uploaded animation is needed): the rider leans a little forward and RideIK bends the arms
 -- so the hands hold the handle's grips and the legs so the feet stand in the stirrups, whatever the avatar's
--- size; a leather rein (a Beam) runs from each bridle ring to the hand. The rider's own client turns off
+-- size. The rider's own client turns off
 -- their walk animations and sets the height they sit at. PetFollow hides the ridden creature from the
 -- followers.
 
@@ -30,7 +30,6 @@ local LEAN = -10
 -- Where elbows and knees point: elbows down, out and a little back; knees forward and out
 local ELBOW_POLE = { out = 0.7, down = 1, back = 0.3 }
 local KNEE_POLE = { forward = 1, out = 0.8 }
-local REIN_COLOR = Color3.fromRGB(110, 58, 30)
 -- Only when a limb can't be solved (a rig without those joints): a fixed riding pose, in degrees
 local POSE = {
 	hipPitch = 95,
@@ -58,7 +57,6 @@ type Mount = {
 	run: number, -- 0 standing .. 1 running, eased
 	air: number, -- 0 on the ground .. 1 in a jump, eased
 	posed: Model?, -- the character whose joints this mount is posing
-	reins: { [string]: Beam }, -- by side, from the bridle's rings to the rider's hands
 }
 
 local mounts: { [Player]: Mount } = {}
@@ -240,42 +238,6 @@ local function setPose(character: Model, on: boolean, ride: RideModel.Ride?)
 	end
 end
 
--- The reins: a leather Beam from each bridle ring to the rider's hand on that side, sagging a little
-local function syncReins(mount: Mount, character: Model?)
-	for _, side in { "Left", "Right" } do
-		local ring = mount.ride.reins[side]
-		local hand = character and (character:FindFirstChild(side .. "Hand") or character:FindFirstChild(side .. " Arm"))
-		local grip = hand and hand:FindFirstChild(side .. "GripAttachment")
-		local beam = mount.reins[side]
-		if not ring or not grip or not grip:IsA("Attachment") then
-			if beam then
-				beam:Destroy()
-				mount.reins[side] = nil
-			end
-			continue
-		end
-		if not beam then
-			beam = Instance.new("Beam")
-			beam.Name = "Rein" .. side
-			beam.Color = ColorSequence.new(REIN_COLOR)
-			beam.Width0 = 0.13
-			beam.Width1 = 0.13
-			beam.Segments = 12
-			beam.FaceCamera = true
-			beam.LightInfluence = 1
-			beam.CurveSize0 = 0.9 -- down from the ring (its attachment's X axis points down)
-			beam.CurveSize1 = 0
-			beam.Attachment0 = ring
-			beam.Parent = mount.ride.built.model
-			mount.reins[side] = beam
-		end
-		local b = beam :: Beam
-		if b.Attachment1 ~= grip then
-			b.Attachment1 = grip
-		end
-	end
-end
-
 ---------------------------------------------------------------------------------------------------------------
 -- The local rider: walk animations off while riding, and the height that puts their hips on the saddle
 
@@ -364,7 +326,6 @@ local function build(player: Player, value: string)
 		run = 0,
 		air = 0,
 		posed = nil,
-		reins = {},
 	}
 end
 
@@ -498,7 +459,6 @@ local function pose()
 			setPose(character, true, mount.ride)
 			mount.posed = character
 		end
-		syncReins(mount, character)
 	end
 end
 
