@@ -1,12 +1,12 @@
 """The Cubeling Ride saddle (art: the riding model sheet): a small pony saddle sitting ON the pony's back. A big
-red padded seat (the dominant part) on a thin leather base over a cream fleece, closed by a low pommel with
-a wide handle in front and a rounded cantle behind; short padded side flaps lying on the back's rounded
+red padded seat (the dominant part), dished where the rider sits, on a thin leather base over a cream fleece, closed by a low pommel with
+a wide handle in front (rising before the thighs) and a curved cantle behind; short padded side flaps lying on the back's rounded
 edges under the rider's thighs; a separate girth, the only part going around the body; and big stirrups
 right under the rider's feet.
 
 Units are the pony's (art/blender/pony.py), 2 studs each in the game: the body is 1.6 wide (sides at
 x = +-0.8, edges rounded by 0.55) and 1.7 tall, the top of the back is z = 0, front is -Y. The saddle is
-3.5 studs wide with its flaps, its seat 2.5 wide and 0.4 thick, 2.6 long from pommel to cantle. The rider's
+3.5 studs wide with its flaps, its seat 2.5 wide, 2.6 long from pommel to cantle. The rider's
 pose (RideClient, pony.py) sets where the hips, hands and feet go (HIP, HANDLE, STIRRUP).
 
     python art/blender/saddle.py            renders: art/renders/Saddle.png (3/4, front, side, back, top,
@@ -47,12 +47,12 @@ SADDLE_L = 1.3  # pommel to cantle
 TREE_W = 1.36  # the leather base the seat sits on, just wider than the seat
 SEAT_W = 1.25  # the padded seat: 2.5 studs
 SEAT_L = 0.96  # the padded seat between the pommel and the cantle
-SEAT_T = 0.2  # its thickness: 0.4 studs
+SEAT_T = 0.28  # its thickness at the sides; dished down where the pelvis sits
 DROOP = 0.04  # how much the base and seat curve down at the sides
 FLAP_L = 0.9  # the side flaps, front to back
 FLAP_DROP = 0.42  # how far down the body's rounded edge the flaps reach: under the rider's thighs
-HIP = 0.1  # the rider's hips above the back: sunk into the seat (its top is about 0.27)
-HANDLE = (-0.45, 0.415)  # where the rider's hands hold the handle (y, z), from the rider's pose
+HIP = 0.1  # the rider's hips above the back: down in the dished seat, whose sides rise around the pelvis
+HANDLE = (-0.47, 0.45)  # where the rider's hands hold the handle (y, z), from the rider's pose
 STIRRUP = (0.986, -0.36, -0.632)  # where the rider's feet rest (x, y, sole z), from the same pose
 
 materials = {}
@@ -315,32 +315,43 @@ def build():
     soft(seat, 0.08, 4, 2)
     for v in seat.data.vertices:
         if v.co.z > 0:
+            # A dished seat: down where the pelvis sits, rising to the sides and up towards the cantle
             t = (v.co.y - 0.02) / (SEAT_L / 2)
             u = v.co.x / (SEAT_W / 2)
-            v.co.z -= 0.05 * max(1 - t * t, 0) * max(1 - u * u, 0)
+            v.co.z -= 0.11 * max(1 - (t + 0.15) ** 2, 0) * max(1 - u * u * 1.4, 0)
+            v.co.z += 0.07 * max(t, 0) ** 2
     parts.append(tag(drape(seat), "cushion", "seat"))
-    ring = [(x, y, top + 0.02 + seat_z(x)) for x, y in rounded_rect(0, 0.02, SEAT_W / 2 + 0.01, SEAT_L / 2 + 0.01, 0.2)]
-    parts.append(tag(tube("Piping", ring, 0.04, closed=True), "cream", "seat"))
+    ring = [(x, y, top + 0.03 + seat_z(x)) for x, y in rounded_rect(0, 0.02, SEAT_W / 2 + 0.015, SEAT_L / 2 + 0.015, 0.2)]
+    parts.append(tag(tube("Piping", ring, 0.055, closed=True), "cream", "seat"))
 
     # Pommel and cantle: low rounded rolls closing the seat in front and behind
     py = front + 0.1
-    parts.append(tag(drape(rounded_box("Pommel", (0.95, 0.2, 0.2), (0, py, top + 0.11), 0.09)), "leather", "seat"))
-    parts.append(tag(tube("PommelRim", [(x, py, top + 0.215 + seat_z(x)) for x in [i / 8 * 0.84 - 0.42 for i in range(9)]], 0.035), "cream", "seat"))
+    # (the pommel rises in front of the rider's thighs, the cantle curves up behind the pelvis)
+    pommel = drape(rounded_box("Pommel", (1.1, 0.22, 0.3), (0, py, top + 0.15), 0.1))
+    pommel.rotation_euler = (math.radians(10), 0, 0)
+    parts.append(tag(pommel, "leather", "seat"))
+    parts.append(tag(tube("PommelRim", [(x, py + 0.02, top + 0.31 + seat_z(x) - 0.04 * (x / 0.5) ** 2) for x in [i / 8 * 1.0 - 0.5 for i in range(9)]], 0.045), "cream", "seat"))
     cy = SADDLE_L / 2 - 0.1
-    parts.append(tag(drape(rounded_box("Cantle", (1.15, 0.2, 0.24), (0, cy, top + 0.13), 0.09)), "leather", "seat"))
-    parts.append(tag(tube("CantleRim", [(x, cy + 0.02, top + 0.255 + seat_z(x)) for x in [i / 8 * 1.04 - 0.52 for i in range(9)]], 0.04), "cream", "seat"))
+    cantle = drape(rounded_box("Cantle", (1.2, 0.22, 0.38), (0, cy, top + 0.19), 0.1))
+    cantle.rotation_euler = (math.radians(-14), 0, 0)
+    parts.append(tag(cantle, "leather", "seat"))
+    rim = []
+    for i in range(13):
+        x = i / 12 * 1.14 - 0.57
+        rim.append((x, cy + 0.06 - 0.12 * (x / 0.57) ** 4, top + 0.39 + seat_z(x) - 0.12 * (x / 0.57) ** 2))
+    parts.append(tag(tube("CantleRim", rim, 0.05), "cream", "seat"))
 
     # The handle: one wide rounded bar on the pommel, right in front of the rider's hands
     hy, hz = HANDLE
     half, r = 0.24, 0.07
-    handle = [(-half, py, top + 0.18)]
+    handle = [(-half, py, top + 0.26)]
     for i in range(7):
         a = math.pi - (math.pi / 2) * i / 6
         handle.append((-half + r + r * math.cos(a), hy, hz - r + r * math.sin(a)))
     for i in range(7):
         a = math.pi / 2 - (math.pi / 2) * i / 6
         handle.append((half - r + r * math.cos(a), hy, hz - r + r * math.sin(a)))
-    handle.append((half, py, top + 0.18))
+    handle.append((half, py, top + 0.26))
     parts.append(tag(tube("Handle", handle, 0.045), "dark", "seat"))
 
     sx, sy, sole = STIRRUP
