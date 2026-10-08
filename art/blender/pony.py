@@ -40,9 +40,9 @@ BELLY = 1.35  # bottom of the body above the ground
 LEG_X = 0.58
 LEG_Y = 1.0
 HOOF = 0.32
-HEAD_WIDTH = 2.5  # the creature's head, for the render; the game uses the same numbers (RideModel)
-HEAD_Y = -1.6
-HEAD_BOTTOM = 2.0
+HEAD_WIDTH = 1.8  # the creature's head, for the render; the game uses the same numbers (RideModel)
+HEAD_Y = -1.4
+HEAD_BOTTOM = 2.45
 
 materials = {}
 

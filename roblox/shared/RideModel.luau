@@ -40,7 +40,7 @@ local PONY = { ref = "body", center = Vector3.new(0, 2.901, -0.601), width = 1.9
 local PONY_BACK = 3.0
 local PONY_BELLY = 1.35 -- where the legs meet the body: the point they swing around
 local PONY_SADDLE_Z = 0.45 -- the saddle's middle, behind the body's middle
-local PONY_HEAD = { width = 2.5, bottom = 2.0, z = -1.6 } -- the creature as the head
+local PONY_HEAD = { width = 1.8, bottom = 2.45, z = -1.4 } -- the creature as the head
 local PONY_CREAM = Color3.fromRGB(252, 232, 200)
 local PONY_HOOF = Color3.fromRGB(96, 54, 30)
 local FLIP = CFrame.Angles(0, math.pi, 0) -- the files' front (+Z) to the game's front (-Z)
