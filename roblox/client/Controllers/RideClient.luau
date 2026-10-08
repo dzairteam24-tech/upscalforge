@@ -26,11 +26,16 @@ type Mount = {
 	nextChirp: number,
 	mouthOpen: boolean,
 	drop: number, -- height of the character's root above the creature's feet
+	seatHip: number, -- the rider's HipHeight sitting on it (as the server sets it), before the hop
 }
 
 local mounts: { [Player]: Mount } = {}
 local container = Instance.new("Folder")
 container.Name = "Rides"
+local LOCAL = Players.LocalPlayer
+local SIT_FALLBACK = { R15 = "rbxassetid://2506281703", R6 = "rbxassetid://178130996" }
+-- The local rider's sit pose, while riding (see sit/stand below)
+local seated: { character: Model, track: AnimationTrack }? = nil
 
 local function parse(value: string): { s: string, v: string, z: string }?
 	local s, v, z = string.match(value, "^([^|]+)|([^|]+)|([^|]+)")
@@ -46,6 +51,15 @@ local function remove(player: Player)
 		mount.built.model:Destroy()
 		mounts[player] = nil
 	end
+end
+
+-- The rider's HipHeight on the creature, the same as the server sets (GameService applyTitles)
+local function seatHipFor(player: Player): number
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local base = character and character:GetAttribute("BaseHipHeight")
+	local legs = if humanoid and humanoid.RigType == Enum.HumanoidRigType.R6 then 2 else 0
+	return math.max(if type(base) == "number" then base else 2, Cosmetics.RIDE_CREATURE_HEIGHT - 0.3 - legs)
 end
 
 -- Builds the creature at the ride height: parts and their offsets grow or shrink together
@@ -70,6 +84,38 @@ local function build(player: Player, value: string)
 	for i, pivot in built.pivots do
 		pivots[i] = pivot * scale
 	end
+	-- Saddle on its back, where the rider sits (RIDE_FORWARD behind the middle): a blanket, a seat with
+	-- a raised front and back, and a strap down each side
+	local halfWidth = built.body.Size.X / 2
+	local top = Cosmetics.RIDE_CREATURE_HEIGHT / 2
+	local seatZ = Cosmetics.RIDE_FORWARD
+	local leather = Color3.fromRGB(120, 72, 40)
+	local saddle: { { size: Vector3, offset: Vector3, color: Color3, material: Enum.Material } } = {
+		{ size = Vector3.new(halfWidth * 2 + 0.2, 0.18, 3.6), offset = Vector3.new(0, top + 0.05, seatZ), color = Color3.fromRGB(200, 50, 60), material = Enum.Material.Fabric },
+		{ size = Vector3.new(halfWidth * 2 + 0.25, 0.08, 3.7), offset = Vector3.new(0, top + 0.1, seatZ), color = Color3.fromRGB(255, 205, 80), material = Enum.Material.Fabric },
+		{ size = Vector3.new(2.6, 0.4, 2.8), offset = Vector3.new(0, top + 0.3, seatZ), color = leather, material = Enum.Material.Leather },
+		{ size = Vector3.new(1.2, 0.9, 0.5), offset = Vector3.new(0, top + 0.7, seatZ - 1.25), color = leather, material = Enum.Material.Leather },
+		{ size = Vector3.new(2.6, 0.7, 0.5), offset = Vector3.new(0, top + 0.6, seatZ + 1.3), color = leather, material = Enum.Material.Leather },
+		{ size = Vector3.new(0.18, top * 0.9, 0.7), offset = Vector3.new(halfWidth + 0.1, top * 0.55, seatZ), color = Color3.fromRGB(90, 55, 32), material = Enum.Material.Leather },
+		{ size = Vector3.new(0.18, top * 0.9, 0.7), offset = Vector3.new(-halfWidth - 0.1, top * 0.55, seatZ), color = Color3.fromRGB(90, 55, 32), material = Enum.Material.Leather },
+	}
+	for _, piece in saddle do
+		local p = Instance.new("Part")
+		p.Name = "Saddle"
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Size = piece.size
+		p.Color = piece.color
+		p.Material = piece.material
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = built.model
+		table.insert(built.parts, p)
+		table.insert(offsets, CFrame.new(piece.offset))
+	end
 	built.model.Parent = container
 	mounts[player] = {
 		value = value,
@@ -81,6 +127,7 @@ local function build(player: Player, value: string)
 		nextChirp = os.clock() + 2,
 		mouthOpen = false,
 		drop = Cosmetics.RIDE_CREATURE_HEIGHT + 2,
+		seatHip = seatHipFor(player),
 	}
 end
 
@@ -133,7 +180,12 @@ local function step()
 			mount.drop = root.Position.Y - hit.Position.Y -- remembered so a jump carries the creature along
 		end
 		local feetY = root.Position.Y - mount.drop
-		local hop = if moving and not airborne then math.abs(math.sin(now * 9 + mount.phase)) * 0.45 else math.sin(now * 2 + mount.phase) * 0.06
+		local hop = if moving and not airborne then math.abs(math.sin(now * 8 + mount.phase)) * 0.5 else math.sin(now * 2 + mount.phase) * 0.06
+		-- The rider goes up and down with the creature: it's the creature that hops, carrying them.
+		-- Each client moves its own character (it owns its physics), and everyone sees it.
+		if player == LOCAL and seated and seated.character == character then
+			humanoid.HipHeight = mount.seatHip + math.max(hop, 0)
+		end
 		local look = root.CFrame.LookVector
 		local flat = Vector3.new(look.X, 0, look.Z)
 		if flat.Magnitude < 1e-3 then
@@ -182,9 +234,6 @@ end
 -- The local rider sits still: the walk animations stop and the character's own sit pose plays instead.
 -- Animations played on your own character show for everyone.
 
-local LOCAL = Players.LocalPlayer
-local SIT_FALLBACK = { R15 = "rbxassetid://2506281703", R6 = "rbxassetid://178130996" }
-local seated: { character: Model, track: AnimationTrack }? = nil
 
 local function stand()
 	if not seated then
