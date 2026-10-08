@@ -162,11 +162,17 @@ local function template(speciesId: string): Template?
 	local ref = CFrame.fromMatrix(center, up:Cross(back), up, back)
 	local parts: { TemplatePart } = {}
 	local radius = 0
+	-- The open mouth is set almost flush into the face (0.003 out on a 2-wide body), so in Roblox the face
+	-- covers it and only the closed mouth ever shows. Bring it out as far as the closed mouth sits.
+	local mouthPush = math.max(bodyPart.Size.X, bodyPart.Size.Z) * 0.015
 	for _, part in list do
 		local offset = ref:ToObjectSpace(part.CFrame)
 		local full = string.match((string.gsub(part.Name, "%.%d+$", "")), "__([%w_]+)$") :: string
 		-- "legs__legFL": the color role, then the moving piece it belongs to
 		local role, anim = string.match(full, "^(.-)__(.+)$")
+		if anim == "mouthO" then
+			offset = CFrame.new(0, 0, -mouthPush) * offset
+		end
 		table.insert(parts, { part = part, role = role or full, anim = anim or "", offset = offset })
 		radius = math.max(radius, Vector2.new(offset.X, offset.Z).Magnitude + math.max(part.Size.X, part.Size.Z) / 2)
 	end
