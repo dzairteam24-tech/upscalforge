@@ -39,23 +39,23 @@ local function saddlePieces(back: Vector3, width: number): { Piece }
 		{ name = "SaddleTrim", size = Vector3.new(math.min(2.7, width + 0.1), 0.14, 2.5), at = Vector3.new(0, 0.26, 0), color = CREAM, material = Enum.Material.SmoothPlastic },
 		{ name = "SaddleSeat", size = Vector3.new(math.min(2.5, width - 0.1), 0.42, 2.3), at = Vector3.new(0, 0.5, 0), color = CUSHION, material = Enum.Material.Fabric },
 		-- Handle in front of the rider: two posts and a bar
-		{ name = "SaddleHandle", size = Vector3.new(0.28, 0.95, 0.28), at = Vector3.new(0.72, 0.78, -1.2), color = LEATHER, material = Enum.Material.Leather },
-		{ name = "SaddleHandle", size = Vector3.new(0.28, 0.95, 0.28), at = Vector3.new(-0.72, 0.78, -1.2), color = LEATHER, material = Enum.Material.Leather },
-		{ name = "SaddleHandle", size = Vector3.new(1.75, 0.34, 0.34), at = Vector3.new(0, 1.28, -1.2), color = LEATHER, material = Enum.Material.Leather, shape = Enum.PartType.Cylinder, turn = FACING_SIDE },
+		{ name = "SaddleHandle", size = Vector3.new(0.28, 1.5, 0.28), at = Vector3.new(0.72, 1.05, -1.2), color = LEATHER, material = Enum.Material.Leather },
+		{ name = "SaddleHandle", size = Vector3.new(0.28, 1.5, 0.28), at = Vector3.new(-0.72, 1.05, -1.2), color = LEATHER, material = Enum.Material.Leather },
+		{ name = "SaddleHandle", size = Vector3.new(1.75, 0.34, 0.34), at = Vector3.new(0, 1.82, -1.2), color = LEATHER, material = Enum.Material.Leather, shape = Enum.PartType.Cylinder, turn = FACING_SIDE },
 		-- Back rest with a cream top and a gold paw coin on the back
 		{ name = "SaddleBack", size = Vector3.new(math.min(2.5, width - 0.1), 0.85, 0.36), at = Vector3.new(0, 0.72, 1.22), color = LEATHER, material = Enum.Material.Leather },
 		{ name = "SaddleBack", size = Vector3.new(math.min(2.56, width), 0.14, 0.42), at = Vector3.new(0, 1.17, 1.22), color = CREAM, material = Enum.Material.SmoothPlastic },
 		{ name = "SaddleCoin", size = Vector3.new(0.12, 0.62, 0.62), at = Vector3.new(0, 0.72, 1.42), color = GOLD, material = Enum.Material.Foil, shape = Enum.PartType.Cylinder, turn = FACING_BACK },
 	}
 	for _, sign in { -1, 1 } do
-		-- A flap down each side: leather, an orange panel, a gold buckle
-		table.insert(pieces, { name = "SaddleFlap", size = Vector3.new(0.14, 1.9, 2.5), at = Vector3.new(sign * (side + 0.07), -0.9, 0), color = LEATHER, material = Enum.Material.Leather })
-		table.insert(pieces, { name = "SaddleFlap", size = Vector3.new(0.06, 1.4, 1.9), at = Vector3.new(sign * (side + 0.16), -0.85, 0), color = CUSHION, material = Enum.Material.Fabric })
-		table.insert(pieces, { name = "SaddleBuckle", size = Vector3.new(0.1, 0.48, 0.52), at = Vector3.new(sign * (side + 0.22), -1.5, -0.45), color = GOLD, material = Enum.Material.Foil })
+		-- A flap down each side, behind the rider's leg: leather, an orange panel, a gold buckle
+		table.insert(pieces, { name = "SaddleFlap", size = Vector3.new(0.14, 1.9, 1.5), at = Vector3.new(sign * (side + 0.07), -0.9, 0.75), color = LEATHER, material = Enum.Material.Leather })
+		table.insert(pieces, { name = "SaddleFlap", size = Vector3.new(0.06, 1.4, 1.1), at = Vector3.new(sign * (side + 0.16), -0.85, 0.75), color = CUSHION, material = Enum.Material.Fabric })
+		table.insert(pieces, { name = "SaddleBuckle", size = Vector3.new(0.1, 0.48, 0.52), at = Vector3.new(sign * (side + 0.22), -1.5, 0.75), color = GOLD, material = Enum.Material.Foil })
 	end
 	-- A bag on the right side with a gold paw coin
-	table.insert(pieces, { name = "SaddleBag", size = Vector3.new(0.5, 0.95, 1.1), at = Vector3.new(side + 0.42, -0.95, 0.55), color = DARK_LEATHER, material = Enum.Material.Leather })
-	table.insert(pieces, { name = "SaddleCoin", size = Vector3.new(0.1, 0.55, 0.55), at = Vector3.new(side + 0.72, -0.95, 0.55), color = GOLD, material = Enum.Material.Foil, shape = Enum.PartType.Cylinder, turn = FACING_SIDE })
+	table.insert(pieces, { name = "SaddleBag", size = Vector3.new(0.5, 0.95, 1.1), at = Vector3.new(side + 0.42, -0.95, 1.05), color = DARK_LEATHER, material = Enum.Material.Leather })
+	table.insert(pieces, { name = "SaddleCoin", size = Vector3.new(0.1, 0.55, 0.55), at = Vector3.new(side + 0.72, -0.95, 1.05), color = GOLD, material = Enum.Material.Foil, shape = Enum.PartType.Cylinder, turn = FACING_SIDE })
 	for _, piece in pieces do
 		piece.at += back
 	end
@@ -65,25 +65,35 @@ end
 function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 	local built = PetModel.build(pet)
 	local scale = Cosmetics.RIDE_CREATURE_HEIGHT / math.max(built.height, 0.1)
-	local stretch = Vector3.new(scale * Cosmetics.RIDE_WIDTH, scale, scale * Cosmetics.RIDE_LENGTH)
+	-- Only the body gets longer. Everything else keeps its size and its distance to the face (ears, eyes,
+	-- mouth, front legs) or to the back (tail, back legs): stretching every position moved the ears to the
+	-- middle of the back, right in front of the rider.
+	local bodyIndex = table.find(built.parts, built.body) or 1
+	local halfDepth = built.parts[bodyIndex].Size.Z / 2
+	local grow = halfDepth * scale * (Cosmetics.RIDE_LENGTH - 1) -- how far the face and the back move out
+	local function along(z: number): number
+		-- Parts near the middle front to back (say a tuft on top) barely move; the rest move all the way
+		return z * scale + grow * math.clamp(z / (halfDepth * 0.08), -1, 1)
+	end
+	local narrow = Vector3.new(scale * Cosmetics.RIDE_WIDTH, scale, scale)
 	local offsets: { CFrame } = {}
 	for i, p in built.parts do
 		local o = built.offsets[i]
 		local r = o.Rotation
+		local stretch = if i == bodyIndex then Vector3.new(narrow.X, narrow.Y, scale * Cosmetics.RIDE_LENGTH) else narrow
 		-- Each of the part's own axes grows by how much the stretch lengthens it
 		p.Size *= Vector3.new((r.XVector * stretch).Magnitude, (r.YVector * stretch).Magnitude, (r.ZVector * stretch).Magnitude)
 		p.CanCollide = false
 		p.CanQuery = false
 		p.CanTouch = false
-		offsets[i] = CFrame.new(o.Position * stretch) * r
+		offsets[i] = CFrame.new(o.Position.X * narrow.X, o.Position.Y * narrow.Y, along(o.Position.Z)) * r
 	end
 	local pivots: { [number]: Vector3 } = {}
 	for i, pivot in built.pivots do
-		pivots[i] = pivot * stretch
+		pivots[i] = Vector3.new(pivot.X * narrow.X, pivot.Y * narrow.Y, along(pivot.Z))
 	end
 
 	-- The top of the back: the body is about as tall as it is wide (ears stick up above that)
-	local bodyIndex = table.find(built.parts, built.body) or 1
 	local body = built.parts[bodyIndex]
 	local bodyOffset = offsets[bodyIndex]
 	local width = body.Size.X

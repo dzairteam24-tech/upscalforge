@@ -129,7 +129,7 @@ return {
 	-- The ridden creature (RideModel): this tall whatever its size, and this many times longer front to back
 	-- (like a pony, not a cube), with the saddle this far behind its middle
 	RIDE_CREATURE_HEIGHT = 6.5,
-	RIDE_LENGTH = 1.5,
+	RIDE_LENGTH = 1.4,
 	RIDE_WIDTH = 0.65, -- and narrower, so the rider's legs reach down its sides
 	RIDE_SEAT_BACK = 1,
 	RIDE_HIP = 5.3, -- the rider's HipHeight on it, roughly (RideClient sets the exact one for the saddle)
