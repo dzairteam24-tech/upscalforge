@@ -31,12 +31,14 @@ local function part(props: { [string]: any }): Part
 	return p
 end
 
+-- size is in studs (UDim2.fromScale), so a sign far away looks small, like a real sign. In pixels every
+-- sign showed at full size up to MaxDistance and the names of every zone piled up on the screen.
 local function label(parent: Instance, text: string, size: UDim2, offset: Vector3, color: Color3?)
 	local gui = Instance.new("BillboardGui")
 	gui.Size = size
 	gui.StudsOffset = offset
 	gui.AlwaysOnTop = false
-	gui.MaxDistance = 250
+	gui.MaxDistance = 180
 	local textLabel = Instance.new("TextLabel")
 	textLabel.Size = UDim2.fromScale(1, 1)
 	textLabel.BackgroundTransparency = 1
@@ -149,7 +151,7 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 		CanCollide = false,
 		CanQuery = false,
 	})
-	label(sign, zone.name, UDim2.fromOffset(400, 80), Vector3.zero)
+	label(sign, zone.name, UDim2.fromScale(18, 3.6), Vector3.zero)
 	sign.Parent = model
 
 	-- Egg stand
@@ -240,7 +242,7 @@ function buildEgg(parent: Instance, position: Vector3, color: Color3, size: numb
 	end
 	eggModel.PrimaryPart = egg
 	eggModel.Parent = parent
-	label(egg, title, UDim2.fromOffset(260, 56), Vector3.new(0, height / 2 + 2.5, 0))
+	label(egg, title, UDim2.fromScale(9, 1.9), Vector3.new(0, height / 2 + 2.5, 0))
 	return egg
 end
 
@@ -289,7 +291,7 @@ local function buildBridge(a: number, b: number, folder: Folder)
 	gate:SetAttribute("ZoneA", a)
 	gate:SetAttribute("ZoneB", b)
 	gate:AddTag("Gate")
-	label(gate, "", UDim2.fromOffset(260, 90), Vector3.new(0, 10, 0))
+	label(gate, "", UDim2.fromScale(10, 3.5), Vector3.new(0, 10, 0))
 	gate.Parent = folder
 end
 
@@ -327,7 +329,7 @@ local function buildHub(folder: Folder)
 			Position = center + booth.offset + Vector3.new(0, 11, 0),
 			Color = booth.color:Lerp(Color3.new(1, 1, 1), 0.4),
 		})
-		label(roof, booth.name, UDim2.fromOffset(240, 60), Vector3.new(0, 3, 0))
+		label(roof, booth.name, UDim2.fromScale(8, 2), Vector3.new(0, 3, 0))
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Open"
 		prompt.ObjectText = booth.name
@@ -383,7 +385,7 @@ local function buildPond(folder: Folder)
 		Color = Color3.fromRGB(120, 85, 55),
 		Material = Enum.Material.Wood,
 	})
-	label(sign, "🎣 Fishing Pond", UDim2.fromOffset(260, 60), Vector3.new(0, 5, 0))
+	label(sign, "🎣 Fishing Pond", UDim2.fromScale(9, 2.1), Vector3.new(0, 5, 0))
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Fish"
 	prompt.ObjectText = "Fishing Pond"
@@ -425,7 +427,7 @@ local function buildProfessor(folder: Folder)
 		CanCollide = false,
 	})
 	base.Parent = built.model
-	label(base, "📖 Professor Cubo", UDim2.fromOffset(260, 56), Vector3.new(0, built.height + 3, 0))
+	label(base, "📖 Professor Cubo", UDim2.fromScale(9, 1.9), Vector3.new(0, built.height + 3, 0))
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Talk"
 	prompt.ObjectText = "Professor Cubo"
@@ -508,7 +510,7 @@ local function buildPlaza(folder: Folder)
 		Transparency = 1,
 		CanCollide = false,
 	})
-	label(sign, "🏪 Trading Plaza", UDim2.fromOffset(360, 70), Vector3.new(0, 0, 0), Color3.fromRGB(255, 225, 120))
+	label(sign, "🏪 Trading Plaza", UDim2.fromScale(13, 2.5), Vector3.new(0, 0, 0), Color3.fromRGB(255, 225, 120))
 	sign.Parent = model
 
 	-- Booths on a ring, facing the middle
@@ -541,7 +543,7 @@ local function buildPlaza(folder: Folder)
 			})
 			pole.Parent = model
 		end
-		label(booth, "Free booth", UDim2.fromOffset(240, 60), Vector3.new(0, 9, 0))
+		label(booth, "Free booth", UDim2.fromScale(8, 2), Vector3.new(0, 9, 0))
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Open"
 		prompt.ObjectText = "Booth"

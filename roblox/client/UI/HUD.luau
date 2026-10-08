@@ -211,14 +211,14 @@ function HUD.mount(gui: ScreenGui)
 	barBack.Parent = zoneFrame
 	zoneFrame.Parent = gui
 
-	-- Combo + boosts (right side)
+	-- Combo + boosts (right side, under Roblox's player list, which covers the top right corner)
 	local comboLabel = Theme.label({
 		Name = "Combo",
 		Text = "",
 		Font = Theme.titleFont,
 		TextColor3 = Color3.fromRGB(255, 120, 60),
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -16, 0, 14),
+		Position = UDim2.new(1, -16, 0.3, 0),
 		Size = UDim2.fromOffset(220, 40),
 		TextXAlignment = Enum.TextXAlignment.Right,
 		MaxTextSize = 34,
@@ -228,7 +228,7 @@ function HUD.mount(gui: ScreenGui)
 		Name = "Boosts",
 		Text = "",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -16, 0, 56),
+		Position = UDim2.new(1, -16, 0.3, 42),
 		Size = UDim2.fromOffset(240, 90),
 		TextXAlignment = Enum.TextXAlignment.Right,
 		TextYAlignment = Enum.TextYAlignment.Top,

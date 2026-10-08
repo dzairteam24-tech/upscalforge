@@ -280,7 +280,7 @@ local function updateRift()
 	marker.Size = Vector3.new(0.6, MapLayout.PLATFORM - 10, MapLayout.PLATFORM - 10)
 	marker.CFrame = CFrame.new(MapLayout.center(zoneId) + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.rad(90))
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(320, 60)
+	gui.Size = UDim2.fromScale(22, 4) -- studs: smaller the farther it is, so it doesn't cover the zone names
 	gui.StudsOffset = Vector3.new(0, 34, 0)
 	gui.AlwaysOnTop = true
 	gui.MaxDistance = 600
