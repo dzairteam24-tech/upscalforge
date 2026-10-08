@@ -1,6 +1,8 @@
 -- Cubeling Ride: draws the creature each player is riding (player attribute "RidePet", set by the server
 -- from the strongest creature in their team) under their character, every frame on each client.
--- It is drawn RIDE_CREATURE_HEIGHT tall whatever its size (taller than the rider), hops and swings its legs while moving, and
+-- It is drawn RIDE_CREATURE_HEIGHT tall whatever its size (taller than the rider). Creature and rider move as
+-- one body: no hop (that read as the rider jumping), the creature walks with its legs and tail and leans a
+-- little into the run, and a jump lifts both. It wears a saddle (art: the Cubeling Ride concept sheet) and
 -- opens its mouth now and then. PetFollow hides the same creature from the followers.
 
 local Players = game:GetService("Players")
@@ -26,7 +28,7 @@ type Mount = {
 	nextChirp: number,
 	mouthOpen: boolean,
 	drop: number, -- height of the character's root above the creature's feet
-	seatHip: number, -- the rider's HipHeight sitting on it (as the server sets it), before the hop
+	run: number, -- 0 standing .. 1 running, eased
 }
 
 local mounts: { [Player]: Mount } = {}
@@ -53,15 +55,6 @@ local function remove(player: Player)
 	end
 end
 
--- The rider's HipHeight on the creature, the same as the server sets (GameService applyTitles)
-local function seatHipFor(player: Player): number
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local base = character and character:GetAttribute("BaseHipHeight")
-	local legs = if humanoid and humanoid.RigType == Enum.HumanoidRigType.R6 then 2 else 0
-	return math.max(if type(base) == "number" then base else 2, Cosmetics.RIDE_CREATURE_HEIGHT - 0.3 - legs)
-end
-
 -- Builds the creature at the ride height: parts and their offsets grow or shrink together
 local function build(player: Player, value: string)
 	remove(player)
@@ -84,20 +77,35 @@ local function build(player: Player, value: string)
 	for i, pivot in built.pivots do
 		pivots[i] = pivot * scale
 	end
-	-- Saddle on its back, where the rider sits (RIDE_FORWARD behind the middle): a blanket, a seat with
-	-- a raised front and back, and a strap down each side
+	-- Saddle on its back, where the rider sits (RIDE_FORWARD behind the middle), from the concept sheet:
+	-- a red-orange seat with a cream trim on a brown leather frame, a handle in front for the rider's hands,
+	-- straps with gold buckles down each side and a little bag with a gold paw coin
 	local halfWidth = built.body.Size.X / 2
 	local top = Cosmetics.RIDE_CREATURE_HEIGHT / 2
 	local seatZ = Cosmetics.RIDE_FORWARD
-	local leather = Color3.fromRGB(120, 72, 40)
-	local saddle: { { size: Vector3, offset: Vector3, color: Color3, material: Enum.Material } } = {
-		{ size = Vector3.new(halfWidth * 2 + 0.2, 0.18, 3.6), offset = Vector3.new(0, top + 0.05, seatZ), color = Color3.fromRGB(200, 50, 60), material = Enum.Material.Fabric },
-		{ size = Vector3.new(halfWidth * 2 + 0.25, 0.08, 3.7), offset = Vector3.new(0, top + 0.1, seatZ), color = Color3.fromRGB(255, 205, 80), material = Enum.Material.Fabric },
-		{ size = Vector3.new(2.6, 0.4, 2.8), offset = Vector3.new(0, top + 0.3, seatZ), color = leather, material = Enum.Material.Leather },
-		{ size = Vector3.new(1.2, 0.9, 0.5), offset = Vector3.new(0, top + 0.7, seatZ - 1.25), color = leather, material = Enum.Material.Leather },
-		{ size = Vector3.new(2.6, 0.7, 0.5), offset = Vector3.new(0, top + 0.6, seatZ + 1.3), color = leather, material = Enum.Material.Leather },
-		{ size = Vector3.new(0.18, top * 0.9, 0.7), offset = Vector3.new(halfWidth + 0.1, top * 0.55, seatZ), color = Color3.fromRGB(90, 55, 32), material = Enum.Material.Leather },
-		{ size = Vector3.new(0.18, top * 0.9, 0.7), offset = Vector3.new(-halfWidth - 0.1, top * 0.55, seatZ), color = Color3.fromRGB(90, 55, 32), material = Enum.Material.Leather },
+	local leather = Color3.fromRGB(110, 66, 38)
+	local seatColor = Color3.fromRGB(232, 96, 52)
+	local cream = Color3.fromRGB(250, 236, 210)
+	local gold = Color3.fromRGB(255, 196, 60)
+	type Piece = { size: Vector3, offset: Vector3, color: Color3, material: Enum.Material, shape: Enum.PartType? }
+	local saddle: { Piece } = {
+		-- frame and seat
+		{ size = Vector3.new(halfWidth * 2 * 0.8, 0.3, 3.2), offset = Vector3.new(0, top + 0.1, seatZ), color = leather, material = Enum.Material.Leather },
+		{ size = Vector3.new(halfWidth * 2 * 0.72, 0.18, 2.9), offset = Vector3.new(0, top + 0.32, seatZ), color = cream, material = Enum.Material.SmoothPlastic },
+		{ size = Vector3.new(halfWidth * 2 * 0.66, 0.35, 2.6), offset = Vector3.new(0, top + 0.5, seatZ), color = seatColor, material = Enum.Material.Fabric },
+		{ size = Vector3.new(halfWidth * 2 * 0.7, 0.8, 0.45), offset = Vector3.new(0, top + 0.75, seatZ + 1.35), color = leather, material = Enum.Material.Leather },
+		-- handle in front: two posts and a bar
+		{ size = Vector3.new(0.25, 1.1, 0.25), offset = Vector3.new(0.75, top + 0.85, seatZ - 1.4), color = leather, material = Enum.Material.Leather },
+		{ size = Vector3.new(0.25, 1.1, 0.25), offset = Vector3.new(-0.75, top + 0.85, seatZ - 1.4), color = leather, material = Enum.Material.Leather },
+		{ size = Vector3.new(1.8, 0.28, 0.32), offset = Vector3.new(0, top + 1.4, seatZ - 1.4), color = gold, material = Enum.Material.SmoothPlastic },
+		-- straps and buckles down each side
+		{ size = Vector3.new(0.16, top * 1.1, 0.6), offset = Vector3.new(halfWidth + 0.08, top * 0.45, seatZ), color = leather, material = Enum.Material.Leather },
+		{ size = Vector3.new(0.16, top * 1.1, 0.6), offset = Vector3.new(-halfWidth - 0.08, top * 0.45, seatZ), color = leather, material = Enum.Material.Leather },
+		{ size = Vector3.new(0.22, 0.55, 0.75), offset = Vector3.new(halfWidth + 0.12, top * 0.3, seatZ), color = gold, material = Enum.Material.SmoothPlastic },
+		{ size = Vector3.new(0.22, 0.55, 0.75), offset = Vector3.new(-halfWidth - 0.12, top * 0.3, seatZ), color = gold, material = Enum.Material.SmoothPlastic },
+		-- bag on the right side with a gold paw coin
+		{ size = Vector3.new(0.6, 1.2, 1.3), offset = Vector3.new(halfWidth + 0.35, top * 0.7, seatZ + 0.4), color = leather, material = Enum.Material.Leather },
+		{ size = Vector3.new(0.12, 0.75, 0.75), offset = Vector3.new(halfWidth + 0.68, top * 0.7, seatZ + 0.4), color = gold, material = Enum.Material.SmoothPlastic, shape = Enum.PartType.Cylinder },
 	}
 	for _, piece in saddle do
 		local p = Instance.new("Part")
@@ -110,6 +118,9 @@ local function build(player: Player, value: string)
 		p.Size = piece.size
 		p.Color = piece.color
 		p.Material = piece.material
+		if piece.shape then
+			p.Shape = piece.shape
+		end
 		p.TopSurface = Enum.SurfaceType.Smooth
 		p.BottomSurface = Enum.SurfaceType.Smooth
 		p.Parent = built.model
@@ -127,7 +138,7 @@ local function build(player: Player, value: string)
 		nextChirp = os.clock() + 2,
 		mouthOpen = false,
 		drop = Cosmetics.RIDE_CREATURE_HEIGHT + 2,
-		seatHip = seatHipFor(player),
+		run = 0,
 	}
 end
 
@@ -154,7 +165,7 @@ local function setMouth(mount: Mount, open: boolean)
 	end
 end
 
-local function step()
+local function step(dt: number)
 	local parts: { BasePart } = {}
 	local cframes: { CFrame } = {}
 	local now = os.clock()
@@ -180,20 +191,17 @@ local function step()
 			mount.drop = root.Position.Y - hit.Position.Y -- remembered so a jump carries the creature along
 		end
 		local feetY = root.Position.Y - mount.drop
-		local hop = if moving and not airborne then math.abs(math.sin(now * 8 + mount.phase)) * 0.5 else math.sin(now * 2 + mount.phase) * 0.06
-		-- The rider goes up and down with the creature: it's the creature that hops, carrying them.
-		-- Each client moves its own character (it owns its physics), and everyone sees it.
-		if player == LOCAL and seated and seated.character == character then
-			humanoid.HipHeight = mount.seatHip + math.max(hop, 0)
-		end
 		local look = root.CFrame.LookVector
 		local flat = Vector3.new(look.X, 0, look.Z)
 		if flat.Magnitude < 1e-3 then
 			flat = Vector3.new(0, 0, -1)
 		end
 		local ahead = flat.Unit * Cosmetics.RIDE_FORWARD
-		local center = Vector3.new(root.Position.X + ahead.X, feetY + height / 2 + hop, root.Position.Z + ahead.Z)
-		local lean = if moving then CFrame.Angles(math.rad(-8), 0, math.sin(now * 9 + mount.phase) * math.rad(3)) else CFrame.identity
+		local center = Vector3.new(root.Position.X + ahead.X, feetY + height / 2, root.Position.Z + ahead.Z)
+		-- A slight lean into the run, eased in and out (no bounce: the rider stays put on the saddle)
+		local target = if moving and not airborne then 1 else 0
+		mount.run += (target - mount.run) * math.min(1, dt * 6)
+		local lean = CFrame.Angles(math.rad(-4) * mount.run, 0, 0)
 		local frame = CFrame.lookAt(center, center + flat) * lean
 
 		if now >= mount.nextChirp then
@@ -208,8 +216,8 @@ local function step()
 			local swing: CFrame? = nil
 			if anim then
 				local leg = LEG_PHASE[anim]
-				if leg and moving then
-					swing = CFrame.Angles(math.sin(now * 14 + mount.phase + leg) * math.rad(32), 0, 0)
+				if leg and mount.run > 0.1 then
+					swing = CFrame.Angles(math.sin(now * 14 + mount.phase + leg) * math.rad(32) * mount.run, 0, 0)
 				elseif string.sub(anim, 1, 4) == "wing" then
 					local side = if anim == "wingL" then 1 else -1
 					swing = CFrame.Angles(0, 0, side * (math.sin(now * (if moving then 16 else 8) + mount.phase) * math.rad(30) + math.rad(8)))

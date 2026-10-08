@@ -746,13 +746,12 @@ local function applyTitles(player: Player, character: Model)
 	local rideDef = if data.equippedRide and data.rides[data.equippedRide] then Cosmetics.rideById[data.equippedRide] else nil
 	local onCreature = rideDef ~= nil and rideDef.style == "creature"
 	if humanoid and typeof(baseHip) == "number" then
-		-- On a creature the player sits on its back (RideClient plays the sit pose): the hips rest just
-		-- into the top of the creature. R6 legs aren't part of HipHeight, so they come off. Nothing to
+		-- On a creature the player sits on its saddle (RideClient plays the sit pose). R6 legs aren't part of HipHeight, so they come off. Nothing to
 		-- sit on with an empty team.
 		local riding = (player:GetAttribute("RidePetId") or "") ~= ""
 		local legs = if humanoid.RigType == Enum.HumanoidRigType.R6 then 2 else 0
 		if onCreature and riding then
-			humanoid.HipHeight = math.max(baseHip, Cosmetics.RIDE_CREATURE_HEIGHT - 0.3 - legs)
+			humanoid.HipHeight = math.max(baseHip, Cosmetics.RIDE_CREATURE_HEIGHT + Cosmetics.RIDE_SEAT - legs)
 		else
 			humanoid.HipHeight = baseHip + (if rideDef and not onCreature then 0.6 else 0)
 		end
