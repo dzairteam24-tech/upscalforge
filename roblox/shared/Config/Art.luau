@@ -7,5 +7,5 @@
 -- drawn with blocks, or with a CreatureModels folder you put in ReplicatedStorage yourself.
 
 return {
-	CREATURE_MODELS_ASSET_ID = 0,
+	CREATURE_MODELS_ASSET_ID = 91371129157419,
 }
