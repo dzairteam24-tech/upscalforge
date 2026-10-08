@@ -39,7 +39,6 @@ type Mount = {
 	openUntil: number,
 	nextChirp: number,
 	mouthOpen: boolean,
-	drop: number, -- height of the character's root above the creature's feet
 	run: number, -- 0 standing .. 1 running, eased
 	air: number, -- 0 on the ground .. 1 in a jump, eased
 	posed: Model?, -- the character whose joints this mount is posing
@@ -188,7 +187,6 @@ local function build(player: Player, value: string)
 		openUntil = 0,
 		nextChirp = os.clock() + 2,
 		mouthOpen = false,
-		drop = Cosmetics.RIDE_CREATURE_HEIGHT + 2,
 		run = 0,
 		air = 0,
 		posed = nil,
@@ -258,15 +256,11 @@ local function draw(dt: number)
 		local velocity = root.AssemblyLinearVelocity
 		local moving = Vector3.new(velocity.X, 0, velocity.Z).Magnitude > 2
 		local airborne = humanoid.FloorMaterial == Enum.Material.Air
-		-- The creature stands on the ground under the rider, and a jump carries it along
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Exclude
-		params.FilterDescendantsInstances = { character, container }
-		local hit = workspace:Raycast(root.Position, Vector3.new(0, -(height + 8), 0), params)
-		if hit and not airborne then
-			mount.drop = root.Position.Y - hit.Position.Y
-		end
-		local feetY = root.Position.Y - mount.drop
+		-- The creature is fixed under the rider, at the exact distance that puts the rider's hips on the saddle:
+		-- they never come apart, so a jump lifts both. (Measuring the ground instead left the creature behind
+		-- at the start of a jump.)
+		local legs = if humanoid.RigType == Enum.HumanoidRigType.R6 then HIPS_ABOVE_ROOT_BOTTOM.R6 else 0
+		local feetY = root.Position.Y - root.Size.Y / 2 - seatHeight(mount, humanoid) - legs
 		local look = root.CFrame.LookVector
 		local flat = Vector3.new(look.X, 0, look.Z)
 		flat = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.new(0, 0, -1)
