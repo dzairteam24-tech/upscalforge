@@ -53,9 +53,9 @@ for _, f in fish do
 end
 
 return {
-	POND_OFFSET = Vector3.new(0, 0, 86), -- from the Hub center (south, between the leaderboards; see HubBuilder)
-	POND_RADIUS = 15,
-	REACH = 32, -- you must stand this close to the pond's middle to fish
+	POND_OFFSET = Vector3.new(0, 0, 143), -- from the Hub center (south, between the leaderboards; see HubBuilder)
+	POND_RADIUS = 20,
+	REACH = 40, -- you must stand this close to the pond's middle to fish
 	BITE_MIN = 2, -- seconds until a bite
 	BITE_MAX = 6,
 	AUTO_SLOWER = 2.5, -- Auto Fish waits this much longer, and gives no tickets

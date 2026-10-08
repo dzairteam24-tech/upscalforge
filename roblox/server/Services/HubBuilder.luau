@@ -15,15 +15,15 @@ local PetModel = require(Shared.PetModel)
 local HubBuilder = {}
 
 -- Sized for a full server: wide plaza and paths, buildings far apart
-local PLAZA_RADIUS = 54
-local BUILDING_RADIUS = 80
+local PLAZA_RADIUS = 80
+local BUILDING_RADIUS = 125
 local BUILDING_SCALE = 1.3
-HubBuilder.SPAWN_OFFSET = Vector3.new(0, 0, 24)
+HubBuilder.SPAWN_OFFSET = Vector3.new(0, 0, 36)
 -- Where the World Boss lands: the north path, between Trading and Fusion
-HubBuilder.BOSS_OFFSET = Vector3.new(0, 0, -68)
+HubBuilder.BOSS_OFFSET = Vector3.new(0, 0, -105)
 -- Leaderboards: along the south rim, two on each side of the pond (they face north)
-HubBuilder.LEADERBOARD_X = { -84, -52, 52, 84 }
-HubBuilder.LEADERBOARD_Z = 106
+HubBuilder.LEADERBOARD_X = { -150, -110, 110, 150 }
+HubBuilder.LEADERBOARD_Z = 178
 
 local FLAT = CFrame.Angles(0, 0, math.rad(90)) -- turns a cylinder to lie flat (axis up)
 
@@ -140,7 +140,7 @@ end
 local function buildIsland(model: Instance, center: Vector3, openings: { Vector3 })
 	local half = MapLayout.HUB_SIZE / 2
 	-- Cliffs: stacked rock slabs, each smaller than the one above, for a floating island silhouette
-	for i, layer in { { size = MapLayout.HUB_SIZE + 2, height = 14 }, { size = 206, height = 16 }, { size = 152, height = 16 }, { size = 90, height = 14 } } do
+	for i, layer in { { size = MapLayout.HUB_SIZE + 2, height = 16 }, { size = MapLayout.HUB_SIZE * 0.85, height = 18 }, { size = MapLayout.HUB_SIZE * 0.62, height = 18 }, { size = MapLayout.HUB_SIZE * 0.36, height = 16 } } do
 		local top = -4 - (i - 1) * 13
 		part(model, {
 			Name = "Cliff",
@@ -190,12 +190,12 @@ end
 -- A few small floating islets around the Hub, away from the bridges
 local function buildIslets(model: Instance, center: Vector3)
 	local islets = {
-		{ offset = Vector3.new(-162, 18, -102), size = 20 },
-		{ offset = Vector3.new(-178, -6, 28), size = 16 },
-		{ offset = Vector3.new(-140, 26, 150), size = 18 },
-		{ offset = Vector3.new(30, -4, 172), size = 22 },
-		{ offset = Vector3.new(160, 22, 140), size = 16 },
-		{ offset = Vector3.new(152, -10, -124), size = 18 },
+		{ offset = Vector3.new(-270, 22, -170), size = 26 },
+		{ offset = Vector3.new(-296, -6, 46), size = 22 },
+		{ offset = Vector3.new(-234, 30, 250), size = 24 },
+		{ offset = Vector3.new(50, -4, 286), size = 28 },
+		{ offset = Vector3.new(266, 26, 234), size = 22 },
+		{ offset = Vector3.new(254, -10, -206), size = 24 },
 	}
 	for i, islet in islets do
 		local top = center + islet.offset
@@ -223,16 +223,16 @@ local function buildPlaza(model: Instance, center: Vector3)
 	disc(model, "Plaza", center, PLAZA_RADIUS, 0.05, STONE, Enum.Material.Pavement)
 	disc(model, "Plaza", center, PLAZA_RADIUS - 4, 0.07, STONE_DARK, Enum.Material.Pavement)
 	disc(model, "Plaza", center, PLAZA_RADIUS - 5, 0.09, STONE, Enum.Material.Pavement)
-	disc(model, "Plaza", center, 18, 0.11, STONE_DARK, Enum.Material.Pavement)
+	disc(model, "Plaza", center, 26, 0.11, STONE_DARK, Enum.Material.Pavement)
 
 	-- Planters between the eight paths, each with two round bushes
 	for i = 0, 7 do
 		local angle = math.rad(22.5 + i * 45)
-		local at = center + Vector3.new(math.sin(angle) * 34, 0, -math.cos(angle) * 34)
+		local at = center + Vector3.new(math.sin(angle) * 52, 0, -math.cos(angle) * 52)
 		local frame = CFrame.lookAt(at, center) -- local X runs along the ring
-		part(model, { Name = "Planter", Size = Vector3.new(12, 1.2, 6), CFrame = frame + Vector3.new(0, 0.6, 0), Color = STONE_DARK, Material = Enum.Material.Slate })
-		part(model, { Name = "Planter", Size = Vector3.new(11, 0.4, 5), CFrame = frame + Vector3.new(0, 1.25, 0), Color = GRASS, Material = Enum.Material.Grass })
-		for _, x in { -3, 3.2 } do
+		part(model, { Name = "Planter", Size = Vector3.new(18, 1.2, 8), CFrame = frame + Vector3.new(0, 0.6, 0), Color = STONE_DARK, Material = Enum.Material.Slate })
+		part(model, { Name = "Planter", Size = Vector3.new(17, 0.4, 7), CFrame = frame + Vector3.new(0, 1.25, 0), Color = GRASS, Material = Enum.Material.Grass })
+		for _, x in { -5, 0.4, 5.4 } do
 			part(model, {
 				Name = "Bush",
 				Shape = Enum.PartType.Ball,
@@ -249,12 +249,12 @@ local function buildPlaza(model: Instance, center: Vector3)
 	part(model, {
 		Name = "Fountain",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(1.6, 32, 32),
+		Size = Vector3.new(1.6, 42, 42),
 		CFrame = CFrame.new(center + Vector3.new(0, 0.8, 0)) * FLAT,
 		Color = rgb(236, 236, 240),
 		Material = Enum.Material.Marble,
 	})
-	disc(model, "FountainWater", center, 14.5, 1.75, WATER, Enum.Material.Glass)
+	disc(model, "FountainWater", center, 19.5, 1.75, WATER, Enum.Material.Glass)
 	part(model, {
 		Name = "Fountain",
 		Shape = Enum.PartType.Cylinder,
@@ -293,7 +293,7 @@ local function buildStatue(model: Instance, center: Vector3)
 	-- Stand it on the pedestal, then grow it so it reads from across the plaza
 	local base = center + Vector3.new(0, 8, 0)
 	PetModel.place(built, CFrame.new(base + Vector3.new(0, built.height / 2, 0)) * CFrame.Angles(0, math.rad(180), 0))
-	local grow = 2.4
+	local grow = 3
 	for _, p in built.parts do
 		p.Size *= grow
 		p.CFrame = CFrame.new(base + (p.CFrame.Position - base) * grow) * p.CFrame.Rotation
@@ -523,8 +523,8 @@ local function paths(model: Instance, center: Vector3)
 	local length = half - PLAZA_RADIUS + 2
 	local mid = PLAZA_RADIUS + length / 2 - 2
 	-- North to the arch, east to the Trading Plaza, south to the pond
-	part(model, { Name = "Path", Size = Vector3.new(18, 0.3, length), Position = center + Vector3.new(0, 0.1, -mid), Color = STONE, Material = Enum.Material.Pavement, CanCollide = false })
-	part(model, { Name = "Path", Size = Vector3.new(length, 0.3, 18), Position = center + Vector3.new(mid, 0.1, 0), Color = STONE, Material = Enum.Material.Pavement, CanCollide = false })
+	part(model, { Name = "Path", Size = Vector3.new(24, 0.3, length), Position = center + Vector3.new(0, 0.1, -mid), Color = STONE, Material = Enum.Material.Pavement, CanCollide = false })
+	part(model, { Name = "Path", Size = Vector3.new(length, 0.3, 24), Position = center + Vector3.new(mid, 0.1, 0), Color = STONE, Material = Enum.Material.Pavement, CanCollide = false })
 	part(model, { Name = "Path", Size = Vector3.new(14, 0.3, 10), Position = center + Vector3.new(0, 0.1, PLAZA_RADIUS + 3), Color = STONE, Material = Enum.Material.Pavement, CanCollide = false })
 	arch(model, center + Vector3.new(0, 0, -half + 3), Vector3.new(0, 0, 1), "1 · SPAWN MEADOW", rgb(110, 220, 255))
 	arch(model, center + Vector3.new(half - 3, 0, 0), Vector3.new(-1, 0, 0), "TRADING PLAZA", rgb(255, 210, 110))
@@ -569,7 +569,7 @@ local function buildTrees(model: Instance, center: Vector3)
 	local half = MapLayout.HUB_SIZE / 2
 	local rng = Random.new(4242)
 	-- Small groves on the lawns between buildings (angles from north, like the buildings)
-	for _, grove in { { angle = -48, radius = 104 }, { angle = -90, radius = 104 }, { angle = -146, radius = 86 } } do
+	for _, grove in { { angle = -48, radius = 168 }, { angle = -90, radius = 160 }, { angle = -146, radius = 150 }, { angle = 46, radius = 168 }, { angle = 148, radius = 160 }, { angle = -10, radius = 168 }, { angle = 10, radius = 168 } } do
 		local a = math.rad(grove.angle)
 		local at = center + Vector3.new(math.sin(a) * grove.radius, 0, -math.cos(a) * grove.radius)
 		roundTree(model, at, 1.3, rgb(84, 168, 80))
@@ -577,7 +577,7 @@ local function buildTrees(model: Instance, center: Vector3)
 		pineTree(model, at + Vector3.new(-5, 0, 5), 1.1)
 	end
 	local spots: { Vector3 } = {}
-	local step = 12
+	local step = 16
 	for t = -half + 6, half - 6, step do
 		table.insert(spots, Vector3.new(t, 0, -half + 6))
 		table.insert(spots, Vector3.new(t, 0, half - 6))
