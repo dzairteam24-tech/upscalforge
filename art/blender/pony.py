@@ -210,7 +210,7 @@ def add_head_and_saddle():
 # The rider, for the riding sheet: an R15 character of blocks posed like the game poses it (RideClient POSE,
 # degrees), its hips RIDER_HIP above the back in the middle of the saddle. Built in the game's axes (studs,
 # Y up, front -Z) and turned into Blender's (units of 2 studs, Z up, front -Y).
-POSE = {"hipPitch": 15, "hipRoll": 70, "kneePitch": -40, "kneeRoll": -50, "armPitch": 0, "armRoll": 48, "elbowPitch": 74}
+POSE = {"waistPitch": -12, "hipPitch": 80, "hipRoll": 50, "kneePitch": -70, "kneeRoll": 10, "armPitch": -6, "armRoll": 60, "elbowPitch": 90}
 RIDER_HIP = 0.16
 
 
@@ -223,7 +223,12 @@ def add_rider():
     swap = Matrix(((1, 0, 0), (0, 0, 1), (0, 1, 0)))
     seat = Vector((0, SADDLE_Y, BACK + RIDER_HIP))
 
-    def block(size, rot, pos, key):
+    lean = angles(POSE["waistPitch"], 0)
+    waist = Vector((0, 0.4, 0))
+
+    def block(size, rot, pos, key, upper=False):
+        if upper:  # above the waist: turned with the lean
+            pos, rot = waist + lean @ (Vector(pos) - waist), lean @ rot
         bpy.ops.mesh.primitive_cube_add(size=1)
         obj = bpy.context.active_object
         obj.scale = (size[0] / 2, size[2] / 2, size[1] / 2)
@@ -235,8 +240,8 @@ def add_rider():
     one = Matrix.Identity(3)
     P = POSE
     block((2, 0.4, 1), one, (0, 0.2, 0), "pants")
-    block((2, 1.6, 1), one, (0, 1.2, 0), "shirt")
-    block((1.2, 1.2, 1.2), one, (0, 2.6, 0), "skin")
+    block((2, 1.6, 1), one, (0, 1.2, 0), "shirt", True)
+    block((1.2, 1.2, 1.2), one, (0, 2.6, 0), "skin", True)
     for side in (-1, 1):
         hip = Vector((side * 0.5, 0, 0))
         rh = angles(P["hipPitch"], P["hipRoll"] * side)
@@ -247,11 +252,11 @@ def add_rider():
         block((0.9, 0.3, 1.1), rk, knee + rk @ Vector((0, -1.3, -0.1)), "shirt")
         shoulder = Vector((side * 1.0, 1.85, 0))
         ra = angles(P["armPitch"], P["armRoll"] * -side)
-        block((0.9, 1.05, 0.9), ra, shoulder + ra @ Vector((side * 0.5, -0.5, 0)), "shirt")
+        block((0.9, 1.05, 0.9), ra, shoulder + ra @ Vector((side * 0.5, -0.5, 0)), "shirt", True)
         elbow = shoulder + ra @ Vector((0, -1.0, 0))
         re = ra @ angles(P["elbowPitch"], 0)
-        block((0.85, 0.8, 0.85), re, elbow + re @ Vector((side * 0.5, -0.4, 0)), "shirt")
-        block((0.8, 0.35, 0.8), re, elbow + re @ Vector((side * 0.5, -0.95, 0)), "skin")
+        block((0.85, 0.8, 0.85), re, elbow + re @ Vector((side * 0.5, -0.4, 0)), "shirt", True)
+        block((0.8, 0.35, 0.8), re, elbow + re @ Vector((side * 0.5, -0.95, 0)), "skin", True)
 
 
 def setup_render(resolution=640):

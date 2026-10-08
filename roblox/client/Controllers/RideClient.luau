@@ -21,12 +21,21 @@ local RideClient = {}
 -- Legs walk in diagonal pairs, like the followers
 local LEG_PHASE = { legFL = 0, legBR = 0, legFR = math.pi, legBL = math.pi }
 
--- The riding pose, in degrees (R15), like the riding model sheet (art/renders/Ride.png): the hips down in the
--- seat, thighs out over the side flaps, knees bent a little outward so the lower legs go down beside the
--- creature with the feet in the stirrups; upper arms down along the body and elbows bent so both hands hold
--- the handle. Roll is outward for the legs, inward for the arms. (Fitted against the pony and saddle meshes
--- offline; art/blender/pony.py poses its rider with the same numbers.)
-local POSE = { hipPitch = 15, hipRoll = 70, kneePitch = -40, kneeRoll = -50, armPitch = 0, armRoll = 48, elbowPitch = 74 }
+-- The riding pose, in degrees (R15), like the riding model sheet (art/renders/RideSheet.png): the hips down in
+-- the seat, leaning a little forward at the waist, thighs forward and out over the front of the seat, knees
+-- bent so the lower legs go down beside the side flaps with the feet in the stirrups; elbows bent so both
+-- hands hold the handle. Roll is outward for the legs, inward for the arms. (Fitted against the pony and
+-- saddle meshes offline; art/blender/pony.py poses its rider with the same numbers.)
+local POSE = {
+	waistPitch = -12,
+	hipPitch = 80,
+	hipRoll = 50,
+	kneePitch = -70,
+	kneeRoll = 10,
+	armPitch = -6,
+	armRoll = 60,
+	elbowPitch = 90,
+}
 -- Jumping: the creature tucks its legs (front forward, back backward) and tilts with its climb or fall
 local JUMP_TUCK = 40
 local JUMP_TILT = 12
@@ -66,6 +75,7 @@ end
 -- Joint names are the same in both rigs Roblox uses for R15: Motor6D joints, and the newer AnimationConstraint
 -- joints (Workspace.AvatarJointUpgrade). Both have a Transform that bends the limb.
 local JOINTS = {
+	{ name = "Waist", side = 0, kind = "waist" },
 	{ name = "LeftHip", side = -1, kind = "hip" },
 	{ name = "RightHip", side = 1, kind = "hip" },
 	{ name = "LeftKnee", side = -1, kind = "knee" },
@@ -79,6 +89,8 @@ local JOINTS = {
 local function jointTransform(kind: string, side: number): CFrame
 	if kind == "hip" then
 		return CFrame.Angles(math.rad(POSE.hipPitch), 0, math.rad(POSE.hipRoll) * side)
+	elseif kind == "waist" then
+		return CFrame.Angles(math.rad(POSE.waistPitch), 0, 0)
 	elseif kind == "elbow" then
 		return CFrame.Angles(math.rad(POSE.elbowPitch), 0, 0)
 	elseif kind == "knee" then
