@@ -415,7 +415,7 @@ function HUD.mount(gui: ScreenGui)
 	autoButton.Activated:Connect(function()
 		Net.event("ToggleAuto"):FireServer(not Store.currency.auto)
 	end)
-	-- Ride: get on your strongest creature (or the ride you picked in Style), tap again to get off
+	-- Ride: get on the Cloud Seat (or the ride you picked in Style), tap again to get off
 	local rideButton = menuButton("🐾\nRide", Color3.fromRGB(230, 150, 60), 11)
 	local lastRide = Cosmetics.RIDE_DEFAULT
 	rideButton.Activated:Connect(function()

@@ -142,6 +142,6 @@ return {
 	RIDE_SEAT_BACK = 0.2,
 	RIDE_HIP = 4.8, -- the rider's HipHeight on it, roughly (RideClient sets the exact one for the saddle)
 	SEAT_HIP = 2.6, -- the rider's HipHeight on a floating seat, roughly (RideClient sets the exact one)
-	RIDE_DEFAULT = "Cubeling",
+	RIDE_DEFAULT = "Seat_Cloud", -- what the Ride button puts you on
 	RIDE_STARTERS = { "Cubeling", "Seat_Cloud" }, -- every player has these
 }

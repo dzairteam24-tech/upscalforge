@@ -985,6 +985,14 @@ local function onLoaded(player: Player, data: PlayerData)
 	for _, id in Cosmetics.RIDE_STARTERS do
 		data.rides[id] = true
 	end
+	-- The floating seats replaced the creature as the ride you start on: move a saved Cubeling Ride over once
+	-- (it stays in Style for anyone who picks it again)
+	if not data.seatsIntroduced then
+		data.seatsIntroduced = true
+		if data.equippedRide == "Cubeling" then
+			data.equippedRide = Cosmetics.RIDE_DEFAULT
+		end
+	end
 	leaderstats(player)
 	GameService.refresh(player)
 	giveOfflineEarnings(player, data, runtime)
