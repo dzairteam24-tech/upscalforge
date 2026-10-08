@@ -745,6 +745,9 @@ local function applyTitles(player: Player, character: Model)
 	end
 	local rideDef = if data.equippedRide and data.rides[data.equippedRide] then Cosmetics.rideById[data.equippedRide] else nil
 	local onCreature = rideDef ~= nil and rideDef.style == "creature"
+	-- A floating seat: clients draw it under the player and pose them on it (RideClient), so nothing is welded
+	local onSeat = rideDef ~= nil and rideDef.style == "seat"
+	player:SetAttribute("RideSeat", if onSeat and rideDef then rideDef.seat or "" else "")
 	if humanoid and typeof(baseHip) == "number" then
 		-- On a creature the player sits on its saddle (RideClient plays the sit pose). R6 legs aren't part of HipHeight, so they come off. Nothing to
 		-- sit on with an empty team.
@@ -752,10 +755,12 @@ local function applyTitles(player: Player, character: Model)
 		local legs = if humanoid.RigType == Enum.HumanoidRigType.R6 then 2 else 0
 		if onCreature and riding then
 			humanoid.HipHeight = math.max(baseHip, Cosmetics.RIDE_HIP - legs)
+		elseif onSeat then
+			humanoid.HipHeight = Cosmetics.SEAT_HIP - legs
 		else
 			humanoid.HipHeight = baseHip + (if rideDef and not onCreature then 0.6 else 0)
 		end
-		if rideDef and not onCreature then
+		if rideDef and not onCreature and not onSeat then
 			local ride = Instance.new("Model")
 			ride.Name = "Ride"
 			local footY = -(root.Size.Y / 2 + baseHip + 0.6) + 0.2
@@ -975,9 +980,11 @@ local function onLoaded(player: Player, data: PlayerData)
 		end
 	end
 	giveStarterPack(player, data)
-	-- Everyone can ride their strongest creature from the start
+	-- Everyone can ride their strongest creature, and sit on the meadow's seat, from the start
 	data.rides = data.rides or {}
-	data.rides[Cosmetics.RIDE_DEFAULT] = true
+	for _, id in Cosmetics.RIDE_STARTERS do
+		data.rides[id] = true
+	end
 	leaderstats(player)
 	GameService.refresh(player)
 	giveOfflineEarnings(player, data, runtime)

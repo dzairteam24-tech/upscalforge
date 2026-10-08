@@ -18,6 +18,7 @@ local Inventory = R(Shared.Logic.Inventory)
 local TradeLogic = R(Shared.Logic.TradeLogic)
 local Combo = R(Shared.Logic.Combo)
 local RideIK = R(Shared.RideIK)
+local SeatPose = R(Shared.SeatPose)
 local roblox = require("@lune/roblox")
 local CFrame, Vector3 = roblox.CFrame, roblox.Vector3
 
@@ -1815,6 +1816,29 @@ test("RideIK.orient turns a joint's child to a wanted rotation", function()
 	local child = parent * c0 * RideIK.orient(parent, c0, c1, wanted) * c1:Inverse()
 	for _, axis in { child.XVector - wanted.XVector, child.YVector - wanted.YVector, child.ZVector - wanted.ZVector } do
 		near(axis.Magnitude, 0, 1e-4, "same rotation")
+	end
+end)
+
+test("SeatPose crosses the feet in front, within a standard leg's reach, knees out", function()
+	local hips = CFrame.new(3, 2, 1) * CFrame.Angles(0, 0.6, 0)
+	local hipX = 0.5 -- a standard R15 hip joint's distance from the middle
+	for _, side in { "Left", "Right" } do
+		local s = if side == "Left" then -1 else 1
+		local sole, pole = SeatPose.leg(hips, side, 1)
+		local rel = hips:PointToObjectSpace(sole)
+		if rel.Z >= -0.3 or rel.X * s > 0 then
+			error(side .. " foot not crossed in front")
+		end
+		local reach = (rel - Vector3.new(s * hipX, 0, 0)).Magnitude
+		if reach > SeatPose.STANDARD_LEG - 0.1 or reach < 0.4 then
+			error(side .. " foot out of the leg's comfortable reach")
+		end
+		if hips:VectorToObjectSpace(pole).X * s <= 0 then
+			error(side .. " knee not out to its side")
+		end
+		-- bigger avatars: everything scales
+		local big = hips:PointToObjectSpace((SeatPose.leg(hips, side, 1.5)))
+		near((big - rel * 1.5).Magnitude, 0, 1e-4, "scales with the leg")
 	end
 end)
 

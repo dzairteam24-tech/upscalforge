@@ -98,6 +98,7 @@ function ArtService.init()
 	task.spawn(loadMapArt)
 	task.spawn(loadRideArt, "SaddleModel", Art.SADDLE_ASSET_ID)
 	task.spawn(loadRideArt, "PonyModel", Art.PONY_ASSET_ID)
+	task.spawn(loadRideArt, "SeatsModel", Art.SEATS_ASSET_ID)
 	if ReplicatedStorage:FindFirstChild("CreatureModels") then
 		return -- placed by hand in Studio
 	end

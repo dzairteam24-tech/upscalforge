@@ -17,10 +17,14 @@
 -- loads them into ReplicatedStorage. 0 = not uploaded yet: rides use a saddle/pony model put directly in
 -- ReplicatedStorage by hand (any name: RideModel finds them by their Saddle__/Pony__ parts, the newest
 -- winning), or else the saddle made of parts and the reshaped creature.
+--
+-- SEATS_ASSET_ID: the floating seats (import art/models/Seats.glb in Studio, Save to Roblox, paste its ID
+-- here). Loaded into ReplicatedStorage like the saddle; until then seats are drawn as a plain cloud of balls.
 
 return {
 	CREATURE_MODELS_ASSET_ID = 91371129157419,
 	MAP_ART_ASSET_ID = 0,
 	SADDLE_ASSET_ID = 98611574786833,
 	PONY_ASSET_ID = 83201461968098,
+	SEATS_ASSET_ID = 0,
 }

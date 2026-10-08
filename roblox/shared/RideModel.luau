@@ -56,10 +56,10 @@ local PONY_CREAM = Color3.fromRGB(252, 232, 200)
 local PONY_HOOF = Color3.fromRGB(96, 54, 30)
 local FLIP = CFrame.Angles(0, math.pi, 0) -- the files' front (+Z) to the game's front (-Z)
 
-type Model = { ref: string, center: Vector3, size: Vector3 }
+export type Model = { ref: string, center: Vector3, size: Vector3 }
 -- A part of an imported model: where it is from the reference part (in the import's own axes, which Studio
 -- may have turned) and, once placed (`place`), where it goes in the game's axes
-type Piece = { role: string, part: BasePart, rel: Vector3, turn: CFrame, size: Vector3, at: Vector3, rotation: CFrame }
+export type Piece = { role: string, part: BasePart, rel: Vector3, turn: CFrame, size: Vector3, at: Vector3, rotation: CFrame }
 
 local artOverride: Instance? = nil -- tests and previews point this at models of their own
 
@@ -426,5 +426,9 @@ function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 		stirrups = stirrups,
 	}
 end
+
+-- For the other Blender models found the same way (SeatModel)
+RideModel.pieces = meshPieces
+RideModel.place = place
 
 return RideModel
