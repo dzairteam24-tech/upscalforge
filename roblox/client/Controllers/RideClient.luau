@@ -4,7 +4,7 @@
 -- The creature comes from RideModel: reshaped like a pony and wearing a saddle (art: the Cubeling Ride
 -- concept sheet). Creature and rider move as one body: no hop, the creature walks with its legs and tail and
 -- leans a little into the run, and a jump lifts both. The rider sits on the saddle straddling the creature,
--- hands on the handle: each client poses every rider's hips, knees and shoulders itself (Motor6D.Transform),
+-- hands on the handle: each client poses every rider's hips, knees and shoulders itself (the joints' Transform),
 -- so no uploaded animation is needed. The rider's own client turns off their walk animations and sets the
 -- height they sit at. PetFollow hides the ridden creature from the followers.
 
@@ -60,15 +60,17 @@ local function parse(value: string): { s: string, v: string, z: string }?
 end
 
 ---------------------------------------------------------------------------------------------------------------
--- Rider pose: R15 joints bent by Motor6D.Transform, set after animations every frame
+-- Rider pose: R15 joints bent through their Transform, set after animations every frame
 
+-- Joint names are the same in both rigs Roblox uses for R15: Motor6D joints, and the newer AnimationConstraint
+-- joints (Workspace.AvatarJointUpgrade). Both have a Transform that bends the limb.
 local JOINTS = {
-	{ part = "LeftUpperLeg", motor = "LeftHip", side = -1, kind = "hip" },
-	{ part = "RightUpperLeg", motor = "RightHip", side = 1, kind = "hip" },
-	{ part = "LeftLowerLeg", motor = "LeftKnee", side = -1, kind = "knee" },
-	{ part = "RightLowerLeg", motor = "RightKnee", side = 1, kind = "knee" },
-	{ part = "LeftUpperArm", motor = "LeftShoulder", side = -1, kind = "arm" },
-	{ part = "RightUpperArm", motor = "RightShoulder", side = 1, kind = "arm" },
+	{ name = "LeftHip", side = -1, kind = "hip" },
+	{ name = "RightHip", side = 1, kind = "hip" },
+	{ name = "LeftKnee", side = -1, kind = "knee" },
+	{ name = "RightKnee", side = 1, kind = "knee" },
+	{ name = "LeftShoulder", side = -1, kind = "arm" },
+	{ name = "RightShoulder", side = 1, kind = "arm" },
 }
 
 local function jointTransform(kind: string, side: number): CFrame
@@ -80,12 +82,39 @@ local function jointTransform(kind: string, side: number): CFrame
 	return CFrame.Angles(math.rad(POSE.armPitch), 0, math.rad(POSE.armRoll) * -side)
 end
 
+-- The character's joints by name, found once per character
+local jointCache: { [Model]: { [string]: Instance } } = setmetatable({}, { __mode = "k" }) :: any
+local warned: { [Model]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+
+local function jointsOf(character: Model): { [string]: Instance }
+	local cached = jointCache[character]
+	if cached and next(cached) then
+		return cached
+	end
+	local found: { [string]: Instance } = {}
+	for _, d in character:GetDescendants() do
+		if d:IsA("Motor6D") or d:IsA("AnimationConstraint") then
+			for _, joint in JOINTS do
+				if d.Name == joint.name and not found[joint.name] then
+					found[joint.name] = d
+				end
+			end
+		end
+	end
+	jointCache[character] = found
+	if not next(found) and not warned[character] then
+		warned[character] = true
+		warn("[Ride] no R15 leg/arm joints found on", character.Name, "- can't pose the rider")
+	end
+	return found
+end
+
 local function setPose(character: Model, on: boolean)
+	local joints = jointsOf(character)
 	for _, joint in JOINTS do
-		local limb = character:FindFirstChild(joint.part)
-		local motor = limb and limb:FindFirstChild(joint.motor)
-		if motor and motor:IsA("Motor6D") then
-			motor.Transform = if on then jointTransform(joint.kind, joint.side) else CFrame.identity
+		local instance = joints[joint.name]
+		if instance then
+			(instance :: any).Transform = if on then jointTransform(joint.kind, joint.side) else CFrame.identity
 		end
 	end
 end
