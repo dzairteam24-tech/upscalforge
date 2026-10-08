@@ -4,6 +4,8 @@
 export type Title = { id: string, text: string, color: Color3 }
 export type Trail = { id: string, name: string, colors: { Color3 } }
 -- Rides: something the character stands on. Every ride gives the same speed, so they're look only.
+-- The "creature" style is the Cubeling Ride: the strongest creature in the team carries the player
+-- (RideClient draws it). Everyone has it from the start.
 export type Ride = { id: string, name: string, style: string, color: Color3, glow: Color3 }
 -- Auras: particles around the character that everyone sees. Hatch effects: how your own hatch screen
 -- celebrates. Both are sold for Robux and give no power at all.
@@ -63,10 +65,11 @@ local trails: { Trail } = {
 }
 
 local rides: { Ride } = {
+	{ id = "Cubeling", name = "Cubeling Ride", style = "creature", color = Color3.fromRGB(255, 200, 90), glow = Color3.fromRGB(255, 240, 180) },
 	-- Everyone gets this one early (Journey step 3), so the ride speed is never something you pay for
 	{ id = "Starter", name = "Starter Board", style = "board", color = Color3.fromRGB(107, 203, 119), glow = Color3.fromRGB(220, 255, 220) },
 	{ id = "Skateboard", name = "Skateboard", style = "board", color = Color3.fromRGB(229, 83, 75), glow = Color3.fromRGB(255, 220, 120) },
-	{ id = "S1_Hoverboard", name = "Hoverboard", style = "board", color = Color3.fromRGB(60, 70, 100), glow = Color3.fromRGB(91, 184, 245) },
+	{ id = "S1_Hoverboard", name = "Comet Board", style = "board", color = Color3.fromRGB(60, 70, 100), glow = Color3.fromRGB(91, 184, 245) },
 	{ id = "PixelBoard", name = "Pixel Board", style = "board", color = Color3.fromRGB(40, 30, 60), glow = Color3.fromRGB(185, 140, 255) },
 	{ id = "S1_Cloud", name = "Cloud", style = "cloud", color = Color3.fromRGB(245, 248, 255), glow = Color3.fromRGB(200, 230, 255) },
 	{ id = "E_Broom", name = "Broom Board", style = "board", color = Color3.fromRGB(90, 60, 40), glow = Color3.fromRGB(255, 140, 40) },
@@ -122,5 +125,7 @@ return {
 	auraById = auraById,
 	hatchFx = hatchFx,
 	hatchFxById = hatchFxById,
-	RIDE_SPEED = 1.25,
+	RIDE_SPEED = 1.4,
+	RIDE_CREATURE_HEIGHT = 4.2, -- the ridden creature is drawn this tall, whatever its size
+	RIDE_DEFAULT = "Cubeling",
 }

@@ -331,6 +331,31 @@ function GameService.refresh(player: Player)
 			child:Destroy()
 		end
 	end
+	-- Cubeling Ride: the strongest creature in the team carries the player. Clients draw it (RideClient)
+	-- and hide it from the followers; the character stands higher while there is one to ride.
+	local rideDef = if data.equippedRide and data.rides[data.equippedRide] then Cosmetics.rideById[data.equippedRide] else nil
+	local ridePetId = ""
+	if rideDef and rideDef.style == "creature" then
+		local bestPower = -1
+		for _, petId in data.equipped do
+			local pet = data.pets[petId]
+			if pet and wanted[petId] then
+				local petPower = PetMath.basePower(pet)
+				if petPower > bestPower then
+					ridePetId, bestPower = petId, petPower
+				end
+			end
+		end
+	end
+	local wasRiding = (player:GetAttribute("RidePetId") or "") ~= ""
+	if player:GetAttribute("RidePetId") ~= ridePetId then
+		player:SetAttribute("RidePetId", ridePetId)
+		player:SetAttribute("RidePet", if ridePetId ~= "" then wanted[ridePetId] else "")
+		if wasRiding ~= (ridePetId ~= "") then
+			GameService.refreshTitles(player) -- stand higher or lower
+		end
+	end
+
 	for petId, value in wanted do
 		local existing = (folder :: Folder):FindFirstChild(petId) :: StringValue?
 		if not existing then
@@ -719,9 +744,12 @@ local function applyTitles(player: Player, character: Model)
 		character:SetAttribute("BaseHipHeight", baseHip)
 	end
 	local rideDef = if data.equippedRide and data.rides[data.equippedRide] then Cosmetics.rideById[data.equippedRide] else nil
+	local onCreature = rideDef ~= nil and rideDef.style == "creature"
 	if humanoid and typeof(baseHip) == "number" then
-		humanoid.HipHeight = baseHip + (if rideDef then 0.6 else 0)
-		if rideDef then
+		-- On a creature the feet rest a little into its back; nothing to stand on with an empty team
+		local riding = (player:GetAttribute("RidePetId") or "") ~= ""
+		humanoid.HipHeight = baseHip + (if onCreature then (if riding then Cosmetics.RIDE_CREATURE_HEIGHT - 0.5 else 0) elseif rideDef then 0.6 else 0)
+		if rideDef and not onCreature then
 			local ride = Instance.new("Model")
 			ride.Name = "Ride"
 			local footY = -(root.Size.Y / 2 + baseHip + 0.6) + 0.2
@@ -941,6 +969,9 @@ local function onLoaded(player: Player, data: PlayerData)
 		end
 	end
 	giveStarterPack(player, data)
+	-- Everyone can ride their strongest creature from the start
+	data.rides = data.rides or {}
+	data.rides[Cosmetics.RIDE_DEFAULT] = true
 	leaderstats(player)
 	GameService.refresh(player)
 	giveOfflineEarnings(player, data, runtime)

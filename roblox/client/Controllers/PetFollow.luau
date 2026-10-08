@@ -258,9 +258,17 @@ local function step(dt: number)
 		local baseY = groundY(root.Position, { character, container })
 		local count = #owner.order
 
+		-- The creature the player rides (RideClient draws it) doesn't follow at the same time
+		local ridingId = owner.player:GetAttribute("RidePetId")
 		for index, petId in owner.order do
 			local entry = owner.entries[petId]
 			local built = entry.built
+			if petId == ridingId then
+				built.model.Parent = nil
+				continue
+			elseif built.model.Parent == nil then
+				built.model.Parent = container
+			end
 			local goal: CFrame
 			local hop = 0
 			if target then

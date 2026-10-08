@@ -5,6 +5,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local World1 = require(Shared.Config.World1)
+local Cosmetics = require(Shared.Config.Cosmetics)
 local Format = require(Shared.Logic.Format)
 local Unlocks = require(Shared.Logic.Unlocks)
 local Net = require(Shared.Net)
@@ -414,6 +415,24 @@ function HUD.mount(gui: ScreenGui)
 	autoButton.Activated:Connect(function()
 		Net.event("ToggleAuto"):FireServer(not Store.currency.auto)
 	end)
+	-- Ride: get on your strongest creature (or the ride you picked in Style), tap again to get off
+	local rideButton = menuButton("🐾\nRide", Color3.fromRGB(230, 150, 60), 11)
+	local lastRide = Cosmetics.RIDE_DEFAULT
+	rideButton.Activated:Connect(function()
+		local data = Store.data
+		if data and data.equippedRide then
+			lastRide = data.equippedRide
+			Net.event("EquipCosmetic"):FireServer("ride", "")
+		else
+			Net.event("EquipCosmetic"):FireServer("ride", lastRide)
+		end
+	end)
+	local function updateRide()
+		local data = Store.data
+		rideButton.Text = if data and data.equippedRide then "🐾\nGet off" else "🐾\nRide"
+	end
+	Store.DataChanged:Connect(updateRide)
+	updateRide()
 	local questsDot = dot(questsButton)
 	local dailyDot = dot(dailyButton)
 	local tripsDot = dot(tripsButton)
@@ -431,6 +450,9 @@ function HUD.mount(gui: ScreenGui)
 		autoButton.Parent = gui
 		autoButton.Size = UDim2.fromOffset(66, 54)
 		autoButton.Position = UDim2.fromOffset(12, 218)
+		rideButton.Parent = gui
+		rideButton.Size = UDim2.fromOffset(66, 54)
+		rideButton.Position = UDim2.fromOffset(12, 278)
 		local toggle = Theme.button({
 			Name = "MenuToggle",
 			Text = "☰\nMenu",
