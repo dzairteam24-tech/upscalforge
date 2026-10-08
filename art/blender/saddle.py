@@ -97,7 +97,7 @@ def new_object(name, bm):
     return obj
 
 
-def arch_path(half, drop, radius, steps=8, top=0.0):
+def arch_path(half, drop, radius, steps=6, top=0.0):
     """An upside-down U in the XZ plane hugging the creature's back: down each side, round over the top."""
     pts = [(-half, -drop)]
     for i in range(steps + 1):
@@ -195,11 +195,11 @@ def build():
 
     # Cream underpad: a puffy roll just peeking out around the leather's edges
     pad = sweep("Underpad", arch_path(BODY_HALF + 0.01, DROP + 0.07, 0.3), LENGTH + 0.1, 0.11)
-    parts.append(finish(soft(pad, 0.05), "cream"))
+    parts.append(finish(soft(pad, 0.05, 2, 1), "cream"))
 
     # Brown leather cover over it
     cover = sweep("Cover", arch_path(BODY_HALF + 0.1, DROP, 0.34, top=0.09), LENGTH, 0.08)
-    parts.append(finish(soft(cover, 0.03), "leather"))
+    parts.append(finish(soft(cover, 0.03, 2, 1), "leather"))
 
     # Cushion: a big puffy square with rounded corners, dipped in the middle and rising at the back
     seat = box("Cushion", (1.5, 1.42, 0.34), (0, 0.04, 0.36))

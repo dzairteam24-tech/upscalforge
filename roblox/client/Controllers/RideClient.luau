@@ -24,7 +24,7 @@ local LEG_PHASE = { legFL = 0, legBR = 0, legFR = math.pi, legBL = math.pi }
 -- The riding pose, in degrees (R15): thighs forward and wide over the saddle, knees bent so the lower legs
 -- hang down the creature's sides in front of the saddle flaps, hands up in front of the chest on the handle. Roll is outward for the legs, inward for
 -- the arms. (Checked against the real creature meshes in an offline render.)
-local POSE = { hipPitch = 50, hipRoll = 72, kneePitch = -65, kneeRoll = -30, armPitch = 75, armRoll = 14 }
+local POSE = { hipPitch = 20, hipRoll = 80, kneePitch = -20, kneeRoll = -70, armPitch = 60, armRoll = 12 }
 -- Jumping: the creature tucks its legs (front forward, back backward) and tilts with its climb or fall
 local JUMP_TUCK = 40
 local JUMP_TILT = 12
@@ -362,9 +362,9 @@ function RideClient.init()
 		character:WaitForChild("Animate", 5)
 		syncSeat()
 	end)
-	-- The creature models may arrive after the first build: rebuild everyone's ride then
+	-- The creature models and the saddle may arrive after the first build: rebuild everyone's ride then
 	ReplicatedStorage.ChildAdded:Connect(function(child)
-		if child.Name == "CreatureModels" then
+		if child.Name == "CreatureModels" or child.Name == "SaddleModel" then
 			local riding: { [Player]: string } = {}
 			for player, mount in mounts do
 				riding[player] = mount.value

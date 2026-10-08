@@ -66,8 +66,36 @@ local function loadMapArt()
 	print("[Art] Map art loaded")
 end
 
+-- The Cubeling Ride saddle (Config/Art SADDLE_ASSET_ID) into ReplicatedStorage.SaddleModel (RideModel)
+local function loadSaddle()
+	if ReplicatedStorage:FindFirstChild("SaddleModel") or Art.SADDLE_ASSET_ID == 0 then
+		return
+	end
+	local ok, result = pcall(function()
+		return InsertService:LoadAsset(Art.SADDLE_ASSET_ID)
+	end)
+	if not ok or not result then
+		warn("[Art] Couldn't load the saddle:", result)
+		return
+	end
+	local saddle: Instance = result:FindFirstChild("SaddleModel", true) or result
+	saddle.Name = "SaddleModel"
+	for _, d in saddle:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = false
+		end
+	end
+	saddle.Parent = ReplicatedStorage
+	if saddle ~= result then
+		result:Destroy()
+	end
+	print("[Art] Saddle loaded")
+end
+
 function ArtService.init()
 	task.spawn(loadMapArt)
+	task.spawn(loadSaddle)
 	if ReplicatedStorage:FindFirstChild("CreatureModels") then
 		return -- placed by hand in Studio
 	end

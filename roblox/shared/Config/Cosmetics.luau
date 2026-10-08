@@ -126,12 +126,10 @@ return {
 	hatchFx = hatchFx,
 	hatchFxById = hatchFxById,
 	RIDE_SPEED = 1.6,
-	-- The ridden creature (RideModel): this tall whatever its size, and this many times longer front to back
-	-- (like a pony, not a cube), with the saddle this far behind its middle
+	-- The ridden creature (RideModel): this tall whatever its size, keeping its shape, with the saddle's
+	-- middle this far behind the middle of its back
 	RIDE_CREATURE_HEIGHT = 6.5,
-	RIDE_LENGTH = 1.4,
-	RIDE_WIDTH = 0.65, -- and narrower, so the rider's legs reach down its sides
-	RIDE_SEAT_BACK = 1,
-	RIDE_HIP = 5.3, -- the rider's HipHeight on it, roughly (RideClient sets the exact one for the saddle)
+	RIDE_SEAT_BACK = 0.3,
+	RIDE_HIP = 7.2, -- the rider's HipHeight on it, roughly (RideClient sets the exact one for the saddle)
 	RIDE_DEFAULT = "Cubeling",
 }
