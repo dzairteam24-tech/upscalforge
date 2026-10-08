@@ -24,9 +24,9 @@ export type Ride = {
 
 -- The Blender models as exported (front +Z, in the files' units). One part of each, with its box center and
 -- width in those units, is how the game finds the scale and origin of an import.
-local SADDLE = { ref = "cushion", center = Vector3.new(0, 0.37, -0.04), width = 1.199 }
-local SADDLE_BODY = 2 -- the saddle is made for a back this wide
-local SADDLE_SEAT_TOP = 0.45
+local SADDLE = { ref = "cushion", center = Vector3.new(0, 0.23, -0.02), width = 0.949 }
+local SADDLE_BODY = 1.6 -- the saddle is made for a back this wide (the pony's)
+local SADDLE_SEAT_TOP = 0.29
 local SADDLE_COLORS: { [string]: Color3 } = {
 	cushion = Color3.fromRGB(232, 88, 40),
 	cream = Color3.fromRGB(244, 230, 208),
@@ -35,12 +35,12 @@ local SADDLE_COLORS: { [string]: Color3 } = {
 	gold = Color3.fromRGB(255, 192, 52),
 	paw = Color3.fromRGB(245, 118, 38),
 }
--- The pony: 2 wide (like the saddle's back), its feet at 0, the top of its back at PONY_BACK
-local PONY = { ref = "body", center = Vector3.new(0, 2.901, -0.601), width = 1.994 }
-local PONY_BACK = 3.0
-local PONY_BELLY = 1.35 -- where the legs meet the body: the point they swing around
-local PONY_SADDLE_Z = 0.45 -- the saddle's middle, behind the body's middle
-local PONY_HEAD = { width = 1.8, bottom = 2.45, z = -1.4 } -- the creature as the head
+-- The pony: 1.6 wide (the saddle's back), its feet at 0, the top of its back at PONY_BACK
+local PONY = { ref = "body", center = Vector3.new(0, 1.832, -0.232), width = 1.593 }
+local PONY_BACK = 2.5
+local PONY_BELLY = 0.8 -- where the legs meet the body: the point they swing around
+local PONY_SADDLE_Z = 0.25 -- the saddle's middle, behind the body's middle
+local PONY_HEAD = { width = 1.6, bottom = 1.95, z = -1.4 } -- the creature as the head
 local PONY_CREAM = Color3.fromRGB(252, 232, 200)
 local PONY_HOOF = Color3.fromRGB(96, 54, 30)
 local FLIP = CFrame.Angles(0, math.pi, 0) -- the files' front (+Z) to the game's front (-Z)
@@ -178,7 +178,7 @@ local function ponyShape(built: PetModel.Built, pony: { Piece }, offsets: { CFra
 	built.parts = parts
 	built.anims = anims
 	built.pivots = {}
-	return Vector3.new(0, feet + PONY_BACK * k, PONY_SADDLE_Z * k), k * 2 / SADDLE_BODY
+	return Vector3.new(0, feet + PONY_BACK * k, PONY_SADDLE_Z * k), k
 end
 
 -- Without the pony model: the creature itself, narrower and longer, on long legs. Returns the back's middle

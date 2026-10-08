@@ -33,16 +33,18 @@ COLORS = {
     "hoof": (0.2, 0.08, 0.03),
 }
 
-HALF = 1.0  # the body's side, from its middle
-LENGTH = 3.0  # the body, front to back
-BACK = 3.0  # top of the back above the ground
-BELLY = 1.35  # bottom of the body above the ground
-LEG_X = 0.58
-LEG_Y = 1.0
-HOOF = 0.32
-HEAD_WIDTH = 1.8  # the creature's head, for the render; the game uses the same numbers (RideModel)
+HALF = 0.8  # the body's side, from its middle
+LENGTH = 2.2  # the body, front to back
+BACK = 2.5  # top of the back above the ground
+BELLY = 0.8  # bottom of the body above the ground
+ROUND = 0.55  # the body's rounded edges
+LEG_X = 0.45
+LEG_Y = 0.62
+HOOF = 0.26
+SADDLE_Y = 0.25  # the saddle's middle, behind the body's middle (RideModel uses the same)
+HEAD_WIDTH = 1.6  # the creature's head, for the render; the game uses the same numbers (RideModel)
 HEAD_Y = -1.4
-HEAD_BOTTOM = 2.45
+HEAD_BOTTOM = 1.95
 
 materials = {}
 
@@ -131,41 +133,43 @@ def join(objs):
 def build():
     parts = []
 
-    # Body: a chunky rounded box
+    # Body: a chunky rounded cube, a little longer than wide
     height = BACK - BELLY
     body = box("Body", (HALF * 2, LENGTH, height), (0, 0, BELLY + height / 2))
-    soft(body, 0.45, 4, 1)
-    # Tail: a fluffy curl going up and forward over the back, from the back of the body
+    soft(body, ROUND, 4, 1)
+    # Tail: a small fluffy curl going up from the back of the body
     tail = []
-    curl = [(0.0, 1.55, 2.45, 0.42), (0.0, 1.95, 2.85, 0.5), (0.0, 2.15, 3.45, 0.55), (0.0, 1.95, 3.95, 0.5)]
-    for i, (x, y, z, r) in enumerate(curl):
-        tail.append(ball(f"Tail{i}", r, (x, y, z), (0.85, 1, 1)))
+    back = LENGTH / 2
+    curl = [(back + 0.02, 1.95, 0.2), (back + 0.2, 2.18, 0.22), (back + 0.25, 2.47, 0.21), (back + 0.15, 2.68, 0.18)]
+    for i, (y, z, r) in enumerate(curl):
+        tail.append(ball(f"Tail{i}", r, (0.0, y, z), (0.85, 1, 1)))
     parts.append(finish(join([body] + tail), "body"))
 
     # Cream: the belly patch on each side and under the body, and the tip of the tail
-    patch = box("Belly", (HALF * 2 + 0.06, LENGTH * 0.62, height * 0.42), (0, -0.25, BELLY + height * 0.2))
-    soft(patch, 0.2, 3, 1)
-    tip = ball("TailTip", 0.4, (0.0, 1.6, 4.25), (0.8, 1, 0.9))
+    patch = box("Belly", (HALF * 2 + 0.05, LENGTH * 0.55, height * 0.4), (0, -0.2, BELLY + height * 0.2))
+    soft(patch, 0.18, 3, 1)
+    tip = ball("TailTip", 0.15, (0.0, back + 0.04, 2.8), (0.8, 1, 0.9))
     parts.append(finish(join([patch, tip]), "cream"))
 
-    # Mane: three rounded chunks down the back of the head onto the front of the back
+    # Mane: three small chunks down the back of the head (a creature's head is about as deep as wide)
     mane = []
-    for i, (y, z, s) in enumerate(((0.0, 4.3, 0.42), (0.18, 3.75, 0.4), (0.3, 3.25, 0.34))):
-        chunk = box(f"Mane{i}", (0.42, s * 1.5, s * 1.6), (0, y, z))
+    neck = HEAD_Y + HEAD_WIDTH / 2
+    for i, (y, z, sz) in enumerate(((neck - 0.02, 3.3, 0.3), (neck + 0.08, 2.95, 0.28), (neck + 0.14, 2.62, 0.24))):
+        chunk = box(f"Mane{i}", (0.34, sz * 1.4, sz * 1.5), (0, y, z))
         chunk.rotation_euler = (math.radians(-25), 0, 0)
         bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-        soft(chunk, 0.16, 3, 1)
+        soft(chunk, 0.12, 3, 1)
         mane.append(chunk)
     parts.append(finish(join(mane), "mane"))
 
-    # Legs: rounded posts into the body, each with a hoof
+    # Legs: short rounded posts into the body, each with a hoof
     for name, sx, sy in (("legFL", -1, -1), ("legFR", 1, -1), ("legBL", -1, 1), ("legBR", 1, 1)):
         x, y = sx * LEG_X, sy * LEG_Y
-        leg = post(f"Leg_{name}", HOOF - 0.05, BELLY + 0.35, 0.4, 0.34, x, y)
-        soft(leg, 0.08, 2, 1)
+        leg = post(f"Leg_{name}", HOOF - 0.05, BELLY + 0.35, 0.36, 0.32, x, y)
+        soft(leg, 0.07, 2, 1)
         parts.append(finish(leg, "body", f"leg__{name}"))
-        hoof = post(f"Hoof_{name}", 0.0, HOOF, 0.44, 0.42, x, y)
-        soft(hoof, 0.09, 2, 1)
+        hoof = post(f"Hoof_{name}", 0.0, HOOF, 0.4, 0.38, x, y)
+        soft(hoof, 0.08, 2, 1)
         parts.append(finish(hoof, "hoof", f"hoof__{name}"))
     return parts
 
@@ -204,7 +208,7 @@ def add_head_and_saddle():
     for o in saddle:
         if o.parent is None:
             o.parent = holder
-    holder.location = (0, 0.45, BACK)
+    holder.location = (0, SADDLE_Y, BACK)
 
 
 def setup_render(resolution=640):
@@ -231,7 +235,7 @@ def setup_render(resolution=640):
     bpy.ops.object.camera_add()
     camera = bpy.context.active_object
     camera.data.type = "ORTHO"
-    camera.data.ortho_scale = 7.6
+    camera.data.ortho_scale = 6.0
     scene.camera = camera
     return camera
 
@@ -239,7 +243,7 @@ def setup_render(resolution=640):
 def render_views(camera):
     from PIL import Image
 
-    target = Vector((0, 0.2, 2.7))
+    target = Vector((0, 0.1, 2.2))
     views = [("three_quarter", 35, 0.35), ("front", 0, 0.08), ("side", 90, 0.08), ("back", 180, 0.12), ("top", 0, 3.0)]
     images = []
     for view, angle, up in views:
