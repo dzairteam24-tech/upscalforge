@@ -39,10 +39,10 @@ COLORS = {
 BODY_HALF = 0.8  # the body's side, from its middle
 BODY_HEIGHT = 1.7  # the body, top of the back to the belly
 BODY_RADIUS = 0.55  # the body's rounded edges
-LENGTH = 0.95  # the side panels, front to back (about 45% of the body's 2.2)
+LENGTH = 1.0  # the side panels, front to back (45% of the body's 2.2)
 DROP = 0.95  # how far the side panels go down the sides (more than half)
-SEAT_W = 1.15  # the seat: a little wider than the rider's hips (1 unit)
-SEAT_L = 0.6  # the seat, front to back
+SEAT_W = 1.0  # the seat: as wide as the rider's hips, about 60% of the body's width
+SEAT_L = 0.76  # the seat, front to back
 DROOP = 0.07  # how much the seat and its frame curve down at the sides, following the back
 FIT = 0.03  # how far the leather stands off the body: it hugs it
 STIRRUP = (-0.36, -0.58)  # where the rider's feet rest (y, z), from the rider's pose in the game
@@ -318,6 +318,7 @@ def build():
     sy, sz = STIRRUP
     for side in (-1, 1):
         x = side * (BODY_HALF + FIT + 0.08)
+        out = side * (BODY_HALF + FIT + 0.2)  # the stirrups hang out from the body, under the feet
         # Girth buckle just under the panel
         loop = [(side * (BODY_HALF + 0.085), dy, -DROP - 0.1 + dz) for dy, dz in rounded_rect(0, 0, 0.11, 0.09, 0.03)]
         parts.append(tag(tube("GirthBuckle", loop, 0.026, closed=True), "gold", "buckles", side))
@@ -335,8 +336,12 @@ def build():
         # a rounded triangle with a tread, right where the rider's foot rests
         leather_top = -0.05
         leather_bottom = sz + 0.12
-        strap = box("StirrupLeather", (0.04, 0.1, leather_top - leather_bottom), (x, sy, (leather_top + leather_bottom) / 2))
-        parts.append(tag(soft(strap, 0.015, 2, 0), "dark", "stirrups", side))
+        strap = tube("StirrupLeather", [(x, sy, leather_top), (out, sy, leather_bottom)], 0.035)
+        parts.append(tag(strap, "dark", "stirrups", side))
+
+        # Knee roll: a puffy cream pad at the front of the flap, where the rider's thigh rests
+        roll = tube("KneeRoll", [(side * (BODY_HALF - 0.12), -LENGTH / 2 + 0.12, 0.06), (side * (BODY_HALF + FIT + 0.06), -LENGTH / 2 + 0.1, -0.3), (side * (BODY_HALF + FIT + 0.08), -LENGTH / 2 + 0.1, -0.55)], 0.075)
+        parts.append(tag(roll, "cream", "panels", side))
         loop = [(x + side * 0.03, sy + dy, -0.2 + dz) for dy, dz in rounded_rect(0, 0, 0.075, 0.065, 0.02)]
         parts.append(tag(tube("StirrupBuckle", loop, 0.02, closed=True), "gold", "buckles", side))
         corners = [(0, sz + 0.14), (-0.13, sz - 0.08), (0.13, sz - 0.08)]
@@ -345,9 +350,9 @@ def build():
             ny, nz = corners[(i + 1) % 3]
             for k in range(6):
                 t = k / 6
-                stirrup.append((x + side * 0.02, sy + cy2 + (ny - cy2) * t, cz + (nz - cz) * t))
+                stirrup.append((out, sy + cy2 + (ny - cy2) * t, cz + (nz - cz) * t))
         parts.append(tag(soft(tube("Stirrup", stirrup, 0.035, closed=True), 0, 0, 1), "gold", "stirrups", side))
-        tread = box("Tread", (0.16, 0.28, 0.045), (x + side * 0.06, sy, sz - 0.08))
+        tread = box("Tread", (0.16, 0.28, 0.045), (out + side * 0.03, sy, sz - 0.08))
         parts.append(tag(soft(tread, 0.02, 2, 0), "dark", "stirrups", side))
     return parts
 
