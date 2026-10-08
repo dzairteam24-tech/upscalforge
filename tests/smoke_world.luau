@@ -84,7 +84,8 @@ local World1 = Loader.require(Shared.Config.World1)
 local function blocked(point)
 	for _, descendant in world:GetDescendants() do
 		if descendant:IsA("BasePart") and descendant.Name == "Border" then
-			local p = descendant.CFrame.Position
+			-- Position, not CFrame: in Lune a part placed with Position keeps its CFrame at the origin
+			local p = descendant.Position
 			local half = descendant.Size / 2
 			if math.abs(point.X - p.X) <= half.X and math.abs(point.Y - p.Y) <= half.Y and math.abs(point.Z - p.Z) <= half.Z then
 				return true
@@ -97,11 +98,11 @@ for _, zone in World1.zones do
 	local center = MapLayout.center(zone.id)
 	for _, other in zone.links do
 		local direction = (MapLayout.center(other) - center).Unit
-		local edge = center + direction * (MapLayout.PLATFORM / 2 + 0.5) + Vector3.new(0, 3, 0)
+		local edge = center + direction * (MapLayout.size(zone.id) / 2 + 0.5) + Vector3.new(0, 3, 0)
 		assert(not blocked(edge), ("zone %d is walled off toward zone %d"):format(zone.id, other))
 	end
 end
-local hubEdge = MapLayout.center(0) + WorldBuilder.PLAZA_SIDE * (MapLayout.PLATFORM / 2 + 0.5) + Vector3.new(0, 3, 0)
+local hubEdge = MapLayout.center(0) + WorldBuilder.PLAZA_SIDE * (MapLayout.HUB_SIZE / 2 + 0.5) + Vector3.new(0, 3, 0)
 assert(not blocked(hubEdge), "the hub is walled off toward the plaza")
 
 local booths = 0

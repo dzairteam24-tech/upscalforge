@@ -14,14 +14,16 @@ local PetModel = require(Shared.PetModel)
 
 local HubBuilder = {}
 
-local PLAZA_RADIUS = 34
-local BUILDING_RADIUS = 47
-HubBuilder.SPAWN_OFFSET = Vector3.new(0, 0, 20)
+-- Sized for a full server: wide plaza and paths, buildings far apart
+local PLAZA_RADIUS = 50
+local BUILDING_RADIUS = 74
+local BUILDING_SCALE = 1.3
+HubBuilder.SPAWN_OFFSET = Vector3.new(0, 0, 22)
 -- Where the World Boss lands: the north path, between Trading and Fusion
-HubBuilder.BOSS_OFFSET = Vector3.new(0, 0, -30)
+HubBuilder.BOSS_OFFSET = Vector3.new(0, 0, -58)
 -- Leaderboards: along the south rim, two on each side of the pond (they face north)
-HubBuilder.LEADERBOARD_X = { -48, -24, 24, 48 }
-HubBuilder.LEADERBOARD_Z = 56
+HubBuilder.LEADERBOARD_X = { -72, -42, 42, 72 }
+HubBuilder.LEADERBOARD_Z = 88
 
 local FLAT = CFrame.Angles(0, 0, math.rad(90)) -- turns a cylinder to lie flat (axis up)
 
@@ -136,9 +138,9 @@ end
 -- The island: grass on top (the zone's Ground), rock cliffs below, a fence on the rim
 
 local function buildIsland(model: Instance, center: Vector3, openings: { Vector3 })
-	local half = MapLayout.PLATFORM / 2
+	local half = MapLayout.HUB_SIZE / 2
 	-- Cliffs: stacked rock slabs, each smaller than the one above, for a floating island silhouette
-	for i, layer in { { size = MapLayout.PLATFORM + 2, height = 14 }, { size = 112, height = 14 }, { size = 84, height = 14 }, { size = 50, height = 12 } } do
+	for i, layer in { { size = MapLayout.HUB_SIZE + 2, height = 14 }, { size = 172, height = 14 }, { size = 128, height = 14 }, { size = 76, height = 12 } } do
 		local top = -4 - (i - 1) * 13
 		part(model, {
 			Name = "Cliff",
@@ -160,8 +162,8 @@ local function buildIsland(model: Instance, center: Vector3, openings: { Vector3
 		end
 		local gap = MapLayout.BRIDGE_WIDTH
 		local segments = if open
-			then { { offset = -(MapLayout.PLATFORM + gap) / 4, length = (MapLayout.PLATFORM - gap) / 2 }, { offset = (MapLayout.PLATFORM + gap) / 4, length = (MapLayout.PLATFORM - gap) / 2 } }
-			else { { offset = 0, length = MapLayout.PLATFORM } }
+			then { { offset = -(MapLayout.HUB_SIZE + gap) / 4, length = (MapLayout.HUB_SIZE - gap) / 2 }, { offset = (MapLayout.HUB_SIZE + gap) / 4, length = (MapLayout.HUB_SIZE - gap) / 2 } }
+			else { { offset = 0, length = MapLayout.HUB_SIZE } }
 		for _, segment in segments do
 			local along = if isX then Vector3.new(0, 0, segment.offset) else Vector3.new(segment.offset, 0, 0)
 			local line = center + side * (half - 1.5) + along
@@ -188,12 +190,12 @@ end
 -- A few small floating islets around the Hub, away from the bridges
 local function buildIslets(model: Instance, center: Vector3)
 	local islets = {
-		{ offset = Vector3.new(-98, 14, -62), size = 16 },
-		{ offset = Vector3.new(-108, -6, 18), size = 12 },
-		{ offset = Vector3.new(-82, 22, 92), size = 14 },
-		{ offset = Vector3.new(18, -4, 104), size = 18 },
-		{ offset = Vector3.new(96, 18, 84), size = 12 },
-		{ offset = Vector3.new(88, -10, -78), size = 14 },
+		{ offset = Vector3.new(-136, 16, -86), size = 18 },
+		{ offset = Vector3.new(-150, -6, 24), size = 14 },
+		{ offset = Vector3.new(-118, 24, 126), size = 16 },
+		{ offset = Vector3.new(26, -4, 146), size = 20 },
+		{ offset = Vector3.new(134, 20, 118), size = 14 },
+		{ offset = Vector3.new(128, -10, -104), size = 16 },
 	}
 	for i, islet in islets do
 		local top = center + islet.offset
@@ -221,16 +223,16 @@ local function buildPlaza(model: Instance, center: Vector3)
 	disc(model, "Plaza", center, PLAZA_RADIUS, 0.05, STONE, Enum.Material.Pavement)
 	disc(model, "Plaza", center, PLAZA_RADIUS - 4, 0.07, STONE_DARK, Enum.Material.Pavement)
 	disc(model, "Plaza", center, PLAZA_RADIUS - 5, 0.09, STONE, Enum.Material.Pavement)
-	disc(model, "Plaza", center, 13, 0.11, STONE_DARK, Enum.Material.Pavement)
+	disc(model, "Plaza", center, 18, 0.11, STONE_DARK, Enum.Material.Pavement)
 
 	-- Planters between the eight paths, each with two round bushes
 	for i = 0, 7 do
 		local angle = math.rad(22.5 + i * 45)
-		local at = center + Vector3.new(math.sin(angle) * 20, 0, -math.cos(angle) * 20)
+		local at = center + Vector3.new(math.sin(angle) * 31, 0, -math.cos(angle) * 31)
 		local frame = CFrame.lookAt(at, center) -- local X runs along the ring
-		part(model, { Name = "Planter", Size = Vector3.new(9, 1.2, 5), CFrame = frame + Vector3.new(0, 0.6, 0), Color = STONE_DARK, Material = Enum.Material.Slate })
-		part(model, { Name = "Planter", Size = Vector3.new(8, 0.4, 4), CFrame = frame + Vector3.new(0, 1.25, 0), Color = GRASS, Material = Enum.Material.Grass })
-		for _, x in { -2, 2.2 } do
+		part(model, { Name = "Planter", Size = Vector3.new(12, 1.2, 6), CFrame = frame + Vector3.new(0, 0.6, 0), Color = STONE_DARK, Material = Enum.Material.Slate })
+		part(model, { Name = "Planter", Size = Vector3.new(11, 0.4, 5), CFrame = frame + Vector3.new(0, 1.25, 0), Color = GRASS, Material = Enum.Material.Grass })
+		for _, x in { -3, 3.2 } do
 			part(model, {
 				Name = "Bush",
 				Shape = Enum.PartType.Ball,
@@ -247,25 +249,25 @@ local function buildPlaza(model: Instance, center: Vector3)
 	part(model, {
 		Name = "Fountain",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(1.6, 18, 18),
+		Size = Vector3.new(1.6, 26, 26),
 		CFrame = CFrame.new(center + Vector3.new(0, 0.8, 0)) * FLAT,
 		Color = rgb(236, 236, 240),
 		Material = Enum.Material.Marble,
 	})
-	disc(model, "FountainWater", center, 8, 1.75, WATER, Enum.Material.Glass)
+	disc(model, "FountainWater", center, 11.5, 1.75, WATER, Enum.Material.Glass)
 	part(model, {
 		Name = "Fountain",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(5, 5, 5),
-		CFrame = CFrame.new(center + Vector3.new(0, 2.5, 0)) * FLAT,
+		Size = Vector3.new(6, 7, 7),
+		CFrame = CFrame.new(center + Vector3.new(0, 3, 0)) * FLAT,
 		Color = rgb(236, 236, 240),
 		Material = Enum.Material.Marble,
 	})
 	-- Water pouring from the front of the pedestal
 	part(model, {
 		Name = "FountainWater",
-		Size = Vector3.new(2.4, 3.2, 0.6),
-		Position = center + Vector3.new(0, 3.2, 2.8),
+		Size = Vector3.new(3, 4.4, 0.6),
+		Position = center + Vector3.new(0, 3.8, 3.8),
 		Color = rgb(160, 220, 255),
 		Material = Enum.Material.Glass,
 		Transparency = 0.25,
@@ -288,7 +290,14 @@ local function buildStatue(model: Instance, center: Vector3)
 			p.Material = Enum.Material.Marble
 		end
 	end
-	PetModel.place(built, CFrame.new(center + Vector3.new(0, 5 + built.height / 2, 0)) * CFrame.Angles(0, math.rad(180), 0))
+	-- Stand it on the pedestal, then grow it so it reads from across the plaza
+	local base = center + Vector3.new(0, 6, 0)
+	PetModel.place(built, CFrame.new(base + Vector3.new(0, built.height / 2, 0)) * CFrame.Angles(0, math.rad(180), 0))
+	local grow = 1.6
+	for _, p in built.parts do
+		p.Size *= grow
+		p.CFrame = CFrame.new(base + (p.CFrame.Position - base) * grow) * p.CFrame.Rotation
+	end
 	built.model.Name = "Statue"
 	built.model.Parent = model
 end
@@ -474,11 +483,19 @@ local function buildBuilding(model: Instance, center: Vector3, building: Buildin
 	local board = part(house, { Name = "Sign", Size = Vector3.new(13, 2.8, 0.6), CFrame = frame * CFrame.new(0, 9.4, -6.4), Color = rgb(110, 70, 44), Material = Enum.Material.Wood, CanCollide = false })
 	paint(board, Enum.NormalId.Front, string.upper(building.name))
 	building.extra(house, frame)
+	-- Everything above is drawn at a base size; grow it around the building's center
+	for _, p in house:GetDescendants() do
+		if p:IsA("BasePart") then
+			local rel = frame:ToObjectSpace(p.CFrame)
+			p.Size *= BUILDING_SCALE
+			p.CFrame = frame * CFrame.new(rel.Position * BUILDING_SCALE) * (rel - rel.Position)
+		end
+	end
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Open"
 	prompt.ObjectText = building.name
-	prompt.MaxActivationDistance = 16
+	prompt.MaxActivationDistance = 20
 	prompt.RequiresLineOfSight = false
 	prompt:SetAttribute("OpenUI", building.ui)
 	prompt.Parent = body
@@ -502,13 +519,13 @@ local function arch(model: Instance, at: Vector3, facing: Vector3, text: string,
 end
 
 local function paths(model: Instance, center: Vector3)
-	local half = MapLayout.PLATFORM / 2
+	local half = MapLayout.HUB_SIZE / 2
 	local length = half - PLAZA_RADIUS + 2
 	local mid = PLAZA_RADIUS + length / 2 - 2
 	-- North to the arch, east to the Trading Plaza, south to the pond
-	part(model, { Name = "Path", Size = Vector3.new(14, 0.3, length), Position = center + Vector3.new(0, 0.1, -mid), Color = STONE, Material = Enum.Material.Pavement, CanCollide = false })
-	part(model, { Name = "Path", Size = Vector3.new(length, 0.3, 14), Position = center + Vector3.new(mid, 0.1, 0), Color = STONE, Material = Enum.Material.Pavement, CanCollide = false })
-	part(model, { Name = "Path", Size = Vector3.new(10, 0.3, 6), Position = center + Vector3.new(0, 0.1, PLAZA_RADIUS + 1), Color = STONE, Material = Enum.Material.Pavement, CanCollide = false })
+	part(model, { Name = "Path", Size = Vector3.new(18, 0.3, length), Position = center + Vector3.new(0, 0.1, -mid), Color = STONE, Material = Enum.Material.Pavement, CanCollide = false })
+	part(model, { Name = "Path", Size = Vector3.new(length, 0.3, 18), Position = center + Vector3.new(mid, 0.1, 0), Color = STONE, Material = Enum.Material.Pavement, CanCollide = false })
+	part(model, { Name = "Path", Size = Vector3.new(14, 0.3, 10), Position = center + Vector3.new(0, 0.1, PLAZA_RADIUS + 3), Color = STONE, Material = Enum.Material.Pavement, CanCollide = false })
 	arch(model, center + Vector3.new(0, 0, -half + 3), Vector3.new(0, 0, 1), "1 · SPAWN MEADOW", rgb(110, 220, 255))
 	arch(model, center + Vector3.new(half - 3, 0, 0), Vector3.new(-1, 0, 0), "TRADING PLAZA", rgb(255, 210, 110))
 end
@@ -524,7 +541,7 @@ local function buildPond(model: Instance, center: Vector3)
 	disc(pond, "Rim", at, radius + 2, 0.25, rgb(150, 146, 140), Enum.Material.Slate)
 	disc(pond, "Water", at, radius, 0.35, WATER, Enum.Material.Glass).CanCollide = false
 	-- Stream from the pond over the cliff, and the waterfall below it
-	local edge = MapLayout.PLATFORM / 2
+	local edge = MapLayout.HUB_SIZE / 2
 	local streamStart = FishingConfig.POND_OFFSET.Z + radius - 1
 	part(pond, { Name = "Water", Size = Vector3.new(5, 0.3, edge - streamStart + 0.5), Position = center + Vector3.new(FishingConfig.POND_OFFSET.X, 0.2, (streamStart + edge) / 2), Color = WATER, Material = Enum.Material.Glass, CanCollide = false })
 	part(pond, { Name = "Waterfall", Size = Vector3.new(5, 44, 0.8), Position = center + Vector3.new(FishingConfig.POND_OFFSET.X, -22, edge + 0.6), Color = rgb(150, 215, 255), Material = Enum.Material.Glass, Transparency = 0.2, CanCollide = false })
@@ -549,10 +566,18 @@ end
 -- Trees on the rim, leaving the paths, arches, ad boards and leaderboards clear
 
 local function buildTrees(model: Instance, center: Vector3)
-	local half = MapLayout.PLATFORM / 2
+	local half = MapLayout.HUB_SIZE / 2
 	local rng = Random.new(4242)
+	-- Small groves on the lawns between buildings (angles from north, like the buildings)
+	for _, grove in { { angle = -50, radius = 66 }, { angle = -90, radius = 64 }, { angle = -148, radius = 64 } } do
+		local a = math.rad(grove.angle)
+		local at = center + Vector3.new(math.sin(a) * grove.radius, 0, -math.cos(a) * grove.radius)
+		roundTree(model, at, 1.3, rgb(84, 168, 80))
+		roundTree(model, at + Vector3.new(6, 0, 4), 0.9, rgb(104, 182, 84))
+		pineTree(model, at + Vector3.new(-5, 0, 5), 1.1)
+	end
 	local spots: { Vector3 } = {}
-	local step = 11
+	local step = 12
 	for t = -half + 6, half - 6, step do
 		table.insert(spots, Vector3.new(t, 0, -half + 6))
 		table.insert(spots, Vector3.new(t, 0, half - 6))
@@ -560,9 +585,9 @@ local function buildTrees(model: Instance, center: Vector3)
 		table.insert(spots, Vector3.new(half - 6, 0, t))
 	end
 	for i, spot in spots do
-		local nearNorth = spot.Z < 0 and math.abs(spot.X) < 20
-		local nearEast = spot.X > 0 and math.abs(spot.Z) < 20
-		local nearSouth = spot.Z > half - 14 -- leaderboards and the pond
+		local nearNorth = spot.Z < 0 and math.abs(spot.X) < 22
+		local nearEast = spot.X > 0 and math.abs(spot.Z) < 22
+		local nearSouth = spot.Z > half - 18 -- leaderboards and the pond
 		local nearAdWest = spot.X < -half + 14 and math.abs(spot.Z) < 12
 		local nearAdEast = spot.X > half - 14 and math.abs(spot.Z + 40) < 12
 		if nearNorth or nearEast or nearSouth or nearAdWest or nearAdEast then

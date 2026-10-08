@@ -106,7 +106,7 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 
 	local ground = part({
 		Name = "Ground",
-		Size = Vector3.new(MapLayout.PLATFORM, 4, MapLayout.PLATFORM),
+		Size = Vector3.new(MapLayout.size(zone.id), 4, MapLayout.size(zone.id)),
 		Position = center + Vector3.new(0, -2, 0),
 		Color = zone.color,
 		Material = MapTheme.get(zone.id).ground,
@@ -307,10 +307,12 @@ end
 
 local function buildBridge(a: number, b: number, folder: Folder)
 	local ca, cb = MapLayout.center(a), MapLayout.center(b)
-	local mid = (ca + cb) / 2
+	-- Middle of the gap between the two platforms (they can differ in size)
+	local dir = (cb - ca).Unit
+	local mid = ((ca + dir * MapLayout.size(a) / 2) + (cb - dir * MapLayout.size(b) / 2)) / 2
 	local delta = cb - ca
 	local isX = math.abs(delta.X) > math.abs(delta.Z)
-	local length = (if isX then math.abs(delta.X) else math.abs(delta.Z)) - MapLayout.PLATFORM
+	local length = (if isX then math.abs(delta.X) else math.abs(delta.Z)) - (MapLayout.size(a) + MapLayout.size(b)) / 2
 	local bridge = part({
 		Name = ("Bridge_%d_%d"):format(a, b),
 		Size = if isX
@@ -410,7 +412,7 @@ end
 
 -- Professor Cubo: the Journey's NPC near the spawn. Talking to him opens the Quests window.
 local function buildProfessor(folder: Folder)
-	local center = MapLayout.center(0) + Vector3.new(20, 0, 32)
+	local center = MapLayout.center(0) + Vector3.new(30, 0, 58)
 	local built = PetModel.build({ s = "Cubby", v = "Normal", z = "Big" })
 	local facing = CFrame.lookAt(center + Vector3.new(0, built.height / 2, 0), center + Vector3.new(-16, built.height / 2, -20))
 	PetModel.place(built, facing)
@@ -452,7 +454,7 @@ end
 local PLAZA_SIZE = 90
 
 function WorldBuilder.plazaCenter(): Vector3
-	return MapLayout.center(0) + WorldBuilder.PLAZA_SIDE * MapLayout.CELL
+	return MapLayout.center(0) + WorldBuilder.PLAZA_SIDE * (MapLayout.HUB_SIZE / 2 + 40 + PLAZA_SIZE / 2)
 end
 
 local function buildPlaza(folder: Folder)
@@ -471,7 +473,7 @@ local function buildPlaza(folder: Folder)
 	ground.Parent = model
 
 	-- Bridge from the Hub's east edge to the plaza's west edge
-	local fromX = hub.X + MapLayout.PLATFORM / 2
+	local fromX = hub.X + MapLayout.HUB_SIZE / 2
 	local toX = center.X - PLAZA_SIZE / 2
 	local bridge = part({
 		Name = "PlazaBridge",

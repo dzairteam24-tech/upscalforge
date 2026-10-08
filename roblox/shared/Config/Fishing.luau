@@ -53,8 +53,8 @@ for _, f in fish do
 end
 
 return {
-	POND_OFFSET = Vector3.new(0, 0, 46), -- from the Hub center (south, between the leaderboards; see HubBuilder)
-	POND_RADIUS = 10,
+	POND_OFFSET = Vector3.new(0, 0, 70), -- from the Hub center (south, between the leaderboards; see HubBuilder)
+	POND_RADIUS = 13,
 	REACH = 32, -- you must stand this close to the pond's middle to fish
 	BITE_MIN = 2, -- seconds until a bite
 	BITE_MAX = 6,

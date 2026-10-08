@@ -6,11 +6,22 @@ local World1 = require(script.Parent.Parent.Config.World1)
 local MapLayout = {
 	CELL = 170,
 	PLATFORM = 130,
+	HUB_SIZE = 200, -- the Hub is bigger than a zone: it's where everyone meets
+	HUB_BRIDGE = 40, -- length of the bridge from the Hub to Spawn Meadow
 	BRIDGE_WIDTH = 24,
 	SOURCE_SPACING = 14, -- minimum distance between coin sources (the vault is 12 studs wide)
 }
 
+-- Width of a zone's square platform
+function MapLayout.size(zoneId: number): number
+	return if zoneId == 0 then MapLayout.HUB_SIZE else MapLayout.PLATFORM
+end
+
 function MapLayout.center(zoneId: number): Vector3
+	if zoneId == 0 then
+		-- South of Spawn Meadow (zone 1, at the origin), far enough for its bigger platform
+		return Vector3.new(0, 0, MapLayout.PLATFORM / 2 + MapLayout.HUB_BRIDGE + MapLayout.HUB_SIZE / 2)
+	end
 	local zone = World1.zonesById[zoneId]
 	return Vector3.new(zone.grid.X * MapLayout.CELL, 0, -zone.grid.Y * MapLayout.CELL)
 end
@@ -21,8 +32,8 @@ end
 
 -- Zone id under a position, or nil when on a bridge / outside the map.
 function MapLayout.zoneAt(position: Vector3): number?
-	local half = MapLayout.PLATFORM / 2 + 1
 	for _, zone in World1.zones do
+		local half = MapLayout.size(zone.id) / 2 + 1
 		local c = MapLayout.center(zone.id)
 		if math.abs(position.X - c.X) <= half and math.abs(position.Z - c.Z) <= half then
 			return zone.id
