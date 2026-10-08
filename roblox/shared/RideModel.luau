@@ -189,7 +189,9 @@ local function quiet(p: BasePart)
 end
 
 -- The pony: the creature's head on the Blender pony body. Returns the back's middle, and the saddle's scale.
-local function ponyShape(built: PetModel.Built, pony: { Piece }, offsets: { CFrame }, pivots: { [number]: Vector3 }): (Vector3, number)
+type Head = { center: Vector3, width: number, bottom: number, depth: number }
+
+local function ponyShape(built: PetModel.Built, pony: { Piece }, offsets: { CFrame }, pivots: { [number]: Vector3 }): (Vector3, number, Head)
 	local k = Cosmetics.RIDE_PONY_SCALE
 	local feet = -Cosmetics.RIDE_CREATURE_HEIGHT / 2
 
@@ -199,6 +201,7 @@ local function ponyShape(built: PetModel.Built, pony: { Piece }, offsets: { CFra
 	local bodyOffset = built.offsets[bodyIndex].Position
 	local s = PONY_HEAD.width * k / math.max(body.Size.X, 0.1)
 	local headCenter = Vector3.new(0, feet + PONY_HEAD.bottom * k + body.Size.Y * s / 2, PONY_HEAD.z * k)
+	local head: Head = { center = headCenter, width = PONY_HEAD.width * k, bottom = feet + PONY_HEAD.bottom * k, depth = body.Size.Z * s }
 	local parts: { BasePart } = {}
 	local anims: { [number]: string } = {}
 	for i, p in built.parts do
@@ -243,7 +246,7 @@ local function ponyShape(built: PetModel.Built, pony: { Piece }, offsets: { CFra
 	built.parts = parts
 	built.anims = anims
 	built.pivots = {}
-	return Vector3.new(0, feet + PONY_BACK * k, PONY_SADDLE_Z * k), k
+	return Vector3.new(0, feet + PONY_BACK * k, PONY_SADDLE_Z * k), k, head
 end
 
 -- Without the pony model: the creature itself, narrower and longer, on long legs. Returns the back's middle
@@ -300,6 +303,58 @@ local function stretchedShape(built: PetModel.Built, offsets: { CFrame }, pivots
 	return Vector3.new(0, backY, body.Size.Z * Cosmetics.RIDE_SEAT_BACK), body.Size.X / SADDLE_BODY
 end
 
+-- Where the rider's hands are, from the hips (studs, front -Z): RideClient's pose holds them here, on the
+-- saddle's handle
+local HANDS = Vector3.new(0.33, 0.38, -0.9)
+local LEATHER = Color3.fromRGB(110, 58, 30)
+local GOLD = Color3.fromRGB(255, 192, 52)
+
+-- A strap from a to b: a thin block along the line between them
+local function strap(a: Vector3, b: Vector3, width: number, thick: number): (BasePart, CFrame)
+	local p = Instance.new("Part")
+	p.Name = "Bridle"
+	p.Size = Vector3.new(width, thick, (b - a).Magnitude + thick)
+	p.Color = LEATHER
+	p.Material = Enum.Material.SmoothPlastic
+	return p, CFrame.lookAt((a + b) / 2, b)
+end
+
+-- The bridle and reins: straps down the sides of the creature's head and over its top behind the ears (the
+-- face stays clear), a gold ring on each cheek, and a rein from each ring to the rider's hand on that side
+local function addBridle(head: Head, seat: Vector3, add: (BasePart, CFrame) -> ())
+	local w = head.width
+	local top = head.bottom + w * 0.95 -- the top of the cube (the ears stand above it)
+	local crownZ = head.center.Z + head.depth * 0.3
+	local ringZ = head.center.Z - head.depth * 0.05
+	local ringY = head.bottom + w * 0.3
+	local crown, crownAt = strap(Vector3.new(-w / 2 - 0.05, top + 0.04, crownZ), Vector3.new(w / 2 + 0.05, top + 0.04, crownZ), 0.3, 0.1)
+	add(crown, crownAt)
+	for _, side in { -1, 1 } do
+		local x = side * (w / 2 + 0.05)
+		local ring = Vector3.new(side * (w / 2 + 0.09), ringY, ringZ)
+		-- (flat against the side of the head: thin across it)
+		local from, to = Vector3.new(x, top + 0.04, crownZ), Vector3.new(x, ringY, ringZ)
+		local along = (to - from).Unit
+		local cheek = strap(from, to, 0.1, 0.3)
+		add(cheek, CFrame.fromMatrix((from + to) / 2, Vector3.xAxis, along:Cross(Vector3.xAxis), along))
+		local coin = Instance.new("Part")
+		coin.Name = "BridleRing"
+		coin.Shape = Enum.PartType.Cylinder
+		coin.Size = Vector3.new(0.1, 0.36, 0.36)
+		coin.Color = GOLD
+		coin.Material = Enum.Material.SmoothPlastic
+		coin.Reflectance = 0.15
+		add(coin, CFrame.new(ring))
+		-- The rein sags a little between the ring and the hand
+		local hand = seat + Vector3.new(side * HANDS.X, HANDS.Y, HANDS.Z)
+		local mid = (ring + hand) / 2 - Vector3.new(0, 0.3, 0)
+		local a, aAt = strap(ring, mid, 0.14, 0.08)
+		add(a, aAt)
+		local b, bAt = strap(mid, hand, 0.14, 0.08)
+		add(b, bAt)
+	end
+end
+
 function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 	local built = PetModel.build(pet)
 	local offsets: { CFrame } = {}
@@ -307,9 +362,10 @@ function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 	local pony = meshPieces("Pony", PONY)
 	local turn = if pony then importTurn(pony) else CFrame.identity
 	local back, fit
+	local head: Head? = nil
 	if pony then
 		place(pony, PONY, turn)
-		back, fit = ponyShape(built, pony, offsets, pivots)
+		back, fit, head = ponyShape(built, pony, offsets, pivots)
 	else
 		back, fit = stretchedShape(built, offsets, pivots)
 	end
@@ -368,6 +424,10 @@ function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 			add(p, CFrame.new(back) * piece.cframe)
 		end
 		seat = back + Vector3.new(0, RideSaddle.SEAT_HEIGHT, 0)
+	end
+
+	if head then
+		addBridle(head, seat, add)
 	end
 
 	return {
