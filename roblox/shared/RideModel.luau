@@ -24,9 +24,9 @@ export type Ride = {
 
 -- The Blender models as exported (front +Z, in the files' units). One part of each, with its box center and
 -- width in those units, is how the game finds the scale and origin of an import.
-local SADDLE = { ref = "cushion", center = Vector3.new(0, 0.209, -0.02), width = 1.149 }
+local SADDLE = { ref = "cushion", center = Vector3.new(0, 0.148, -0.02), width = 1.149 }
 local SADDLE_BODY = 1.6 -- the saddle is made for a back this wide (the pony's)
-local SADDLE_SEAT_TOP = 0.195 -- the rider's hips: a little into the cushion (its top is 0.27)
+local SADDLE_SEAT_TOP = 0.075 -- the rider's hips: down in the cushion (its top is 0.18)
 local SADDLE_COLORS: { [string]: Color3 } = {
 	cushion = Color3.fromRGB(232, 88, 40),
 	cream = Color3.fromRGB(244, 230, 208),
@@ -36,11 +36,11 @@ local SADDLE_COLORS: { [string]: Color3 } = {
 	paw = Color3.fromRGB(245, 118, 38),
 }
 -- The pony: 1.6 wide (the saddle's back), its feet at 0, the top of its back at PONY_BACK
-local PONY = { ref = "body", center = Vector3.new(0, 1.832, -0.232), width = 1.593 }
-local PONY_BACK = 2.5
-local PONY_BELLY = 0.8 -- where the legs meet the body: the point they swing around
+local PONY = { ref = "body", center = Vector3.new(0, 1.997, -0.422), width = 1.593 }
+local PONY_BACK = 2.35
+local PONY_BELLY = 0.65 -- where the legs meet the body: the point they swing around
 local PONY_SADDLE_Z = 0.4 -- the saddle's middle, behind the body's middle
-local PONY_HEAD = { width = 1.6, bottom = 1.95, z = -1.4 } -- the creature as the head
+local PONY_HEAD = { width = 1.6, bottom = 1.0, z = -1.4 } -- the creature as the head
 local PONY_CREAM = Color3.fromRGB(252, 232, 200)
 local PONY_HOOF = Color3.fromRGB(96, 54, 30)
 local FLIP = CFrame.Angles(0, math.pi, 0) -- the files' front (+Z) to the game's front (-Z)

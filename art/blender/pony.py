@@ -1,16 +1,17 @@
-"""The Cubeling Ride's pony body (art: the Cubeling pony model sheet from ChatGPT): a chunky rounded body
-with a cream belly patch, four rounded legs with brown hooves, a curled fluffy tail with a cream tip and a
-mane of three chunks behind the head. The head is the rider's own creature (the game puts it on the front
-of the body), so every species gets a pony body in its color.
+"""The Cubeling Ride's pony body (art: the Cubeling riding model sheet): a chunky rounded cube body with a
+cream belly patch, four short thick legs with brown hooves and a big curled tail with a cream tip. The head
+is the rider's own creature, low on the front of the body (the game puts it there), so every species gets a
+pony body in its color and the rider shows above the head.
 
-Units: the body is 2 wide (x = +-1) like the saddle's creature, the ground is z = 0, the top of the back
-is at z = BACK. Front is -Y, like the creatures.
+Units: the body is 1.6 wide (x = +-0.8) and 2.2 long, the ground is z = 0, the top of the back is at
+z = BACK. Front is -Y, like the creatures.
 
-    python art/blender/pony.py              renders: art/renders/Pony.png (front, side, back, 3/4, top),
-                                            with the Kitty's head (art/models/Cubelings_Roblox.glb) and the saddle
-    python art/blender/pony.py roblox       also writes art/models/Pony.glb: Pony__body, Pony__cream,
-                                            Pony__mane, and per leg Pony__leg__legFL... and
-                                            Pony__hoof__legFL..., for Studio's Import 3D
+    python art/blender/pony.py              renders: art/renders/Pony.png (3/4, front, side, back, top),
+                                            with the Kitty's head (art/models/Cubelings_Roblox.glb) and the
+                                            saddle
+    python art/blender/pony.py roblox       also writes art/models/Pony.glb: Pony__body, Pony__cream, and
+                                            per leg Pony__leg__legFL... and Pony__hoof__legFL..., for
+                                            Studio's Import 3D
 
 Needs Python with bpy (Blender 4.2+) and pillow.
 """
@@ -35,8 +36,8 @@ COLORS = {
 
 HALF = 0.8  # the body's side, from its middle
 LENGTH = 2.2  # the body, front to back
-BACK = 2.5  # top of the back above the ground
-BELLY = 0.8  # bottom of the body above the ground
+BACK = 2.35  # top of the back above the ground
+BELLY = 0.65  # bottom of the body above the ground
 ROUND = 0.55  # the body's rounded edges
 LEG_X = 0.45
 LEG_Y = 0.62
@@ -44,7 +45,7 @@ HOOF = 0.26
 SADDLE_Y = 0.4  # the saddle's middle, behind the body's middle (RideModel uses the same)
 HEAD_WIDTH = 1.6  # the creature's head, for the render; the game uses the same numbers (RideModel)
 HEAD_Y = -1.4
-HEAD_BOTTOM = 1.95
+HEAD_BOTTOM = 1.0
 
 materials = {}
 
@@ -140,7 +141,7 @@ def build():
     # Tail: a small fluffy curl going up from the back of the body
     tail = []
     back = LENGTH / 2
-    curl = [(back + 0.02, 1.95, 0.2), (back + 0.2, 2.18, 0.22), (back + 0.25, 2.47, 0.21), (back + 0.15, 2.68, 0.18)]
+    curl = [(back + 0.05, 1.7, 0.3), (back + 0.36, 2.05, 0.36), (back + 0.46, 2.55, 0.38), (back + 0.3, 3.0, 0.34)]
     for i, (y, z, r) in enumerate(curl):
         tail.append(ball(f"Tail{i}", r, (0.0, y, z), (0.85, 1, 1)))
     parts.append(finish(join([body] + tail), "body"))
@@ -148,27 +149,16 @@ def build():
     # Cream: the belly patch on each side and under the body, and the tip of the tail
     patch = box("Belly", (HALF * 2 + 0.05, LENGTH * 0.55, height * 0.4), (0, -0.2, BELLY + height * 0.2))
     soft(patch, 0.18, 3, 1)
-    tip = ball("TailTip", 0.15, (0.0, back + 0.04, 2.8), (0.8, 1, 0.9))
+    tip = ball("TailTip", 0.3, (0.0, back + 0.08, 3.22), (0.8, 1, 0.9))
     parts.append(finish(join([patch, tip]), "cream"))
-
-    # Mane: three small chunks down the back of the head (a creature's head is about as deep as wide)
-    mane = []
-    neck = HEAD_Y + HEAD_WIDTH / 2
-    for i, (y, z, sz) in enumerate(((neck - 0.02, 3.3, 0.3), (neck + 0.08, 2.95, 0.28), (neck + 0.14, 2.62, 0.24))):
-        chunk = box(f"Mane{i}", (0.34, sz * 1.4, sz * 1.5), (0, y, z))
-        chunk.rotation_euler = (math.radians(-25), 0, 0)
-        bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-        soft(chunk, 0.12, 3, 1)
-        mane.append(chunk)
-    parts.append(finish(join(mane), "mane"))
 
     # Legs: short rounded posts into the body, each with a hoof
     for name, sx, sy in (("legFL", -1, -1), ("legFR", 1, -1), ("legBL", -1, 1), ("legBR", 1, 1)):
         x, y = sx * LEG_X, sy * LEG_Y
-        leg = post(f"Leg_{name}", HOOF - 0.05, BELLY + 0.35, 0.36, 0.32, x, y)
+        leg = post(f"Leg_{name}", HOOF - 0.05, BELLY + 0.35, 0.4, 0.36, x, y)
         soft(leg, 0.07, 2, 1)
         parts.append(finish(leg, "body", f"leg__{name}"))
-        hoof = post(f"Hoof_{name}", 0.0, HOOF, 0.4, 0.38, x, y)
+        hoof = post(f"Hoof_{name}", 0.0, HOOF, 0.44, 0.42, x, y)
         soft(hoof, 0.08, 2, 1)
         parts.append(finish(hoof, "hoof", f"hoof__{name}"))
     return parts
@@ -267,7 +257,7 @@ def render_views(camera):
 
 
 def export_roblox(parts):
-    """One mesh per color role (Pony__body, Pony__cream, Pony__mane) and per leg and hoof."""
+    """One mesh per color role (Pony__body, Pony__cream) and per leg and hoof."""
     by_role = {}
     for obj in parts:
         by_role.setdefault(obj["role"], []).append(obj)

@@ -21,12 +21,11 @@ local RideClient = {}
 -- Legs walk in diagonal pairs, like the followers
 local LEG_PHASE = { legFL = 0, legBR = 0, legFR = math.pi, legBL = math.pi }
 
--- The riding pose, in degrees (R15): the hips a little into the cushion, thighs out and down over the
--- saddle's flaps, knees bent so the lower legs hang straight down the creature's sides with the feet in the
--- stirrups; upper arms down along the body and elbows bent so the hands hold the handle. Roll is outward for
--- the legs, inward for the arms. (Fitted against the pony and saddle meshes offline: an R15 leg is too short
--- to go around the body without pressing into the flaps a little.)
-local POSE = { hipPitch = 10, hipRoll = 65, kneePitch = -30, kneeRoll = -50, armPitch = 0, armRoll = 31, elbowPitch = 64 }
+-- The riding pose, in degrees (R15), like the riding model sheet: the hips down in the cushion, thighs forward
+-- and out over the front of the saddle, knees bent so the lower legs hang down the creature's sides with the
+-- feet in the stirrups; upper arms down along the body and elbows bent so both hands hold the handle. Roll
+-- is outward for the legs, inward for the arms. (Fitted against the pony and saddle meshes offline.)
+local POSE = { hipPitch = 80, hipRoll = 50, kneePitch = -70, kneeRoll = 10, armPitch = 0, armRoll = 31, elbowPitch = 64 }
 -- Jumping: the creature tucks its legs (front forward, back backward) and tilts with its climb or fall
 local JUMP_TUCK = 40
 local JUMP_TILT = 12

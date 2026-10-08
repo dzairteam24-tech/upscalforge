@@ -39,14 +39,14 @@ COLORS = {
 BODY_HALF = 0.8  # the body's side, from its middle
 BODY_HEIGHT = 1.7  # the body, top of the back to the belly
 BODY_RADIUS = 0.55  # the body's rounded edges
-LENGTH = 0.8  # the side panels, front to back (about a third of the body's 2.2)
-DROP = 0.6  # how far the side panels go down the sides (the upper third)
+LENGTH = 0.95  # the side panels, front to back (about 45% of the body's 2.2)
+DROP = 0.95  # how far the side panels go down the sides (more than half)
 SEAT_W = 1.15  # the seat: a little wider than the rider's hips (1 unit)
 SEAT_L = 0.6  # the seat, front to back
 DROOP = 0.07  # how much the seat and its frame curve down at the sides, following the back
 FIT = 0.03  # how far the leather stands off the body: it hugs it
-STIRRUP = (0.0, -0.69)  # where the rider's feet rest (y, z), from the rider's pose in the game
-HANDLE = (-0.43, 0.51)  # where the rider's hands hold the handle (y, z), from the same pose
+STIRRUP = (-0.36, -0.58)  # where the rider's feet rest (y, z), from the rider's pose in the game
+HANDLE = (-0.45, 0.39)  # where the rider's hands hold the handle (y, z), from the same pose
 
 materials = {}
 
@@ -275,7 +275,7 @@ def build():
 
     # Cream pad peeking out around the side panels, and the panels: one piece of leather over the back and
     # down each side, hugging the body's rounded top, with rounded bottom corners
-    pad = strap_sweep("Pad", arch_path(BODY_HALF + 0.005, DROP + 0.06, BODY_RADIUS + 0.005), LENGTH + 0.1, 0.04, 0.26)
+    pad = strap_sweep("Pad", arch_path(BODY_HALF + 0.005, DROP + 0.16, BODY_RADIUS + 0.005), LENGTH + 0.1, 0.045, 0.26)
     parts.append(tag(soft(pad, 0.018, 2, 1), "cream", "pad"))
     panels = strap_sweep("Panels", arch_path(BODY_HALF + FIT + 0.01, DROP, BODY_RADIUS + FIT), LENGTH, 0.06, 0.24)
     parts.append(tag(soft(panels, 0.025, 2, 1), "leather", "panels"))
@@ -283,32 +283,32 @@ def build():
 
     # Low leather base sunk into the panels, the soft seat on it (dipped in the middle) and its piping
     parts.append(tag(drape(rounded_box("Base", (SEAT_W + 0.08, SEAT_L + 0.16, 0.08), (0, 0.0, top + 0.02), 0.035)), "leather", "frame"))
-    seat_z = top + 0.13
-    seat = box("Seat", (SEAT_W, SEAT_L, 0.18), (0, 0.02, seat_z))
+    seat_z = top + 0.07
+    seat = box("Seat", (SEAT_W, SEAT_L, 0.14), (0, 0.02, seat_z))
     soft(seat, 0.08, 4, 2)
     for v in seat.data.vertices:
         if v.co.z > seat_z:
             t = (v.co.y - 0.02) / (SEAT_L / 2)
             v.co.z -= 0.05 * max(1 - t * t, 0) * max(1 - (v.co.x / (SEAT_W / 2)) ** 2, 0)
     parts.append(tag(drape(seat), "cushion", "seat"))
-    ring = [(x, y, seat_z - 0.08 - DROOP * (x / (SEAT_W / 2)) ** 2) for x, y in rounded_rect(0, 0.02, SEAT_W / 2 + 0.015, SEAT_L / 2 + 0.015, 0.16)]
+    ring = [(x, y, seat_z - 0.06 - DROOP * (x / (SEAT_W / 2)) ** 2) for x, y in rounded_rect(0, 0.02, SEAT_W / 2 + 0.015, SEAT_L / 2 + 0.015, 0.16)]
     parts.append(tag(tube("Piping", ring, 0.042, closed=True), "cream", "seat"))
 
     # Raised front pommel with a cream rim and a small round handle; raised rear cantle with a rim
     py = front + 0.04
-    parts.append(tag(drape(rounded_box("Pommel", (0.7, 0.17, 0.24), (0, py, top + 0.13), 0.075)), "leather", "frame"))
-    parts.append(tag(tube("PommelRim", [(x / 8 * 0.6 - 0.3, py, top + 0.255 - DROOP * ((x / 8 * 0.6 - 0.3) / 0.35) ** 2) for x in range(9)], 0.038), "cream", "frame"))
+    parts.append(tag(drape(rounded_box("Pommel", (0.7, 0.17, 0.2), (0, py, top + 0.1), 0.07)), "leather", "frame"))
+    parts.append(tag(tube("PommelRim", [(x / 8 * 0.6 - 0.3, py, top + 0.205 - DROOP * ((x / 8 * 0.6 - 0.3) / 0.35) ** 2) for x in range(9)], 0.038), "cream", "frame"))
     hy, hz = HANDLE
-    handle = [(-0.15, py - 0.02, top + 0.22)] + [
+    handle = [(-0.15, py - 0.02, top + 0.17)] + [
         (0.15 * math.cos(math.pi - math.pi * i / 10), hy, hz - 0.1 + 0.1 * math.sin(math.pi - math.pi * i / 10))
         for i in range(11)
-    ] + [(0.15, py - 0.02, top + 0.22)]
-    parts.append(tag(tube("Handle", handle, 0.042), "dark", "frame"))
+    ] + [(0.15, py - 0.02, top + 0.17)]
+    parts.append(tag(tube("Handle", handle, 0.05), "dark", "frame"))
     cy = rear - 0.06
-    cantle = drape(rounded_box("Cantle", (0.98, 0.17, 0.32), (0, cy, top + 0.17), 0.08))
+    cantle = drape(rounded_box("Cantle", (0.98, 0.17, 0.3), (0, cy, top + 0.14), 0.08))
     cantle.rotation_euler = (math.radians(-14), 0, 0)
     parts.append(tag(cantle, "leather", "frame"))
-    rim = [(x, cy + 0.06 + 0.03 * (x / 0.47) ** 2, top + 0.34 - (0.04 + DROOP) * (x / 0.47) ** 2) for x in [i / 8 * 0.94 - 0.47 for i in range(9)]]
+    rim = [(x, cy + 0.06 + 0.03 * (x / 0.47) ** 2, top + 0.3 - (0.04 + DROOP) * (x / 0.47) ** 2) for x in [i / 8 * 0.94 - 0.47 for i in range(9)]]
     parts.append(tag(tube("CantleRim", rim, 0.045), "cream", "frame"))
 
     # Girth strap all the way around the body, under the panels
@@ -323,7 +323,7 @@ def build():
         parts.append(tag(tube("GirthBuckle", loop, 0.026, closed=True), "gold", "buckles", side))
 
         # Paw emblem on the panel, behind the stirrup leather: a gold coin with an orange paw
-        ey, ez = 0.2, -0.3
+        ey, ez = 0.15, -0.45
         coin = disc("Coin", 0.13, 0.04, (x + side * 0.005, ey, ez))
         parts.append(tag(soft(coin, 0.012, 2, 0), "gold", "emblem", side))
         px = x + side * 0.035
