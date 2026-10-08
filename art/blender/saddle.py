@@ -39,10 +39,10 @@ COLORS = {
 BODY_HALF = 0.8  # the body's side, from its middle
 BODY_HEIGHT = 1.7  # the body, top of the back to the belly
 BODY_RADIUS = 0.55  # the body's rounded edges
-LENGTH = 1.0  # the side panels, front to back (45% of the body's 2.2)
-DROP = 0.95  # how far the side panels go down the sides (more than half)
+LENGTH = 1.15  # the side panels, front to back (about half the body's 2.2)
+DROP = 1.05  # how far the side panels go down the sides (about 60%)
 SEAT_W = 1.0  # the seat: as wide as the rider's hips, about 60% of the body's width
-SEAT_L = 0.76  # the seat, front to back
+SEAT_L = 0.9  # the seat, front to back
 DROOP = 0.07  # how much the seat and its frame curve down at the sides, following the back
 FIT = 0.03  # how far the leather stands off the body: it hugs it
 STIRRUP = (-0.36, -0.58)  # where the rider's feet rest (y, z), from the rider's pose in the game
@@ -282,7 +282,12 @@ def build():
     top = FIT + 0.07  # the panels' top surface on the back
 
     # Low leather base sunk into the panels, the soft seat on it (dipped in the middle) and its piping
-    parts.append(tag(drape(rounded_box("Base", (SEAT_W + 0.08, SEAT_L + 0.16, 0.08), (0, 0.0, top + 0.02), 0.035)), "leather", "frame"))
+    parts.append(tag(drape(rounded_box("Base", (SEAT_W + 0.2, SEAT_L + 0.2, 0.08), (0, 0.0, top + 0.02), 0.04)), "dark", "frame"))
+    # Small straps holding the seat to the frame at its corners
+    for sx in (-1, 1):
+        for sy2 in (-1, 1):
+            tab = rounded_box("Tab", (0.1, 0.13, 0.12), (sx * (SEAT_W / 2 + 0.05), sy2 * (SEAT_L / 2 - 0.08), top + 0.06), 0.03, 0)
+            parts.append(tag(drape(tab), "leather", "frame"))
     seat_z = top + 0.07
     seat = box("Seat", (SEAT_W, SEAT_L, 0.14), (0, 0.02, seat_z))
     soft(seat, 0.08, 4, 2)
@@ -294,16 +299,14 @@ def build():
     ring = [(x, y, seat_z - 0.06 - DROOP * (x / (SEAT_W / 2)) ** 2) for x, y in rounded_rect(0, 0.02, SEAT_W / 2 + 0.015, SEAT_L / 2 + 0.015, 0.16)]
     parts.append(tag(tube("Piping", ring, 0.042, closed=True), "cream", "seat"))
 
-    # Raised front pommel with a cream rim and a small round handle; raised rear cantle with a rim
+    # Raised front pommel with a cream rim and a ring handle; raised rear cantle with a rim
     py = front + 0.04
     parts.append(tag(drape(rounded_box("Pommel", (0.7, 0.17, 0.2), (0, py, top + 0.1), 0.07)), "leather", "frame"))
     parts.append(tag(tube("PommelRim", [(x / 8 * 0.6 - 0.3, py, top + 0.205 - DROOP * ((x / 8 * 0.6 - 0.3) / 0.35) ** 2) for x in range(9)], 0.038), "cream", "frame"))
     hy, hz = HANDLE
-    handle = [(-0.15, py - 0.02, top + 0.17)] + [
-        (0.15 * math.cos(math.pi - math.pi * i / 10), hy, hz - 0.1 + 0.1 * math.sin(math.pi - math.pi * i / 10))
-        for i in range(11)
-    ] + [(0.15, py - 0.02, top + 0.17)]
-    parts.append(tag(tube("Handle", handle, 0.05), "dark", "frame"))
+    # Handle: a round ring standing on the pommel, held with both hands
+    ring = [(0.11 * math.cos(2 * math.pi * i / 20), py, hz + 0.11 * math.sin(2 * math.pi * i / 20)) for i in range(20)]
+    parts.append(tag(tube("Handle", ring, 0.045, closed=True), "dark", "frame"))
     cy = rear - 0.06
     cantle = drape(rounded_box("Cantle", (0.98, 0.17, 0.3), (0, cy, top + 0.14), 0.08))
     cantle.rotation_euler = (math.radians(-14), 0, 0)
@@ -320,17 +323,19 @@ def build():
         x = side * (BODY_HALF + FIT + 0.08)
         out = side * (BODY_HALF + FIT + 0.2)  # the stirrups hang out from the body, under the feet
         # Girth buckle just under the panel
-        loop = [(side * (BODY_HALF + 0.085), dy, -DROP - 0.1 + dz) for dy, dz in rounded_rect(0, 0, 0.11, 0.09, 0.03)]
-        parts.append(tag(tube("GirthBuckle", loop, 0.026, closed=True), "gold", "buckles", side))
+        loop = [(side * (BODY_HALF + 0.09), dy, -DROP - 0.14 + dz) for dy, dz in rounded_rect(0, 0, 0.16, 0.14, 0.04)]
+        parts.append(tag(tube("GirthBuckle", loop, 0.034, closed=True), "gold", "buckles", side))
+        tongue = [(side * (BODY_HALF + 0.1), 0.0, -DROP - 0.02), (side * (BODY_HALF + 0.1), 0.0, -DROP - 0.2)]
+        parts.append(tag(tube("GirthTongue", tongue, 0.022), "gold", "buckles", side))
 
         # Paw emblem on the panel, behind the stirrup leather: a gold coin with an orange paw
-        ey, ez = 0.15, -0.45
-        coin = disc("Coin", 0.13, 0.04, (x + side * 0.005, ey, ez))
+        ey, ez = 0.14, -0.36
+        coin = disc("Coin", 0.17, 0.045, (x + side * 0.005, ey, ez))
         parts.append(tag(soft(coin, 0.012, 2, 0), "gold", "emblem", side))
         px = x + side * 0.035
-        parts.append(tag(disc("Paw", 0.05, 0.02, (px, ey, ez - 0.035), verts=16), "paw", "emblem", side))
-        for dy, dz in ((-0.052, 0.018), (-0.019, 0.04), (0.019, 0.04), (0.052, 0.018)):
-            parts.append(tag(disc("Toe", 0.02, 0.02, (px, ey + dy, ez + dz), verts=12), "paw", "emblem", side))
+        parts.append(tag(disc("Paw", 0.065, 0.02, (px, ey, ez - 0.045), verts=16), "paw", "emblem", side))
+        for dy, dz in ((-0.068, 0.023), (-0.025, 0.052), (0.025, 0.052), (0.068, 0.023)):
+            parts.append(tag(disc("Toe", 0.026, 0.02, (px, ey + dy, ez + dz), verts=12), "paw", "emblem", side))
 
         # Stirrup leather from the top of the panel down to the stirrup, with a small buckle; the stirrup:
         # a rounded triangle with a tread, right where the rider's foot rests
@@ -344,14 +349,14 @@ def build():
         parts.append(tag(roll, "cream", "panels", side))
         loop = [(x + side * 0.03, sy + dy, -0.2 + dz) for dy, dz in rounded_rect(0, 0, 0.075, 0.065, 0.02)]
         parts.append(tag(tube("StirrupBuckle", loop, 0.02, closed=True), "gold", "buckles", side))
-        corners = [(0, sz + 0.14), (-0.13, sz - 0.08), (0.13, sz - 0.08)]
+        corners = [(0, sz + 0.2), (-0.17, sz - 0.08), (0.17, sz - 0.08)]
         stirrup = []
         for i, (cy2, cz) in enumerate(corners):
             ny, nz = corners[(i + 1) % 3]
             for k in range(6):
                 t = k / 6
                 stirrup.append((out, sy + cy2 + (ny - cy2) * t, cz + (nz - cz) * t))
-        parts.append(tag(soft(tube("Stirrup", stirrup, 0.035, closed=True), 0, 0, 1), "gold", "stirrups", side))
+        parts.append(tag(soft(tube("Stirrup", stirrup, 0.045, closed=True), 0, 0, 1), "gold", "stirrups", side))
         tread = box("Tread", (0.16, 0.28, 0.045), (out + side * 0.03, sy, sz - 0.08))
         parts.append(tag(soft(tread, 0.02, 2, 0), "dark", "stirrups", side))
     return parts
