@@ -21,8 +21,14 @@ local RideClient = {}
 -- Legs walk in diagonal pairs, like the followers
 local LEG_PHASE = { legFL = 0, legBR = 0, legFR = math.pi, legBL = math.pi }
 
--- The riding pose, in degrees (R15). Roll is outward for the legs, inward for the arms.
-local POSE = { hipPitch = 15, hipRoll = 55, kneePitch = -10, kneeRoll = -45, armPitch = 50, armRoll = 8 }
+-- The riding pose, in degrees (R15): thighs forward and out over the saddle, knees bent so the lower legs
+-- hang down the creature's sides, hands forward on the handle. Roll is outward for the legs, inward for
+-- the arms. (Checked against the real creature meshes in an offline render.)
+local POSE = { hipPitch = 55, hipRoll = 65, kneePitch = -70, kneeRoll = -18, armPitch = 55, armRoll = 10 }
+-- Jumping: the creature tucks its legs (front forward, back backward) and tilts with its climb or fall
+local JUMP_TUCK = 40
+local JUMP_TILT = 12
+local FRONT_LEGS = { legFL = true, legFR = true }
 -- How far below the rider's hips their HumanoidRootPart's bottom is (R15), or their legs' length (R6)
 local HIPS_ABOVE_ROOT_BOTTOM = { R15 = 0.6, R6 = 2 }
 
@@ -35,6 +41,7 @@ type Mount = {
 	mouthOpen: boolean,
 	drop: number, -- height of the character's root above the creature's feet
 	run: number, -- 0 standing .. 1 running, eased
+	air: number, -- 0 on the ground .. 1 in a jump, eased
 	posed: Model?, -- the character whose joints this mount is posing
 }
 
@@ -154,6 +161,7 @@ local function build(player: Player, value: string)
 		mouthOpen = false,
 		drop = Cosmetics.RIDE_CREATURE_HEIGHT + 2,
 		run = 0,
+		air = 0,
 		posed = nil,
 	}
 end
@@ -237,7 +245,11 @@ local function draw(dt: number)
 		local ahead = flat * mount.ride.seat.Z
 		local center = Vector3.new(root.Position.X + ahead.X, feetY + height / 2, root.Position.Z + ahead.Z)
 		mount.run += ((if moving and not airborne then 1 else 0) - mount.run) * math.min(1, dt * 6)
-		local frame = CFrame.lookAt(center, center + flat) * CFrame.Angles(math.rad(-4) * mount.run, 0, 0)
+		mount.air += ((if airborne then 1 else 0) - mount.air) * math.min(1, dt * 12)
+		-- A slight lean into the run on the ground; in a jump, nose up while climbing and down while falling
+		local climb = math.clamp(velocity.Y / 40, -1, 1)
+		local tilt = math.rad(-4) * mount.run * (1 - mount.air) + math.rad(JUMP_TILT) * climb * mount.air
+		local frame = CFrame.lookAt(center, center + flat) * CFrame.Angles(tilt, 0, 0)
 
 		if now >= mount.nextChirp then
 			mount.openUntil = now + 0.4 + math.random() * 0.4
@@ -251,8 +263,10 @@ local function draw(dt: number)
 			local swing: CFrame? = nil
 			if anim then
 				local leg = LEG_PHASE[anim]
-				if leg and mount.run > 0.05 then
-					swing = CFrame.Angles(math.sin(now * 14 + mount.phase + leg) * math.rad(32) * mount.run, 0, 0)
+				if leg and (mount.run > 0.05 or mount.air > 0.05) then
+					local walk = math.sin(now * 14 + mount.phase + leg) * math.rad(32) * mount.run * (1 - mount.air)
+					local tuck = math.rad(if FRONT_LEGS[anim] then JUMP_TUCK else -JUMP_TUCK) * mount.air
+					swing = CFrame.Angles(walk + tuck, 0, 0)
 				elseif string.sub(anim, 1, 4) == "wing" then
 					local side = if anim == "wingL" then 1 else -1
 					swing = CFrame.Angles(0, 0, side * (math.sin(now * (if moving then 16 else 8) + mount.phase) * math.rad(30) + math.rad(8)))
