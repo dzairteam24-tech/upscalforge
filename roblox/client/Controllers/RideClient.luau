@@ -21,10 +21,12 @@ local RideClient = {}
 -- Legs walk in diagonal pairs, like the followers
 local LEG_PHASE = { legFL = 0, legBR = 0, legFR = math.pi, legBL = math.pi }
 
--- The riding pose, in degrees (R15): thighs out wide over the saddle flaps, knees bent so the lower legs hang
--- down the creature's sides with the feet in the stirrups, hands reaching forward and in to the handle. Roll is
--- outward for the legs, inward for the arms. (Checked against the pony and saddle meshes in an offline render.)
-local POSE = { hipPitch = 65, hipRoll = 70, kneePitch = -80, kneeRoll = -10, armPitch = 32, armRoll = 22 }
+-- The riding pose, in degrees (R15): the hips a little into the cushion, thighs out and down over the
+-- saddle's flaps, knees bent so the lower legs hang straight down the creature's sides with the feet in the
+-- stirrups; upper arms down along the body and elbows bent so the hands hold the handle. Roll is outward for
+-- the legs, inward for the arms. (Fitted against the pony and saddle meshes offline: an R15 leg is too short
+-- to go around the body without pressing into the flaps a little.)
+local POSE = { hipPitch = 10, hipRoll = 65, kneePitch = -30, kneeRoll = -50, armPitch = 0, armRoll = 31, elbowPitch = 64 }
 -- Jumping: the creature tucks its legs (front forward, back backward) and tilts with its climb or fall
 local JUMP_TUCK = 40
 local JUMP_TILT = 12
@@ -70,11 +72,15 @@ local JOINTS = {
 	{ name = "RightKnee", side = 1, kind = "knee" },
 	{ name = "LeftShoulder", side = -1, kind = "arm" },
 	{ name = "RightShoulder", side = 1, kind = "arm" },
+	{ name = "LeftElbow", side = -1, kind = "elbow" },
+	{ name = "RightElbow", side = 1, kind = "elbow" },
 }
 
 local function jointTransform(kind: string, side: number): CFrame
 	if kind == "hip" then
 		return CFrame.Angles(math.rad(POSE.hipPitch), 0, math.rad(POSE.hipRoll) * side)
+	elseif kind == "elbow" then
+		return CFrame.Angles(math.rad(POSE.elbowPitch), 0, 0)
 	elseif kind == "knee" then
 		return CFrame.Angles(math.rad(POSE.kneePitch), 0, math.rad(POSE.kneeRoll) * side)
 	end

@@ -39,12 +39,14 @@ COLORS = {
 BODY_HALF = 0.8  # the body's side, from its middle
 BODY_HEIGHT = 1.7  # the body, top of the back to the belly
 BODY_RADIUS = 0.55  # the body's rounded edges
-LENGTH = 0.95  # the side panels, front to back (about 43% of the body's 2.2)
+LENGTH = 0.8  # the side panels, front to back (about a third of the body's 2.2)
 DROP = 0.6  # how far the side panels go down the sides (the upper third)
-SEAT_W = 0.95  # the seat (60% of the body's width)
-SEAT_L = 0.72  # the seat, front to back
+SEAT_W = 1.15  # the seat: a little wider than the rider's hips (1 unit)
+SEAT_L = 0.6  # the seat, front to back
+DROOP = 0.07  # how much the seat and its frame curve down at the sides, following the back
 FIT = 0.03  # how far the leather stands off the body: it hugs it
-STIRRUP = (-0.07, -0.42)  # where the rider's feet rest (y, z), from the rider's pose in the game
+STIRRUP = (0.0, -0.69)  # where the rider's feet rest (y, z), from the rider's pose in the game
+HANDLE = (-0.43, 0.51)  # where the rider's hands hold the handle (y, z), from the same pose
 
 materials = {}
 
@@ -259,6 +261,14 @@ def tag(obj, role, group, side=0):
     return obj
 
 
+def drape(obj, half=SEAT_W / 2 + 0.05):
+    """Curves a flat piece down at the sides by DROOP, so it follows the rounded back."""
+    for v in obj.data.vertices:
+        x = v.co.x + obj.location.x
+        v.co.z -= DROOP * min((x / half) ** 2, 1.6)
+    return obj
+
+
 def build():
     parts = []
     front, rear = -LENGTH / 2, LENGTH / 2
@@ -272,7 +282,7 @@ def build():
     top = FIT + 0.07  # the panels' top surface on the back
 
     # Low leather base sunk into the panels, the soft seat on it (dipped in the middle) and its piping
-    parts.append(tag(rounded_box("Base", (SEAT_W + 0.08, SEAT_L + 0.16, 0.08), (0, 0.0, top + 0.02), 0.035), "leather", "frame"))
+    parts.append(tag(drape(rounded_box("Base", (SEAT_W + 0.08, SEAT_L + 0.16, 0.08), (0, 0.0, top + 0.02), 0.035)), "leather", "frame"))
     seat_z = top + 0.13
     seat = box("Seat", (SEAT_W, SEAT_L, 0.18), (0, 0.02, seat_z))
     soft(seat, 0.08, 4, 2)
@@ -280,24 +290,25 @@ def build():
         if v.co.z > seat_z:
             t = (v.co.y - 0.02) / (SEAT_L / 2)
             v.co.z -= 0.05 * max(1 - t * t, 0) * max(1 - (v.co.x / (SEAT_W / 2)) ** 2, 0)
-    parts.append(tag(seat, "cushion", "seat"))
-    ring = [(x, y, seat_z - 0.08) for x, y in rounded_rect(0, 0.02, SEAT_W / 2 + 0.015, SEAT_L / 2 + 0.015, 0.16)]
+    parts.append(tag(drape(seat), "cushion", "seat"))
+    ring = [(x, y, seat_z - 0.08 - DROOP * (x / (SEAT_W / 2)) ** 2) for x, y in rounded_rect(0, 0.02, SEAT_W / 2 + 0.015, SEAT_L / 2 + 0.015, 0.16)]
     parts.append(tag(tube("Piping", ring, 0.042, closed=True), "cream", "seat"))
 
     # Raised front pommel with a cream rim and a small round handle; raised rear cantle with a rim
-    py = front + 0.07
-    parts.append(tag(rounded_box("Pommel", (0.62, 0.17, 0.24), (0, py, top + 0.13), 0.075), "leather", "frame"))
-    parts.append(tag(tube("PommelRim", [(x / 8 * 0.52 - 0.26, py, top + 0.255) for x in range(9)], 0.038), "cream", "frame"))
-    handle = [(-0.15, py - 0.01, top + 0.24)] + [
-        (0.15 * math.cos(math.pi - math.pi * i / 10), py - 0.01, top + 0.36 + 0.1 * math.sin(math.pi - math.pi * i / 10))
+    py = front + 0.04
+    parts.append(tag(drape(rounded_box("Pommel", (0.7, 0.17, 0.24), (0, py, top + 0.13), 0.075)), "leather", "frame"))
+    parts.append(tag(tube("PommelRim", [(x / 8 * 0.6 - 0.3, py, top + 0.255 - DROOP * ((x / 8 * 0.6 - 0.3) / 0.35) ** 2) for x in range(9)], 0.038), "cream", "frame"))
+    hy, hz = HANDLE
+    handle = [(-0.15, py - 0.02, top + 0.22)] + [
+        (0.15 * math.cos(math.pi - math.pi * i / 10), hy, hz - 0.1 + 0.1 * math.sin(math.pi - math.pi * i / 10))
         for i in range(11)
-    ] + [(0.15, py - 0.01, top + 0.24)]
+    ] + [(0.15, py - 0.02, top + 0.22)]
     parts.append(tag(tube("Handle", handle, 0.042), "dark", "frame"))
     cy = rear - 0.06
-    cantle = rounded_box("Cantle", (0.86, 0.17, 0.32), (0, cy, top + 0.17), 0.08)
+    cantle = drape(rounded_box("Cantle", (0.98, 0.17, 0.32), (0, cy, top + 0.17), 0.08))
     cantle.rotation_euler = (math.radians(-14), 0, 0)
     parts.append(tag(cantle, "leather", "frame"))
-    rim = [(x, cy + 0.06 + 0.03 * (x / 0.41) ** 2, top + 0.34 - 0.04 * (x / 0.41) ** 2) for x in [i / 8 * 0.82 - 0.41 for i in range(9)]]
+    rim = [(x, cy + 0.06 + 0.03 * (x / 0.47) ** 2, top + 0.34 - (0.04 + DROOP) * (x / 0.47) ** 2) for x in [i / 8 * 0.94 - 0.47 for i in range(9)]]
     parts.append(tag(tube("CantleRim", rim, 0.045), "cream", "frame"))
 
     # Girth strap all the way around the body, under the panels
