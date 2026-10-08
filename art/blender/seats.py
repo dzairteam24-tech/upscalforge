@@ -44,7 +44,7 @@ WIDTH = 3.6  # side to side
 DEPTH = 3.0  # front to back
 TOP = 1.15  # the seat's surface in the middle, above its bottom (RideClient's SEAT_TOP)
 DIP = 0.2  # how much the top dips where the rider sits
-SEAT_SCALE = 1.25  # the game draws the seats this much bigger (SeatModel)
+SEAT_SCALE = 1.6  # the game draws the seats this much bigger (SeatModel)
 
 materials = {}
 

@@ -9,13 +9,13 @@
 local SeatPose = {}
 
 SeatPose.STANDARD_LEG = 1.92 -- a standard R15 leg, hip joint to sole
-SeatPose.LIFT = 0.42 -- the hips this high above the seat's surface (the thighs lie on it), in legs
-SeatPose.LEAN = -6 -- the back leans this much forward (degrees)
+SeatPose.LIFT = 0.3 -- the hips this high above the seat's surface (sunk a little into the soft top), in legs
+SeatPose.LEAN = 0 -- the back sits up straight (degrees, forward negative)
 
 -- The sole of each foot, by side (Left is -X): the left foot under the right knee, a little in front
 local SOLE = {
-	Left = Vector3.new(0.12, -0.36, -0.98),
-	Right = Vector3.new(-0.12, -0.28, -0.8),
+	Left = Vector3.new(0.15, -0.3, -1.12),
+	Right = Vector3.new(-0.15, -0.22, -0.94),
 }
 local FOOT_YAW = 75 -- the feet point across, toward the other side
 local FOOT_ROLL = 35 -- and lie on their outer edge, the soles turned up and back
@@ -25,7 +25,7 @@ local HAND_ABOVE_KNEE = 0.3 -- the hand's grip above the knee joint, in legs
 function SeatPose.leg(hips: CFrame, side: string, scale: number): (Vector3, Vector3, CFrame)
 	local s = if side == "Left" then -1 else 1
 	local sole = hips:PointToWorldSpace(SOLE[side] * scale)
-	local pole = hips:VectorToWorldSpace(Vector3.new(s, 0.3, -0.3))
+	local pole = hips:VectorToWorldSpace(Vector3.new(s, 0.25, -0.7))
 	local foot = hips.Rotation * CFrame.Angles(0, math.rad(s * FOOT_YAW), 0) * CFrame.Angles(0, 0, math.rad(-s * FOOT_ROLL))
 	return sole, pole, foot
 end

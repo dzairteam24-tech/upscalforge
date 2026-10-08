@@ -48,7 +48,7 @@ local DESIGNS: { [string]: Design } = {
 	},
 }
 
-local SCALE = 1.25 -- the seats are drawn this much bigger than modeled, so a sitting avatar fits on them
+local SCALE = 1.6 -- the seats are drawn this much bigger than modeled, so a sitting avatar fits on them
 
 local function quiet(p: BasePart)
 	p.Anchored = true
