@@ -9,6 +9,8 @@ z = BACK. Front is -Y, like the creatures.
     python art/blender/pony.py              renders: art/renders/Pony.png (3/4, front, side, back, top),
                                             with the Kitty's head (art/models/Cubelings_Roblox.glb) and the
                                             saddle
+    python art/blender/pony.py ride         renders: art/renders/Ride.png, the same with a rider on the saddle
+                                            (3/4 front, front, side, 3/4 rear, back, top, bottom)
     python art/blender/pony.py roblox       also writes art/models/Pony.glb: Pony__body, Pony__cream, and
                                             per leg Pony__leg__legFL... and Pony__hoof__legFL..., for
                                             Studio's Import 3D
@@ -32,6 +34,10 @@ COLORS = {
     "cream": (0.95, 0.78, 0.55),
     "mane": (0.8, 0.22, 0.04),
     "hoof": (0.2, 0.08, 0.03),
+    # the rider in the riding sheet: a blocky Roblox character
+    "shirt": (0.025, 0.025, 0.03),
+    "pants": (0.03, 0.06, 0.25),
+    "skin": (0.8, 0.55, 0.38),
 }
 
 HALF = 0.8  # the body's side, from its middle
@@ -42,7 +48,7 @@ ROUND = 0.55  # the body's rounded edges
 LEG_X = 0.45
 LEG_Y = 0.62
 HOOF = 0.26
-SADDLE_Y = 0.4  # the saddle's middle, behind the body's middle (RideModel uses the same)
+SADDLE_Y = 0.3  # the saddle's middle, behind the body's middle (RideModel uses the same)
 HEAD_WIDTH = 1.6  # the creature's head, for the render; the game uses the same numbers (RideModel)
 HEAD_Y = -1.4
 HEAD_BOTTOM = 1.0
@@ -201,6 +207,53 @@ def add_head_and_saddle():
     holder.location = (0, SADDLE_Y, BACK)
 
 
+# The rider, for the riding sheet: an R15 character of blocks posed like the game poses it (RideClient POSE,
+# degrees), its hips RIDER_HIP above the back in the middle of the saddle. Built in the game's axes (studs,
+# Y up, front -Z) and turned into Blender's (units of 2 studs, Z up, front -Y).
+POSE = {"hipPitch": 15, "hipRoll": 70, "kneePitch": -40, "kneeRoll": -50, "armPitch": 0, "armRoll": 48, "elbowPitch": 74}
+RIDER_HIP = 0.16
+
+
+def add_rider():
+    from mathutils import Matrix
+
+    def angles(pitch, roll):
+        return Matrix.Rotation(math.radians(pitch), 3, "X") @ Matrix.Rotation(math.radians(roll), 3, "Z")
+
+    swap = Matrix(((1, 0, 0), (0, 0, 1), (0, 1, 0)))
+    seat = Vector((0, SADDLE_Y, BACK + RIDER_HIP))
+
+    def block(size, rot, pos, key):
+        bpy.ops.mesh.primitive_cube_add(size=1)
+        obj = bpy.context.active_object
+        obj.scale = (size[0] / 2, size[2] / 2, size[1] / 2)
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        soft(obj, 0.03, 2, 0)
+        obj.matrix_world = Matrix.Translation(seat + swap @ Vector(pos) / 2) @ (swap @ rot @ swap).to_4x4()
+        finish(obj, key)
+
+    one = Matrix.Identity(3)
+    P = POSE
+    block((2, 0.4, 1), one, (0, 0.2, 0), "pants")
+    block((2, 1.6, 1), one, (0, 1.2, 0), "shirt")
+    block((1.2, 1.2, 1.2), one, (0, 2.6, 0), "skin")
+    for side in (-1, 1):
+        hip = Vector((side * 0.5, 0, 0))
+        rh = angles(P["hipPitch"], P["hipRoll"] * side)
+        knee = hip + rh @ Vector((0, -1.2, 0))
+        block((0.9, 1.2, 0.9), rh, hip + rh @ Vector((0, -0.6, 0)), "pants")
+        rk = rh @ angles(P["kneePitch"], P["kneeRoll"] * side)
+        block((0.85, 1.2, 0.85), rk, knee + rk @ Vector((0, -0.6, 0)), "pants")
+        block((0.9, 0.3, 1.1), rk, knee + rk @ Vector((0, -1.3, -0.1)), "shirt")
+        shoulder = Vector((side * 1.0, 1.85, 0))
+        ra = angles(P["armPitch"], P["armRoll"] * -side)
+        block((0.9, 1.05, 0.9), ra, shoulder + ra @ Vector((side * 0.5, -0.5, 0)), "shirt")
+        elbow = shoulder + ra @ Vector((0, -1.0, 0))
+        re = ra @ angles(P["elbowPitch"], 0)
+        block((0.85, 0.8, 0.85), re, elbow + re @ Vector((side * 0.5, -0.4, 0)), "shirt")
+        block((0.8, 0.35, 0.8), re, elbow + re @ Vector((side * 0.5, -0.95, 0)), "skin")
+
+
 def setup_render(resolution=640):
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
@@ -230,11 +283,10 @@ def setup_render(resolution=640):
     return camera
 
 
-def render_views(camera):
+def render_views(camera, name="Pony", views=None, target=Vector((0, 0.1, 2.2))):
     from PIL import Image
 
-    target = Vector((0, 0.1, 2.2))
-    views = [("three_quarter", 35, 0.35), ("front", 0, 0.08), ("side", 90, 0.08), ("back", 180, 0.12), ("top", 0, 3.0)]
+    views = views or [("three_quarter", 35, 0.35), ("front", 0, 0.08), ("side", 90, 0.08), ("back", 180, 0.12), ("top", 0, 3.0)]
     images = []
     for view, angle, up in views:
         rad = math.radians(angle)
@@ -251,7 +303,7 @@ def render_views(camera):
     for image in images:
         sheet.paste(image, (x, 0))
         x += image.width
-    out = os.path.join(OUT, "Pony.png")
+    out = os.path.join(OUT, f"{name}.png")
     sheet.save(out)
     print("wrote", out)
 
@@ -284,6 +336,13 @@ def main():
         return
     add_head_and_saddle()
     camera = setup_render()
+    if "ride" in sys.argv[1:]:
+        # The riding sheet: with the rider, from every side
+        add_rider()
+        camera.data.ortho_scale = 5.6
+        views = [("front_34", 40, 0.3), ("front", 0, 0.08), ("side", 90, 0.08), ("rear_34", 140, 0.3), ("back", 180, 0.08), ("top", 0, 3.0), ("bottom", 0, -3.0)]
+        render_views(camera, "Ride", views, Vector((0, 0.15, 2.45)))
+        return
     render_views(camera)
 
 
