@@ -485,6 +485,7 @@ def export_roblox(parts):
             bpy.ops.object.join()
         obj = bpy.context.view_layer.objects.active
         obj.name = f"Saddle__{role}"
+        obj.data.name = obj.name  # Studio's importer names the MeshParts after the meshes
         joined.append(obj)
     bpy.ops.object.select_all(action="DESELECT")
     for obj in joined:

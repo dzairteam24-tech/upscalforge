@@ -322,6 +322,7 @@ def export_roblox(parts):
     for role, objs in by_role.items():
         obj = join(objs) if len(objs) > 1 else objs[0]
         obj.name = f"Pony__{role}"
+        obj.data.name = obj.name  # Studio's importer names the MeshParts after the meshes
         joined.append(obj)
     bpy.ops.object.select_all(action="DESELECT")
     for obj in joined:

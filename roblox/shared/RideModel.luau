@@ -92,7 +92,11 @@ local function meshPieces(prefix: string, model: { ref: string, center: Vector3,
 		local parts: { [string]: BasePart } = {}
 		for _, d in root:GetDescendants() do
 			if d:IsA("BasePart") then
-				local role = string.match((string.gsub(d.Name, "%.%d+$", "")), "^" .. prefix .. "__(.+)$")
+				-- The part's name, or its model's when the importer kept the mesh's own name on the part
+				local function roleOf(name: string): string?
+					return string.match((string.gsub(name, "%.%d+$", "")), "^" .. prefix .. "__(.+)$")
+				end
+				local role = roleOf(d.Name) or (if d.Parent then roleOf(d.Parent.Name) else nil)
 				if role and not parts[role] then
 					parts[role] = d
 				end
