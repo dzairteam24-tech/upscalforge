@@ -15,7 +15,6 @@ local LEATHER_DARK = Color3.fromRGB(96, 52, 28)
 local CUSHION = Color3.fromRGB(226, 84, 44)
 local CREAM = Color3.fromRGB(252, 236, 210)
 local GOLD = Color3.fromRGB(255, 198, 58)
-local GOLD_DARK = Color3.fromRGB(205, 140, 30)
 
 local UPRIGHT = CFrame.Angles(0, 0, math.rad(90)) -- a cylinder standing up (its axis is X)
 
