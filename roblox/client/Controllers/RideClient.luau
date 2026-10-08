@@ -1,12 +1,14 @@
 -- Cubeling Ride: draws the creature each player is riding (player attribute "RidePet", set by the server
 -- from the strongest creature in their team) under their character, every frame on each client.
 --
--- The creature comes from RideModel: reshaped like a pony and wearing a saddle (art: the Cubeling Ride
--- concept sheet). Creature and rider move as one body: no hop, the creature walks with its legs and tail and
--- leans a little into the run, and a jump lifts both. The rider sits on the saddle straddling the creature,
--- hands on the handle: each client poses every rider's hips, knees and shoulders itself (the joints' Transform),
--- so no uploaded animation is needed. The rider's own client turns off their walk animations and sets the
--- height they sit at. PetFollow hides the ridden creature from the followers.
+-- The creature comes from RideModel: a pony with the creature's head, a saddle and a bridle (art: the riding
+-- model sheet). Creature and rider move as one body: no hop, the creature walks with its legs and leans a
+-- little into the run, and a jump lifts both. Each client poses every rider itself every frame (the joints'
+-- Transform, so no uploaded animation is needed): the rider leans a little forward and RideIK bends the arms
+-- so the hands hold the handle's grips and the legs so the feet stand in the stirrups, whatever the avatar's
+-- size; a leather rein (a Beam) runs from each bridle ring to the hand. The rider's own client turns off
+-- their walk animations and sets the height they sit at. PetFollow hides the ridden creature from the
+-- followers.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,6 +16,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local RideModel = require(Shared.RideModel)
+local RideIK = require(Shared.RideIK)
 local Cosmetics = require(Shared.Config.Cosmetics)
 
 local RideClient = {}
@@ -21,13 +24,15 @@ local RideClient = {}
 -- Legs walk in diagonal pairs, like the followers
 local LEG_PHASE = { legFL = 0, legBR = 0, legFR = math.pi, legBL = math.pi }
 
--- The riding pose, in degrees (R15), like the riding model sheet (art/renders/RideSheet.png): the hips down in
--- the seat, leaning a little forward at the waist, thighs forward and out over the front of the seat, knees
--- bent so the lower legs go down beside the side flaps with the feet in the stirrups; elbows bent so both
--- hands hold the handle. Roll is outward for the legs, inward for the arms. (Fitted against the pony and
--- saddle meshes offline; art/blender/pony.py poses its rider with the same numbers.)
+-- The rider leans this much forward at the waist (degrees). Arms and legs are solved every frame (RideIK) so
+-- the hands hold the handle's grips and the feet stand in the stirrups, whatever the avatar's size.
+local LEAN = -10
+-- Where elbows and knees point: elbows down, out and a little back; knees forward and out
+local ELBOW_POLE = { out = 0.7, down = 1, back = 0.3 }
+local KNEE_POLE = { forward = 1, out = 0.8 }
+local REIN_COLOR = Color3.fromRGB(110, 58, 30)
+-- Only when a limb can't be solved (a rig without those joints): a fixed riding pose, in degrees
 local POSE = {
-	waistPitch = -12,
 	hipPitch = 95,
 	hipRoll = 45,
 	kneePitch = -95,
@@ -53,6 +58,7 @@ type Mount = {
 	run: number, -- 0 standing .. 1 running, eased
 	air: number, -- 0 on the ground .. 1 in a jump, eased
 	posed: Model?, -- the character whose joints this mount is posing
+	reins: { [string]: Beam }, -- by side, from the bridle's rings to the rider's hands
 }
 
 local mounts: { [Player]: Mount } = {}
@@ -74,30 +80,23 @@ end
 
 -- Joint names are the same in both rigs Roblox uses for R15: Motor6D joints, and the newer AnimationConstraint
 -- joints (Workspace.AvatarJointUpgrade). Both have a Transform that bends the limb.
-local JOINTS = {
-	{ name = "Waist", side = 0, kind = "waist" },
-	{ name = "LeftHip", side = -1, kind = "hip" },
-	{ name = "RightHip", side = 1, kind = "hip" },
-	{ name = "LeftKnee", side = -1, kind = "knee" },
-	{ name = "RightKnee", side = 1, kind = "knee" },
-	{ name = "LeftShoulder", side = -1, kind = "arm" },
-	{ name = "RightShoulder", side = 1, kind = "arm" },
-	{ name = "LeftElbow", side = -1, kind = "elbow" },
-	{ name = "RightElbow", side = 1, kind = "elbow" },
+local JOINT_NAMES = {
+	"Root",
+	"Waist",
+	"LeftShoulder",
+	"LeftElbow",
+	"LeftWrist",
+	"RightShoulder",
+	"RightElbow",
+	"RightWrist",
+	"LeftHip",
+	"LeftKnee",
+	"LeftAnkle",
+	"RightHip",
+	"RightKnee",
+	"RightAnkle",
 }
-
-local function jointTransform(kind: string, side: number): CFrame
-	if kind == "hip" then
-		return CFrame.Angles(math.rad(POSE.hipPitch), 0, math.rad(POSE.hipRoll) * side)
-	elseif kind == "waist" then
-		return CFrame.Angles(math.rad(POSE.waistPitch), 0, 0)
-	elseif kind == "elbow" then
-		return CFrame.Angles(math.rad(POSE.elbowPitch), 0, 0)
-	elseif kind == "knee" then
-		return CFrame.Angles(math.rad(POSE.kneePitch), 0, math.rad(POSE.kneeRoll) * side)
-	end
-	return CFrame.Angles(math.rad(POSE.armPitch), 0, math.rad(POSE.armRoll) * -side)
-end
+local POSED = { "Waist", "LeftShoulder", "LeftElbow", "LeftWrist", "RightShoulder", "RightElbow", "RightWrist", "LeftHip", "LeftKnee", "LeftAnkle", "RightHip", "RightKnee", "RightAnkle" }
 
 -- The character's joints by name, found once per character
 local jointCache: { [Model]: { [string]: Instance } } = setmetatable({}, { __mode = "k" }) :: any
@@ -108,30 +107,171 @@ local function jointsOf(character: Model): { [string]: Instance }
 	if cached and next(cached) then
 		return cached
 	end
+	local wanted: { [string]: boolean } = {}
+	for _, name in JOINT_NAMES do
+		wanted[name] = true
+	end
 	local found: { [string]: Instance } = {}
 	for _, d in character:GetDescendants() do
-		if d:IsA("Motor6D") or d:IsA("AnimationConstraint") then
-			for _, joint in JOINTS do
-				if d.Name == joint.name and not found[joint.name] then
-					found[joint.name] = d
-				end
-			end
+		if (d:IsA("Motor6D") or d:IsA("AnimationConstraint")) and wanted[d.Name] and not found[d.Name] then
+			found[d.Name] = d
 		end
 	end
 	jointCache[character] = found
 	if not next(found) and not warned[character] then
 		warned[character] = true
-		warn("[Ride] no R15 leg/arm joints found on", character.Name, "- can't pose the rider")
+		warn("[Ride] no R15 joints found on", character.Name, "- can't pose the rider")
 	end
 	return found
 end
 
-local function setPose(character: Model, on: boolean)
+-- A joint's parent part and its two frames: child = parent * c0 * Transform * c1:Inverse()
+type Frame = { parent: BasePart, c0: CFrame, c1: CFrame }
+
+local function frameOf(joint: Instance?): Frame?
+	if not joint then
+		return nil
+	end
+	if joint:IsA("Motor6D") then
+		local parent = joint.Part0
+		return if parent then { parent = parent, c0 = joint.C0, c1 = joint.C1 } else nil
+	elseif joint:IsA("AnimationConstraint") then
+		local a0, a1 = joint.Attachment0, joint.Attachment1
+		local parent = a0 and a0.Parent
+		if a0 and a1 and parent and parent:IsA("BasePart") then
+			return { parent = parent, c0 = a0.CFrame, c1 = a1.CFrame }
+		end
+	end
+	return nil
+end
+
+local function setTransform(joint: Instance?, transform: CFrame)
+	if joint then
+		(joint :: any).Transform = transform
+	end
+end
+
+local function attachmentIn(character: Model, part: string, name: string): CFrame
+	local p = character:FindFirstChild(part)
+	local att = p and p:FindFirstChild(name)
+	return if att and att:IsA("Attachment") then att.CFrame else CFrame.identity
+end
+
+-- The fixed pose, for a limb that can't be solved
+local function fixedLimb(joints: { [string]: Instance }, side: string, limb: string)
+	local s = if side == "Left" then -1 else 1
+	if limb == "arm" then
+		setTransform(joints[side .. "Shoulder"], CFrame.Angles(math.rad(POSE.armPitch), 0, math.rad(POSE.armRoll) * -s))
+		setTransform(joints[side .. "Elbow"], CFrame.Angles(math.rad(POSE.elbowPitch), 0, 0))
+	else
+		setTransform(joints[side .. "Hip"], CFrame.Angles(math.rad(POSE.hipPitch), 0, math.rad(POSE.hipRoll) * s))
+		setTransform(joints[side .. "Knee"], CFrame.Angles(math.rad(POSE.kneePitch), 0, math.rad(POSE.kneeRoll) * s))
+	end
+end
+
+-- Bends one limb (shoulder-elbow-wrist or hip-knee-ankle) so its end lands on the target. Returns the frame of
+-- the limb's last part before its end joint (the lower arm or leg), or nil when it can't be solved.
+local function solveLimb(joints: { [string]: Instance }, parentFrame: CFrame, names: { string }, tip: CFrame, target: Vector3, pole: Vector3): (CFrame?, Frame?)
+	local a, b, c = frameOf(joints[names[1]]), frameOf(joints[names[2]]), frameOf(joints[names[3]])
+	if not a or not b or not c then
+		return nil, nil
+	end
+	local base = parentFrame * a.c0
+	local midRel = a.c1:Inverse() * b.c0
+	local tipRel = b.c1:Inverse() * c.c0 * c.c1:Inverse() * tip
+	local first, second = RideIK.solve(base, midRel, tipRel, target, pole)
+	setTransform(joints[names[1]], first)
+	setTransform(joints[names[2]], second)
+	local lower = base * first * a.c1:Inverse() * b.c0 * second * b.c1:Inverse()
+	return lower, c
+end
+
+-- Poses a rider on their mount: leaning a little forward, hands on the grips, feet in the stirrups (flat)
+local function poseRider(character: Model, ride: RideModel.Ride)
 	local joints = jointsOf(character)
-	for _, joint in JOINTS do
-		local instance = joints[joint.name]
-		if instance then
-			(instance :: any).Transform = if on then jointTransform(joint.kind, joint.side) else CFrame.identity
+	local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local lowerTorso = character:FindFirstChild("LowerTorso") :: BasePart?
+	if not root or not lowerTorso then
+		return
+	end
+	-- The torso's frames, from the root, with the lean (what the joints will make of them this frame)
+	local rootJoint = frameOf(joints.Root)
+	local lower = if rootJoint then rootJoint.parent.CFrame * rootJoint.c0 * (joints.Root :: any).Transform * rootJoint.c1:Inverse() else lowerTorso.CFrame
+	local lean = CFrame.Angles(math.rad(LEAN), 0, 0)
+	setTransform(joints.Waist, lean)
+	local waist = frameOf(joints.Waist)
+	local upper = if waist then lower * waist.c0 * lean * waist.c1:Inverse() else lower
+	local frame = root.CFrame
+	for _, side in { "Left", "Right" } do
+		local s = if side == "Left" then -1 else 1
+		-- Arm: the hand's grip on the handle's grip on its side
+		local grip = ride.grips[side]
+		local tip = attachmentIn(character, side .. "Hand", side .. "GripAttachment")
+		local elbowPole = upper.RightVector * (s * ELBOW_POLE.out) - upper.UpVector * ELBOW_POLE.down - upper.LookVector * ELBOW_POLE.back
+		if not (grip and solveLimb(joints, upper, { side .. "Shoulder", side .. "Elbow", side .. "Wrist" }, tip, grip.WorldPosition, elbowPole)) then
+			fixedLimb(joints, side, "arm")
+		end
+		setTransform(joints[side .. "Wrist"], CFrame.identity)
+		-- Leg: the sole on the stirrup's tread, the foot flat and facing forward
+		local tread = ride.stirrups[side]
+		local sole = attachmentIn(character, side .. "Foot", side .. "FootAttachment")
+		local kneePole = frame.LookVector * KNEE_POLE.forward + frame.RightVector * (s * KNEE_POLE.out)
+		local shin, ankle
+		if tread then
+			shin, ankle = solveLimb(joints, lower, { side .. "Hip", side .. "Knee", side .. "Ankle" }, sole, tread.WorldPosition, kneePole)
+		end
+		if shin and ankle then
+			setTransform(joints[side .. "Ankle"], RideIK.orient(shin, ankle.c0, ankle.c1, frame.Rotation))
+		else
+			fixedLimb(joints, side, "leg")
+			setTransform(joints[side .. "Ankle"], CFrame.identity)
+		end
+	end
+end
+
+local function setPose(character: Model, on: boolean, ride: RideModel.Ride?)
+	if on and ride then
+		poseRider(character, ride)
+		return
+	end
+	local joints = jointsOf(character)
+	for _, name in POSED do
+		setTransform(joints[name], CFrame.identity)
+	end
+end
+
+-- The reins: a leather Beam from each bridle ring to the rider's hand on that side, sagging a little
+local function syncReins(mount: Mount, character: Model?)
+	for _, side in { "Left", "Right" } do
+		local ring = mount.ride.reins[side]
+		local hand = character and (character:FindFirstChild(side .. "Hand") or character:FindFirstChild(side .. " Arm"))
+		local grip = hand and hand:FindFirstChild(side .. "GripAttachment")
+		local beam = mount.reins[side]
+		if not ring or not grip or not grip:IsA("Attachment") then
+			if beam then
+				beam:Destroy()
+				mount.reins[side] = nil
+			end
+			continue
+		end
+		if not beam then
+			beam = Instance.new("Beam")
+			beam.Name = "Rein" .. side
+			beam.Color = ColorSequence.new(REIN_COLOR)
+			beam.Width0 = 0.13
+			beam.Width1 = 0.13
+			beam.Segments = 12
+			beam.FaceCamera = true
+			beam.LightInfluence = 1
+			beam.CurveSize0 = 0.9 -- down from the ring (its attachment's X axis points down)
+			beam.CurveSize1 = 0
+			beam.Attachment0 = ring
+			beam.Parent = mount.ride.built.model
+			mount.reins[side] = beam
+		end
+		local b = beam :: Beam
+		if b.Attachment1 ~= grip then
+			b.Attachment1 = grip
 		end
 	end
 end
@@ -224,6 +364,7 @@ local function build(player: Player, value: string)
 		run = 0,
 		air = 0,
 		posed = nil,
+		reins = {},
 	}
 end
 
@@ -354,9 +495,10 @@ local function pose()
 		end
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		if character and humanoid and humanoid.RigType == Enum.HumanoidRigType.R15 then
-			setPose(character, true)
+			setPose(character, true, mount.ride)
 			mount.posed = character
 		end
+		syncReins(mount, character)
 	end
 end
 

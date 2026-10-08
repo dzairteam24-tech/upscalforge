@@ -7,7 +7,8 @@ right under the rider's feet.
 Units are the pony's (art/blender/pony.py), 2 studs each in the game: the body is 1.6 wide (sides at
 x = +-0.8, edges rounded by 0.55) and 1.7 tall, the top of the back is z = 0, front is -Y. The saddle is
 3.5 studs wide with its flaps, its seat 2.5 wide, 2.6 long from pommel to cantle. The rider's
-pose (RideClient, pony.py) sets where the hips, hands and feet go (HIP, HANDLE, STIRRUP).
+pose (RideClient, pony.py) puts the hips at HIP, the hands on the handle's grips (GRIP_X, GRIP_Z) and the feet on
+the stirrups' treads (STIRRUP).
 
     python art/blender/saddle.py            renders: art/renders/Saddle.png (3/4, front, side, back, top,
                                             bottom) and art/renders/Saddle_exploded.png
@@ -52,7 +53,7 @@ DROOP = 0.04  # how much the base and seat curve down at the sides
 FLAP_L = 0.9  # the side flaps, front to back
 FLAP_DROP = 0.42  # how far down the body's rounded edge the flaps reach: under the rider's thighs
 HIP = 0.1  # the rider's hips above the back: down in the dished seat, whose sides rise around the pelvis
-HANDLE = (-0.47, 0.45)  # where the rider's hands hold the handle (y, z), from the rider's pose
+GRIP_X, GRIP_Z = 0.17, 0.6  # the handle's grips, one for each hand: x either side, height (RideModel GRIP)
 STIRRUP = (0.986, -0.36, -0.632)  # where the rider's feet rest (x, y, sole z), from the same pose
 
 materials = {}
@@ -193,6 +194,13 @@ def rounded_rect(cx, cy, hw, hh, r, steps=6):
             a = start + (math.pi / 2) * i / steps
             pts.append((ox + r * math.cos(a), oy + r * math.sin(a)))
     return pts
+
+
+def ball(name, radius, location):
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8, radius=radius, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    return obj
 
 
 def disc(name, radius, depth, location, axis="X", verts=32):
@@ -341,18 +349,23 @@ def build():
         rim.append((x, cy + 0.06 - 0.12 * (x / 0.57) ** 4, top + 0.39 + seat_z(x) - 0.12 * (x / 0.57) ** 2))
     parts.append(tag(tube("CantleRim", rim, 0.05), "cream", "seat"))
 
-    # The handle: one wide rounded bar on the pommel, right in front of the rider's hands
-    hy, hz = HANDLE
-    half, r = 0.24, 0.07
-    handle = [(-half, py, top + 0.26)]
+    # The handle: a wide grab bar standing on the pommel, clear from the side, with a cream grip for each hand
+    # and gold caps where it meets the pommel
+    gx, hz = GRIP_X, GRIP_Z
+    half, r = 0.34, 0.09
+    base_z = top + 0.27
+    handle = [(-half, py, base_z)]
     for i in range(7):
         a = math.pi - (math.pi / 2) * i / 6
-        handle.append((-half + r + r * math.cos(a), hy, hz - r + r * math.sin(a)))
+        handle.append((-half + r + r * math.cos(a), py, hz - r + r * math.sin(a)))
     for i in range(7):
         a = math.pi / 2 - (math.pi / 2) * i / 6
-        handle.append((half - r + r * math.cos(a), hy, hz - r + r * math.sin(a)))
-    handle.append((half, py, top + 0.26))
-    parts.append(tag(tube("Handle", handle, 0.045), "dark", "seat"))
+        handle.append((half - r + r * math.cos(a), py, hz - r + r * math.sin(a)))
+    handle.append((half, py, base_z))
+    parts.append(tag(tube("Handle", handle, 0.06), "dark", "seat"))
+    for sx in (-1, 1):
+        parts.append(tag(tube("Grip", [(sx * (gx - 0.1), py, hz), (sx * (gx + 0.1), py, hz)], 0.075), "cream", "seat"))
+        parts.append(tag(ball("HandleCap", 0.085, (sx * half, py, base_z)), "gold", "seat"))
 
     sx, sy, sole = STIRRUP
     for side in (-1, 1):

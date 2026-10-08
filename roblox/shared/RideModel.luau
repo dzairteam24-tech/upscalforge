@@ -20,7 +20,17 @@ export type Ride = {
 	offsets: { CFrame }, -- per part, from the creature's center (front is -Z)
 	pivots: { [number]: Vector3 }, -- per moving piece, the point it turns around
 	seat: Vector3, -- top of the cushion, from the creature's center: where the rider's hips go
+	-- Where the rider's hands and feet go and where the reins start, by side ("Left" is -X): RideClient bends
+	-- the rider's arms and legs onto these and draws the reins to the hands
+	grips: { [string]: Attachment },
+	stirrups: { [string]: Attachment },
+	reins: { [string]: Attachment },
 }
+
+-- The saddle's handle grips and stirrup treads in its file's units (x either side, y front to back with the
+-- front negative, z up from the back), as art/blender/saddle.py models them (GRIP_X/GRIP_Z, STIRRUP)
+local GRIP = { x = 0.17, y = -0.55, z = 0.6 }
+local TREAD = { x = 0.986, y = -0.36, z = -0.632 }
 
 -- The Blender models as exported (front +Z, in the files' units). One part of each, with its box center and
 -- size in those units, is how the game finds the scale and origin of an import.
@@ -191,7 +201,24 @@ end
 -- The pony: the creature's head on the Blender pony body. Returns the back's middle, and the saddle's scale.
 type Head = { center: Vector3, width: number, bottom: number, depth: number }
 
-local function ponyShape(built: PetModel.Built, pony: { Piece }, offsets: { CFrame }, pivots: { [number]: Vector3 }): (Vector3, number, Head)
+local LEATHER = Color3.fromRGB(110, 58, 30)
+local GOLD = Color3.fromRGB(255, 192, 52)
+
+local function sideOf(x: number): string
+	return if x < 0 then "Left" else "Right"
+end
+
+-- An attachment for a rein on a ring part placed at `offset`, its X axis pointing down (the rein's Beam
+-- sags along it)
+local function reinAttachment(part: BasePart, offset: CFrame, at: Vector3): Attachment
+	local att = Instance.new("Attachment")
+	att.Name = "Rein"
+	att.CFrame = offset:ToObjectSpace(CFrame.fromMatrix(at, Vector3.new(0, -1, 0), Vector3.xAxis))
+	att.Parent = part
+	return att
+end
+
+local function ponyShape(built: PetModel.Built, pony: { Piece }, offsets: { CFrame }, pivots: { [number]: Vector3 }, reins: { [string]: Attachment }): (Vector3, number, Head)
 	local k = Cosmetics.RIDE_PONY_SCALE
 	local feet = -Cosmetics.RIDE_CREATURE_HEIGHT / 2
 
@@ -230,13 +257,24 @@ local function ponyShape(built: PetModel.Built, pony: { Piece }, offsets: { CFra
 		role = role or piece.role
 		local p = piece.part
 		p.Name = "Pony_" .. piece.role
-		p.Color = if role == "cream" then PONY_CREAM elseif role == "hoof" then PONY_HOOF elseif role == "mane" then color:Lerp(Color3.new(0.45, 0.12, 0), 0.3) else color
+		local ring = role == "ringL" or role == "ringR"
+		p.Color = if role == "cream"
+			then PONY_CREAM
+			elseif role == "hoof" then PONY_HOOF
+			elseif role == "bridle" then LEATHER
+			elseif ring then GOLD
+			elseif role == "mane" then color:Lerp(Color3.new(0.45, 0.12, 0), 0.3)
+			else color
+		p.Reflectance = if ring then 0.15 else 0
 		p.Size = piece.size * k
 		quiet(p)
 		p.Parent = built.model
 		local at = piece.at * k + Vector3.new(0, feet, 0)
 		table.insert(parts, p)
 		offsets[#parts] = CFrame.new(at) * piece.rotation
+		if ring then
+			reins[sideOf(at.X)] = reinAttachment(p, offsets[#parts], at)
+		end
 		if leg then
 			anims[#parts] = leg
 			pivots[#parts] = Vector3.new(at.X, feet + PONY_BELLY * k, at.Z)
@@ -303,12 +341,6 @@ local function stretchedShape(built: PetModel.Built, offsets: { CFrame }, pivots
 	return Vector3.new(0, backY, body.Size.Z * Cosmetics.RIDE_SEAT_BACK), body.Size.X / SADDLE_BODY
 end
 
--- Where the rider's hands are, from the hips (studs, front -Z): RideClient's pose holds them here, on the
--- saddle's handle
-local HANDS = Vector3.new(0.33, 0.38, -0.9)
-local LEATHER = Color3.fromRGB(110, 58, 30)
-local GOLD = Color3.fromRGB(255, 192, 52)
-
 -- A strap from a to b: a thin block along the line between them
 local function strap(a: Vector3, b: Vector3, width: number, thick: number): (BasePart, CFrame)
 	local p = Instance.new("Part")
@@ -319,9 +351,9 @@ local function strap(a: Vector3, b: Vector3, width: number, thick: number): (Bas
 	return p, CFrame.lookAt((a + b) / 2, b)
 end
 
--- The bridle and reins: straps down the sides of the creature's head and over its top behind the ears (the
--- face stays clear), a gold ring on each cheek, and a rein from each ring to the rider's hand on that side
-local function addBridle(head: Head, seat: Vector3, add: (BasePart, CFrame) -> ())
+-- A bridle of parts, for a pony model without its own: straps down the sides of the creature's head and over
+-- its top behind the ears (the face stays clear), and a gold ring on each cheek for the reins
+local function addBridle(head: Head, add: (BasePart, CFrame) -> (), reins: { [string]: Attachment })
 	local w = head.width
 	local top = head.bottom + w * 0.95 -- the top of the cube (the ears stand above it)
 	local crownZ = head.center.Z + head.depth * 0.3
@@ -345,14 +377,21 @@ local function addBridle(head: Head, seat: Vector3, add: (BasePart, CFrame) -> (
 		coin.Material = Enum.Material.SmoothPlastic
 		coin.Reflectance = 0.15
 		add(coin, CFrame.new(ring))
-		-- The rein sags a little between the ring and the hand
-		local hand = seat + Vector3.new(side * HANDS.X, HANDS.Y, HANDS.Z)
-		local mid = (ring + hand) / 2 - Vector3.new(0, 0.3, 0)
-		local a, aAt = strap(ring, mid, 0.14, 0.08)
-		add(a, aAt)
-		local b, bAt = strap(mid, hand, 0.14, 0.08)
-		add(b, bAt)
+		reins[sideOf(ring.X)] = reinAttachment(coin, CFrame.new(ring), ring)
 	end
+end
+
+-- Attachments on a part placed at `offset`, at points given in the creature's frame
+local function marks(part: BasePart, offset: CFrame, name: string, points: { [string]: Vector3 }): { [string]: Attachment }
+	local found: { [string]: Attachment } = {}
+	for side, point in points do
+		local att = Instance.new("Attachment")
+		att.Name = name .. side
+		att.CFrame = offset:ToObjectSpace(CFrame.new(point))
+		att.Parent = part
+		found[side] = att
+	end
+	return found
 end
 
 function RideModel.build(pet: { s: string, v: string, z: string }): Ride
@@ -363,9 +402,10 @@ function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 	local turn = if pony then importTurn(pony) else CFrame.identity
 	local back, fit
 	local head: Head? = nil
+	local reins: { [string]: Attachment } = {}
 	if pony then
 		place(pony, PONY, turn)
-		back, fit, head = ponyShape(built, pony, offsets, pivots)
+		back, fit, head = ponyShape(built, pony, offsets, pivots, reins)
 	else
 		back, fit = stretchedShape(built, offsets, pivots)
 	end
@@ -379,6 +419,8 @@ function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 	end
 
 	local seat: Vector3
+	local grips: { [string]: Attachment } = {}
+	local stirrups: { [string]: Attachment } = {}
 	local saddle = meshPieces("Saddle", SADDLE)
 	if saddle then
 		-- The Blender saddle, sized to this back, turned like the pony (both come through the same importer)
@@ -404,12 +446,22 @@ function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 			p.Color = SADDLE_COLORS[piece.role] or SADDLE_COLORS.leather
 			p.Reflectance = if piece.role == "gold" then 0.15 else 0
 			p.Size = piece.size * fit
-			add(p, CFrame.new(back + piece.at * fit) * piece.rotation)
+			local offset = CFrame.new(back + piece.at * fit) * piece.rotation
+			add(p, offset)
+			if piece.role == "cushion" then
+				-- The handle's grips and the stirrups' treads, on the seat (it moves with the rest)
+				local function point(x: number, y: number, z: number): Vector3
+					return back + Vector3.new(x, z, y * SADDLE_STRETCH) * fit
+				end
+				grips = marks(p, offset, "Grip", { Left = point(-GRIP.x, GRIP.y, GRIP.z), Right = point(GRIP.x, GRIP.y, GRIP.z) })
+				stirrups = marks(p, offset, "Stirrup", { Left = point(-TREAD.x, TREAD.y, TREAD.z), Right = point(TREAD.x, TREAD.y, TREAD.z) })
+			end
 		end
 		seat = back + Vector3.new(0, SADDLE_SEAT_TOP * fit, 0)
 	else
 		-- The saddle made of parts, until the model is loaded
 		local width = SADDLE_BODY * fit
+		local first: BasePart? = nil
 		for _, piece in RideSaddle.build(width, width * 0.8) do
 			local p = Instance.new("Part")
 			p.Name = piece.name
@@ -422,12 +474,22 @@ function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 			p.TopSurface = Enum.SurfaceType.Smooth
 			p.BottomSurface = Enum.SurfaceType.Smooth
 			add(p, CFrame.new(back) * piece.cframe)
+			if not first then
+				first = p
+				-- Its handle bar and where the feet hang
+				local offset = CFrame.new(back) * piece.cframe
+				local handle = back + Vector3.new(0, 1.6, -RideSaddle.LENGTH / 2 + 0.3)
+				local tread = back + Vector3.new(width / 2 + 0.3, -width * 0.5, -RideSaddle.LENGTH * 0.3)
+				grips = marks(p, offset, "Grip", { Left = handle - Vector3.new(0.4, 0, 0), Right = handle + Vector3.new(0.4, 0, 0) })
+				stirrups = marks(p, offset, "Stirrup", { Left = tread * Vector3.new(-1, 1, 1), Right = tread })
+			end
 		end
 		seat = back + Vector3.new(0, RideSaddle.SEAT_HEIGHT, 0)
 	end
 
-	if head then
-		addBridle(head, seat, add)
+	-- The bridle: the pony model's own, or one made of parts
+	if head and not reins.Left then
+		addBridle(head, add, reins)
 	end
 
 	return {
@@ -435,6 +497,9 @@ function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 		offsets = offsets,
 		pivots = pivots,
 		seat = seat,
+		grips = grips,
+		stirrups = stirrups,
+		reins = reins,
 	}
 end
 

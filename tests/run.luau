@@ -17,6 +17,9 @@ local EggRoll = R(Shared.Logic.EggRoll)
 local Inventory = R(Shared.Logic.Inventory)
 local TradeLogic = R(Shared.Logic.TradeLogic)
 local Combo = R(Shared.Logic.Combo)
+local RideIK = R(Shared.RideIK)
+local roblox = require("@lune/roblox")
+local CFrame, Vector3 = roblox.CFrame, roblox.Vector3
 
 local passed, failed = 0, 0
 
@@ -1763,6 +1766,55 @@ test("Power follows the zone's coin scale (same time to break a source in every 
 			eq(common, zone.scale, zone.name .. ": common power = zone scale")
 			eq(World1.species[zone.species[4]].power, zone.scale * 8, zone.name .. ": the 1% one is 8x")
 		end
+	end
+end)
+
+-- A limb like an R15 arm: its first joint tilted and away from the origin, an offset elbow and hand
+local function limb()
+	local base = CFrame.new(1, 1.85, 0) * CFrame.Angles(0.3, 0.2, -0.1)
+	local midRel = CFrame.new(0.05, -1.0, 0.02) * CFrame.Angles(0.1, 0, 0)
+	local tipRel = CFrame.new(0, -0.95, 0.1)
+	return base, midRel, tipRel
+end
+
+test("RideIK puts the limb's end on a target it can reach, the middle joint on the pole's side", function()
+	local base, midRel, tipRel = limb()
+	for _, target in { Vector3.new(0.3, 0.6, -0.9), Vector3.new(1.6, 0.4, 0.3), Vector3.new(0.8, 1.2, -1.2) } do
+		local pole = Vector3.new(0.5, -1, 0.3)
+		local first, second, reach = RideIK.solve(base, midRel, tipRel, target, pole)
+		local elbow = base * first * midRel
+		local hand = (elbow * second * tipRel).Position
+		near((hand - target).Magnitude, 0, 1e-3, "end on the target")
+		near((reach - target).Magnitude, 0, 1e-3, "reports the target")
+		-- the elbow bends out towards the pole
+		local dir = (target - base.Position).Unit
+		local out = (elbow.Position - base.Position) - dir * (elbow.Position - base.Position):Dot(dir)
+		if out:Dot(pole) <= 0 then
+			error("the middle joint is on the far side from the pole")
+		end
+		-- bones keep their lengths
+		near((elbow.Position - base.Position).Magnitude, midRel.Position.Magnitude, 1e-4, "upper bone")
+	end
+end)
+
+test("RideIK reaches straight for a target too far away", function()
+	local base, midRel, tipRel = limb()
+	local target = base.Position + Vector3.new(0, -5, -3)
+	local first, second, reach = RideIK.solve(base, midRel, tipRel, target, Vector3.new(0, 0, -1))
+	local hand = (base * first * midRel * second * tipRel).Position
+	near((hand - reach).Magnitude, 0, 1e-3, "end where it says")
+	near((reach - base.Position).Magnitude, midRel.Position.Magnitude + tipRel.Position.Magnitude, 0.01, "fully stretched")
+	near((reach - base.Position).Unit:Dot((target - base.Position).Unit), 1, 1e-4, "towards the target")
+end)
+
+test("RideIK.orient turns a joint's child to a wanted rotation", function()
+	local parent = CFrame.new(2, 3, 4) * CFrame.Angles(0.4, -0.7, 0.2)
+	local c0 = CFrame.new(0, -0.5, 0) * CFrame.Angles(0, 0.3, 0)
+	local c1 = CFrame.new(0, 0.4, 0.1) * CFrame.Angles(0.2, 0, 0)
+	local wanted = CFrame.Angles(0, 1.1, 0)
+	local child = parent * c0 * RideIK.orient(parent, c0, c1, wanted) * c1:Inverse()
+	for _, axis in { child.XVector - wanted.XVector, child.YVector - wanted.YVector, child.ZVector - wanted.ZVector } do
+		near(axis.Magnitude, 0, 1e-4, "same rotation")
 	end
 end)
 
