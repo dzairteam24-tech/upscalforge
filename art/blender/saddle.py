@@ -1,12 +1,14 @@
-"""The Cubeling Ride saddle (art: the saddle model sheet from ChatGPT), modeled for the creatures' 2-wide
-cube body: a puffy cream underpad and a brown leather cover draped over the back and down the sides, a
-dipped red-orange cushion with a cream piping, a back rest, a U handle in front, a paw badge on each side,
-and straps with square gold buckles and gold stirrups.
+"""The Cubeling Ride saddle (art: the Cubeling saddle spec), made around the pony's rounded cube body: a soft
+orange seat with cream piping on a low leather base, a raised front pommel with a small round handle, a
+raised rear cantle, two big leather side panels that follow the body's rounded top down its sides (over a
+cream pad peeking out), a wide girth strap around the body under them with gold buckles, a paw emblem on
+each panel and two small stirrups where the rider's feet rest.
 
-Units are the creature models' (art/models): the body is 2 wide, the back's top is at z = 0, the sides are
-at x = +-1. Front is -Y, like the creatures. The game scales it with the creature.
+Units are the pony's (art/blender/pony.py): the body is 2 wide (sides at x = +-1, top corners rounded by
+about 0.5) and 1.65 tall, the top of the back is z = 0, front is -Y. The game scales it with the body.
 
-    python art/blender/saddle.py            renders: art/renders/Saddle.png (front, side, back, 3/4, top)
+    python art/blender/saddle.py            renders: art/renders/Saddle.png (3/4, front, side, back, top,
+                                            bottom) and art/renders/Saddle_exploded.png
     python art/blender/saddle.py roblox     also writes art/models/Saddle.glb, one mesh per color role
                                             (Saddle__cushion, Saddle__cream, Saddle__leather, Saddle__dark,
                                             Saddle__gold, Saddle__paw), for Studio's Import 3D
@@ -34,9 +36,12 @@ COLORS = {
     "paw": (0.95, 0.36, 0.08),
 }
 
-BODY_HALF = 1.0  # the creature's side, from its middle
-LENGTH = 1.5  # the leather cover, front to back
-DROP = 0.85  # how far the leather goes down the sides
+BODY_HALF = 1.0  # the body's side, from its middle
+BODY_HEIGHT = 1.65  # the body, top of the back to the belly
+BODY_RADIUS = 0.5  # the body's rounded edges
+LENGTH = 1.3  # the side panels, front to back (about 43% of the body's 3)
+DROP = 0.95  # how far the side panels go down the sides (the upper half)
+SEAT_W = 1.2  # the seat (60% of the body's width)
 
 materials = {}
 
@@ -190,83 +195,157 @@ def disc(name, radius, depth, location, axis="X", verts=32):
 # The saddle
 
 
+def strap_sweep(name, path, length, thickness, corner=0.0, closed=False, y=0.0):
+    """A slab following `path` (points in XZ, its inside face on the path), `length` deep along Y. With
+    `corner`, its two ends get rounded corners that big; `closed` joins the end to the start (a loop)."""
+    bm = bmesh.new()
+    n = len(path)
+    dist = [0.0]
+    for i in range(1, n):
+        dist.append(dist[-1] + math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]))
+    rings = []
+    for i, (x, z) in enumerate(path):
+        a = path[(i - 1) % n] if closed else path[max(i - 1, 0)]
+        b = path[(i + 1) % n] if closed else path[min(i + 1, n - 1)]
+        tx, tz = b[0] - a[0], b[1] - a[1]
+        ln = math.hypot(tx, tz) or 1
+        nx, nz = -tz / ln, tx / ln  # outward: away from the body
+        half = length / 2
+        if corner > 0 and not closed:
+            m = min(dist[i], dist[-1] - dist[i])
+            if m < corner:
+                half = length / 2 - corner + math.sqrt(max(corner * corner - (corner - m) ** 2, 0))
+        ring = []
+        for out in (0.0, thickness):
+            for dy in (-half, half):
+                ring.append(bm.verts.new((x + nx * out, y + dy, z + nz * out)))
+        rings.append(ring)  # [in-front, in-back, out-front, out-back]
+    count = n if closed else n - 1
+    for i in range(count):
+        r0, r1 = rings[i], rings[(i + 1) % n]
+        bm.faces.new((r0[2], r1[2], r1[3], r0[3]))
+        bm.faces.new((r0[1], r1[1], r1[0], r0[0]))
+        bm.faces.new((r0[0], r1[0], r1[2], r0[2]))
+        bm.faces.new((r0[3], r1[3], r1[1], r0[1]))
+    if not closed:
+        for ring in (rings[0], rings[-1]):
+            bm.faces.new((ring[0], ring[2], ring[3], ring[1]))
+    return new_object(name, bm)
+
+
+def body_loop(half, radius, steps=8):
+    """The body's cross-section (XZ) as a loop: up the left side, over the back, down the right, under."""
+    pts = []
+    centers = ((-half + radius, -radius), (half - radius, -radius), (half - radius, -BODY_HEIGHT + radius), (-half + radius, -BODY_HEIGHT + radius))
+    starts = (math.pi, math.pi / 2, 0.0, -math.pi / 2)
+    for (cx, cz), start in zip(centers, starts):
+        for i in range(steps + 1):
+            a = start - (math.pi / 2) * i / steps
+            pts.append((cx + radius * math.cos(a), cz + radius * math.sin(a)))
+    return pts
+
+
+def rounded_box(name, size, location, bevel, subdiv=1):
+    return soft(box(name, size, location), bevel, 3, subdiv)
+
+
+def tag(obj, role, group, side=0):
+    finish(obj, role)
+    obj["group"] = group
+    obj["side"] = side
+    return obj
+
+
 def build():
     parts = []
 
-    # Cream underpad: a puffy roll just peeking out around the leather's edges
-    pad = sweep("Underpad", arch_path(BODY_HALF + 0.01, DROP + 0.07, 0.3), LENGTH + 0.1, 0.11)
-    parts.append(finish(soft(pad, 0.05, 2, 1), "cream"))
+    # Cream pad peeking out around the side panels, and the panels: one piece of leather over the back and
+    # down each side, following the body's rounded top, with rounded bottom corners
+    pad = strap_sweep("Pad", arch_path(BODY_HALF + 0.01, DROP + 0.07, BODY_RADIUS + 0.01), LENGTH + 0.12, 0.06, 0.32)
+    parts.append(tag(soft(pad, 0.025, 2, 1), "cream", "pad"))
+    panels = strap_sweep("Panels", arch_path(BODY_HALF + 0.07, DROP, BODY_RADIUS + 0.07), LENGTH, 0.08, 0.3)
+    parts.append(tag(soft(panels, 0.03, 2, 1), "leather", "panels"))
 
-    # Brown leather cover over it
-    cover = sweep("Cover", arch_path(BODY_HALF + 0.1, DROP, 0.34, top=0.09), LENGTH, 0.08)
-    parts.append(finish(soft(cover, 0.03, 2, 1), "leather"))
-
-    # Cushion: a big puffy square with rounded corners, dipped in the middle and rising at the back
-    seat = box("Cushion", (1.5, 1.42, 0.34), (0, 0.04, 0.36))
-    b = seat.modifiers.new("Bevel", "BEVEL")
-    b.width = 0.16
-    b.segments = 4
-    b.limit_method = "NONE"
-    apply_modifiers(seat)
-    sub = seat.modifiers.new("Sub", "SUBSURF")
-    sub.levels = 2
-    apply_modifiers(seat)
+    # Low leather base on the back, the soft seat on it (dipped in the middle) and its cream piping
+    parts.append(tag(rounded_box("Base", (SEAT_W + 0.12, 1.24, 0.12), (0, 0.0, 0.2), 0.06), "leather", "frame"))
+    seat = box("Seat", (SEAT_W, 0.92, 0.24), (0, 0.04, 0.37))
+    soft(seat, 0.1, 4, 2)
     for v in seat.data.vertices:
-        if v.co.z > 0.36:
-            t = (v.co.y - 0.04) / 0.71
-            v.co.z += -0.08 * (1 - t * t) + 0.1 * max(t, 0) ** 2
-    parts.append(finish(seat, "cushion"))
+        if v.co.z > 0.37:
+            t = (v.co.y - 0.04) / 0.46
+            v.co.z -= 0.06 * max(1 - t * t, 0) * max(1 - (v.co.x / (SEAT_W / 2)) ** 2, 0)
+    parts.append(tag(seat, "cushion", "seat"))
+    ring = [(x, y, 0.27) for x, y in rounded_rect(0, 0.04, SEAT_W / 2 + 0.02, 0.48, 0.2)]
+    parts.append(tag(tube("Piping", ring, 0.055, closed=True), "cream", "seat"))
 
-    # Thick cream piping hugging the cushion's base
-    ring = [(x, y, 0.21) for x, y in rounded_rect(0, 0.04, 0.78, 0.74, 0.24)]
-    parts.append(finish(tube("Piping", ring, 0.085, closed=True), "cream"))
+    # Raised front pommel with a cream rim and a small round handle on top; raised rear cantle with a rim
+    pommel = rounded_box("Pommel", (0.9, 0.24, 0.32), (0, -0.55, 0.38), 0.1)
+    parts.append(tag(pommel, "leather", "frame"))
+    parts.append(tag(tube("PommelRim", [(x / 8 * 0.8 - 0.4, -0.55, 0.55) for x in range(9)], 0.05), "cream", "frame"))
+    handle = [(-0.2, -0.56, 0.52)] + [
+        (0.12 * math.cos(math.pi - math.pi * i / 10) * 1.65, -0.56, 0.7 + 0.12 * math.sin(math.pi - math.pi * i / 10))
+        for i in range(11)
+    ] + [(0.2, -0.56, 0.52)]
+    parts.append(tag(tube("Handle", handle, 0.055), "dark", "frame"))
+    cantle = rounded_box("Cantle", (1.15, 0.24, 0.46), (0, 0.6, 0.43), 0.11)
+    cantle.rotation_euler = (math.radians(-14), 0, 0)
+    parts.append(tag(cantle, "leather", "frame"))
+    rim = [(x, 0.66 + 0.04 * (x / 0.55) ** 2, 0.68 - 0.06 * (x / 0.55) ** 2) for x in [i / 8 * 1.1 - 0.55 for i in range(9)]]
+    parts.append(tag(tube("CantleRim", rim, 0.06), "cream", "frame"))
 
-    # Back: a curved leather lip rising behind the cushion, with a cream rim
-    lip = [(x, 0.8 + 0.06 * (x / 0.75) ** 2, 0.48 - 0.12 * (x / 0.75) ** 2) for x in [i / 8 * 1.5 - 0.75 for i in range(9)]]
-    parts.append(finish(tube("BackRest", lip, 0.13), "leather"))
-    parts.append(finish(tube("BackRim", [(x, y, z + 0.11) for x, y, z in lip], 0.06), "cream"))
-
-    # Handle in front: an upside-down U
-    handle = [(-0.42, -0.64, 0.2)] + [
-        (-0.42 + 0.14 + 0.14 * math.cos(math.pi - (math.pi / 2) * i / 6), -0.64, 0.62 + 0.14 * math.sin(math.pi - (math.pi / 2) * i / 6))
-        for i in range(7)
-    ] + [
-        (0.42 - 0.14 + 0.14 * math.cos(math.pi / 2 - (math.pi / 2) * i / 6), -0.64, 0.62 + 0.14 * math.sin(math.pi / 2 - (math.pi / 2) * i / 6))
-        for i in range(7)
-    ] + [(0.42, -0.64, 0.2)]
-    parts.append(finish(tube("Handle", handle, 0.095), "dark"))
+    # Wide girth strap all the way around the body, under the panels
+    girth = strap_sweep("Girth", body_loop(BODY_HALF + 0.04, BODY_RADIUS + 0.04), 0.34, 0.05, closed=True)
+    parts.append(tag(soft(girth, 0.015, 2, 0), "dark", "girth"))
 
     for side in (-1, 1):
-        x = side * (BODY_HALF + 0.2)
-        # Paw badge: a leather plate with an orange inset, a gold coin, an orange paw
-        plate = box("BadgePlate", (0.06, 0.66, 0.54), (x, 0.0, -0.42))
-        parts.append(finish(soft(plate, 0.05, 2, 1), "dark"))
-        inset = box("BadgeInset", (0.04, 0.54, 0.42), (x + side * 0.02, 0.0, -0.42))
-        parts.append(finish(soft(inset, 0.04, 2, 1), "paw"))
-        coin = disc("Coin", 0.2, 0.06, (x + side * 0.05, 0.0, -0.42))
-        parts.append(finish(soft(coin, 0.015, 2, 0), "gold"))
-        px = x + side * 0.09
-        parts.append(finish(disc("Paw", 0.075, 0.03, (px, 0.0, -0.47), verts=16), "paw"))
-        for dy, dz in ((-0.08, -0.36), (-0.03, -0.33), (0.03, -0.33), (0.08, -0.36)):
-            parts.append(finish(disc("Toe", 0.03, 0.03, (px, dy, dz + 0.02), verts=12), "paw"))
+        x = side * (BODY_HALF + 0.15)
+        # Girth buckle where the girth comes out under the panel
+        loop = [(side * (BODY_HALF + 0.1), dy, -1.07 + dz) for dy, dz in rounded_rect(0, 0, 0.15, 0.12, 0.04)]
+        parts.append(tag(tube("GirthBuckle", loop, 0.035, closed=True), "gold", "buckles", side))
 
-        # Straps down the side, front and back, each with a square gold buckle; a stirrup at the front
-        for y in (-0.55, 0.55):
-            strap = box("Strap", (0.05, 0.16, DROP + 0.2), (x + side * 0.02, y, -(DROP + 0.2) / 2 + 0.05))
-            parts.append(finish(soft(strap, 0.02, 2, 0), "dark"))
-            loop = [(x + side * 0.06, y + dy, -0.62 + dz) for dy, dz in rounded_rect(0, 0, 0.13, 0.13, 0.04)]
-            parts.append(finish(tube("Buckle", loop, 0.03, closed=True), "gold"))
-        # Stirrup: a thick rounded triangle hanging under the front strap
-        corners = [(0, 0.16), (-0.16, -0.14), (0.16, -0.14)]
+        # Paw emblem on the panel: a gold coin with an orange paw
+        coin = disc("Coin", 0.19, 0.05, (x + side * 0.01, 0.22, -0.48))
+        parts.append(tag(soft(coin, 0.015, 2, 0), "gold", "emblem", side))
+        px = x + side * 0.05
+        parts.append(tag(disc("Paw", 0.07, 0.03, (px, 0.22, -0.53), verts=16), "paw", "emblem", side))
+        for dy, dz in ((-0.075, -0.45), (-0.027, -0.42), (0.027, -0.42), (0.075, -0.45)):
+            parts.append(tag(disc("Toe", 0.028, 0.03, (px, 0.22 + dy, dz), verts=12), "paw", "emblem", side))
+
+        # Stirrup leather down the panel with a small buckle, and the stirrup: a rounded triangle with a tread
+        strap = box("StirrupLeather", (0.05, 0.13, 0.68), (x + side * 0.01, -0.2, -0.42))
+        parts.append(tag(soft(strap, 0.02, 2, 0), "dark", "stirrups", side))
+        loop = [(x + side * 0.05, -0.2 + dy, -0.3 + dz) for dy, dz in rounded_rect(0, 0, 0.1, 0.09, 0.03)]
+        parts.append(tag(tube("StirrupBuckle", loop, 0.025, closed=True), "gold", "buckles", side))
+        corners = [(0, -0.72), (-0.17, -1.02), (0.17, -1.02)]
         stirrup = []
         for i, (cy, cz) in enumerate(corners):
             ny, nz = corners[(i + 1) % 3]
             for k in range(6):
                 t = k / 6
-                stirrup.append((x + side * 0.04, -0.55 + cy + (ny - cy) * t, -1.14 + cz + (nz - cz) * t))
-        parts.append(finish(soft(tube("Stirrup", stirrup, 0.05, closed=True), 0, 0, 1), "gold"))
-        
+                stirrup.append((x + side * 0.03, -0.2 + cy + (ny - cy) * t, cz + (nz - cz) * t))
+        parts.append(tag(soft(tube("Stirrup", stirrup, 0.045, closed=True), 0, 0, 1), "gold", "stirrups", side))
+        tread = box("Tread", (0.12, 0.36, 0.06), (x + side * 0.03, -0.2, -1.02))
+        parts.append(tag(soft(tread, 0.025, 2, 0), "dark", "stirrups", side))
     return parts
+
+
+EXPLODE = {
+    "seat": (0, 0, 1.3),
+    "frame": (0, 0, 0.7),
+    "panels": (0, 0, 0.0),
+    "pad": (0, 0, -0.45),
+    "girth": (0, 0, -1.3),
+    "buckles": (0.55, 0, -0.2),
+    "emblem": (0.35, 0, 0.1),
+    "stirrups": (0.85, 0, -0.5),
+}
+
+
+def explode(parts):
+    for obj in parts:
+        dx, dy, dz = EXPLODE[obj["group"]]
+        side = obj["side"] or 1
+        obj.location = obj.location + Vector((dx * side, dy, dz))
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -303,11 +382,11 @@ def setup_render(resolution=520):
     return camera
 
 
-def render_views(camera):
+def render_views(camera, name="Saddle", views=None):
     from PIL import Image
 
     target = Vector((0, 0, -0.25))
-    views = [("three_quarter", 35, 0.35), ("front", 0, 0.12), ("side", 90, 0.12), ("back", 180, 0.12), ("top", 0, 3.0)]
+    views = views or [("three_quarter", 35, 0.35), ("front", 0, 0.12), ("side", 90, 0.12), ("back", 180, 0.12), ("top", 0, 3.0), ("bottom", 0, -3.0)]
     images = []
     for view, angle, up in views:
         rad = math.radians(angle)
@@ -324,7 +403,7 @@ def render_views(camera):
     for image in images:
         sheet.paste(image, (x, 0))
         x += image.width
-    out = os.path.join(OUT, "Saddle.png")
+    out = os.path.join(OUT, f"{name}.png")
     sheet.save(out)
     print("wrote", out)
 
@@ -363,6 +442,9 @@ def main():
         return
     camera = setup_render()
     render_views(camera)
+    explode(parts)
+    camera.data.ortho_scale = 5.6
+    render_views(camera, "Saddle_exploded", [("three_quarter", 35, 0.3), ("front", 0, 0.08)])
 
 
 main()

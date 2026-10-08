@@ -24,9 +24,9 @@ export type Ride = {
 
 -- The Blender models as exported (front +Z, in the files' units). One part of each, with its box center and
 -- width in those units, is how the game finds the scale and origin of an import.
-local SADDLE = { ref = "cushion", center = Vector3.new(0, 0.36, -0.04), width = 1.498 }
+local SADDLE = { ref = "cushion", center = Vector3.new(0, 0.37, -0.04), width = 1.199 }
 local SADDLE_BODY = 2 -- the saddle is made for a back this wide
-local SADDLE_SEAT_TOP = 0.53
+local SADDLE_SEAT_TOP = 0.45
 local SADDLE_COLORS: { [string]: Color3 } = {
 	cushion = Color3.fromRGB(232, 88, 40),
 	cream = Color3.fromRGB(244, 230, 208),
