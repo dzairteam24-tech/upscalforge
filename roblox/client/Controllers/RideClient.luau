@@ -380,9 +380,10 @@ function RideClient.init()
 		character:WaitForChild("Animate", 5)
 		syncSeat()
 	end)
-	-- The creature models and the saddle may arrive after the first build: rebuild everyone's ride then
-	ReplicatedStorage.ChildAdded:Connect(function(child)
-		if child.Name == "CreatureModels" or child.Name == "SaddleModel" or child.Name == "PonyModel" or child.Name == "RideModels" then
+	-- The creature models, the pony and the saddle may arrive after the first build (under any name: RideModel
+	-- finds the pony and saddle by their parts): rebuild everyone's ride then, once their parts are in
+	ReplicatedStorage.ChildAdded:Connect(function()
+		task.delay(1, function()
 			local riding: { [Player]: string } = {}
 			for player, mount in mounts do
 				riding[player] = mount.value
@@ -390,7 +391,7 @@ function RideClient.init()
 			for player, value in riding do
 				build(player, value)
 			end
-		end
+		end)
 	end)
 	RunService.RenderStepped:Connect(draw)
 	RunService.Stepped:Connect(pose)

@@ -4,9 +4,9 @@
 -- saddle on its back. Clients draw it under the rider (RideClient).
 --
 -- The pony body (art/blender/pony.py, art/models/Pony.glb) and the saddle (art/blender/saddle.py,
--- art/models/Saddle.glb) are Blender models, found by their part names (Pony__..., Saddle__...) in
--- ReplicatedStorage.RideModels or ReplicatedStorage.SaddleModel (imported in Studio, or loaded by
--- ArtService from Config/Art). Until the pony is there the creature itself is reshaped into a slim, long
+-- art/models/Saddle.glb) are Blender models, found by their part names (Pony__..., Saddle__...) in a model
+-- anywhere directly in ReplicatedStorage, whatever its name (imported in Studio, or loaded by ArtService
+-- from Config/Art). Until the pony is there the creature itself is reshaped into a slim, long
 -- creature on long legs, and until the saddle is there it is the simpler saddle made of parts (RideSaddle).
 
 local Cosmetics = require(script.Parent.Config.Cosmetics)
@@ -54,21 +54,31 @@ function RideModel.useArt(root: Instance?)
 end
 RideModel.useSaddle = RideModel.useArt
 
+local reported: { [string]: string } = {}
+
+-- Says once per change in the Output which model a ride uses, so a model that isn't picked up is easy to spot
+local function report(prefix: string, message: string)
+	if reported[prefix] ~= message then
+		reported[prefix] = message
+		print("[Ride] " .. message)
+	end
+end
+
 -- The parts of a Blender model named `prefix`__<role>, in its design units with the game's front, or nil when
--- it isn't loaded
+-- it isn't loaded. The model can be anywhere directly in ReplicatedStorage under any name (Studio's importer
+-- calls it "Scene"); when there are several, the last one added wins, so a re-imported model replaces the old
+-- one even when the old one is left there.
 local function meshPieces(prefix: string, model: { ref: string, center: Vector3, width: number }): { Piece }?
+	local refName = prefix .. "__" .. model.ref
 	-- Looked up safely: the offline tests run this module without a full game
 	local ok, roots = pcall(function(): { Instance }
 		if artOverride then
 			return { artOverride }
 		end
-		local storage = game:GetService("ReplicatedStorage")
+		local children = game:GetService("ReplicatedStorage"):GetChildren()
 		local found = {}
-		for _, name in { "RideModels", "SaddleModel", "PonyModel" } do
-			local root = storage:FindFirstChild(name)
-			if root then
-				table.insert(found, root)
-			end
+		for i = #children, 1, -1 do
+			table.insert(found, children[i])
 		end
 		return found
 	end)
@@ -76,16 +86,31 @@ local function meshPieces(prefix: string, model: { ref: string, center: Vector3,
 		return nil
 	end
 	local found: { [string]: BasePart } = {}
+	local source: Instance? = nil
+	local candidates = 0
 	for _, root in roots do
+		local parts: { [string]: BasePart } = {}
 		for _, d in root:GetDescendants() do
 			if d:IsA("BasePart") then
 				local role = string.match((string.gsub(d.Name, "%.%d+$", "")), "^" .. prefix .. "__(.+)$")
-				if role and not found[role] then
-					found[role] = d
+				if role and not parts[role] then
+					parts[role] = d
 				end
 			end
 		end
+		if parts[model.ref] then
+			candidates += 1
+			if not source then
+				source = root
+				found = parts
+			end
+		end
 	end
+	if not source then
+		report(prefix, ("no %s model in ReplicatedStorage (no part named %s): using the stand-in"):format(prefix, refName))
+		return nil
+	end
+	report(prefix, ("%s model: ReplicatedStorage.%s%s"):format(prefix, (source :: Instance).Name, if candidates > 1 then (" (the newest of %d: delete the old ones)"):format(candidates) else ""))
 	local base = found[model.ref]
 	if not base then
 		return nil

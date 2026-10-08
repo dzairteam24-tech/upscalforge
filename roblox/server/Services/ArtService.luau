@@ -68,7 +68,8 @@ end
 
 -- A Cubeling Ride model (Config/Art SADDLE_ASSET_ID, PONY_ASSET_ID) into ReplicatedStorage.<name> (RideModel)
 local function loadRideArt(name: string, id: number)
-	if ReplicatedStorage:FindFirstChild(name) or id == 0 then
+	-- (added last, so it wins over a model placed by hand: RideModel uses the newest)
+	if id == 0 then
 		return
 	end
 	local ok, result = pcall(function()
