@@ -39,13 +39,15 @@ local function updateGate(gate: BasePart)
 	local openA, openB = Store.isUnlocked(a), Store.isUnlocked(b)
 	local open = openA and openB
 	gate.CanCollide = not open
-	gate.Transparency = if open then 1 else 0.2
+	gate.Transparency = if open then 1 else 0
 	local locked = if openA then b else a
 	local zone = World1.zonesById[locked]
-	local gui = gate:FindFirstChildOfClass("BillboardGui")
-	local text = gui and gui:FindFirstChild("Text") :: TextLabel?
-	if text then
-		text.Text = if open then "" else ("🔒 %s\n🪙 %s"):format(zone.name, Format.abbrev(zone.gateCost))
+	-- The sign is painted on both faces of the door
+	for _, gui in gate:GetChildren() do
+		local text = gui:IsA("SurfaceGui") and gui:FindFirstChild("Text") :: TextLabel?
+		if text then
+			text.Text = if open then "" else ("🔒 %s\n🪙 %s"):format(zone.name, Format.abbrev(zone.gateCost))
+		end
 	end
 	local prompt = gatePrompts[gate]
 	if not prompt then

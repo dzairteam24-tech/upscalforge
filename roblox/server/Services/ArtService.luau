@@ -23,7 +23,51 @@ local function findCreatures(root: Instance): Instance
 	return root
 end
 
+-- Designed map pieces (Config/Art MAP_ART_ASSET_ID), built in Studio at their real place on the map.
+-- A child named "Zone_<id>" takes the place of that zone's block decorations.
+local function loadMapArt()
+	if workspace:FindFirstChild("MapArt") or Art.MAP_ART_ASSET_ID == 0 then
+		return
+	end
+	local ok, result = pcall(function()
+		return InsertService:LoadAsset(Art.MAP_ART_ASSET_ID)
+	end)
+	if not ok or not result then
+		warn("[Art] Couldn't load the map art:", result)
+		return
+	end
+	-- LoadAsset wraps the saved model in another one: unwrap it (the saved model should be named MapArt)
+	local art: Instance = result:FindFirstChild("MapArt", true) or result
+	local children = art:GetChildren()
+	if art == result and #children == 1 and children[1]:IsA("Model") and not string.match(children[1].Name, "^Zone_%d+$") then
+		art = children[1]
+	end
+	art.Name = "MapArt"
+	for _, d in art:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+		end
+	end
+	local world = workspace:WaitForChild("World")
+	for _, child in art:GetChildren() do
+		local zone = world:FindFirstChild(child.Name)
+		if zone and string.match(child.Name, "^Zone_%d+$") then
+			for _, piece in zone:GetChildren() do
+				if piece.Name == "Decor" then
+					piece:Destroy()
+				end
+			end
+		end
+	end
+	art.Parent = workspace
+	if art ~= result then
+		result:Destroy()
+	end
+	print("[Art] Map art loaded")
+end
+
 function ArtService.init()
+	task.spawn(loadMapArt)
 	if ReplicatedStorage:FindFirstChild("CreatureModels") then
 		return -- placed by hand in Studio
 	end

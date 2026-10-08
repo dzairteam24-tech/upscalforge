@@ -1,5 +1,7 @@
 -- Builds the World 1 map from config: zone platforms, bridges with gates, egg stands and the Hub.
 -- Everything is made of simple blocks so the game runs without uploaded assets.
+-- Each zone is closed by a tall themed wall (Config/MapTheme) and the bridges are walled corridors with a
+-- solid gate, so a player sees the zone they're in and has to unlock a gate to find out what's next.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -8,6 +10,7 @@ local World1 = require(Shared.Config.World1)
 local FishingConfig = require(Shared.Config.Fishing)
 local PetModel = require(Shared.PetModel)
 local MapLayout = require(Shared.Logic.MapLayout)
+local MapTheme = require(Shared.Config.MapTheme)
 
 local WorldBuilder = {}
 
@@ -52,6 +55,47 @@ local function label(parent: Instance, text: string, size: UDim2, offset: Vector
 	gui.Parent = parent
 end
 
+local WALL_H = MapTheme.WALL_HEIGHT
+local WALL_T = MapTheme.WALL_THICKNESS
+
+-- A straight piece of wall from the ground up, with a lighter band along its top. `size` is the wall's
+-- footprint (X and Z); `name` lets the smoke test find the zone borders.
+local function wall(parent: Instance, name: string, position: Vector3, size: Vector3, style: { wall: Enum.Material, wallColor: Color3, capColor: Color3 })
+	part({
+		Name = name,
+		Size = Vector3.new(size.X, WALL_H + 4, size.Z),
+		Position = Vector3.new(position.X, WALL_H / 2 - 2, position.Z),
+		Color = style.wallColor,
+		Material = style.wall,
+	}).Parent = parent
+	part({
+		Name = "WallCap",
+		Size = Vector3.new(size.X + 1, 2, size.Z + 1),
+		Position = Vector3.new(position.X, WALL_H + 1, position.Z),
+		Color = style.capColor,
+		CanCollide = false,
+	}).Parent = parent
+end
+
+-- A square tower, a bit wider and taller than the wall: on the corners and on each side of an entrance.
+local function tower(parent: Instance, position: Vector3, style: { wall: Enum.Material, wallColor: Color3, capColor: Color3 })
+	local width = WALL_T + 3
+	part({
+		Name = "Tower",
+		Size = Vector3.new(width, WALL_H + 10, width),
+		Position = Vector3.new(position.X, (WALL_H + 10) / 2 - 4, position.Z),
+		Color = style.wallColor:Lerp(Color3.new(0, 0, 0), 0.12),
+		Material = style.wall,
+	}).Parent = parent
+	part({
+		Name = "TowerCap",
+		Size = Vector3.new(width + 2, 3, width + 2),
+		Position = Vector3.new(position.X, WALL_H + 7.5, position.Z),
+		Color = style.capColor,
+		CanCollide = false,
+	}).Parent = parent
+end
+
 local function buildZone(zone: World1.Zone, folder: Folder)
 	local center = MapLayout.center(zone.id)
 	local model = Instance.new("Model")
@@ -63,7 +107,7 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 		Size = Vector3.new(MapLayout.PLATFORM, 4, MapLayout.PLATFORM),
 		Position = center + Vector3.new(0, -2, 0),
 		Color = zone.color,
-		Material = Enum.Material.Grass,
+		Material = MapTheme.get(zone.id).ground,
 	})
 	ground:SetAttribute("BaseColor", zone.color)
 	ground.Parent = model
@@ -82,6 +126,9 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 	if zone.id == 0 then
 		table.insert(openSides, WorldBuilder.PLAZA_SIDE)
 	end
+	local theme = MapTheme.get(zone.id)
+	local walls = Instance.new("Model")
+	walls.Name = "Walls"
 	for _, side in { Vector3.new(1, 0, 0), Vector3.new(-1, 0, 0), Vector3.new(0, 0, 1), Vector3.new(0, 0, -1) } do
 		local isX = side.X ~= 0
 		local open = false
@@ -97,17 +144,31 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 				{ offset = (MapLayout.PLATFORM + MapLayout.BRIDGE_WIDTH) / 4, length = (MapLayout.PLATFORM - MapLayout.BRIDGE_WIDTH) / 2 },
 			}
 			else { { offset = 0, length = MapLayout.PLATFORM } }
+		local line = center + side * (half + WALL_T / 2)
 		for _, segment in segments do
 			local along = if isX then Vector3.new(0, 0, segment.offset) else Vector3.new(segment.offset, 0, 0)
-			local wall = part({
-				Name = "Border",
-				Size = if isX then Vector3.new(1, 8, segment.length) else Vector3.new(segment.length, 8, 1),
-				Position = center + side * (half + 0.5) + along + Vector3.new(0, 4, 0),
-				Transparency = 1,
-			})
-			wall.Parent = model
+			wall(walls, "Border", line + along, if isX then Vector3.new(WALL_T, 0, segment.length) else Vector3.new(segment.length, 0, WALL_T), theme)
+		end
+		-- Corner towers (each corner once: on the X sides) and an arch over the entrance
+		if isX then
+			tower(walls, line + Vector3.new(0, 0, half + WALL_T / 2), theme)
+			tower(walls, line - Vector3.new(0, 0, half + WALL_T / 2), theme)
+		end
+		if open then
+			local across = if isX then Vector3.new(0, 0, 1) else Vector3.new(1, 0, 0)
+			local edge = MapLayout.BRIDGE_WIDTH / 2 + (WALL_T + 3) / 2
+			tower(walls, line + across * edge, theme)
+			tower(walls, line - across * edge, theme)
+			part({
+				Name = "Arch",
+				Size = if isX then Vector3.new(WALL_T + 2, 5, MapLayout.BRIDGE_WIDTH + 2) else Vector3.new(MapLayout.BRIDGE_WIDTH + 2, 5, WALL_T + 2),
+				Position = line + Vector3.new(0, WALL_H - 2.5, 0),
+				Color = theme.capColor,
+				CanCollide = false,
+			}).Parent = walls
 		end
 	end
+	walls.Parent = model
 
 	-- A few block "trees" and rocks for decoration, placed on a ring so they don't block sources
 	local rng = Random.new(zone.id * 97)
@@ -258,40 +319,76 @@ local function buildBridge(a: number, b: number, folder: Folder)
 			then Vector3.new(length, 4, MapLayout.BRIDGE_WIDTH)
 			else Vector3.new(MapLayout.BRIDGE_WIDTH, 4, length),
 		Position = mid + Vector3.new(0, -2, 0),
-		Color = Color3.fromRGB(150, 120, 90),
-		Material = Enum.Material.WoodPlanks,
+		Color = Color3.fromRGB(150, 140, 125),
+		Material = Enum.Material.Cobblestone,
 	})
 	bridge.Parent = folder
 
-	-- Rails
+	-- Corridor walls, so from a bridge you only see the gate ahead and the zone behind
+	local style = MapTheme.CORRIDOR
 	for _, sideSign in { -1, 1 } do
 		local offset = if isX
-			then Vector3.new(0, 2, sideSign * (MapLayout.BRIDGE_WIDTH / 2 + 0.5))
-			else Vector3.new(sideSign * (MapLayout.BRIDGE_WIDTH / 2 + 0.5), 2, 0)
-		local rail = part({
-			Name = "Rail",
-			Size = if isX then Vector3.new(length, 4, 1) else Vector3.new(1, 4, length),
-			Position = mid + offset,
-			Color = Color3.fromRGB(110, 85, 60),
-		})
-		rail.Parent = folder
+			then Vector3.new(0, 0, sideSign * (MapLayout.BRIDGE_WIDTH / 2 + WALL_T / 2))
+			else Vector3.new(sideSign * (MapLayout.BRIDGE_WIDTH / 2 + WALL_T / 2), 0, 0)
+		wall(folder, "CorridorWall", mid + offset, if isX then Vector3.new(length, 0, WALL_T) else Vector3.new(WALL_T, 0, length), style)
 	end
 
-	-- Gate in the middle. Clients turn off its collision locally once both sides are unlocked.
+	-- Gate in the middle: a solid door in an iron frame, colored like the zone behind it. Clients hide the
+	-- door and turn off its collision locally once both sides are unlocked; the frame stays.
+	local behind = World1.zonesById[b]
+	local doorHeight = WALL_H - 6
+	local across = if isX then Vector3.new(0, 0, 1) else Vector3.new(1, 0, 0)
+	local iron = Color3.fromRGB(58, 60, 68)
+	for _, sideSign in { -1, 1 } do
+		part({
+			Name = "GatePost",
+			Size = Vector3.new(WALL_T + 2, WALL_H + 8, WALL_T + 2),
+			Position = mid + across * sideSign * (MapLayout.BRIDGE_WIDTH / 2 + WALL_T / 2) + Vector3.new(0, (WALL_H + 8) / 2 - 2, 0),
+			Color = iron,
+			Material = Enum.Material.Metal,
+		}).Parent = folder
+	end
+	part({
+		Name = "GateLintel",
+		Size = if isX then Vector3.new(WALL_T + 2, 6, MapLayout.BRIDGE_WIDTH + 2) else Vector3.new(MapLayout.BRIDGE_WIDTH + 2, 6, WALL_T + 2),
+		Position = mid + Vector3.new(0, doorHeight + 3, 0),
+		Color = behind.color,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+	}).Parent = folder
 	local gate = part({
 		Name = ("Gate_%d_%d"):format(a, b),
 		Size = if isX
-			then Vector3.new(2, 16, MapLayout.BRIDGE_WIDTH)
-			else Vector3.new(MapLayout.BRIDGE_WIDTH, 16, 2),
-		Position = mid + Vector3.new(0, 8, 0),
-		Color = Color3.fromRGB(90, 200, 255),
-		Material = Enum.Material.ForceField,
-		Transparency = 0.2,
+			then Vector3.new(2, doorHeight, MapLayout.BRIDGE_WIDTH)
+			else Vector3.new(MapLayout.BRIDGE_WIDTH, doorHeight, 2),
+		Position = mid + Vector3.new(0, doorHeight / 2, 0),
+		Color = behind.color:Lerp(Color3.new(0, 0, 0), 0.35),
+		Material = Enum.Material.Metal,
 	})
 	gate:SetAttribute("ZoneA", a)
 	gate:SetAttribute("ZoneB", b)
 	gate:AddTag("Gate")
-	label(gate, "", UDim2.fromScale(10, 3.5), Vector3.new(0, 10, 0))
+	-- The lock, the zone and the price are painted on both faces of the door (WorldClient fills them in)
+	for _, face in if isX then { Enum.NormalId.Left, Enum.NormalId.Right } else { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = face
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 20
+		gui.LightInfluence = 0
+		local text = Instance.new("TextLabel")
+		text.Name = "Text"
+		text.AnchorPoint = Vector2.new(0.5, 0.5)
+		text.Position = UDim2.fromScale(0.5, 0.45)
+		text.Size = UDim2.fromScale(0.85, 0.4)
+		text.BackgroundTransparency = 1
+		text.Font = Enum.Font.FredokaOne
+		text.TextScaled = true
+		text.TextColor3 = Color3.new(1, 1, 1)
+		text.TextStrokeTransparency = 0.2
+		text.Text = ""
+		text.Parent = gui
+		gui.Parent = gate
+	end
 	gate.Parent = folder
 end
 
