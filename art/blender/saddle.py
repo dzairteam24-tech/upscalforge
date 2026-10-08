@@ -1,17 +1,19 @@
-"""The Cubeling Ride saddle (art: the Cubeling saddle spec), made around the pony's rounded cube body: a soft
-orange seat with cream piping on a low leather base, a raised front pommel with a small round handle, a
-raised rear cantle, two big leather side panels that follow the body's rounded top down its sides (over a
-cream pad peeking out), a wide girth strap around the body under them with gold buckles, a paw emblem on
-each panel and two small stirrups where the rider's feet rest.
+"""The Cubeling Ride saddle (art: the riding model sheet): a small pony saddle sitting ON the pony's back. A big
+red padded seat (the dominant part) on a thin leather base over a cream fleece, closed by a low pommel with
+a wide handle in front and a rounded cantle behind; short padded side flaps lying on the back's rounded
+edges under the rider's thighs; a separate girth, the only part going around the body; and big stirrups
+right under the rider's feet.
 
-Units are the pony's (art/blender/pony.py): the body is 2 wide (sides at x = +-1, top corners rounded by
-about 0.5) and 1.65 tall, the top of the back is z = 0, front is -Y. The game scales it with the body.
+Units are the pony's (art/blender/pony.py), 2 studs each in the game: the body is 1.6 wide (sides at
+x = +-0.8, edges rounded by 0.55) and 1.7 tall, the top of the back is z = 0, front is -Y. The saddle is
+3.5 studs wide with its flaps, its seat 2.5 wide and 0.4 thick, 2.6 long from pommel to cantle. The rider's
+pose (RideClient, pony.py) sets where the hips, hands and feet go (HIP, HANDLE, STIRRUP).
 
     python art/blender/saddle.py            renders: art/renders/Saddle.png (3/4, front, side, back, top,
                                             bottom) and art/renders/Saddle_exploded.png
     python art/blender/saddle.py roblox     also writes art/models/Saddle.glb, one mesh per color role
                                             (Saddle__cushion, Saddle__cream, Saddle__leather, Saddle__dark,
-                                            Saddle__gold, Saddle__paw), for Studio's Import 3D
+                                            Saddle__gold), for Studio's Import 3D
 
 Needs Python with bpy (Blender 4.2+) and pillow.
 """
@@ -39,16 +41,19 @@ COLORS = {
 BODY_HALF = 0.8  # the pony's side, from its middle (its body is 1.6 wide, 2.2 long, 1.7 tall)
 BODY_HEIGHT = 1.7  # the body, top of the back to the belly
 BODY_RADIUS = 0.55  # the body's rounded edges
-SADDLE_W = 1.55  # the saddle on top of the back: with its side flaps 1.75 wide, 3.5 studs in the game
-SADDLE_L = 1.3  # front to back: 2.6 studs in the game
-SEAT_W = 1.25  # the padded seat: 2.5 studs in the game
-SHELL_DROOP = 0.16  # how much the saddle curves down to its sides, staying above the back
-SEAT_L = 0.8  # and 61% of the saddle's length
-FLAP_L = 1.05  # the side flaps, front to back
-FLAP_DROP = 0.85  # how far the side flaps go down the body's sides
-HIP = 0.16  # the rider's hips above the back: down in the seat (its top is about 0.24)
-HANDLE = (-0.45, 0.475)  # where the rider's hands hold the handle (y, z), from the rider's pose
-STIRRUP = (0.985, -0.36, -0.57)  # where the rider's feet rest (x, y, sole z), from the same pose
+# In the game 1 unit is 2 studs: the saddle is 3.5 studs wide with its flaps, its padded seat 2.5 wide, and
+# 2.6 long from the front of the pommel to the back of the cantle; the seat is 0.4 thick.
+SADDLE_L = 1.3  # pommel to cantle
+TREE_W = 1.36  # the leather base the seat sits on, just wider than the seat
+SEAT_W = 1.25  # the padded seat: 2.5 studs
+SEAT_L = 0.96  # the padded seat between the pommel and the cantle
+SEAT_T = 0.2  # its thickness: 0.4 studs
+DROOP = 0.04  # how much the base and seat curve down at the sides
+FLAP_L = 0.9  # the side flaps, front to back
+FLAP_DROP = 0.42  # how far down the body's rounded edge the flaps reach: under the rider's thighs
+HIP = 0.1  # the rider's hips above the back: sunk into the seat (its top is about 0.27)
+HANDLE = (-0.45, 0.415)  # where the rider's hands hold the handle (y, z), from the rider's pose
+STIRRUP = (0.986, -0.36, -0.632)  # where the rider's feet rest (x, y, sole z), from the same pose
 
 materials = {}
 
@@ -266,134 +271,97 @@ def tag(obj, role, group, side=0):
 def back_z(x):
     """The top of the pony's back at x across it: flat in the middle, rounding down to the sides."""
     flat = BODY_HALF - BODY_RADIUS
-    ax = abs(x)
+    ax = min(abs(x), BODY_HALF)
     if ax <= flat:
         return 0.0
-    ax = min(ax, BODY_HALF)
     return -BODY_RADIUS + math.sqrt(max(BODY_RADIUS**2 - (ax - flat) ** 2, 0))
 
 
-def back_path(x0, x1, off, steps=16):
-    """Points along the back's cross-section (XZ) from x0 to x1, `off` above it."""
-    return [(x0 + (x1 - x0) * i / steps, back_z(x0 + (x1 - x0) * i / steps) + off) for i in range(steps + 1)]
+def seat_z(x):
+    """The saddle's base and seat: nearly flat, curving down a little to the sides."""
+    return -DROOP * (x / (TREE_W / 2)) ** 2
 
 
-def side_path(x_top, drop, off, steps=12):
-    """Down one side of the body (x > 0) `off` outside it: from x_top on the back, over the rounded edge,
-    straight down to -drop."""
+def drape(obj, curve=seat_z):
+    for v in obj.data.vertices:
+        v.co.z += curve(v.co.x + obj.location.x)
+    return obj
+
+
+def flap_path(off, drop, steps=10):
+    """One side flap (x > 0), `off` above the body: from under the seat's edge, following the back's rounded
+    edge down to `drop` below the back."""
     flat = BODY_HALF - BODY_RADIUS
     r = BODY_RADIUS + off
-    a0 = math.acos(min(max((x_top - flat) / r, -1), 1))
-    pts = []
-    for i in range(steps + 1):
-        a = a0 * (1 - i / steps)
-        pts.append((flat + r * math.cos(a), -BODY_RADIUS + r * math.sin(a)))
-    pts.append((BODY_HALF + off, -drop))
-    return pts
-
-
-def shell_z(x):
-    """The underside of the saddle at x across it: a shallow curve, above the back, that reaches past it."""
-    return -SHELL_DROOP * (min(abs(x), SADDLE_W / 2) / (SADDLE_W / 2)) ** 2
-
-
-def shell_path(x0, x1, off, steps=16):
-    return [(x0 + (x1 - x0) * i / steps, shell_z(x0 + (x1 - x0) * i / steps) + off) for i in range(steps + 1)]
-
-
-def flap_path(off, drop):
-    """One side flap (x > 0): out along the saddle's edge, then straight down beside the body to -drop."""
-    edge = SADDLE_W / 2 + off
-    pts = [(SADDLE_W / 2 - 0.16 + 0.16 * i / 4, shell_z(SADDLE_W / 2 - 0.16 + 0.16 * i / 4) + 0.02) for i in range(4)]
-    z0 = shell_z(SADDLE_W / 2)
-    for i in range(5):
-        a = math.pi / 2 * i / 4
-        pts.append((edge - 0.06 + 0.06 * math.sin(a), z0 - 0.06 + 0.06 * math.cos(a)))
-    pts.append((edge, -drop))
-    return pts
-
-
-def drape(obj):
-    """Lays a flat piece onto the saddle's curve: its points go down towards the sides."""
-    for v in obj.data.vertices:
-        v.co.z += shell_z(v.co.x + obj.location.x)
-    return obj
+    a0 = math.acos(min((SEAT_W / 2 - 0.12 - flat) / r, 1))
+    a1 = math.asin(max(min((-drop + BODY_RADIUS) / r, 1), -1))
+    return [(flat + r * math.cos(a0 + (a1 - a0) * i / steps), -BODY_RADIUS + r * math.sin(a0 + (a1 - a0) * i / steps)) for i in range(steps + 1)]
 
 
 def build():
     parts = []
-    front, rear = -SADDLE_L / 2, SADDLE_L / 2
+    front = -SADDLE_L / 2
 
-    # 1. The saddle ON the back: a cream fleece peeking out under a leather skirt that follows the back
-    pad = strap_sweep("Pad", shell_path(-SADDLE_W / 2 - 0.04, SADDLE_W / 2 + 0.04, 0.0), SADDLE_L + 0.1, 0.05, 0.24)
-    parts.append(tag(soft(pad, 0.02, 2, 1), "cream", "frame"))
-    skirt = strap_sweep("Skirt", shell_path(-SADDLE_W / 2, SADDLE_W / 2, 0.05), SADDLE_L, 0.09, 0.22)
-    parts.append(tag(soft(skirt, 0.03, 2, 1), "leather", "frame"))
-    top = 0.14  # the skirt's top in the middle
+    # The base: a thin leather platform ON the back (pommel to cantle), with a cream fleece peeking out
+    pad = rounded_box("Fleece", (TREE_W + 0.08, SADDLE_L + 0.06, 0.04), (0, 0, 0.02), 0.02)
+    parts.append(tag(drape(pad), "cream", "frame"))
+    base = rounded_box("Base", (TREE_W, SADDLE_L, 0.06), (0, 0, 0.07), 0.03)
+    parts.append(tag(drape(base), "leather", "frame"))
+    top = 0.1  # the base's top in the middle
 
-    # The large padded seat, dipped where the rider sits, with a cream piping
-    seat_z = top + 0.07
-    seat = box("Seat", (SEAT_W, SEAT_L, 0.15), (0, 0.0, seat_z))
-    soft(seat, 0.065, 4, 2)
+    # The padded seat: the big part of the saddle, dipped where the rider's pelvis sits, with a cream piping
+    sz = top + SEAT_T / 2
+    seat = box("Seat", (SEAT_W, SEAT_L, SEAT_T), (0, 0.02, sz))
+    soft(seat, 0.08, 4, 2)
     for v in seat.data.vertices:
         if v.co.z > 0:
-            t = v.co.y / (SEAT_L / 2)
+            t = (v.co.y - 0.02) / (SEAT_L / 2)
             u = v.co.x / (SEAT_W / 2)
-            v.co.z -= 0.06 * max(1 - t * t, 0) * max(1 - u * u, 0)
+            v.co.z -= 0.05 * max(1 - t * t, 0) * max(1 - u * u, 0)
     parts.append(tag(drape(seat), "cushion", "seat"))
-    ring = [(x, y, top + 0.015 + shell_z(x)) for x, y in rounded_rect(0, 0.0, SEAT_W / 2 + 0.01, SEAT_L / 2 + 0.01, 0.17)]
+    ring = [(x, y, top + 0.02 + seat_z(x)) for x, y in rounded_rect(0, 0.02, SEAT_W / 2 + 0.01, SEAT_L / 2 + 0.01, 0.2)]
     parts.append(tag(tube("Piping", ring, 0.04, closed=True), "cream", "seat"))
 
-    # 2. Front pommel: low and chunky, with one wide rounded handle on it for both hands
-    py = -SEAT_L / 2 - 0.1
-    pommel = rounded_box("Pommel", (0.9, 0.2, 0.17), (0, py, top + 0.08), 0.075)
-    parts.append(tag(drape(pommel), "leather", "seat"))
-    parts.append(tag(tube("PommelRim", [(x, py, top + 0.175 + shell_z(x)) for x in [i / 8 * 0.82 - 0.41 for i in range(9)]], 0.035), "cream", "seat"))
+    # Pommel and cantle: low rounded rolls closing the seat in front and behind
+    py = front + 0.1
+    parts.append(tag(drape(rounded_box("Pommel", (0.95, 0.2, 0.2), (0, py, top + 0.11), 0.09)), "leather", "seat"))
+    parts.append(tag(tube("PommelRim", [(x, py, top + 0.215 + seat_z(x)) for x in [i / 8 * 0.84 - 0.42 for i in range(9)]], 0.035), "cream", "seat"))
+    cy = SADDLE_L / 2 - 0.1
+    parts.append(tag(drape(rounded_box("Cantle", (1.15, 0.2, 0.24), (0, cy, top + 0.13), 0.09)), "leather", "seat"))
+    parts.append(tag(tube("CantleRim", [(x, cy + 0.02, top + 0.255 + seat_z(x)) for x in [i / 8 * 1.04 - 0.52 for i in range(9)]], 0.04), "cream", "seat"))
+
+    # The handle: one wide rounded bar on the pommel, right in front of the rider's hands
     hy, hz = HANDLE
-    half, r = 0.22, 0.07
-    handle = [(-half, py - 0.02, top + 0.15)]
+    half, r = 0.24, 0.07
+    handle = [(-half, py, top + 0.18)]
     for i in range(7):
         a = math.pi - (math.pi / 2) * i / 6
         handle.append((-half + r + r * math.cos(a), hy, hz - r + r * math.sin(a)))
     for i in range(7):
         a = math.pi / 2 - (math.pi / 2) * i / 6
         handle.append((half - r + r * math.cos(a), hy, hz - r + r * math.sin(a)))
-    handle.append((half, py - 0.02, top + 0.15))
+    handle.append((half, py, top + 0.18))
     parts.append(tag(tube("Handle", handle, 0.045), "dark", "seat"))
-
-    # 3. Rear cantle: a slightly raised rounded back rest with a cream rim
-    cy = SEAT_L / 2 + 0.09
-    cantle = drape(rounded_box("Cantle", (1.15, 0.18, 0.22), (0, cy, top + 0.1), 0.08))
-    cantle.rotation_euler = (math.radians(-12), 0, 0)
-    parts.append(tag(cantle, "leather", "seat"))
-    rim = [(x, cy + 0.03, top + 0.22 + shell_z(x) - 0.03 * (x / 0.56) ** 2) for x in [i / 8 * 1.12 - 0.56 for i in range(9)]]
-    parts.append(tag(tube("CantleRim", rim, 0.04), "cream", "seat"))
 
     sx, sy, sole = STIRRUP
     for side in (-1, 1):
         # (mirrored to the left side, the path is reversed so its outside stays outside)
         mirror = lambda pts: [(side * x, z) for x, z in (pts if side > 0 else reversed(pts))]  # noqa: E731
-        # 4. Side flap: a padded leather panel from under the skirt down the side, beside the rider's thigh,
-        # over a cream padding that shows around its edge; a paw emblem on it
-        lining = strap_sweep("FlapLining", mirror(flap_path(-0.01, FLAP_DROP + 0.05)), FLAP_L + 0.06, 0.04, 0.2)
-        parts.append(tag(soft(lining, 0.015, 2, 1), "cream", "flaps", side))
-        flap = strap_sweep("Flap", mirror(flap_path(0.03, FLAP_DROP)), FLAP_L, 0.07, 0.18)
-        parts.append(tag(soft(flap, 0.025, 2, 1), "leather", "flaps", side))
-        fx = side * (SADDLE_W / 2 + 0.1)
-        ey, ez = 0.22, -0.42
-        coin = disc("Coin", 0.15, 0.04, (fx, ey, ez))
-        parts.append(tag(soft(coin, 0.012, 2, 0), "gold", "flaps", side))
-        px = fx + side * 0.03
-        parts.append(tag(disc("Paw", 0.058, 0.02, (px, ey, ez - 0.04), verts=16), "paw", "flaps", side))
-        for dy, dz in ((-0.06, 0.02), (-0.022, 0.046), (0.022, 0.046), (0.06, 0.02)):
-            parts.append(tag(disc("Toe", 0.023, 0.02, (px, ey + dy, ez + dz), verts=12), "paw", "flaps", side))
+        # Side flap: a padded leather panel under the seat's edge, lying on the back's rounded edge where the
+        # rider's thigh rests, over a cream lining that shows around it; a small paw emblem
+        lining = strap_sweep("FlapLining", mirror(flap_path(0.02, FLAP_DROP + 0.04)), FLAP_L + 0.06, 0.035, 0.18)
+        parts.append(tag(soft(lining, 0.012, 2, 1), "cream", "flaps", side))
+        flap = strap_sweep("Flap", mirror(flap_path(0.05, FLAP_DROP)), FLAP_L, 0.06, 0.16)
+        parts.append(tag(soft(flap, 0.02, 2, 1), "leather", "flaps", side))
+        ex, ez = flap_path(0.12, 0.3)[-1]
+        coin = disc("Coin", 0.1, 0.035, (side * ex, 0.22, ez))
+        coin.rotation_euler = (0, math.atan2(ex - BODY_HALF + BODY_RADIUS, ez + BODY_RADIUS) * side, 0)
+        parts.append(tag(soft(coin, 0.01, 2, 0), "gold", "flaps", side))
 
-        # 6. Stirrup: hangs out from the saddle on a leather from under the skirt, around the flap, down to
-        # the rider's foot; a big rounded D with a wide tread
-        leather = [(side * (SADDLE_W / 2 - 0.05), sy, shell_z(SADDLE_W / 2) + 0.1), (side * (SADDLE_W / 2 + 0.11), sy, -0.25), (side * sx, sy, sole + 0.32)]
+        # Stirrup: right under the rider's foot, on a leather from under the flap; a big rounded D with a tread
+        fx, fz = flap_path(0.08, FLAP_DROP - 0.05)[-1]
+        leather = [(side * (fx - 0.04), sy, fz + 0.12), (side * fx, sy, fz), (side * sx, sy, sole + 0.3)]
         parts.append(tag(tube("StirrupLeather", leather, 0.035), "dark", "stirrups", side))
-        loop = [(side * (SADDLE_W / 2 + 0.12), sy + dy, -0.3 + dz) for dy, dz in rounded_rect(0, 0, 0.075, 0.06, 0.02)]
-        parts.append(tag(tube("StirrupBuckle", loop, 0.02, closed=True), "gold", "stirrups", side))
         d = []
         for i in range(9):
             a = math.pi * i / 8
@@ -404,21 +372,21 @@ def build():
         tread = box("Tread", (0.34, 0.56, 0.05), (side * sx, sy, sole - 0.025))
         parts.append(tag(soft(tread, 0.02, 2, 0), "dark", "stirrups", side))
 
-        # Girth buckle: where the girth meets the bottom of the flap
-        loop = [(side * (BODY_HALF + 0.09), 0.02 + dy, -FLAP_DROP - 0.12 + dz) for dy, dz in rounded_rect(0, 0, 0.16, 0.12, 0.04)]
-        parts.append(tag(tube("GirthBuckle", loop, 0.032, closed=True), "gold", "girth", side))
+        # Girth buckle on the side of the body, below the flap
+        loop = [(side * (BODY_HALF + 0.08), 0.05 + dy, -0.7 + dz) for dy, dz in rounded_rect(0, 0, 0.14, 0.11, 0.035)]
+        parts.append(tag(tube("GirthBuckle", loop, 0.03, closed=True), "gold", "girth", side))
 
-    # 5. Girth: a separate wide strap around the belly under the saddle
-    girth = strap_sweep("Girth", body_loop(BODY_HALF + 0.035, BODY_RADIUS + 0.035), 0.26, 0.04, closed=True, y=0.02)
+    # The girth: the one part that goes around the body, under the belly
+    girth = strap_sweep("Girth", body_loop(BODY_HALF + 0.035, BODY_RADIUS + 0.035), 0.24, 0.04, closed=True, y=0.05)
     parts.append(tag(soft(girth, 0.012, 2, 0), "dark", "girth"))
     return parts
 
 
 EXPLODE = {
-    "seat": (0, 0, 0.9),
+    "seat": (0, 0, 0.8),
     "frame": (0, 0, 0.35),
-    "flaps": (0.45, 0, 0.0),
-    "stirrups": (0.95, 0, -0.35),
+    "flaps": (0.4, 0, 0.0),
+    "stirrups": (0.85, 0, -0.35),
     "girth": (0, 0, -1.1),
 }
 

@@ -211,7 +211,7 @@ def add_head_and_saddle():
 # degrees), its hips RIDER_HIP above the back in the middle of the saddle. Built in the game's axes (studs,
 # Y up, front -Z) and turned into Blender's (units of 2 studs, Z up, front -Y).
 POSE = {"waistPitch": -12, "hipPitch": 80, "hipRoll": 50, "kneePitch": -70, "kneeRoll": 10, "armPitch": -6, "armRoll": 60, "elbowPitch": 90}
-RIDER_HIP = 0.16
+RIDER_HIP = 0.1
 
 
 def add_rider():
