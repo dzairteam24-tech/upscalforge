@@ -1,6 +1,6 @@
 -- Cubeling Ride: draws the creature each player is riding (player attribute "RidePet", set by the server
 -- from the strongest creature in their team) under their character, every frame on each client.
--- It is drawn RIDE_CREATURE_HEIGHT tall whatever its size, hops and swings its legs while moving, and
+-- It is drawn RIDE_CREATURE_HEIGHT tall whatever its size (taller than the rider), hops and swings its legs while moving, and
 -- opens its mouth now and then. PetFollow hides the same creature from the followers.
 
 local Players = game:GetService("Players")
@@ -80,7 +80,7 @@ local function build(player: Player, value: string)
 		openUntil = 0,
 		nextChirp = os.clock() + 2,
 		mouthOpen = false,
-		drop = Cosmetics.RIDE_CREATURE_HEIGHT + 3,
+		drop = Cosmetics.RIDE_CREATURE_HEIGHT + 2,
 	}
 end
 
@@ -139,7 +139,8 @@ local function step()
 		if flat.Magnitude < 1e-3 then
 			flat = Vector3.new(0, 0, -1)
 		end
-		local center = Vector3.new(root.Position.X, feetY + height / 2 + hop, root.Position.Z)
+		local ahead = flat.Unit * Cosmetics.RIDE_FORWARD
+		local center = Vector3.new(root.Position.X + ahead.X, feetY + height / 2 + hop, root.Position.Z + ahead.Z)
 		local lean = if moving then CFrame.Angles(math.rad(-8), 0, math.sin(now * 9 + mount.phase) * math.rad(3)) else CFrame.identity
 		local frame = CFrame.lookAt(center, center + flat) * lean
 

@@ -126,6 +126,7 @@ return {
 	hatchFx = hatchFx,
 	hatchFxById = hatchFxById,
 	RIDE_SPEED = 1.6,
-	RIDE_CREATURE_HEIGHT = 4.2, -- the ridden creature is drawn this tall, whatever its size
+	RIDE_CREATURE_HEIGHT = 6.5, -- the ridden creature is drawn this tall, whatever its size: bigger than the rider
+	RIDE_FORWARD = 0.9, -- it stands this far ahead of the rider, so the seated legs rest on its back
 	RIDE_DEFAULT = "Cubeling",
 }
