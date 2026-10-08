@@ -24,7 +24,7 @@ local LEG_PHASE = { legFL = 0, legBR = 0, legFR = math.pi, legBL = math.pi }
 -- The riding pose, in degrees (R15): thighs forward and wide over the saddle, knees bent so the lower legs
 -- hang down the creature's sides in front of the saddle flaps, hands up in front of the chest on the handle. Roll is outward for the legs, inward for
 -- the arms. (Checked against the real creature meshes in an offline render.)
-local POSE = { hipPitch = 20, hipRoll = 80, kneePitch = -20, kneeRoll = -70, armPitch = 60, armRoll = 12 }
+local POSE = { hipPitch = 25, hipRoll = 30, kneePitch = -25, kneeRoll = -25, armPitch = 60, armRoll = 12 }
 -- Jumping: the creature tucks its legs (front forward, back backward) and tilts with its climb or fall
 local JUMP_TUCK = 40
 local JUMP_TILT = 12

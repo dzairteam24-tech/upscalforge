@@ -1,7 +1,7 @@
 --!strict
--- The Cubeling Ride's creature: the rider's strongest creature, built by PetModel at its normal shape and
--- RIDE_CREATURE_HEIGHT tall whatever its size, wearing a saddle on its back (art: the Cubeling Ride model
--- sheet). Clients draw it under the rider (RideClient).
+-- The Cubeling Ride's creature: the rider's strongest creature, built by PetModel, RIDE_CREATURE_HEIGHT tall
+-- whatever its size, slimmer and longer like a horse (its face and legs keep their shape), wearing a saddle
+-- on its back (art: the Cubeling Ride model sheet). Clients draw it under the rider (RideClient).
 --
 -- The saddle is the Blender model (art/blender/saddle.py, art/models/Saddle.glb) once it is in
 -- ReplicatedStorage.SaddleModel (imported in Studio, or loaded by ArtService from Config/Art), fitted to
@@ -99,27 +99,61 @@ end
 
 function RideModel.build(pet: { s: string, v: string, z: string }): Ride
 	local built = PetModel.build(pet)
-	local scale = Cosmetics.RIDE_CREATURE_HEIGHT / math.max(built.height, 0.1)
+	-- Like a horse: narrower and longer than the creature, on long legs, RIDE_CREATURE_HEIGHT tall in all
+	local legs = Cosmetics.RIDE_LEG_EXTRA
+	local scale = (Cosmetics.RIDE_CREATURE_HEIGHT - legs) / math.max(built.height, 0.1)
+	local stretch = Vector3.new(scale * Cosmetics.RIDE_SLIM, scale, scale * Cosmetics.RIDE_LONG)
+	local bodyIndex = table.find(built.parts, built.body) or 1
+	local bodyDepth = built.parts[bodyIndex].Size.Z
+	-- The top of the back: the body is about as tall as it is wide (ears stick up above that)
+	local backAboveBottom = built.parts[bodyIndex].Size.X * 0.95 * scale
 	local offsets: { CFrame } = {}
+	local isLeg: { [number]: boolean } = {}
+	local feet = math.huge
 	for i, p in built.parts do
 		local o = built.offsets[i]
-		p.Size *= scale
+		local size = p.Size
+		if string.match(built.anims[i] or "", "^leg") then
+			-- Legs stay square posts
+			isLeg[i] = true
+			p.Size = size * Vector3.new(stretch.X, stretch.Y, stretch.X)
+			feet = math.min(feet, o.Position.Y * stretch.Y - p.Size.Y / 2)
+		elseif size.Z < bodyDepth * 0.25 and o.Position.Z < -bodyDepth * 0.3 then
+			-- Face pieces (eyes, mouth, blush...) keep their shape on the narrower face
+			p.Size = size * stretch.X
+		else
+			-- Body, belly, ears, wings: stretched with the body (the parts are turned about Y only, so their
+			-- size is along the world axes)
+			p.Size = size * stretch
+		end
 		p.CanCollide = false
 		p.CanQuery = false
 		p.CanTouch = false
-		offsets[i] = CFrame.new(o.Position * scale) * o.Rotation
+		offsets[i] = CFrame.new(o.Position * stretch) * o.Rotation
+	end
+	-- Lift everything by the extra leg length, and the legs reach down to where the feet were
+	if feet == math.huge then
+		feet = offsets[bodyIndex].Y - built.parts[bodyIndex].Size.Y / 2
+	end
+	local lift = -Cosmetics.RIDE_CREATURE_HEIGHT / 2 - feet + legs
+	for i, p in built.parts do
+		if isLeg[i] then
+			p.Size += Vector3.new(0, legs, 0)
+			offsets[i] = offsets[i] + Vector3.new(0, lift - legs / 2, 0)
+		else
+			offsets[i] = offsets[i] + Vector3.new(0, lift, 0)
+		end
 	end
 	local pivots: { [number]: Vector3 } = {}
 	for i, pivot in built.pivots do
-		pivots[i] = pivot * scale
+		pivots[i] = pivot * stretch + Vector3.new(0, lift, 0)
 	end
 
-	-- The top of the back: the body is about as tall as it is wide (ears stick up above that)
-	local bodyIndex = table.find(built.parts, built.body) or 1
 	local body = built.parts[bodyIndex]
 	local width = body.Size.X
-	local backY = offsets[bodyIndex].Y - body.Size.Y / 2 + width * 0.95
-	local back = Vector3.new(0, backY, Cosmetics.RIDE_SEAT_BACK)
+	local backY = offsets[bodyIndex].Y - body.Size.Y / 2 + backAboveBottom
+	-- The saddle sits on the back half, behind the ears and head
+	local back = Vector3.new(0, backY, body.Size.Z * Cosmetics.RIDE_SEAT_BACK)
 
 	local function add(p: BasePart, offset: CFrame)
 		p.Anchored = true
