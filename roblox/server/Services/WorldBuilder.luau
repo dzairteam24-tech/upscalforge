@@ -7,10 +7,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local World1 = require(Shared.Config.World1)
-local FishingConfig = require(Shared.Config.Fishing)
 local PetModel = require(Shared.PetModel)
 local MapLayout = require(Shared.Logic.MapLayout)
 local MapTheme = require(Shared.Config.MapTheme)
+local HubBuilder = require(script.Parent.HubBuilder)
 
 local WorldBuilder = {}
 
@@ -96,6 +96,8 @@ local function tower(parent: Instance, position: Vector3, style: { wall: Enum.Ma
 	}).Parent = parent
 end
 
+local HUB_GRASS = Color3.fromRGB(118, 190, 92)
+
 local function buildZone(zone: World1.Zone, folder: Folder)
 	local center = MapLayout.center(zone.id)
 	local model = Instance.new("Model")
@@ -124,7 +126,13 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 		end
 	end
 	if zone.id == 0 then
+		-- The Hub is a floating island town instead of a walled zone
 		table.insert(openSides, WorldBuilder.PLAZA_SIDE)
+		ground.Color = HUB_GRASS
+		ground:SetAttribute("BaseColor", HUB_GRASS)
+		HubBuilder.build(model, folder, openSides)
+		model.Parent = folder
+		return
 	end
 	local theme = MapTheme.get(zone.id)
 	local walls = Instance.new("Model")
@@ -176,16 +184,6 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 		local angle = (i / 10) * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
 		local radius = half - 8
 		local pos = center + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-		if zone.id == 0 then
-			-- Keep the Hub's pond, leaderboards (south row) and ad boards (east and west walls) clear
-			local localPos = pos - center
-			local nearPond = (localPos - FishingConfig.POND_OFFSET).Magnitude < FishingConfig.POND_RADIUS + 8
-			local nearBoards = math.abs(localPos.Z - 55) < 10
-			local nearAds = math.abs(localPos.X) > 48 and math.abs(localPos.Z) < 14
-			if nearPond or nearBoards or nearAds then
-				continue
-			end
-		end
 		local trunk = part({
 			Name = "Decor",
 			Size = Vector3.new(2, 6, 2),
@@ -319,14 +317,31 @@ local function buildBridge(a: number, b: number, folder: Folder)
 			then Vector3.new(length, 4, MapLayout.BRIDGE_WIDTH)
 			else Vector3.new(MapLayout.BRIDGE_WIDTH, 4, length),
 		Position = mid + Vector3.new(0, -2, 0),
-		Color = Color3.fromRGB(150, 140, 125),
-		Material = Enum.Material.Cobblestone,
+		Color = if a == 0 then Color3.fromRGB(150, 110, 70) else Color3.fromRGB(150, 140, 125),
+		Material = if a == 0 then Enum.Material.WoodPlanks else Enum.Material.Cobblestone,
 	})
 	bridge.Parent = folder
 
+	-- The bridge out of the Hub stays an open wooden bridge (the Hub is a floating island) and its gate
+	-- never closes (the first zone is free), so it gets rails and no gate frame.
+	if a == 0 then
+		for _, sideSign in { -1, 1 } do
+			local offset = if isX
+				then Vector3.new(0, 1.5, sideSign * (MapLayout.BRIDGE_WIDTH / 2 + 0.5))
+				else Vector3.new(sideSign * (MapLayout.BRIDGE_WIDTH / 2 + 0.5), 1.5, 0)
+			part({
+				Name = "Rail",
+				Size = if isX then Vector3.new(length, 3, 1) else Vector3.new(1, 3, length),
+				Position = mid + offset,
+				Color = Color3.fromRGB(120, 84, 52),
+				Material = Enum.Material.Wood,
+			}).Parent = folder
+		end
+	end
+
 	-- Corridor walls, so from a bridge you only see the gate ahead and the zone behind
 	local style = MapTheme.CORRIDOR
-	for _, sideSign in { -1, 1 } do
+	for _, sideSign in if a == 0 then {} else { -1, 1 } do
 		local offset = if isX
 			then Vector3.new(0, 0, sideSign * (MapLayout.BRIDGE_WIDTH / 2 + WALL_T / 2))
 			else Vector3.new(sideSign * (MapLayout.BRIDGE_WIDTH / 2 + WALL_T / 2), 0, 0)
@@ -339,7 +354,7 @@ local function buildBridge(a: number, b: number, folder: Folder)
 	local doorHeight = WALL_H - 6
 	local across = if isX then Vector3.new(0, 0, 1) else Vector3.new(1, 0, 0)
 	local iron = Color3.fromRGB(58, 60, 68)
-	for _, sideSign in { -1, 1 } do
+	for _, sideSign in if a == 0 then {} else { -1, 1 } do
 		part({
 			Name = "GatePost",
 			Size = Vector3.new(WALL_T + 2, WALL_H + 8, WALL_T + 2),
@@ -350,6 +365,7 @@ local function buildBridge(a: number, b: number, folder: Folder)
 	end
 	part({
 		Name = "GateLintel",
+		Transparency = if a == 0 then 1 else 0,
 		Size = if isX then Vector3.new(WALL_T + 2, 6, MapLayout.BRIDGE_WIDTH + 2) else Vector3.new(MapLayout.BRIDGE_WIDTH + 2, 6, WALL_T + 2),
 		Position = mid + Vector3.new(0, doorHeight + 3, 0),
 		Color = behind.color,
@@ -392,111 +408,9 @@ local function buildBridge(a: number, b: number, folder: Folder)
 	gate.Parent = folder
 end
 
-local function buildHub(folder: Folder)
-	local center = MapLayout.center(0)
-	local spawn = Instance.new("SpawnLocation")
-	spawn.Anchored = true
-	spawn.Size = Vector3.new(12, 1, 12)
-	spawn.Position = center + Vector3.new(0, 0.5, 20)
-	spawn.Color = Color3.fromRGB(255, 255, 255)
-	spawn.Material = Enum.Material.Neon
-	spawn.Transparency = 0.5
-	spawn.Neutral = true
-	spawn.Duration = 0
-	spawn.Parent = folder
-
-	local booths = {
-		{ name = "Shop", color = Color3.fromRGB(245, 197, 66), offset = Vector3.new(-35, 0, -10), ui = "Shop" },
-		{ name = "Trading", color = Color3.fromRGB(91, 184, 245), offset = Vector3.new(35, 0, -10), ui = "Trade" },
-		{ name = "Fusion", color = Color3.fromRGB(185, 166, 245), offset = Vector3.new(0, 0, -35), ui = "Pets" },
-		{ name = "Lucky Spin", color = Color3.fromRGB(255, 120, 200), offset = Vector3.new(-35, 0, 24), ui = "Spin" },
-		{ name = "Trips", color = Color3.fromRGB(91, 160, 110), offset = Vector3.new(35, 0, 24), ui = "Trips" },
-		{ name = "Arcade", color = Color3.fromRGB(110, 90, 220), offset = Vector3.new(-16, 0, 44), ui = "Stack" },
-	}
-	for _, booth in booths do
-		local base = part({
-			Name = booth.name .. "Booth",
-			Size = Vector3.new(14, 8, 8),
-			Position = center + booth.offset + Vector3.new(0, 4, 0),
-			Color = booth.color,
-		})
-		local roof = part({
-			Name = "Roof",
-			Size = Vector3.new(16, 2, 10),
-			Position = center + booth.offset + Vector3.new(0, 11, 0),
-			Color = booth.color:Lerp(Color3.new(1, 1, 1), 0.4),
-		})
-		label(roof, booth.name, UDim2.fromScale(8, 2), Vector3.new(0, 3, 0))
-		local prompt = Instance.new("ProximityPrompt")
-		prompt.ActionText = "Open"
-		prompt.ObjectText = booth.name
-		prompt.MaxActivationDistance = 14
-		prompt.RequiresLineOfSight = false
-		prompt:SetAttribute("OpenUI", booth.ui)
-		prompt.Parent = base
-		base.Parent = folder
-		roof.Parent = folder
-	end
-end
-
--- Fishing Pond in a corner of the Hub (Config/Fishing). The prompt opens the fishing window.
-local function buildPond(folder: Folder)
-	local center = MapLayout.center(0) + FishingConfig.POND_OFFSET
-	local radius = FishingConfig.POND_RADIUS
-	local model = Instance.new("Model")
-	model.Name = "FishingPond"
-	local flat = CFrame.Angles(0, 0, math.rad(90))
-	local rim = part({
-		Name = "Rim",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.4, radius * 2 + 4, radius * 2 + 4),
-		CFrame = CFrame.new(center + Vector3.new(0, 0.2, 0)) * flat,
-		Color = Color3.fromRGB(150, 140, 125),
-		Material = Enum.Material.Slate,
-	})
-	rim.Parent = model
-	local water = part({
-		Name = "Water",
-		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(0.5, radius * 2, radius * 2),
-		CFrame = CFrame.new(center + Vector3.new(0, 0.3, 0)) * flat,
-		Color = Color3.fromRGB(60, 150, 220),
-		Material = Enum.Material.Glass,
-		Transparency = 0.15,
-		CanCollide = false,
-	})
-	water.Parent = model
-	-- A small wooden dock toward the town
-	local dock = part({
-		Name = "Dock",
-		Size = Vector3.new(4, 0.6, radius + 2),
-		Position = center + Vector3.new(radius * 0.5, 0.7, -radius * 0.45),
-		Color = Color3.fromRGB(150, 105, 65),
-		Material = Enum.Material.WoodPlanks,
-	})
-	dock.Parent = model
-	local sign = part({
-		Name = "Sign",
-		Size = Vector3.new(1, 6, 1),
-		Position = center + Vector3.new(radius + 3, 3, -radius + 2),
-		Color = Color3.fromRGB(120, 85, 55),
-		Material = Enum.Material.Wood,
-	})
-	label(sign, "🎣 Fishing Pond", UDim2.fromScale(9, 2.1), Vector3.new(0, 5, 0))
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Fish"
-	prompt.ObjectText = "Fishing Pond"
-	prompt.MaxActivationDistance = 16
-	prompt.RequiresLineOfSight = false
-	prompt:SetAttribute("OpenUI", "Fish")
-	prompt.Parent = sign
-	sign.Parent = model
-	model.Parent = folder
-end
-
 -- Professor Cubo: the Journey's NPC near the spawn. Talking to him opens the Quests window.
 local function buildProfessor(folder: Folder)
-	local center = MapLayout.center(0) + Vector3.new(16, 0, 40)
+	local center = MapLayout.center(0) + Vector3.new(20, 0, 32)
 	local built = PetModel.build({ s = "Cubby", v = "Normal", z = "Big" })
 	local facing = CFrame.lookAt(center + Vector3.new(0, built.height / 2, 0), center + Vector3.new(-16, built.height / 2, -20))
 	PetModel.place(built, facing)
@@ -676,9 +590,7 @@ function WorldBuilder.build()
 			end
 		end
 	end
-	buildHub(folder)
 	buildProfessor(folder)
-	buildPond(folder)
 	buildPlaza(folder)
 
 	folder.Parent = workspace

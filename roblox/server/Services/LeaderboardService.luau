@@ -11,6 +11,7 @@ local Achievements = require(Shared.Logic.Achievements)
 local Effects = require(Shared.Logic.Effects)
 local Format = require(Shared.Logic.Format)
 local MapLayout = require(Shared.Logic.MapLayout)
+local HubBuilder = require(script.Parent.HubBuilder)
 local PetMath = require(Shared.Logic.PetMath)
 local Types = require(Shared.Logic.Types)
 
@@ -239,9 +240,10 @@ function LeaderboardService.init()
 	local folder = Instance.new("Folder")
 	folder.Name = "Leaderboards"
 	local center = MapLayout.center(0)
+	-- Along the Hub's south rim, two on each side of the fishing pond
 	for i, board in BOARDS do
-		local x = (i - (#BOARDS + 1) / 2) * 28
-		buildBoard(board, center + Vector3.new(x, 13, 55), folder)
+		local x = HubBuilder.LEADERBOARD_X[i] or (i - (#BOARDS + 1) / 2) * 28
+		buildBoard(board, center + Vector3.new(x, 13, HubBuilder.LEADERBOARD_Z), folder)
 	end
 	folder.Parent = workspace
 

@@ -23,6 +23,7 @@ local Net = require(Shared.Net)
 local BreakableService = require(script.Parent.BreakableService)
 local DataService = require(script.Parent.DataService)
 local GameService = require(script.Parent.GameService)
+local HubBuilder = require(script.Parent.HubBuilder)
 local State = require(script.Parent.State)
 
 local BossService = {}
@@ -52,7 +53,7 @@ local function announce(text: string, kind: string)
 end
 
 local function hubPosition(): Vector3
-	return MapLayout.center(0) + Vector3.new(0, 0, -12)
+	return MapLayout.center(0) + HubBuilder.BOSS_OFFSET
 end
 
 local function spawn()
