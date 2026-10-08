@@ -177,9 +177,81 @@ local function step()
 	end
 end
 
+---------------------------------------------------------------------------------------------------------------
+-- The local rider sits still: the walk animations stop and the character's own sit pose plays instead.
+-- Animations played on your own character show for everyone.
+
+local LOCAL = Players.LocalPlayer
+local SIT_FALLBACK = { R15 = "rbxassetid://2506281703", R6 = "rbxassetid://178130996" }
+local seated: { character: Model, track: AnimationTrack }? = nil
+
+local function stand()
+	if not seated then
+		return
+	end
+	seated.track:Stop(0.2)
+	local animate = seated.character:FindFirstChild("Animate")
+	if animate and animate:IsA("LocalScript") then
+		animate.Enabled = true
+	end
+	seated = nil
+end
+
+local function sit(character: Model)
+	if seated and seated.character == character then
+		return
+	end
+	stand()
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+	if not humanoid or not animator then
+		return
+	end
+	local animate = character:FindFirstChild("Animate")
+	local sitValue = animate and animate:FindFirstChild("sit")
+	local source = sitValue and sitValue:FindFirstChildOfClass("Animation")
+	local animation = Instance.new("Animation")
+	animation.AnimationId = if source
+		then source.AnimationId
+		elseif humanoid.RigType == Enum.HumanoidRigType.R6 then SIT_FALLBACK.R6
+		else SIT_FALLBACK.R15
+	if animate and animate:IsA("LocalScript") then
+		animate.Enabled = false
+	end
+	for _, playing in animator:GetPlayingAnimationTracks() do
+		playing:Stop(0.1)
+	end
+	local ok, track = pcall(function()
+		return animator:LoadAnimation(animation)
+	end)
+	if not ok or not track then
+		if animate and animate:IsA("LocalScript") then
+			animate.Enabled = true
+		end
+		return
+	end
+	track.Priority = Enum.AnimationPriority.Action
+	track.Looped = true
+	track:Play(0.2)
+	seated = { character = character, track = track }
+end
+
+local function syncSeat()
+	local character = LOCAL.Character
+	local value = LOCAL:GetAttribute("RidePet")
+	if character and type(value) == "string" and value ~= "" then
+		sit(character)
+	else
+		stand()
+	end
+end
+
 local function watch(player: Player)
 	player:GetAttributeChangedSignal("RidePet"):Connect(function()
 		sync(player)
+		if player == LOCAL then
+			syncSeat()
+		end
 	end)
 	sync(player)
 end
@@ -191,6 +263,13 @@ function RideClient.init()
 	end
 	Players.PlayerAdded:Connect(watch)
 	Players.PlayerRemoving:Connect(remove)
+	LOCAL.CharacterAdded:Connect(function(character)
+		seated = nil -- the old character took its animations with it
+		character:WaitForChild("Humanoid")
+		character:WaitForChild("Animate", 5)
+		syncSeat()
+	end)
+	syncSeat()
 	-- The creature models may arrive after the first build: rebuild everyone's ride then
 	ReplicatedStorage.ChildAdded:Connect(function(child)
 		if child.Name == "CreatureModels" then

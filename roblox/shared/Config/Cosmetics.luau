@@ -125,7 +125,7 @@ return {
 	auraById = auraById,
 	hatchFx = hatchFx,
 	hatchFxById = hatchFxById,
-	RIDE_SPEED = 1.4,
+	RIDE_SPEED = 1.6,
 	RIDE_CREATURE_HEIGHT = 4.2, -- the ridden creature is drawn this tall, whatever its size
 	RIDE_DEFAULT = "Cubeling",
 }
