@@ -258,8 +258,10 @@ local function buildPlaza(model: Instance, center: Vector3)
 			Color = color,
 			Material = Enum.Material.Marble,
 		})
-		for k, v in props or {} do
-			(c :: any)[k] = v
+		if props then
+			for k, v in props do
+				(c :: any)[k] = v
+			end
 		end
 		return c
 	end

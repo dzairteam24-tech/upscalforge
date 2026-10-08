@@ -343,7 +343,8 @@ local function buildBridge(a: number, b: number, folder: Folder)
 
 	-- Corridor walls, so from a bridge you only see the gate ahead and the zone behind
 	local style = MapTheme.CORRIDOR
-	for _, sideSign in if a == 0 then {} else { -1, 1 } do
+	local walledSides: { number } = if a == 0 then {} else { -1, 1 }
+	for _, sideSign in walledSides do
 		local offset = if isX
 			then Vector3.new(0, 0, sideSign * (MapLayout.BRIDGE_WIDTH / 2 + WALL_T / 2))
 			else Vector3.new(sideSign * (MapLayout.BRIDGE_WIDTH / 2 + WALL_T / 2), 0, 0)
@@ -356,7 +357,7 @@ local function buildBridge(a: number, b: number, folder: Folder)
 	local doorHeight = WALL_H - 6
 	local across = if isX then Vector3.new(0, 0, 1) else Vector3.new(1, 0, 0)
 	local iron = Color3.fromRGB(58, 60, 68)
-	for _, sideSign in if a == 0 then {} else { -1, 1 } do
+	for _, sideSign in walledSides do
 		part({
 			Name = "GatePost",
 			Size = Vector3.new(WALL_T + 2, WALL_H + 8, WALL_T + 2),
@@ -387,7 +388,8 @@ local function buildBridge(a: number, b: number, folder: Folder)
 	gate:SetAttribute("ZoneB", b)
 	gate:AddTag("Gate")
 	-- The lock, the zone and the price are painted on both faces of the door (WorldClient fills them in)
-	for _, face in if isX then { Enum.NormalId.Left, Enum.NormalId.Right } else { Enum.NormalId.Front, Enum.NormalId.Back } do
+	local faces: { Enum.NormalId } = if isX then { Enum.NormalId.Left, Enum.NormalId.Right } else { Enum.NormalId.Front, Enum.NormalId.Back }
+	for _, face in faces do
 		local gui = Instance.new("SurfaceGui")
 		gui.Face = face
 		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
