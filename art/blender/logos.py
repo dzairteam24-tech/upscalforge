@@ -144,6 +144,116 @@ def potion():
     return parts
 
 
+def prism(name, pts, depth, role, dy=0.0, bevel=0.05):
+    """A flat shape on the face (points as (u, v)), raised `depth` out of it, with rounded edges."""
+    bm = bmesh.new()
+    face = bm.faces.new([bm.verts.new((u, FRONT - dy, v)) for u, v in pts])
+    ext = bmesh.ops.extrude_face_region(bm, geom=[face])
+    bmesh.ops.translate(bm, verts=[e for e in ext["geom"] if isinstance(e, bmesh.types.BMVert)], vec=(0, -depth, 0))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    if bevel > 0:
+        mod = obj.modifiers.new("Bevel", "BEVEL")
+        mod.width = bevel
+        mod.segments = 4
+        mod.limit_method = "ANGLE"
+        seatkit.apply_modifiers(obj)
+    return finish(obj, role)
+
+
+def split_faces(obj, keep, name):
+    """Moves the faces `keep(center)` picks into a new part."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    picked = [f for f in bm.faces if keep(f.calc_center_median())]
+    sbm = bmesh.new()
+    vmap = {}
+    for f in picked:
+        vs = []
+        for v in f.verts:
+            if v not in vmap:
+                vmap[v] = sbm.verts.new(v.co)
+            vs.append(vmap[v])
+        sbm.faces.new(vs)
+    mesh = bpy.data.meshes.new(name)
+    sbm.to_mesh(mesh)
+    sbm.free()
+    bmesh.ops.delete(bm, geom=picked, context="FACES")
+    bm.to_mesh(obj.data)
+    bm.free()
+    part = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(part)
+    return part
+
+
+def spin():
+    """A gold badge with a cream ring and a six-colour prize wheel, a gold hub and a gold pointer on top."""
+    parts = [badge("Badge", 1.0, "gold")]
+    parts.append(finish(_at_face(torus("Rim", 0.9, 0.08, (0, 0, 0)), 0.02), "gold"))
+    parts.append(finish(_at_face(cylinder("Face", 0.84, 0.04, (0, 0, 0), vertices=64, bevel=0.01), 0.0), "cream"))
+    r, gap = 0.72, math.radians(3)
+    for k, role in enumerate(("orange", "yellow", "green", "blue", "purple", "red")):
+        a1 = math.radians(90 - 60 * k) - gap / 2
+        a0 = a1 - math.radians(60) + gap
+        mid = (a0 + a1) / 2
+        g = (math.cos(mid) * 0.03, math.sin(mid) * 0.03)
+        pts = [g] + [(g[0] + math.cos(a0 + (a1 - a0) * i / 10) * r, g[1] + math.sin(a0 + (a1 - a0) * i / 10) * r) for i in range(11)]
+        parts.append(prism("Slice", pts, 0.14, role, bevel=0.04))
+    parts.append(pad("Hub", 0.17, 0, 0, 1, 1, "gold", height=0.13, dy=0.14))
+    parts.append(pad("PointerTop", 0.17, 0, 0.82, 1, 1, "gold", height=0.13, dy=0.14))
+    parts.append(prism("Pointer", [(-0.16, 0.8), (0.16, 0.8), (0, 0.52)], 0.24, "gold", dy=0.02, bevel=0.06))
+    return parts
+
+
+def trips():
+    """A blue badge with a red and cream striped hot air balloon, ropes and a brown basket."""
+    parts = [badge("Badge", 1.0, "badge")]
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=48, ring_count=24, radius=1, location=(0, 0, 0))
+    env = bpy.context.active_object
+    env.name = "Balloon"
+    for v in env.data.vertices:  # narrower toward the bottom
+        if v.co.z < 0:
+            k = 1 - 0.55 * (-v.co.z) ** 1.6
+            v.co.x *= k
+            v.co.y *= k
+
+    def cream(c):  # 30 degree stripes round the balloon, red in the middle of the front
+        phi = math.degrees(math.atan2(c.x, -c.y))
+        return int(math.floor((phi + 15) / 30)) % 2 == 1
+
+    stripes = split_faces(env, cream, "Stripes")
+    for obj in (env, stripes):
+        obj.scale = (0.56, 0.3, 0.6)
+        obj.location = at(0, 0.22, 0.2)
+        seatkit.bake(obj)
+    parts.append(finish(env, "red"))
+    parts.append(finish(stripes, "cream"))
+    parts.append(pad("Neck", 0.12, 0, -0.38, 1.4, 0.5, "rope", height=0.1, dy=0.16))
+    for side in (-1, 1):
+        parts.append(flat_tube("Rope", [(side * 0.14, -0.38), (side * 0.17, -0.6)], 0.035, "rope", dy=0.2, squash=1.0))
+    parts.append(prism("Basket", [(-0.22, -0.6), (0.22, -0.6), (0.17, -0.86), (-0.17, -0.86)], 0.24, "basket", bevel=0.06))
+    parts.append(flat_tube("BasketRim", [(-0.25, -0.61), (0.25, -0.61)], 0.055, "basket", dy=0.4, squash=1.0))
+    return parts
+
+
+def arcade():
+    """A blue badge with a cream face and a joystick: dark base, dark stick, big red ball, a blue and a yellow button."""
+    parts = [badge("Badge", 1.0, "badge")]
+    parts.append(finish(_at_face(cylinder("Face", 0.84, 0.04, (0, 0, 0), vertices=64, bevel=0.01), 0.0), "cream"))
+    parts.append(prism("Base", [(-0.62, -0.6), (0.62, -0.6), (0.58, -0.1), (-0.58, -0.1)], 0.26, "dark", bevel=0.13))
+    parts.append(flat_tube("Stick", [(0.05, -0.15), (0.05, 0.3)], 0.08, "dark", dy=0.3, squash=1.0))
+    parts.append(pad("Collar", 0.16, 0.05, -0.14, 1, 0.6, "dark", height=0.1, dy=0.26))
+    parts.append(pad("Knob", 0.3, 0.05, 0.42, 1, 1, "red", height=0.28, dy=0.2))
+    for u, role in ((-0.33, "blue"), (0.38, "yellow")):
+        parts.append(pad("ButtonRing", 0.16, u, -0.38, 1, 1, "dark", height=0.06, dy=0.27))
+        parts.append(pad("Button", 0.12, u, -0.38, 1, 1, role, height=0.08, dy=0.3))
+    return parts
+
+
 def _at_face(obj, dy):
     obj.rotation_euler = (math.pi / 2, 0, 0)
     seatkit.bake(obj)
@@ -155,6 +265,9 @@ LOGOS = [
     ("Shop", shop, {"rim": srgb(253, 198, 30), "face": srgb(250, 176, 20), "paw": srgb(255, 214, 90)}),
     ("Trade", trade, {"badge": srgb(245, 236, 220), "green": srgb(100, 215, 150), "red": srgb(245, 90, 85)}),
     ("Potion", potion, {"badge": srgb(50, 160, 240), "glass": srgb(228, 230, 248), "potion": srgb(160, 60, 225), "bubble": srgb(205, 130, 245), "cork": srgb(175, 115, 65)}),
+    ("Spin", spin, {"gold": srgb(253, 196, 30), "cream": srgb(246, 236, 218), "red": srgb(240, 70, 70), "orange": srgb(250, 125, 45), "yellow": srgb(255, 205, 60), "green": srgb(80, 200, 70), "blue": srgb(50, 130, 240), "purple": srgb(170, 80, 230)}),
+    ("Trips", trips, {"badge": srgb(60, 165, 235), "red": srgb(240, 70, 70), "cream": srgb(246, 236, 218), "rope": srgb(205, 140, 70), "basket": srgb(190, 120, 60)}),
+    ("Arcade", arcade, {"badge": srgb(50, 150, 235), "cream": srgb(246, 236, 218), "dark": srgb(60, 64, 74), "red": srgb(240, 70, 70), "blue": srgb(50, 150, 240), "yellow": srgb(255, 205, 60)}),
 ]
 
 
@@ -163,7 +276,7 @@ def render(groups):
     scene.render.engine = "CYCLES"
     scene.cycles.samples = 40
     scene.render.resolution_x = 1500
-    scene.render.resolution_y = 560
+    scene.render.resolution_y = 1060
     scene.view_settings.view_transform = "Standard"
     world = bpy.data.worlds.new("World")
     scene.world = world
@@ -176,11 +289,12 @@ def render(groups):
     bpy.ops.object.camera_add()
     camera = bpy.context.active_object
     camera.data.type = "ORTHO"
-    camera.data.ortho_scale = 7.2
+    camera.data.ortho_scale = 7.6
     scene.camera = camera
     for i, parts in enumerate(groups):
         for obj in parts:
-            obj.location.x += (i - 1) * 2.5
+            obj.location.x += (i % 3 - 1) * 2.5
+            obj.location.z -= (i // 3 - 0.5) * 2.6
     camera.location = Vector((0.3, -1, 0.08)).normalized() * 50
     camera.rotation_euler = (-camera.location).to_track_quat("-Z", "Y").to_euler()
     out = os.path.join(OUT, "Logos.png")
