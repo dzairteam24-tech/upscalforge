@@ -9,6 +9,7 @@ building.py exports them (parts Building<Shop>__<role>, flat colors).
 
     python art/blender/decor.py            writes art/models/Decor.glb (the zones' props) and renders OUT/Decor.png
     python art/blender/decor.py town       writes art/models/Town.glb (buildings and town decor) and OUT/Town.png
+    python art/blender/decor.py looks      writes roblox/shared/Config/PropLooks.luau and TownLooks.luau
 """
 
 import math
@@ -41,6 +42,12 @@ SHEETS = {
     "town": [("Archway", 16), ("Hedge", 4), ("FlowerPlanter", 3.5), ("Bench", 3.5), ("StreetLamp", 12), ("CatFountain", 10)],
 }
 TEXTURE = 1024
+
+# The zones each sheet's props decorate (Config/World1), and the props picked less often there (big ones)
+ZONES = {"meadow": (1, 2), "forest": (3,), "beach": (4,), "cave": (5,), "desert": (6,), "snow": (7,), "volcano": (8,), "ice": (9,), "pixel": (10,), "town": ()}
+EXTRA_ZONES = {"Tree": (3,), "Flowers": (2,), "Bush": (2,), "Tulip": (2,), "BigFlower": (2,), "Beehive": (2,)}
+ONLY_ZONES = {"Tulip": (2,), "BigFlower": (2,), "Beehive": (2,), "Fence": (1,), "MossRock": (1,)}
+RARE = {"Pyramid": 0.3, "MiniVolcano": 0.3, "Cabin": 0.4, "Rowboat": 0.6, "SandCastle": 0.6, "LavaPool": 0.6}
 
 
 def components(bm):
@@ -301,8 +308,61 @@ def render(objs):
     print("wrote", out)
 
 
+def write_looks():
+    """Writes roblox/shared/Config/PropLooks.luau (every prop's size in studs, its zones and weight) and
+    TownLooks.luau (the buildings' part colors), which the game reads to place the imported models."""
+    pieces = props(list(SHEETS))
+    sheet_of = {name: sheet for sheet, names in SHEETS.items() for entry in names if entry for name in [entry[0]]}
+    lines = [
+        "--!strict",
+        "-- The map props in art/models/Decor.glb and Town.glb (written by art/blender/decor.py looks; don't edit by",
+        "-- hand): per prop its size in studs (Y up), the zones it decorates and how often it's picked there.",
+        "-- PropService places them.",
+        "",
+        "export type Look = { name: string, size: Vector3, zones: { number }, weight: number }",
+        "",
+        "local looks: { Look } = {",
+    ]
+    for obj in pieces:
+        name = obj.name[6:]
+        xs = [v.co.x for v in obj.data.vertices]
+        ys = [v.co.y for v in obj.data.vertices]
+        zs = [v.co.z for v in obj.data.vertices]
+        size = (max(xs) - min(xs), max(zs) - min(zs), max(ys) - min(ys))
+        zones = ONLY_ZONES.get(name) or tuple(sorted(set(ZONES[sheet_of[name]]) | set(EXTRA_ZONES.get(name, ()))))
+        lines.append(
+            f"\t{{ name = \"{name}\", size = Vector3.new({size[0]:.2f}, {size[1]:.2f}, {size[2]:.2f}), zones = {{ {', '.join(map(str, zones))} }}, weight = {RARE.get(name, 1)} }},"
+        )
+    lines += ["}", "", "return looks", ""]
+    config = os.path.join(ROOT, "..", "roblox", "shared", "Config")
+    open(os.path.join(config, "PropLooks.luau"), "w").write("\n".join(lines))
+
+    def srgb(c):
+        return "Color3.fromRGB(" + ", ".join(str(round(255 * max(0.0, min(1.0, v)) ** (1 / 2.2))) for v in c[:3]) + ")"
+
+    lines = [
+        "--!strict",
+        "-- The town buildings in art/models/Town.glb (written by art/blender/decor.py looks; don't edit by hand): per",
+        "-- building the color of each of its parts (Building<Name>__<role>). HubBuilder dresses the town with them.",
+        "",
+        "return {",
+    ]
+    for name, parts in sorted(buildings().items()):
+        lines.append(f"\t{name[8:]} = {{")
+        for obj in sorted(parts, key=lambda o: o.name):
+            color = obj.data.materials[0].node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value
+            lines.append(f"\t\t{obj.name.split('__')[1]} = {srgb(color)},")
+        lines.append("\t},")
+    lines += ["}", ""]
+    open(os.path.join(config, "TownLooks.luau"), "w").write("\n".join(lines))
+    print("wrote PropLooks.luau and TownLooks.luau")
+
+
 def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
+    if "looks" in sys.argv[1:]:
+        write_looks()
+        return
     town = "town" in sys.argv[1:]
     pieces = props(["town"] if town else [k for k in SHEETS if k != "town"])
     houses = buildings() if town else {}

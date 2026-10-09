@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local FishingConfig = require(Shared.Config.Fishing)
 local MapLayout = require(Shared.Logic.MapLayout)
 local PetModel = require(Shared.PetModel)
+local TownLooks = require(Shared.Config.TownLooks)
 
 local HubBuilder = {}
 
@@ -495,6 +496,13 @@ local BUILDINGS: { Building } = {
 	},
 }
 
+-- The art building (Town.glb, art/blender/building.py) each one is drawn with once the town model loads
+local ART_NAMES = { Shop = "Shop", Trading = "Trade", Fusion = "Potion", ["Lucky Spin"] = "Spin", Trips = "Trips", Arcade = "Arcade" }
+local ART_WIDTH = 24 -- the art buildings' width on the map, base included (studs)
+
+-- The buildings as built, to dress once the town model loads
+local built: { { house: Model, frame: CFrame, body: BasePart, art: string } } = {}
+
 local function buildBuilding(model: Instance, center: Vector3, building: Building)
 	local angle = math.rad(building.angle)
 	local at = center + Vector3.new(math.sin(angle) * BUILDING_RADIUS, 0, -math.cos(angle) * BUILDING_RADIUS)
@@ -535,6 +543,134 @@ local function buildBuilding(model: Instance, center: Vector3, building: Buildin
 	prompt:SetAttribute("OpenUI", building.ui)
 	prompt.Parent = body
 	house.Parent = model
+	table.insert(built, { house = house, frame = frame, body = body, art = ART_NAMES[building.name] or building.name })
+end
+
+-- A part's box along the world's axes (half sizes)
+local function extents(p: BasePart): Vector3
+	local r, u, l, h = p.CFrame.RightVector, p.CFrame.UpVector, p.CFrame.LookVector, p.Size / 2
+	return Vector3.new(
+		math.abs(r.X) * h.X + math.abs(u.X) * h.Y + math.abs(l.X) * h.Z,
+		math.abs(r.Y) * h.X + math.abs(u.Y) * h.Y + math.abs(l.Y) * h.Z,
+		math.abs(r.Z) * h.X + math.abs(u.Z) * h.Y + math.abs(l.Z) * h.Z
+	)
+end
+
+-- Draws a block building with its art building from the town model (its parts Building<Name>__<role>): the
+-- art takes the building's place and size, its front (where the logo is) toward the plaza, colored from
+-- Config/TownLooks; the blocks go, but the invisible booth stays for the prompt and to bump into.
+local function dressBuilding(root: Instance, entry: { house: Model, frame: CFrame, body: BasePart, art: string }): boolean
+	local pattern = "^Building" .. entry.art .. "__(.+)$"
+	local pieces: { { part: BasePart, role: string } } = {}
+	for _, d in root:GetDescendants() do
+		if d:IsA("BasePart") then
+			local function roleOf(name: string): string?
+				return string.match((string.gsub(name, "%.%d+$", "")), pattern)
+			end
+			local role = roleOf(d.Name) or (if d.Parent then roleOf(d.Parent.Name) else nil)
+			if role then
+				table.insert(pieces, { part = d, role = role })
+			end
+		end
+	end
+	if #pieces == 0 then
+		return false
+	end
+	-- Its box in the import, and its front: toward the logo
+	local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
+	local logo, logos = Vector3.zero, 0
+	for _, piece in pieces do
+		local e = extents(piece.part)
+		lo = lo:Min(piece.part.Position - e)
+		hi = hi:Max(piece.part.Position + e)
+		if string.sub(piece.role, 1, 5) == "logo_" then
+			logo += piece.part.Position
+			logos += 1
+		end
+	end
+	local middle = (lo + hi) / 2
+	local base = Vector3.new(middle.X, lo.Y, middle.Z)
+	local front = if logos > 0 then (logo / logos - middle) * Vector3.new(1, 0, 1) else Vector3.new(0, 0, -1)
+	if front.Magnitude < 1e-3 then
+		front = Vector3.new(0, 0, -1)
+	end
+	local turn = CFrame.lookAt(Vector3.zero, front.Unit):Inverse() -- the import's front to -Z
+	local scale = ART_WIDTH / math.max(hi.X - lo.X, hi.Z - lo.Z)
+	local looks = TownLooks[entry.art] or {}
+	local art = Instance.new("Model")
+	art.Name = "Art"
+	for _, piece in pieces do
+		local p = piece.part:Clone()
+		for _, child in p:GetChildren() do
+			if not child:IsA("DataModelMesh") then
+				child:Destroy()
+			end
+		end
+		local color = looks[piece.role]
+		if color then
+			p.Color = color
+			if p:IsA("MeshPart") then
+				p.TextureID = ""
+			end
+		end
+		p.Material = Enum.Material.SmoothPlastic
+		p.Size = piece.part.Size * scale
+		p.CFrame = entry.frame * CFrame.new(turn:VectorToWorldSpace(piece.part.Position - base) * scale) * turn * piece.part.CFrame.Rotation
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Parent = art
+	end
+	for _, d in entry.house:GetChildren() do
+		if d:IsA("BasePart") and d ~= entry.body and d.Name ~= "Path" then
+			d:Destroy()
+		end
+	end
+	entry.body.Transparency = 1
+	art.Parent = entry.house
+	return true
+end
+
+-- Street lamps (Town.glb) round the plaza's edge
+local function placeLamps(hub: Instance, center: Vector3)
+	local PropService = require(script.Parent.PropService)
+	local folder = Instance.new("Model")
+	folder.Name = "Lamps"
+	for i = 0, 11 do
+		local angle = math.rad(15 + i * 30)
+		local at = center + Vector3.new(math.sin(angle), 0, -math.cos(angle)) * (PLAZA_RADIUS + 3)
+		local lamp = PropService.spawn("StreetLamp", CFrame.lookAt(at, Vector3.new(center.X, at.Y, center.Z)))
+		if lamp then
+			local light = Instance.new("PointLight")
+			light.Color = rgb(255, 220, 160)
+			light.Range = 14
+			light.Brightness = 0.8
+			light.Parent = lamp
+			lamp.Parent = folder
+		end
+	end
+	folder.Parent = hub
+end
+
+-- Once the town model (Config/Art TOWN_ASSET_ID) is in ReplicatedStorage: the art buildings and lamps
+local function dressTown(hub: Instance, center: Vector3)
+	local ok, root = pcall(function()
+		return ReplicatedStorage:WaitForChild("TownModel", 60)
+	end)
+	if not (ok and root and hub.Parent) then
+		print("[Town] no town model in ReplicatedStorage: the block buildings stay")
+		return
+	end
+	task.wait(1) -- let the rest of the model arrive
+	local dressed = 0
+	for _, entry in built do
+		if dressBuilding(root, entry) then
+			dressed += 1
+		end
+	end
+	placeLamps(hub, center)
+	print(("[Town] %d buildings drawn with the town model"):format(dressed))
 end
 
 ---------------------------------------------------------------------------------------------------------------
@@ -643,6 +779,7 @@ end
 -- `openings` are the rim sides where a bridge leaves the island.
 function HubBuilder.build(zoneModel: Instance, folder: Instance, openings: { Vector3 })
 	local center = MapLayout.center(0)
+	table.clear(built)
 	local hub = Instance.new("Model")
 	hub.Name = "Town"
 	buildIsland(zoneModel, center, openings)
@@ -671,6 +808,7 @@ function HubBuilder.build(zoneModel: Instance, folder: Instance, openings: { Vec
 	-- The statue is built before the 3D creature models load; rebuild it once they arrive. (The offline
 	-- smoke test runs without the task library.)
 	if task then
+		task.spawn(dressTown, hub, center)
 		task.spawn(function()
 			local ok, models = pcall(function()
 				return ReplicatedStorage:WaitForChild("CreatureModels", 60)
