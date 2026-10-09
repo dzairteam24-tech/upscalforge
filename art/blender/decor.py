@@ -36,7 +36,8 @@ SHEETS = {
     "snow": [("SnowyPine", 18), ("Cabin", 12), ("Snowman", 7), ("SnowRock", 4), ("SnowPile", 2.5), ("Sled", 2.5)],
     "volcano": [("LavaRock", 5), ("LavaPool", 1.5), ("BurntTree", 14), ("SteamVent", 4), ("MiniVolcano", 8), ("EmberRocks", 3)],
     "ice": [("IcePillar", 8), ("SnowBank", 3), ("IceBlock", 5), ("FrozenTree", 14), ("IceCrystals", 8), ("IceShards", 6)],
-    "pixel": [("NeonCube", 5), ("ArcadeScreen", 9), ("PixelHeart", 6), ("PixelTree", 14), ("PixelFlower", 6), ("GridPillar", 10)],
+    # (Meshy breaks up the small cubes: the tree, flower, neon cube and pillar come out messy, only these two are kept)
+    "pixel": [None, ("ArcadeScreen", 9), ("PixelHeart", 6), None, None, None],
     "town": [("Archway", 16), ("Hedge", 4), ("FlowerPlanter", 3.5), ("Bench", 3.5), ("StreetLamp", 12), ("CatFountain", 10)],
 }
 TEXTURE = 1024
