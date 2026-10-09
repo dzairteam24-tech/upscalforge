@@ -12,6 +12,7 @@
 | props_ice.glb | IceCrystals, IceBlock, SnowBank, FrozenTree, IcePillar, IceShards | good |
 | props_pixel.glb | NeonCube, GridPillar, ArcadeScreen, PixelTree, PixelHeart, PixelFlower | good; NeonCube and GridPillar touch, so the split joins them (split them apart) |
 | props_town.glb | Archway, Hedge, FlowerPlanter, StreetLamp, Bench, CatFountain | good (the town's decor) |
+| building_cottage.glb | the town building (blank plaque on the roof) | good: art/blender/buildings.py makes six roof colors (art/models/Buildings.glb); the logos for the plaques are yours to design |
 
 To redo later: none yet.
 
