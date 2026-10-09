@@ -131,10 +131,10 @@ local zones: { Zone } = {
 		element = "Neutral",
 		grid = Vector2.new(0, 2),
 		color = rgb(78, 154, 91),
-		eggPrice = 1000,
-		gateCost = 5000,
-		scale = 10,
-		restoreGoal = 200000,
+		eggPrice = 2500,
+		gateCost = 15000,
+		scale = 22,
+		restoreGoal = 450000,
 		links = { 2, 4 },
 		species = { "Fox", "Owl", "Deer", "Sprout" },
 	},
@@ -157,10 +157,10 @@ local zones: { Zone } = {
 		element = "Dark",
 		grid = Vector2.new(0, 4),
 		color = rgb(107, 78, 154),
-		eggPrice = 5000,
-		gateCost = 50000,
-		scale = 50,
-		restoreGoal = 1000000,
+		eggPrice = 11000,
+		gateCost = 110000,
+		scale = 110,
+		restoreGoal = 2500000,
 		links = { 4, 6 },
 		species = { "Mushroom", "Bat", "Glowworm", "Shade" },
 	},
@@ -183,10 +183,10 @@ local zones: { Zone } = {
 		element = "Ice",
 		grid = Vector2.new(0, 6),
 		color = rgb(221, 239, 252),
-		eggPrice = 25000,
-		gateCost = 250000,
-		scale = 250,
-		restoreGoal = 6000000,
+		eggPrice = 60000,
+		gateCost = 600000,
+		scale = 600,
+		restoreGoal = 15000000,
 		links = { 6, 8 },
 		species = { "Penguin", "Seal", "Snowman", "Yeti" },
 	},
@@ -209,10 +209,10 @@ local zones: { Zone } = {
 		element = "Ice",
 		grid = Vector2.new(0, 8),
 		color = rgb(159, 216, 242),
-		eggPrice = 150000,
-		gateCost = 1500000,
-		scale = 1500,
-		restoreGoal = 40000000,
+		eggPrice = 400000,
+		gateCost = 4000000,
+		scale = 4000,
+		restoreGoal = 100000000,
 		links = { 8, 10 },
 		species = { "Ice Fox", "Narwhal", "Frost Owl", "Ice Dragon" },
 	},
@@ -235,7 +235,7 @@ local CHANCES = { 0.6, 0.3, 0.09, 0.01 }
 
 -- Species rows: id, power, color, top, face, big skill, titan skill.
 -- Power follows the zone's coin scale (like the coin sources), so every zone feels the same to play and the
--- numbers grow big: 1, 2, 4, 8 x the zone scale (1, 10, 50, 250, 1.5K, 10K).
+-- numbers grow big: 1, 2, 4, 8 x the zone scale (1, 10, 22, 50, 110, 250, 600, 1.5K, 4K, 10K).
 -- Order inside each zone matches CHANCES (60% / 30% / 9% / 1%). Legendaries hatch only from the Legendary Egg.
 local rows: { { any } } = {
 	-- 1. Spawn Meadow
@@ -314,7 +314,7 @@ local rows: { { any } } = {
 	},
 	-- 3. Forest
 	{
-		"Fox", 10, rgb(235, 120, 60), "cat", "happy",
+		"Fox", 22, rgb(235, 120, 60), "cat", "happy",
 		{ text = "Team speed +50%", passive = passive("Speed", 1.5) },
 		{
 			text = "Big appears x5 more often. Every minute: coins x3 for 15s.",
@@ -323,7 +323,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Owl", 20, rgb(150, 120, 95), "cat", "round",
+		"Owl", 44, rgb(150, 120, 95), "cat", "round",
 		{ text = "Chests +75%", passive = passive("Chest", 1.75) },
 		{
 			text = "Offline earnings x5. Time Warp: every minute, coins x5 for 10s.",
@@ -332,7 +332,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Deer", 40, rgb(200, 150, 100), "horns", "round",
+		"Deer", 88, rgb(200, 150, 100), "horns", "round",
 		{ text = "Magnet (medium)", passive = passive("Magnet", 1.5) },
 		{
 			text = "Fuse with 2 instead of 5. Every 2 min: coins x3 for 30s.",
@@ -341,7 +341,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Sprout", 80, rgb(123, 211, 137), "leaf", "sleepy",
+		"Sprout", 176, rgb(123, 211, 137), "leaf", "sleepy",
 		{ text = "Stomp every 15s", periodic = { { kind = "Area", every = 15, radius = 25, damageMult = 5 } :: Periodic } },
 		{
 			text = "Sources respawn instantly. Tornado: every 45s collects every coin pile.",
@@ -388,7 +388,7 @@ local rows: { { any } } = {
 	},
 	-- 5. Mushroom Cave
 	{
-		"Mushroom", 50, rgb(215, 70, 70), "cap", "round",
+		"Mushroom", 110, rgb(215, 70, 70), "cap", "round",
 		{ text = "5% gem chance from every source", passive = passive("Gem", 0.05) },
 		{
 			text = "Neon chance x5. Every 30s breaks 5 sources.",
@@ -397,7 +397,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Bat", 100, rgb(70, 60, 90), "cat", "angry",
+		"Bat", 220, rgb(70, 60, 90), "cat", "angry",
 		{ text = "Magnet (large)", passive = passive("Magnet", 2) },
 		{
 			text = "Team speed x3. Every 40s collects every source in the zone.",
@@ -406,7 +406,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Glowworm", 200, rgb(180, 240, 90), "antenna", "sleepy",
+		"Glowworm", 440, rgb(180, 240, 90), "antenna", "sleepy",
 		{ text = "Team +50% in Dark zones", passive = passive("DarkPower", 1.5) },
 		{
 			text = "Element bonus x4 instead of x2. Every minute: element bonus x10 for 15s.",
@@ -415,7 +415,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Shade", 400, rgb(90, 60, 130), "horns", "angry",
+		"Shade", 880, rgb(90, 60, 130), "horns", "angry",
 		{ text = "Combo lasts +5s", passive = passive("ComboHold", 5) },
 		{
 			text = "Power of all creatures x2.5. Shadow Clones: every minute, power x2 for 15s.",
@@ -462,7 +462,7 @@ local rows: { { any } } = {
 	},
 	-- 7. Snow Peak
 	{
-		"Penguin", 250, rgb(50, 55, 70), "none", "round",
+		"Penguin", 600, rgb(50, 55, 70), "none", "round",
 		{ text = "Chests +100%", passive = passive("Chest", 2) },
 		{
 			text = "Lava chance x5. Freeze: every minute, sources respawn instantly for 20s.",
@@ -471,7 +471,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Seal", 500, rgb(160, 170, 185), "none", "happy",
+		"Seal", 1200, rgb(160, 170, 185), "none", "happy",
 		{ text = "Hits twice", passive = passive("DoubleHit", 2) },
 		{
 			text = "Zones restore x3 faster. Avalanche: every 45s breaks half the zone.",
@@ -480,7 +480,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Snowman", 1000, rgb(245, 248, 255), "hat", "round",
+		"Snowman", 2400, rgb(245, 248, 255), "hat", "round",
 		{ text = "15% chance a hatch is free", passive = passive("FreeHatch", 0.15) },
 		{
 			text = "25% of sources turn gold (x10). Blizzard: every minute, power x5 for 20s.",
@@ -489,7 +489,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Yeti", 2000, rgb(235, 240, 250), "horns", "angry",
+		"Yeti", 4800, rgb(235, 240, 250), "horns", "angry",
 		{ text = "Stomp every 8s", periodic = { { kind = "Area", every = 8, radius = 30, damageMult = 5 } :: Periodic } },
 		{
 			text = "Power of all creatures x3. Mega Stomp: every 15s breaks every source around.",
@@ -537,7 +537,7 @@ local rows: { { any } } = {
 	},
 	-- 9. Frozen Lake
 	{
-		"Ice Fox", 1500, rgb(190, 225, 245), "cat", "happy",
+		"Ice Fox", 4000, rgb(190, 225, 245), "cat", "happy",
 		{ text = "Team speed x3", passive = passive("Speed", 3) },
 		{
 			text = "Offline earnings x10. Every minute: a golden chest.",
@@ -546,7 +546,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Narwhal", 3000, rgb(130, 170, 220), "unihorn", "round",
+		"Narwhal", 8000, rgb(130, 170, 220), "unihorn", "round",
 		{ text = "Magnet (whole zone)", passive = passive("Magnet", 3) },
 		{
 			text = "Every egg gives 3 creatures. Tsunami every 30s.",
@@ -555,7 +555,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Frost Owl", 6000, rgb(220, 235, 250), "cat", "sparkle",
+		"Frost Owl", 16000, rgb(220, 235, 250), "cat", "sparkle",
 		{ text = "20% chance a hatch is free", passive = passive("FreeHatch", 0.2) },
 		{
 			text = "Hatch luck x10. Every 5 min: a free egg with Crystal or better.",
@@ -564,7 +564,7 @@ local rows: { { any } } = {
 		},
 	},
 	{
-		"Ice Dragon", 12000, rgb(120, 210, 235), "horns", "angry",
+		"Ice Dragon", 32000, rgb(120, 210, 235), "horns", "angry",
 		{ text = "Stomp every 5s", periodic = { { kind = "Area", every = 5, radius = 30, damageMult = 5 } :: Periodic } },
 		{
 			text = "All coins x5. Dragon Breath: every 20s burns 8 sources.",
