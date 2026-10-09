@@ -427,6 +427,11 @@ function HUD.mount(gui: ScreenGui)
 			Net.event("EquipCosmetic"):FireServer("ride", lastRide)
 		end
 	end)
+	-- Seats: pick which seat (or ride) to sit on, in the Style tab
+	local seatsButton = menuButton("🪑\nSeats", Color3.fromRGB(150, 120, 230), 12)
+	seatsButton.Activated:Connect(function()
+		QuestsPanel.openTab("Style")
+	end)
 	local function updateRide()
 		local data = Store.data
 		rideButton.Text = if data and data.equippedRide then "🐾\nGet off" else "🐾\nRide"
@@ -453,6 +458,9 @@ function HUD.mount(gui: ScreenGui)
 		rideButton.Parent = gui
 		rideButton.Size = UDim2.fromOffset(66, 54)
 		rideButton.Position = UDim2.fromOffset(12, 278)
+		seatsButton.Parent = gui
+		seatsButton.Size = UDim2.fromOffset(66, 54)
+		seatsButton.Position = UDim2.fromOffset(12, 338)
 		local toggle = Theme.button({
 			Name = "MenuToggle",
 			Text = "☰\nMenu",

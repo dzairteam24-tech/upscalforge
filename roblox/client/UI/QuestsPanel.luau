@@ -58,6 +58,9 @@ local function progressBar(parent: Instance, fraction: number, position: UDim2, 
 	return back
 end
 
+-- Opens the window on a tab ("Quests", "Pass", "Awards", "Style"); set once the window is mounted
+QuestsPanel.openTab = function(_tab: string) end
+
 function QuestsPanel.mount(gui: ScreenGui)
 	local window, content = Theme.window(gui, "Quests & Pass", function()
 		Windows.close("Quests")
@@ -640,6 +643,11 @@ function QuestsPanel.mount(gui: ScreenGui)
 		end
 	end)
 	Windows.register("Quests", window, rebuild)
+	QuestsPanel.openTab = function(tab: string)
+		current = tab
+		Windows.open("Quests")
+		rebuild()
+	end
 end
 
 return QuestsPanel

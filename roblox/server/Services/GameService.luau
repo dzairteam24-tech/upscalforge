@@ -45,6 +45,17 @@ type PlayerData = Types.PlayerData
 
 local GameService = {}
 
+-- The game's owner (or the top rank of the group that owns it)
+local function isOwner(player: Player): boolean
+	if game.CreatorType == Enum.CreatorType.Group then
+		local ok, rank = pcall(function()
+			return player:GetRankInGroup(game.CreatorId)
+		end)
+		return ok and rank >= 255
+	end
+	return game.CreatorId > 0 and player.UserId == game.CreatorId
+end
+
 -- Fired for quest and pass progress: (player, event, amount). Events: Coins, Break, Hatch, Combo,
 -- Fuse, Big, Guardian, Restore, Rift, Expedition, Reload, Golden, Pixel, Titan, BigCatch, Zone, Streak, Trade.
 GameService.Progress = Signal.new() :: Signal.Signal<Player, string, number>
@@ -985,12 +996,24 @@ local function onLoaded(player: Player, data: PlayerData)
 	for _, id in Cosmetics.RIDE_STARTERS do
 		data.rides[id] = true
 	end
-	-- Testing in Studio: every floating seat, to try them all on
-	if RunService:IsStudio() then
+	-- Admins (the game's owner, Config/LiveEvent ADMINS, anyone testing in Studio) have every look
+	if LiveEvent.isAdmin(player.UserId, isOwner(player), RunService:IsStudio()) then
+		for _, title in Cosmetics.titles do
+			data.titles[title.id] = true
+		end
+		for _, trail in Cosmetics.trails do
+			data.trails[trail.id] = true
+		end
 		for _, ride in Cosmetics.rides do
-			if ride.style == "seat" then
-				data.rides[ride.id] = true
-			end
+			data.rides[ride.id] = true
+		end
+		data.auras = data.auras or {}
+		for _, aura in Cosmetics.auras do
+			data.auras[aura.id] = true
+		end
+		data.hatchFx = data.hatchFx or {}
+		for _, fx in Cosmetics.hatchFx do
+			data.hatchFx[fx.id] = true
 		end
 	end
 	-- The floating seats replaced the creature as the ride you start on: move a saved Cubeling Ride over once
