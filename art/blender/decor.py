@@ -67,67 +67,90 @@ def footprint(bm, faces):
     return (min(p.x for p in pts), min(p.y for p in pts), max(p.x for p in pts), max(p.y for p in pts))
 
 
-def overlap(a, b):
-    """Whether two footprints overlap by more than a third of the smaller one."""
-    w = min(a[2], b[2]) - max(a[0], b[0])
-    h = min(a[3], b[3]) - max(a[1], b[1])
-    if w <= 0 or h <= 0:
-        return False
-    smaller = min((a[2] - a[0]) * (a[3] - a[1]), (b[2] - b[0]) * (b[3] - b[1]))
-    return w * h > smaller / 3
+def box3(bm, faces):
+    pts = [v.co for i in faces for v in bm.faces[i].verts]
+    return [min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts), max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)]
 
 
-def split_sheet(bm, count):
-    """The sheet's faces grouped into `count` props."""
-    groups = [g for g in components(bm) if len(g) >= 12]
-    boxes = [footprint(bm, g) for g in groups]
-    # Parts whose footprints overlap belong to the same prop (tiny parts join their nearest neighbor)
-    merged = True
-    while merged:
-        merged = False
-        for i in range(len(groups)):
-            for j in range(i + 1, len(groups)):
-                if overlap(boxes[i], boxes[j]):
-                    groups[i] += groups.pop(j)
-                    boxes.pop(j)
-                    boxes[i] = footprint(bm, groups[i])
-                    merged = True
-                    break
-            if merged:
-                break
-    # Tiny loose fragments (Meshy's stray bits) are dropped
-    keep = [k for k in range(len(groups)) if len(groups[k]) >= 120]
-    groups = [groups[k] for k in keep]
-    boxes = [boxes[k] for k in keep]
-    # Props that touch came out as one: split the widest group in two along its long side
+def main_body(bm, faces, gap=0.01):
+    """A prop's faces without the bits that float apart from it (pieces of a neighbor that the cut took along,
+    or Meshy's strays): only the biggest cluster of touching parts and what touches its box are kept."""
+    sub = bmesh.new()
+    vmap = {}
+    index = {}
+    for i in faces:
+        f = bm.faces[i]
+        nf = sub.faces.new([vmap.setdefault(v, sub.verts.new(v.co)) for v in f.verts]) if len(set(f.verts)) == len(f.verts) else None
+        if nf:
+            index[nf] = i
+    sub.faces.index_update()
+    sub.faces.ensure_lookup_table()
+    parts = components(sub)
+    boxes = [box3(sub, g) for g in parts]
+    order = sorted(range(len(parts)), key=lambda k: -len(parts[k]))
+    body = list(boxes[order[0]])
+    kept = [order[0]]
+    grew = True
+    while grew:
+        grew = False
+        for k in order:
+            if k in kept:
+                continue
+            b = boxes[k]
+            if all(b[a] < body[a + 3] + gap and body[a] < b[a + 3] + gap for a in range(3)):
+                kept.append(k)
+                body = [min(body[a], b[a]) for a in range(3)] + [max(body[a + 3], b[a + 3]) for a in range(3)]
+                grew = True
+    result = [index[sub.faces[i]] for k in kept for i in parts[k]]
+    sub.free()
+    return result
+
+
+def split_sheet(bm, count, gap=0.003):
+    """The sheet's faces grouped into its `count` props, in the image's order (the back row, +Y, first, each
+    row left to right). Loose parts closer than `gap` belong together; the biggest clusters are the props and
+    the rest are Meshy's stray bits. Two props that touch come out as one cluster, so while there are too few,
+    the widest cluster is cut in two along its long side."""
+    import numpy as np
+
+    parts = components(bm)
+    boxes = np.array([footprint(bm, g) for g in parts])
+    parent = list(range(len(parts)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(len(parts)):
+        near = np.nonzero((boxes[:, 0] < boxes[i, 2] + gap) & (boxes[i, 0] < boxes[:, 2] + gap) & (boxes[:, 1] < boxes[i, 3] + gap) & (boxes[i, 1] < boxes[:, 3] + gap))[0]
+        for j in near:
+            a, b = find(i), find(int(j))
+            if a != b:
+                parent[a] = b
+    clusters = {}
+    for i, g in enumerate(parts):
+        clusters.setdefault(find(i), []).extend(g)
+    big = max(len(g) for g in clusters.values())
+    groups = [g for g in clusters.values() if len(g) > big * 0.08]
     while len(groups) < count:
-        i = max(range(len(groups)), key=lambda k: max(boxes[k][2] - boxes[k][0], boxes[k][3] - boxes[k][1]))
-        box = boxes[i]
-        axis = 0 if box[2] - box[0] >= box[3] - box[1] else 1
+        fp = [footprint(bm, g) for g in groups]
+        i = max(range(len(groups)), key=lambda k: max(fp[k][2] - fp[k][0], fp[k][3] - fp[k][1]))
+        axis = 0 if fp[i][2] - fp[i][0] >= fp[i][3] - fp[i][1] else 1
         centers = {f: bm.faces[f].calc_center_median()[axis] for f in groups[i]}
-        a, b = box[axis], box[axis + 2]
+        lo, hi = fp[i][axis], fp[i][axis + 2]
         for _ in range(20):  # 2-means along the axis
-            mid = (a + b) / 2
+            mid = (lo + hi) / 2
             left = [c for c in centers.values() if c < mid]
             right = [c for c in centers.values() if c >= mid]
-            a, b = sum(left) / len(left), sum(right) / len(right)
-        mid = (a + b) / 2
-        first = [f for f in groups[i] if centers[f] < mid]
-        second = [f for f in groups[i] if centers[f] >= mid]
-        groups[i:i + 1] = [first, second]
-        boxes[i:i + 1] = [footprint(bm, first), footprint(bm, second)]
-    # Too many: the smallest bits join the group they're nearest to
-    while len(groups) > count:
-        i = min(range(len(groups)), key=lambda k: len(groups[k]))
-        c = Vector(((boxes[i][0] + boxes[i][2]) / 2, (boxes[i][1] + boxes[i][3]) / 2))
-        j = min((k for k in range(len(groups)) if k != i), key=lambda k: (Vector(((boxes[k][0] + boxes[k][2]) / 2, (boxes[k][1] + boxes[k][3]) / 2)) - c).length)
-        groups[j] += groups[i]
-        boxes[j] = footprint(bm, groups[j])
-        groups.pop(i)
-        boxes.pop(i)
-    # In the image's order: the back row (+Y) left to right, then the front row
-    order = sorted(range(count), key=lambda k: -(boxes[k][1] + boxes[k][3]))
-    rows = [sorted(order[: count // 2], key=lambda k: boxes[k][0]), sorted(order[count // 2:], key=lambda k: boxes[k][0])]
+            lo, hi = sum(left) / len(left), sum(right) / len(right)
+        mid = (lo + hi) / 2
+        groups[i:i + 1] = [[f for f in groups[i] if centers[f] < mid], [f for f in groups[i] if centers[f] >= mid]]
+    groups = [main_body(bm, g) for g in sorted(groups, key=len, reverse=True)[:count]]
+    fp = [footprint(bm, g) for g in groups]
+    order = sorted(range(count), key=lambda k: -(fp[k][1] + fp[k][3]))
+    rows = [sorted(order[: count // 2], key=lambda k: fp[k][0]), sorted(order[count // 2:], key=lambda k: fp[k][0])]
     return [groups[k] for k in rows[0] + rows[1]]
 
 
@@ -152,7 +175,10 @@ def color_only(mat):
 
 def props(sheets):
     pieces = []
+    only = os.environ.get("SHEET")
     for sheet in sheets:
+        if only and sheet not in only.split(","):
+            continue
         names = SHEETS[sheet]
         before = set(bpy.data.objects)
         bpy.ops.import_scene.gltf(filepath=os.path.join(ROOT, "sources", f"props_{sheet}.glb"))
@@ -167,6 +193,7 @@ def props(sheets):
         bm.from_mesh(obj.data)
         bm.faces.ensure_lookup_table()
         groups = split_sheet(bm, len(names))
+        print(sheet, [len(g) for g in groups])
         bm.free()
         debug = os.environ.get("DEBUG")
         for n, ((name, height), faces) in enumerate(zip(names, groups)):
