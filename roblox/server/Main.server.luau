@@ -37,6 +37,7 @@ local GiftService = require(Services.GiftService)
 local LiveEventService = require(Services.LiveEventService)
 local FishingService = require(Services.FishingService)
 local NestService = require(Services.NestService)
+local HeistService = require(Services.HeistService)
 local DataService = require(Services.DataService)
 
 Net.init()
@@ -72,6 +73,7 @@ GiftService.init()
 LiveEventService.init()
 FishingService.init()
 NestService.init()
+HeistService.init()
 
 DataService.init()
 

@@ -112,6 +112,48 @@ local function update(pad: BasePart)
 	end
 end
 
+-- The Heist Egg (HeistService): its timer, and no "Steal" prompt for the one carrying it
+local heistGuis: { [BasePart]: TextLabel } = {}
+local function updateHeist()
+	for _, egg in CollectionService:GetTagged("HeistEgg") do
+		if not egg:IsA("BasePart") then
+			continue
+		end
+		local text = heistGuis[egg]
+		if not text then
+			local gui = Instance.new("BillboardGui")
+			gui.Size = UDim2.fromScale(12, 2.4)
+			gui.StudsOffsetWorldSpace = Vector3.new(0, 4.5, 0)
+			gui.AlwaysOnTop = true
+			gui.MaxDistance = 400
+			local label = Instance.new("TextLabel")
+			label.Size = UDim2.fromScale(1, 1)
+			label.BackgroundTransparency = 1
+			label.TextScaled = true
+			label.Font = Enum.Font.FredokaOne
+			label.TextColor3 = Color3.fromRGB(255, 220, 90)
+			label.TextStrokeTransparency = 0.2
+			label.Parent = gui
+			gui.Parent = egg
+			heistGuis[egg] = label
+			text = label
+			egg.AncestryChanged:Connect(function()
+				if not egg.Parent then
+					heistGuis[egg] = nil
+				end
+			end)
+		end
+		local ends = egg:GetAttribute("Ends")
+		local left = if type(ends) == "number" then math.max(0, math.ceil(ends - now())) else 0
+		local mine = egg:GetAttribute("Carrier") == LOCAL.UserId
+		;(text :: TextLabel).Text = if mine then ("🥚 Run to your Nest! %s"):format(Format.time(left)) else ("🥚 HEIST EGG · %s"):format(Format.time(left))
+		local prompt = egg:FindFirstChildOfClass("ProximityPrompt")
+		if prompt then
+			prompt.Enabled = not mine
+		end
+	end
+end
+
 -- The weather banner
 local function mountWeather(gui: ScreenGui): (TextLabel, Frame)
 	local frame = Instance.new("Frame")
@@ -159,6 +201,7 @@ function NestClient.init(gui: ScreenGui)
 
 	task.spawn(function()
 		while true do
+			updateHeist()
 			for _, pad in CollectionService:GetTagged("NestPad") do
 				if pad:IsA("BasePart") then
 					update(pad)

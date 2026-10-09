@@ -1891,6 +1891,22 @@ test("Nest: the weather is the same all through a window and every kind comes", 
 	assert(seen.Clear > seen.Neon * 4, "clear sky much more often than neon night")
 end)
 
+-- Egg Heist
+local Heist = R(Shared.Logic.Heist)
+local HeistConfig = R(Shared.Config.Heist)
+test("Heist: rounds only on weekends, on the clock", function()
+	eq(Heist.weekday(0), 4, "1 Jan 1970 was a Thursday")
+	local saturday = 2 * 86400 -- 3 Jan 1970
+	eq(Heist.weekday(saturday), 6)
+	local on, start = Heist.round(saturday + 30)
+	assert(on and start == saturday, "a round at :00 on Saturday")
+	assert(not Heist.round(saturday + HeistConfig.ROUND + 1), "over after ROUND seconds")
+	assert(not Heist.round(saturday - 86400 + 30), "none on Friday")
+	assert(Heist.round(saturday - 86400 + 30, true), "always on in Studio")
+	eq(Heist.nextRound(saturday - 3600), saturday, "the next one from Friday night is Saturday's first")
+	eq(Heist.nextRound(saturday + 1), saturday + HeistConfig.EVERY)
+end)
+
 print(("%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	process.exit(1)
