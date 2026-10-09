@@ -66,9 +66,10 @@ local function loadMapArt()
 	print("[Art] Map art loaded")
 end
 
--- The floating seats' model (Config/Art SEATS_ASSET_ID) into ReplicatedStorage.<name> (SeatModel)
-local function loadSeatArt(name: string, id: number)
-	-- (added last, so it wins over a model placed by hand: SeatModel uses the newest)
+-- A Blender model found by its part names (Config/Art SEATS_ASSET_ID: SeatModel; PROPS_ASSET_ID:
+-- PropService) into ReplicatedStorage.<name>
+local function loadPartsArt(name: string, id: number)
+	-- (added last, so it wins over a model placed by hand: the newest is used)
 	if id == 0 then
 		return
 	end
@@ -96,7 +97,8 @@ end
 
 function ArtService.init()
 	task.spawn(loadMapArt)
-	task.spawn(loadSeatArt, "SeatsModel", Art.SEATS_ASSET_ID)
+	task.spawn(loadPartsArt, "SeatsModel", Art.SEATS_ASSET_ID)
+	task.spawn(loadPartsArt, "PropsModel", Art.PROPS_ASSET_ID)
 	if ReplicatedStorage:FindFirstChild("CreatureModels") then
 		return -- placed by hand in Studio
 	end
