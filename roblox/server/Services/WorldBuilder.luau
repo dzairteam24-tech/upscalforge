@@ -59,19 +59,20 @@ local WALL_H = MapTheme.WALL_HEIGHT
 local WALL_T = MapTheme.WALL_THICKNESS
 
 -- A straight piece of wall from the ground up, with a lighter band along its top. `size` is the wall's
--- footprint (X and Z); `name` lets the smoke test find the zone borders.
-local function wall(parent: Instance, name: string, position: Vector3, size: Vector3, style: { wall: Enum.Material, wallColor: Color3, capColor: Color3 })
+-- footprint (X and Z); `name` lets the smoke test find the zone borders. `height` is the wall's (WALL_H).
+local function wall(parent: Instance, name: string, position: Vector3, size: Vector3, style: { wall: Enum.Material, wallColor: Color3, capColor: Color3 }, height: number?)
+	local h = height or WALL_H
 	part({
 		Name = name,
-		Size = Vector3.new(size.X, WALL_H + 4, size.Z),
-		Position = Vector3.new(position.X, WALL_H / 2 - 2, position.Z),
+		Size = Vector3.new(size.X, h + 4, size.Z),
+		Position = Vector3.new(position.X, h / 2 - 2, position.Z),
 		Color = style.wallColor,
 		Material = style.wall,
 	}).Parent = parent
 	part({
 		Name = "WallCap",
 		Size = Vector3.new(size.X + 1, 2, size.Z + 1),
-		Position = Vector3.new(position.X, WALL_H + 1, position.Z),
+		Position = Vector3.new(position.X, h + 1, position.Z),
 		Color = style.capColor,
 		CanCollide = false,
 	}).Parent = parent
@@ -97,6 +98,76 @@ local function tower(parent: Instance, position: Vector3, style: { wall: Enum.Ma
 end
 
 local HUB_GRASS = Color3.fromRGB(118, 190, 92)
+
+-- The terrace on each zone's east side: a paved pad outside the wall, through its own opening, with the
+-- stations a player keeps going back to, so they don't have to walk back to the town for them
+local NOOK_SIDE = Vector3.new(1, 0, 0)
+local NOOK_SIZE = Vector3.new(44, 0, 76) -- X out from the wall, Z along it
+local STATIONS = {
+	{ name = "Upgrades", icon = "⬆️", ui = "Shop", color = Color3.fromRGB(255, 196, 64) },
+	{ name = "Gifts", icon = "🎁", ui = "Daily", color = Color3.fromRGB(240, 96, 120) },
+	{ name = "Pets", icon = "🐾", ui = "Pets", color = Color3.fromRGB(110, 200, 140) },
+	{ name = "Teleport", icon = "✨", ui = "Teleport", color = Color3.fromRGB(120, 160, 255) },
+}
+
+local function buildNook(zone: World1.Zone, center: Vector3, model: Instance)
+	local theme = MapTheme.get(zone.id)
+	local nook = Instance.new("Model")
+	nook.Name = "Terrace"
+	local inner = center.X + MapLayout.PLATFORM / 2 + WALL_T -- the wall's outer face
+	local middle = Vector3.new(inner + NOOK_SIZE.X / 2, 0, center.Z)
+	part({
+		Name = "Ground",
+		Size = Vector3.new(NOOK_SIZE.X + WALL_T, 4, NOOK_SIZE.Z),
+		Position = middle + Vector3.new(-WALL_T / 2, -2, 0),
+		Color = theme.capColor,
+		Material = Enum.Material.Pavement,
+	}).Parent = nook
+	-- A low wall round its three open sides
+	local railH = 4
+	for _, side in { -1, 1 } do
+		wall(nook, "Rail", middle + Vector3.new(0, 0, side * (NOOK_SIZE.Z / 2 + 1)), Vector3.new(NOOK_SIZE.X, 0, 2), theme, railH)
+	end
+	wall(nook, "Rail", middle + Vector3.new(NOOK_SIZE.X / 2 + 1, 0, 0), Vector3.new(2, 0, NOOK_SIZE.Z + 4), theme, railH)
+	-- The stations in a row along the back, facing the opening
+	for i, station in STATIONS do
+		local z = center.Z + (i - (#STATIONS + 1) / 2) * (NOOK_SIZE.Z - 12) / #STATIONS
+		local at = Vector3.new(inner + NOOK_SIZE.X - 10, 0, z)
+		local base = part({
+			Name = "Station",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(1.2, 10, 10),
+			CFrame = CFrame.new(at + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = theme.wallColor,
+		})
+		base.Parent = nook
+		local stand = part({
+			Name = station.name,
+			Size = Vector3.new(4, 6, 6),
+			Position = at + Vector3.new(0, 4.2, 0),
+			Color = station.color,
+		})
+		stand.Parent = nook
+		part({
+			Name = "Glow",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.one * 3,
+			Position = at + Vector3.new(0, 8.6, 0),
+			Color = station.color,
+			Material = Enum.Material.Neon,
+			CanCollide = false,
+		}).Parent = nook
+		label(stand, station.icon .. " " .. station.name, UDim2.fromScale(10, 2.2), Vector3.new(0, 8, 0))
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "Open"
+		prompt.ObjectText = station.name
+		prompt.MaxActivationDistance = 12
+		prompt.RequiresLineOfSight = false
+		prompt:SetAttribute("OpenUI", station.ui)
+		prompt.Parent = stand
+	end
+	nook.Parent = model
+end
 
 local function buildZone(zone: World1.Zone, folder: Folder)
 	local center = MapLayout.center(zone.id)
@@ -134,6 +205,8 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 		model.Parent = folder
 		return
 	end
+	-- (the east side opens onto the zone's terrace, with the upgrades and the other stations)
+	table.insert(openSides, NOOK_SIDE)
 	local theme = MapTheme.get(zone.id)
 	local walls = Instance.new("Model")
 	walls.Name = "Walls"
@@ -177,6 +250,7 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 		end
 	end
 	walls.Parent = model
+	buildNook(zone, center, model)
 
 	-- A few block "trees" and rocks for decoration, placed on a ring so they don't block sources
 	local rng = Random.new(zone.id * 97)
