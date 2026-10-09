@@ -632,29 +632,8 @@ local function dressBuilding(root: Instance, entry: { house: Model, frame: CFram
 	return true
 end
 
--- Street lamps (Town.glb) round the plaza's edge
-local function placeLamps(hub: Instance, center: Vector3)
-	local PropService = require(script.Parent.PropService)
-	local folder = Instance.new("Model")
-	folder.Name = "Lamps"
-	for i = 0, 11 do
-		local angle = math.rad(15 + i * 30)
-		local at = center + Vector3.new(math.sin(angle), 0, -math.cos(angle)) * (PLAZA_RADIUS + 3)
-		local lamp = PropService.spawn("StreetLamp", CFrame.lookAt(at, Vector3.new(center.X, at.Y, center.Z)))
-		if lamp then
-			local light = Instance.new("PointLight")
-			light.Color = rgb(255, 220, 160)
-			light.Range = 14
-			light.Brightness = 0.8
-			light.Parent = lamp
-			lamp.Parent = folder
-		end
-	end
-	folder.Parent = hub
-end
-
--- Once the town model (Config/Art TOWN_ASSET_ID) is in ReplicatedStorage: the art buildings and lamps
-local function dressTown(hub: Instance, center: Vector3)
+-- Once the town model (Config/Art TOWN_ASSET_ID) is in ReplicatedStorage: the art buildings
+local function dressTown(hub: Instance)
 	local ok, root = pcall(function()
 		return ReplicatedStorage:WaitForChild("TownModel", 60)
 	end)
@@ -669,7 +648,6 @@ local function dressTown(hub: Instance, center: Vector3)
 			dressed += 1
 		end
 	end
-	placeLamps(hub, center)
 	print(("[Town] %d buildings drawn with the town model"):format(dressed))
 end
 
@@ -808,7 +786,7 @@ function HubBuilder.build(zoneModel: Instance, folder: Instance, openings: { Vec
 	-- The statue is built before the 3D creature models load; rebuild it once they arrive. (The offline
 	-- smoke test runs without the task library.)
 	if task then
-		task.spawn(dressTown, hub, center)
+		task.spawn(dressTown, hub)
 		task.spawn(function()
 			local ok, models = pcall(function()
 				return ReplicatedStorage:WaitForChild("CreatureModels", 60)
