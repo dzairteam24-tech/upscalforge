@@ -985,6 +985,14 @@ local function onLoaded(player: Player, data: PlayerData)
 	for _, id in Cosmetics.RIDE_STARTERS do
 		data.rides[id] = true
 	end
+	-- Testing in Studio: every floating seat, to try them all on
+	if RunService:IsStudio() then
+		for _, ride in Cosmetics.rides do
+			if ride.style == "seat" then
+				data.rides[ride.id] = true
+			end
+		end
+	end
 	-- The floating seats replaced the creature as the ride you start on: move a saved Cubeling Ride over once
 	-- (it stays in Style for anyone who picks it again)
 	if not data.seatsIntroduced then
