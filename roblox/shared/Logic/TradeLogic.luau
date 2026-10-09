@@ -3,9 +3,11 @@
 --   * any change to an offer resets both "ready" flags and locks the Ready button for TRADE_LOCK_SECONDS
 --   * after both are ready, a separate confirm step shows exactly what each side gives and gets
 --   * the server re-validates ownership, locks and storage right before swapping
+-- An offer lists creature ids and floating seats ("ride:<ride id>", only tradeable ones: not the free Cloud).
 
 local Config = script.Parent.Parent.Config
 local Constants = require(Config.Constants)
+local Cosmetics = require(Config.Cosmetics)
 local Sizes = require(Config.Sizes)
 local Variants = require(Config.Variants)
 local Inventory = require(script.Parent.Inventory)
@@ -29,9 +31,42 @@ export type Side = {
 	equipped: { string },
 	capacity: number,
 	index: { [string]: boolean }?, -- the receiver's creature index
+	rides: { [string]: boolean }?, -- the rides (seats) the player has
 }
 
 local TradeLogic = {}
+
+local RIDE_PREFIX = "ride:"
+local MAX_RIDES = 4
+
+-- The ride id when an offered item is a ride, else nil
+function TradeLogic.rideOf(item: string): string?
+	if string.sub(item, 1, #RIDE_PREFIX) == RIDE_PREFIX then
+		return string.sub(item, #RIDE_PREFIX + 1)
+	end
+	return nil
+end
+
+function TradeLogic.rideItem(rideId: string): string
+	return RIDE_PREFIX .. rideId
+end
+
+function TradeLogic.canTradeRide(rideId: string): boolean
+	local ride = Cosmetics.rideById[rideId]
+	return ride ~= nil and ride.tradeable == true
+end
+
+-- How many creatures an offer holds (rides don't take storage)
+local function petCount(offer: { string }): number
+	local n = 0
+	for _, item in offer do
+		if not TradeLogic.rideOf(item) then
+			n += 1
+		end
+	end
+	return n
+end
+
 
 function TradeLogic.new(a: number, b: number, now: number): Session
 	return {
@@ -79,8 +114,18 @@ function TradeLogic.setOffer(session: Session, userId: number, petIds: { string 
 			table.insert(unique, petId)
 		end
 	end
-	if #unique > Constants.TRADE_MAX_PETS then
+	if petCount(unique) > Constants.TRADE_MAX_PETS then
 		return false, "You can offer up to " .. Constants.TRADE_MAX_PETS .. " creatures"
+	end
+	local rides = #unique - petCount(unique)
+	if rides > MAX_RIDES then
+		return false, "You can offer up to " .. MAX_RIDES .. " seats"
+	end
+	for _, item in unique do
+		local rideId = TradeLogic.rideOf(item)
+		if rideId and not TradeLogic.canTradeRide(rideId) then
+			return false, "This seat can't be traded"
+		end
 	end
 	session.offers[userId] = unique
 	resetAgreement(session, now)
@@ -123,8 +168,21 @@ end
 
 function TradeLogic.validate(session: Session, sideA: Side, sideB: Side): (boolean, string?)
 	local offerA, offerB = session.offers[session.a], session.offers[session.b]
-	local function checkOffer(offer: { string }, side: Side): (boolean, string?)
+	local function checkOffer(offer: { string }, side: Side, receiver: Side): (boolean, string?)
 		for _, petId in offer do
+			local rideId = TradeLogic.rideOf(petId)
+			if rideId then
+				if not (side.rides and side.rides[rideId]) then
+					return false, "A seat in the trade is gone"
+				end
+				if not TradeLogic.canTradeRide(rideId) then
+					return false, "This seat can't be traded"
+				end
+				if receiver.rides and receiver.rides[rideId] then
+					return false, "They already have that seat"
+				end
+				continue
+			end
 			local pet = side.pets[petId]
 			if not pet then
 				return false, "A creature in the trade is gone"
@@ -138,39 +196,51 @@ function TradeLogic.validate(session: Session, sideA: Side, sideB: Side): (boole
 		end
 		return true, nil
 	end
-	local okA, errA = checkOffer(offerA, sideA)
+	local okA, errA = checkOffer(offerA, sideA, sideB)
 	if not okA then
 		return false, errA
 	end
-	local okB, errB = checkOffer(offerB, sideB)
+	local okB, errB = checkOffer(offerB, sideB, sideA)
 	if not okB then
 		return false, errB
 	end
 	local countA = Inventory.count(sideA)
 	local countB = Inventory.count(sideB)
-	if countA - #offerA + #offerB > sideA.capacity then
+	if countA - petCount(offerA) + petCount(offerB) > sideA.capacity then
 		return false, "Not enough storage"
 	end
-	if countB - #offerB + #offerA > sideB.capacity then
+	if countB - petCount(offerB) + petCount(offerA) > sideB.capacity then
 		return false, "Not enough storage"
 	end
 	return true, nil
 end
 
--- Moves the creatures. Ids are kept (they are unique GUIDs). Call validate first.
+-- Moves the creatures and seats. Creature ids are kept (they are unique GUIDs). Call validate first. Returns
+-- the creatures each side gave.
 function TradeLogic.execute(session: Session, sideA: Side, sideB: Side): ({ Types.Pet }, { Types.Pet })
+	local function moveRides(offer: { string }, from: Side, to: Side)
+		for _, item in offer do
+			local rideId = TradeLogic.rideOf(item)
+			if rideId and from.rides and to.rides and from.rides[rideId] then
+				from.rides[rideId] = nil
+				to.rides[rideId] = true
+			end
+		end
+	end
+	moveRides(session.offers[session.a], sideA, sideB)
+	moveRides(session.offers[session.b], sideB, sideA)
 	local movedA, movedB = {}, {}
 	local fromA: { [string]: Types.Pet } = {}
 	local fromB: { [string]: Types.Pet } = {}
 	for _, petId in session.offers[session.a] do
-		local pet = Inventory.remove(sideA, petId)
+		local pet = if TradeLogic.rideOf(petId) then nil else Inventory.remove(sideA, petId)
 		if pet then
 			fromA[petId] = pet
 			table.insert(movedA, pet)
 		end
 	end
 	for _, petId in session.offers[session.b] do
-		local pet = Inventory.remove(sideB, petId)
+		local pet = if TradeLogic.rideOf(petId) then nil else Inventory.remove(sideB, petId)
 		if pet then
 			fromB[petId] = pet
 			table.insert(movedB, pet)

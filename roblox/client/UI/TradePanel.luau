@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Progress = require(Shared.Logic.Progress)
 local Constants = require(Shared.Config.Constants)
+local Cosmetics = require(Shared.Config.Cosmetics)
 local PetMath = require(Shared.Logic.PetMath)
 local TradeLogic = require(Shared.Logic.TradeLogic)
 local Net = require(Shared.Net)
@@ -23,6 +24,50 @@ local LOCAL = Players.LocalPlayer
 
 local state: { [string]: any }? = nil
 local stateReceivedAt = 0
+
+-- A floating seat in a trade: a card with its name, in the seat's colors
+local function seatCard(rideId: string, selected: boolean?): TextButton
+	local ride = Cosmetics.rideById[rideId]
+	local card = Instance.new("TextButton")
+	card.Text = ""
+	card.AutoButtonColor = true
+	card.BackgroundColor3 = if selected then Color3.fromRGB(70, 90, 140) else Theme.card
+	card.BorderSizePixel = 0
+	Theme.corner(card, 10)
+	Theme.stroke(card, if ride then ride.glow else Theme.muted, 3)
+	local icon = Theme.label({
+		Text = "🪑",
+		Size = UDim2.new(1, 0, 0.55, 0),
+		BackgroundTransparency = 1,
+		MaxTextSize = 34,
+	})
+	icon.Parent = card
+	local name = Theme.label({
+		Text = if ride then ride.name else rideId,
+		Size = UDim2.new(1, -6, 0.4, 0),
+		Position = UDim2.new(0, 3, 0.56, 0),
+		TextColor3 = if ride then ride.color else Theme.text,
+		MaxTextSize = 14,
+	})
+	name.Parent = card
+	return card
+end
+
+-- A traded item's card: a creature, or a seat ({ ride = id })
+local function itemCard(item: { [string]: any }, selected: boolean?): TextButton
+	if item.ride then
+		return seatCard(item.ride, selected)
+	end
+	return PetCard.create(item :: any, { selected = selected })
+end
+
+local function itemTitle(item: { [string]: any }): string
+	if item.ride then
+		local ride = Cosmetics.rideById[item.ride]
+		return "🪑 " .. (if ride then ride.name else item.ride)
+	end
+	return PetCard.title(item :: any)
+end
 
 local function scrollGrid(parent: Instance, props: { [string]: any }, cell: UDim2): ScrollingFrame
 	local scroll = Instance.new("ScrollingFrame")
@@ -272,7 +317,7 @@ function TradePanel.mount(gui: ScreenGui)
 		Theme.clear(picker)
 		local mine = s.mine :: { [string]: any }
 		for petId, pet in mine do
-			local card = PetCard.create(pet)
+			local card = itemCard(pet)
 			card.Activated:Connect(function()
 				local ids = myOfferIds()
 				table.remove(ids, table.find(ids, petId) :: number)
@@ -281,7 +326,7 @@ function TradePanel.mount(gui: ScreenGui)
 			card.Parent = mineGrid
 		end
 		for _, pet in s.theirs :: { [string]: any } do
-			PetCard.create(pet).Parent = theirsGrid
+			itemCard(pet).Parent = theirsGrid
 		end
 		local data = Store.data
 		if data then
@@ -306,15 +351,47 @@ function TradePanel.mount(gui: ScreenGui)
 				end)
 				card.Parent = picker
 			end
+			-- Seats you can trade (not the free Cloud), after the creatures
+			local order = 100000
+			for _, ride in Cosmetics.rides do
+				if ride.tradeable and data.rides and data.rides[ride.id] then
+					local item = TradeLogic.rideItem(ride.id)
+					local card = seatCard(ride.id, mine[item] ~= nil)
+					order += 1
+					card.LayoutOrder = order
+					card.Activated:Connect(function()
+						local offer = myOfferIds()
+						local index = table.find(offer, item)
+						if index then
+							table.remove(offer, index)
+						else
+							table.insert(offer, item)
+						end
+						Net.event("TradeOffer"):FireServer(offer)
+					end)
+					card.Parent = picker
+				end
+			end
 		end
 
 		-- Totals for each side, and a warning when you give much rarer creatures than you get
 		local function listOf(map: { [string]: any }): { any }
 			local out = {}
 			for _, pet in map do
-				table.insert(out, pet)
+				if not pet.ride then
+					table.insert(out, pet)
+				end
 			end
 			return out
+		end
+		local function seats(map: { [string]: any }): number
+			local n = 0
+			for _, item in map do
+				if item.ride then
+					n += 1
+				end
+			end
+			return n
 		end
 		local function worthText(worth: TradeLogic.Worth): string
 			local parts = { tostring(worth.count) }
@@ -332,14 +409,17 @@ function TradePanel.mount(gui: ScreenGui)
 		local give = TradeLogic.worth(listOf(s.mine))
 		local get = TradeLogic.worth(listOf(s.theirs))
 		local unfair = TradeLogic.lopsided(give, get)
-		mineLabel.Text = "You give: " .. worthText(give)
-		theirsLabel.Text = "You get: " .. worthText(get)
+		local function seatText(n: number): string
+			return if n > 0 then (" · 🪑" .. n) else ""
+		end
+		mineLabel.Text = "You give: " .. worthText(give) .. seatText(seats(s.mine))
+		theirsLabel.Text = "You get: " .. worthText(get) .. seatText(seats(s.theirs))
 		mineLabel.TextColor3 = if unfair then Theme.red else Theme.text
 
 		local function names(list: { [string]: any }): string
 			local out = {}
 			for _, pet in list do
-				table.insert(out, PetCard.title(pet))
+				table.insert(out, itemTitle(pet))
 			end
 			return if #out == 0 then "nothing" else table.concat(out, ", ")
 		end

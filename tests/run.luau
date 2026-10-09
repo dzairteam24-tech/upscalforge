@@ -376,6 +376,30 @@ test("Trade: full swap moves creatures and unequips them", function()
 	eq(s.stage, "Done")
 end)
 
+test("Trade: floating seats move between players; the free Cloud can't be traded", function()
+	local a, b, a1 = tradeSetup()
+	a.rides = { Seat_Cloud = true, Seat_Blossom = true }
+	b.rides = { Seat_Cloud = true }
+	local s = TradeLogic.new(1, 2, 0)
+	local ok = TradeLogic.setOffer(s, 1, { TradeLogic.rideItem("Seat_Cloud") }, 0)
+	eq(ok, false, "Cloud offered")
+	assert(TradeLogic.setOffer(s, 1, { TradeLogic.rideItem("Seat_Blossom") }, 0))
+	assert(TradeLogic.setReady(s, 1, 5))
+	assert(TradeLogic.setReady(s, 2, 5))
+	TradeLogic.confirm(s, 1)
+	assert(TradeLogic.confirm(s, 2))
+	assert(TradeLogic.validate(s, a, b))
+	TradeLogic.execute(s, a, b)
+	eq(a.rides.Seat_Blossom, nil, "giver lost it")
+	eq(b.rides.Seat_Blossom, true, "receiver got it")
+	eq(a.pets[a1].s, "Bear", "creatures untouched")
+	-- giving back a seat they already have is refused
+	local s2 = TradeLogic.new(1, 2, 0)
+	a.rides.Seat_Blossom = true
+	TradeLogic.setOffer(s2, 1, { TradeLogic.rideItem("Seat_Blossom") }, 0)
+	eq((TradeLogic.validate(s2, a, b)), false, "duplicate seat")
+end)
+
 test("Trade: locked creatures and full storage are rejected", function()
 	local a, b, a1, b1 = tradeSetup()
 	local s = TradeLogic.new(1, 2, 0)

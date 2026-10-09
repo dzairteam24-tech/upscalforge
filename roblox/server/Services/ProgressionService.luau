@@ -87,6 +87,27 @@ local function grant(player: Player, data: PlayerData, reward: Progression.Rewar
 		local ride = Cosmetics.rideById[reward.ride]
 		table.insert(parts, "Ride: " .. (if ride then ride.name else reward.ride))
 	end
+	if reward.seat then
+		local id = reward.seat
+		if id == Progression.SEAT_GIFT then
+			-- A mystery seat: one of the gift seats the player doesn't have yet
+			local missing = {}
+			for _, ride in Cosmetics.rides do
+				if ride.gift and not data.rides[ride.id] then
+					table.insert(missing, ride.id)
+				end
+			end
+			id = if #missing > 0 then missing[math.random(#missing)] else ""
+		end
+		local ride = Cosmetics.rideById[id]
+		if ride then
+			data.rides[id] = true
+			table.insert(parts, "Seat: " .. ride.name)
+		else
+			data.gems += 100 -- every gift seat collected already
+			table.insert(parts, "💎 100")
+		end
+	end
 	if reward.tickets then
 		data.tickets += reward.tickets
 		table.insert(parts, "🎟️ " .. reward.tickets)

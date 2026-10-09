@@ -1,14 +1,27 @@
 --!strict
 -- Character cosmetics: titles above the head and trails behind the player. Look only, no power.
 
+local SeatLooks = require(script.Parent.SeatLooks)
+
 export type Title = { id: string, text: string, color: Color3 }
 export type Trail = { id: string, name: string, colors: { Color3 } }
 -- Rides: something the character stands on. Every ride gives the same speed, so they're look only.
 -- The "creature" style is the Cubeling Ride: the strongest creature in the team carries the player
 -- (RideClient draws it). Everyone has it from the start.
 -- The "seat" style is a floating seat the player sits on cross-legged (SeatModel; `seat` names its model in
--- art/models/Seats.glb). One seat per zone; the meadow's Cloud Seat everyone has from the start.
-export type Ride = { id: string, name: string, style: string, color: Color3, glow: Color3, seat: string? }
+-- art/models/Seats.glb, SeatLooks). Three per zone. The meadow's Cloud Seat is everyone's from the start and
+-- can't be traded; the others come from the Battle Pass (SEAT_PASS) or as gifts (`gift`: the daily reward's
+-- mystery seat) and can be traded.
+export type Ride = {
+	id: string,
+	name: string,
+	style: string,
+	color: Color3,
+	glow: Color3,
+	seat: string?,
+	tradeable: boolean?,
+	gift: boolean?,
+}
 -- Auras: particles around the character that everyone sees. Hatch effects: how your own hatch screen
 -- celebrates. Both are sold for Robux and give no power at all.
 export type Aura = { id: string, name: string, style: string, colors: { Color3 } }
@@ -68,7 +81,6 @@ local trails: { Trail } = {
 
 local rides: { Ride } = {
 	{ id = "Cubeling", name = "Cubeling Ride", style = "creature", color = Color3.fromRGB(255, 200, 90), glow = Color3.fromRGB(255, 240, 180) },
-	{ id = "Seat_Cloud", name = "Cloud Seat", style = "seat", seat = "Cloud", color = Color3.fromRGB(250, 250, 255), glow = Color3.fromRGB(255, 220, 245) },
 	-- Everyone gets this one early (Journey step 3), so the ride speed is never something you pay for
 	{ id = "Starter", name = "Starter Board", style = "board", color = Color3.fromRGB(107, 203, 119), glow = Color3.fromRGB(220, 255, 220) },
 	{ id = "Skateboard", name = "Skateboard", style = "board", color = Color3.fromRGB(229, 83, 75), glow = Color3.fromRGB(255, 220, 120) },
@@ -103,6 +115,27 @@ local trailById: { [string]: Trail } = {}
 for _, trail in trails do
 	trailById[trail.id] = trail
 end
+-- The floating seats, from their models' looks (zone order). Season 1's Battle Pass gives these (one every 5
+-- premium levels, Progression); every other seat but the Cloud is a gift.
+local SEAT_FREE = "Cloud"
+local SEAT_PASS = { "Blossom", "Stump", "Shell", "RedShroom", "Cactus", "Snowman", "Lava", "Ice", "Cube", "Dragon" }
+local inPass: { [string]: boolean } = {}
+for _, name in SEAT_PASS do
+	inPass[name] = true
+end
+for _, look in SeatLooks do
+	table.insert(rides, {
+		id = "Seat_" .. look.name,
+		name = look.title,
+		style = "seat",
+		seat = look.name,
+		color = look.colors[look.model.ref] or Color3.new(1, 1, 1),
+		glow = look.light,
+		tradeable = look.name ~= SEAT_FREE,
+		gift = look.name ~= SEAT_FREE and not inPass[look.name],
+	})
+end
+
 local rideById: { [string]: Ride } = {}
 for _, ride in rides do
 	rideById[ride.id] = ride

@@ -36,6 +36,11 @@ end
 local function petsView(data: any, ids: { string }): { [string]: any }
 	local view = {}
 	for _, petId in ids do
+		local rideId = TradeLogic.rideOf(petId)
+		if rideId then
+			view[petId] = { ride = rideId }
+			continue
+		end
 		local pet = data and data.pets[petId]
 		if pet then
 			view[petId] = { s = pet.s, v = pet.v, z = pet.z, st = pet.st }
@@ -87,7 +92,7 @@ local function sideFor(player: Player): TradeLogic.Side?
 	if not data then
 		return nil
 	end
-	return { pets = data.pets, equipped = data.equipped, capacity = GameService.capacity(player), index = data.index }
+	return { pets = data.pets, equipped = data.equipped, capacity = GameService.capacity(player), index = data.index, rides = data.rides }
 end
 
 local function record(player: Player, otherName: string, gave: { any }, got: { any })
@@ -120,6 +125,14 @@ local function execute(session: TradeLogic.Session)
 		return
 	end
 	local movedA, movedB = TradeLogic.execute(session, sideA, sideB)
+	-- A seat given away while sitting on it: get off
+	for _, player in { playerA, playerB } do
+		local data = DataService.get(player)
+		if data and data.equippedRide and not data.rides[data.equippedRide] then
+			data.equippedRide = nil
+			GameService.refreshTitles(player)
+		end
+	end
 	record(playerA, playerB.DisplayName, movedA, movedB)
 	record(playerB, playerA.DisplayName, movedB, movedA)
 	GameService.refresh(playerA)
@@ -210,14 +223,24 @@ function TradeService.init()
 		if type(petIds) ~= "table" or not runtime or not State.throttle(runtime, "TradeOffer", 0.3) then
 			return
 		end
-		if #petIds > Constants.TRADE_MAX_PETS * 2 then
+		if #petIds > Constants.TRADE_MAX_PETS * 2 + 8 then
 			return
 		end
 		withSession(player, function(session)
 			local data = DataService.get(player)
 			local clean = {}
 			for _, petId in petIds do
-				local pet = data and type(petId) == "string" and data.pets[petId]
+				if type(petId) ~= "string" then
+					continue
+				end
+				local rideId = TradeLogic.rideOf(petId)
+				if rideId then
+					if data and data.rides[rideId] and TradeLogic.canTradeRide(rideId) then
+						table.insert(clean, petId)
+					end
+					continue
+				end
+				local pet = data and data.pets[petId]
 				if pet and not pet.lk and not pet.ex then
 					table.insert(clean, petId)
 				end

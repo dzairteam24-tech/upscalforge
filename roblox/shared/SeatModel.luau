@@ -2,13 +2,15 @@
 -- The floating seats (art: the floating seats sheet): a soft seat that floats under the player, who sits on
 -- it cross-legged. Clients draw it and pose the rider (RideClient).
 --
--- The seats are Blender models (art/blender/seats.py, art/models/Seats.glb), one per zone, found like the
+-- The seats are Blender models (art/blender/seats.py, art/models/Seats.glb; Config/SeatLooks says what each
+-- looks like), three per zone, found like the
 -- saddle (RideModel): by their part names (Cloud__body, Cloud__eye, ...) in a model anywhere directly in
 -- ReplicatedStorage. The models are made in studs, standing on the ground (y = 0) with their face to the
 -- front; a tiny marker part (<Seat>__front) in front of the face tells which way Studio's importer turned
 -- them. Until the model is there the seat is a plain cloud of balls.
 
 local RideModel = require(script.Parent.RideModel)
+local SeatLooks = require(script.Parent.Config.SeatLooks)
 
 local SeatModel = {}
 
@@ -20,35 +22,18 @@ export type Seat = {
 	bottom: number, -- the seat's underside, above the origin
 }
 
-type Design = {
-	model: RideModel.Model,
-	top: number,
-	bottom: number,
-	colors: { [string]: Color3 },
-	glow: Color3,
-}
+type Design = SeatLooks.Look
 
--- Each seat as exported: its body's box center and size (front +Z, studs), and the role colors
-local DESIGNS: { [string]: Design } = {
-	Cloud = {
-		model = { ref = "body", center = Vector3.new(0.035, 0.934, 0), size = Vector3.new(3.488, 1.113, 2.954) },
-		top = 0.97,
-		bottom = 0.04,
-		colors = {
-			body = Color3.fromRGB(250, 250, 255),
-			shade = Color3.fromRGB(196, 196, 246),
-			eye = Color3.fromRGB(32, 30, 44),
-			shine = Color3.fromRGB(255, 255, 255),
-			blush = Color3.fromRGB(255, 168, 200),
-			mouth = Color3.fromRGB(84, 48, 60),
-			earin = Color3.fromRGB(255, 182, 212),
-			star = Color3.fromRGB(255, 206, 64),
-		},
-		glow = Color3.fromRGB(255, 220, 245),
-	},
-}
+local DESIGNS: { [string]: Design } = {}
+for _, look in SeatLooks do
+	DESIGNS[look.name] = look
+end
 
 local SCALE = 1.6 -- the seats are drawn this much bigger than modeled, so a sitting avatar fits on them
+
+-- Roles drawn glossy (as in the renders), and metallic ones a little reflective too
+local SHINY = { eye = true, gem = true, pearl = true, crystal = true, glass = true, ice = true, shine = true }
+local METAL = { star = true, gold = true }
 
 local function quiet(p: BasePart)
 	p.Anchored = true
@@ -85,7 +70,8 @@ local function standIn(design: Design, add: (BasePart, CFrame) -> ())
 		p.Name = "Seat_puff"
 		p.Shape = Enum.PartType.Ball
 		p.Size = Vector3.one * (puff[2] :: number) * SCALE
-		p.Color = if i == 1 then design.colors.body else design.colors.body:Lerp(design.colors.shade, 0.25)
+		local main = design.colors[design.model.ref] or Color3.new(1, 1, 1)
+		p.Color = if i == 1 then main else main:Lerp(Color3.new(0, 0, 0), 0.08)
 		p.Material = Enum.Material.SmoothPlastic
 		add(p, CFrame.new((puff[1] :: Vector3) * SCALE))
 	end
@@ -116,13 +102,15 @@ function SeatModel.build(name: string): Seat
 			local p = piece.part
 			p.Name = "Seat_" .. piece.role
 			p.Size = piece.size * SCALE
-			p.Color = design.colors[piece.role] or design.colors.body
-			p.Reflectance = if piece.role == "star" then 0.2 else 0
+			p.Color = design.colors[piece.role] or Color3.new(1, 1, 1)
+			p.Reflectance = if METAL[piece.role] then 0.2 else 0
 			p.Transparency = if piece.role == "front" then 1 else 0
-			if piece.role == "star" or piece.role == "eye" then
+			if design.glow[piece.role] then
+				p.Material = Enum.Material.Neon
+			elseif SHINY[piece.role] or METAL[piece.role] then
 				p.Material = Enum.Material.Glass
 			end
-			if piece.role == "body" then
+			if piece.role == design.model.ref then
 				body = p
 			end
 			add(p, CFrame.new(piece.at * SCALE) * piece.rotation)
@@ -135,7 +123,7 @@ function SeatModel.build(name: string): Seat
 	-- A soft glow and a few twinkles falling from underneath
 	if body then
 		local light = Instance.new("PointLight")
-		light.Color = design.glow
+		light.Color = design.light
 		light.Range = 9
 		light.Brightness = 0.7
 		light.Shadows = false
@@ -143,7 +131,7 @@ function SeatModel.build(name: string): Seat
 		local twinkle = Instance.new("ParticleEmitter")
 		twinkle.Name = "Twinkle"
 		twinkle.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-		twinkle.Color = ColorSequence.new(design.glow, Color3.new(1, 1, 1))
+		twinkle.Color = ColorSequence.new(design.light, Color3.new(1, 1, 1))
 		twinkle.LightEmission = 0.8
 		twinkle.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 0) })
 		twinkle.Transparency = NumberSequence.new(0.2, 1)

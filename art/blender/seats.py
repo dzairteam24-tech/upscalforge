@@ -41,8 +41,12 @@ OUT = os.environ.get("OUT", ROOT)
 def designs():
     folder = os.path.join(HERE, "seat_designs")
     found = []
+    # ONLY=cloud,blossom: just those designs (module names)
+    only = [n for n in os.environ.get("ONLY", "").lower().split(",") if n]
     for file in sorted(os.listdir(folder)):
         if file.endswith(".py") and not file.startswith("_"):
+            if only and file[:-3] not in only:
+                continue
             found.append(importlib.import_module("seat_designs." + file[:-3]))
     found.sort(key=lambda d: (d.ZONE, getattr(d, "ORDER", 0), d.NAME))
     return found

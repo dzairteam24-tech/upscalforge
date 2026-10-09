@@ -11,6 +11,9 @@ export type Reward = {
 	title: string?,
 	trail: string?,
 	ride: string?,
+	-- A floating seat: its ride id, or SEAT_GIFT for a mystery seat (one of the gift seats the player doesn't
+	-- have yet, or gems when they have them all)
+	seat: string?,
 	tickets: number?,
 	xp: number?,
 }
@@ -38,6 +41,7 @@ local DAILY: { Reward } = {
 		items = { { id = "Elixir_Pixel_2", amount = 1 }, { id = "Elixir_Luck_3", amount = 1 } },
 		freeEggs = 3,
 		freeEggLuck = 5,
+		seat = "Gift",
 	},
 }
 
@@ -75,20 +79,21 @@ local PASS_XP_PER_LEVEL = 200 -- 10,000 XP in all: about 17 days of quests in a 
 local SEASON_DAYS = 30
 local SEASON_START_DAY = 20730 -- UTC day number of season 1's first day (2026-10-04)
 
--- Free track: something every level. Premium track: cosmetics every 5 levels (titles, trails and rides only).
+-- Free track: something every level. Premium track: cosmetics every 5 levels (titles, trails, rides), each
+-- with a floating seat (Cosmetics SEAT_PASS).
 local function passReward(level: number, premium: boolean): Reward?
 	if premium then
 		local cosmetics: { [number]: Reward } = {
-			[5] = { title = "S1_Rookie" },
-			[10] = { trail = "S1_Sky" },
-			[15] = { title = "S1_Collector" },
-			[20] = { trail = "S1_Lava", ride = "S1_Hoverboard" },
-			[25] = { title = "S1_Hunter" },
-			[30] = { trail = "S1_Neon" },
-			[35] = { title = "S1_Tamer" },
-			[40] = { trail = "S1_Pixel" },
-			[45] = { title = "S1_Pixel" },
-			[50] = { title = "S1_Champion", trail = "S1_Rainbow", ride = "S1_Cloud" },
+			[5] = { title = "S1_Rookie", seat = "Seat_Blossom" },
+			[10] = { trail = "S1_Sky", seat = "Seat_Stump" },
+			[15] = { title = "S1_Collector", seat = "Seat_Shell" },
+			[20] = { trail = "S1_Lava", ride = "S1_Hoverboard", seat = "Seat_RedShroom" },
+			[25] = { title = "S1_Hunter", seat = "Seat_Cactus" },
+			[30] = { trail = "S1_Neon", seat = "Seat_Snowman" },
+			[35] = { title = "S1_Tamer", seat = "Seat_Lava" },
+			[40] = { trail = "S1_Pixel", seat = "Seat_Ice" },
+			[45] = { title = "S1_Pixel", seat = "Seat_Cube" },
+			[50] = { title = "S1_Champion", trail = "S1_Rainbow", ride = "S1_Cloud", seat = "Seat_Dragon" },
 		}
 		return cosmetics[level]
 	end
@@ -138,6 +143,7 @@ return {
 	WEEKLY_QUEST_REWARD = WEEKLY_QUEST_REWARD,
 	DAILY_TEMPLATES = DAILY_TEMPLATES,
 	WEEKLY_TEMPLATES = WEEKLY_TEMPLATES,
+	SEAT_GIFT = "Gift",
 	PASS_LEVELS = PASS_LEVELS,
 	PASS_XP_PER_LEVEL = PASS_XP_PER_LEVEL,
 	SEASON_DAYS = SEASON_DAYS,
