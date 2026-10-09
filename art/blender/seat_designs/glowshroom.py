@@ -1,12 +1,12 @@
 """Mushroom Cave: the Glow Mushroom Seat. A cluster of cave mushrooms: one big blue cap, flat on top where the
 rider sits, with glowing cyan spots and glowing gills underneath, on a chubby indigo stem with a Cubeling face;
-three little glowing mushrooms huddle round its foot, peeking out at the sides and the back."""
+three little glowing mushrooms sprout from its sides, peeking out under the rim at the sides and the back."""
 
 import math
 
 from mathutils import Matrix, Vector
 
-from seatkit import FACE_COLORS, apply_modifiers, ball, blob, face, finish, front_marker, placed, split_below
+from seatkit import FACE_COLORS, apply_modifiers, ball, face, finish, front_marker, placed, split_below, tube
 
 NAME = "GlowShroom"
 TITLE = "Glow Mushroom Seat"
@@ -87,29 +87,25 @@ def build():
     for a in (0, 60, 120, 180, 240, 300):
         parts.append(finish(spot(75, a, 0.14), "glow"))
 
-    # The chubby stem, with the face on its front under the cap's glowing rim
-    parts.append(finish(ball("Stem", 1, (0, 0, 0.42), (0.64, 0.6, 0.42)), "stem"))
-    parts += face(Matrix.Translation((0, -0.6, 0.3)), 0.78)
+    # The chubby bulb of a stem, with the face on its front under the cap's glowing rim
+    parts.append(finish(ball("Stem", 1, (0, 0, 0.44), (0.95, 0.86, 0.44)), "stem"))
+    parts += face(Matrix.Translation((0, -0.83, 0.3)) @ Matrix.Rotation(math.radians(-8), 4, "X"), 0.85)
 
-    # Three little glowing mushrooms huddled round the big one's foot, peeking out from under its rim at the
-    # sides and the back, all growing from one low clump of roots
-    smalls = (
-        ("Left", (-1.5, 0.15), 0.36, 0.34),
-        ("Right", (1.5, 0.45), 0.3, 0.29),
-        ("Back", (0.35, 1.45), 0.34, 0.31),
-    )
-    puffs = [(0.6, (0, 0.2, 0.1), (1.15, 1.05, 0.32))]
-    for _, (x, y), _, _ in smalls:
-        for i in range(4, 10):
-            t = i / 10
-            puffs.append((0.3 - 0.08 * t, (x * t, y * t, 0.1), (1, 1, 0.55)))
-    parts.append(finish(blob("Roots", puffs, voxel=0.06, keep=3000), "stem"))
-    for name, (x, y), h, size in smalls:
-        parts.append(finish(ball(name + "Stalk", 1, (x, y, h * 0.55), (0.14, 0.14, h * 0.55)), "stem"))
-        axis = Vector((0, 0, 1)).lerp(Vector((x, y, 0)).normalized(), 0.3).normalized()
+    # Three little glowing mushrooms sprouting from the stem's sides and peeking out from under the big rim:
+    # left, right and back, each on a short stalk leaning out of the bulb
+    for name, azimuth, reach, h, size in (
+        ("Left", 172, 1.5, 0.44, 0.34),
+        ("Right", 18, 1.5, 0.36, 0.29),
+        ("Back", 72, 1.48, 0.42, 0.31),
+    ):
+        d = Vector((math.cos(math.radians(azimuth)), math.sin(math.radians(azimuth)), 0))
+        root = d * 0.72 + Vector((0, 0, 0.26))
+        tip = d * reach + Vector((0, 0, h))
+        parts.append(finish(tube(name + "Stalk", [tuple(root), tuple((root + tip) / 2 + Vector((0, 0, -0.04))), tuple(tip)], 0.13), "stem"))
+        axis = Vector((0, 0, 1)).lerp(d, 0.35).normalized()
         rot = Vector((0, 0, 1)).rotation_difference(axis).to_matrix().to_4x4()
         small = mushroom_cap(name + "Cap", (0, 0, 0), (size, size, size * 0.7), 2.4)
-        parts.append(finish(placed(small, Matrix.Translation((x, y, h)) @ rot), "glow"))
+        parts.append(finish(placed(small, Matrix.Translation(tip + axis * 0.04) @ rot), "glow"))
 
     parts.append(front_marker(2 * RY))
     return parts
