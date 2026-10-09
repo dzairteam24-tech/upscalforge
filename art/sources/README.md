@@ -14,7 +14,7 @@
 | props_town.glb | Archway, Hedge, FlowerPlanter, StreetLamp, Bench, CatFountain | good (the town's decor) |
 | building_cottage.glb | the town building (blank plaque on the roof) | good: art/blender/buildings.py makes six roof colors (art/models/Buildings.glb); the logos for the plaques are yours to design |
 
-To redo later: none yet.
+To redo later: props_cave (its props overlap in the file: GiantMushroom, GlowShrooms and CrystalCluster come out broken, so Decor.glb has only Stalagmite, CaveBoulder and RedMushroom). Generate it again with more space between the six.
 
 ## The style for every new design (ChatGPT image, then Meshy Image to 3D)
 

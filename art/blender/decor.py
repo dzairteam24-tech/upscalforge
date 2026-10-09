@@ -29,13 +29,14 @@ OUT = os.environ.get("OUT", ROOT)
 SHEETS = {
     "meadow": [("Tree", 16), ("Bush", 4), ("Fence", 3.5), ("Flowers", 2.5), ("MossRock", 4), ("BigFlower", 7)],
     "forest": [("Tulip", 6), ("Beehive", 5), ("Pine", 18), ("Log", 3), ("Stump", 3), ("Fern", 4)],
-    "beach": [("Umbrella", 9), ("Seashell", 3), ("PalmTree", 18), ("Rowboat", 3.5), ("SandCastle", 6), ("Starfish", 1.5)],
-    "cave": [("GiantMushroom", 14), ("GlowShrooms", 4), ("CrystalCluster", 7), ("CaveBoulder", 5), ("Stalagmite", 9), ("RedMushroom", 5)],
-    "desert": [("Pyramid", 16), ("BarrelCactus", 3.5), ("Cactus", 10), ("BrokenColumn", 8), ("SandRock", 4), ("Skull", 3)],
+    "beach": [("PalmTree", 14), ("Umbrella", 9), ("Seashell", 4), ("Rowboat", 3.5), ("SandCastle", 6), ("Starfish", 1.5)],
+    # (the cave sheet's props overlap in the file: three come out broken, so only the clean ones are kept)
+    "cave": [None, None, ("Stalagmite", 9), None, ("CaveBoulder", 7), ("RedMushroom", 5)],
+    "desert": [("BarrelCactus", 5), ("Cactus", 9), ("Pyramid", 10), ("BrokenColumn", 8), ("SandRock", 4), ("Skull", 3)],
     "snow": [("SnowyPine", 18), ("Cabin", 12), ("Snowman", 7), ("SnowRock", 4), ("SnowPile", 2.5), ("Sled", 2.5)],
-    "volcano": [("LavaRock", 5), ("LavaPool", 1.5), ("BurntTree", 14), ("SteamVent", 4), ("MiniVolcano", 12), ("EmberRocks", 3)],
-    "ice": [("IceCrystals", 8), ("IceBlock", 5), ("SnowBank", 3), ("FrozenTree", 16), ("IcePillar", 12), ("IceShards", 5)],
-    "pixel": [("NeonCube", 5), ("GridPillar", 12), ("ArcadeScreen", 9), ("PixelTree", 14), ("PixelHeart", 6), ("PixelFlower", 6)],
+    "volcano": [("LavaRock", 5), ("LavaPool", 1.5), ("BurntTree", 14), ("SteamVent", 4), ("MiniVolcano", 8), ("EmberRocks", 3)],
+    "ice": [("IcePillar", 8), ("SnowBank", 3), ("IceBlock", 5), ("FrozenTree", 14), ("IceCrystals", 8), ("IceShards", 6)],
+    "pixel": [("NeonCube", 5), ("ArcadeScreen", 9), ("PixelHeart", 6), ("PixelTree", 14), ("PixelFlower", 6), ("GridPillar", 10)],
     "town": [("Archway", 16), ("Hedge", 4), ("FlowerPlanter", 3.5), ("Bench", 3.5), ("StreetLamp", 12), ("CatFountain", 10)],
 }
 TEXTURE = 1024
@@ -106,6 +107,12 @@ def main_body(bm, faces, gap=0.01):
     return result
 
 
+def trimmed(bm, faces):
+    """The prop without its floating bits, unless that would cut off a real part of it."""
+    body = main_body(bm, faces)
+    return body if len(body) > len(faces) * 0.85 else faces
+
+
 def split_sheet(bm, count, gap=0.003):
     """The sheet's faces grouped into its `count` props, in the image's order (the back row, +Y, first, each
     row left to right). Loose parts closer than `gap` belong together; the biggest clusters are the props and
@@ -137,17 +144,14 @@ def split_sheet(bm, count, gap=0.003):
     while len(groups) < count:
         fp = [footprint(bm, g) for g in groups]
         i = max(range(len(groups)), key=lambda k: max(fp[k][2] - fp[k][0], fp[k][3] - fp[k][1]))
+        pts = {f: bm.faces[f].calc_center_median().to_2d() for f in groups[i]}
         axis = 0 if fp[i][2] - fp[i][0] >= fp[i][3] - fp[i][1] else 1
-        centers = {f: bm.faces[f].calc_center_median()[axis] for f in groups[i]}
-        lo, hi = fp[i][axis], fp[i][axis + 2]
-        for _ in range(20):  # 2-means along the axis
-            mid = (lo + hi) / 2
-            left = [c for c in centers.values() if c < mid]
-            right = [c for c in centers.values() if c >= mid]
-            lo, hi = sum(left) / len(left), sum(right) / len(right)
-        mid = (lo + hi) / 2
-        groups[i:i + 1] = [[f for f in groups[i] if centers[f] < mid], [f for f in groups[i] if centers[f] >= mid]]
-    groups = [main_body(bm, g) for g in sorted(groups, key=len, reverse=True)[:count]]
+        m = [min(pts.values(), key=lambda p: p[axis]), max(pts.values(), key=lambda p: p[axis])]
+        for _ in range(20):  # 2-means on the ground plane
+            sides = [[p for p in pts.values() if (p - m[0]).length <= (p - m[1]).length], [p for p in pts.values() if (p - m[0]).length > (p - m[1]).length]]
+            m = [sum(side, Vector((0, 0))) / len(side) for side in sides]
+        groups[i:i + 1] = [[f for f, p in pts.items() if (p - m[0]).length <= (p - m[1]).length], [f for f, p in pts.items() if (p - m[0]).length > (p - m[1]).length]]
+    groups = [trimmed(bm, g) for g in sorted(groups, key=len, reverse=True)[:count]]
     fp = [footprint(bm, g) for g in groups]
     order = sorted(range(count), key=lambda k: -(fp[k][1] + fp[k][3]))
     rows = [sorted(order[: count // 2], key=lambda k: fp[k][0]), sorted(order[count // 2:], key=lambda k: fp[k][0])]
@@ -196,7 +200,10 @@ def props(sheets):
         print(sheet, [len(g) for g in groups])
         bm.free()
         debug = os.environ.get("DEBUG")
-        for n, ((name, height), faces) in enumerate(zip(names, groups)):
+        for n, (entry, faces) in enumerate(zip(names, groups)):
+            if entry is None and not debug:
+                continue
+            name, height = entry or ("", None)
             if debug:
                 name, height = f"{sheet}{n}", None
             piece = obj.copy()
@@ -241,7 +248,9 @@ def layout(pieces, houses):
         if i % 12 == 0 and i:
             row += 1
             x = 0.0
-        size = max(piece.dimensions.x, piece.dimensions.y)
+        xs = [v.co.x for v in piece.data.vertices]
+        ys = [v.co.y for v in piece.data.vertices]
+        size = max(max(xs) - min(xs), max(ys) - min(ys))
         piece.location = (x + size / 2, row * 24, 0)
         x += size + 4
     for i, (name, parts) in enumerate(sorted(houses.items())):
