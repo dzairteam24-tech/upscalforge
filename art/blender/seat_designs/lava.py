@@ -6,8 +6,16 @@ import math
 
 import bpy
 from mathutils import Matrix, Vector
-
-from seatkit import FACE_COLORS, apply_modifiers, face, finish, front_marker, join, placed, tube
+from seatkit import (
+    FACE_COLORS,
+    apply_modifiers,
+    face,
+    finish,
+    front_marker,
+    join,
+    placed,
+    tube,
+)
 
 NAME = "Lava"
 TITLE = "Lava Rock Seat"
@@ -86,8 +94,7 @@ def build():
     for v in rock.data.vertices:
         v.co.z += 0.03 - low
         # the flat top to sit on
-        if v.co.z > TOP:
-            v.co.z = TOP
+        v.co.z = min(v.co.z, TOP)
         # the flat-cut front for the face
         if v.co.y < FACE_Y and abs(v.co.x) < 1.0 and 0.1 < v.co.z < TOP - 0.08:
             v.co.y = FACE_Y

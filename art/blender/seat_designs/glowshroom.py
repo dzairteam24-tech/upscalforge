@@ -1,6 +1,6 @@
 """Mushroom Cave: the Glow Mushroom Seat. A cluster of cave mushrooms: one big blue cap, flat on top where the
 rider sits, with glowing cyan spots and glowing gills underneath, on a chubby indigo stem with a Cubeling face;
-three little glowing mushrooms sprout from its sides, peeking out under the rim at the sides and the back."""
+three little glowing mushrooms branch off its back, standing up behind it like a glowing crown."""
 
 import math
 
@@ -23,7 +23,7 @@ GLOW = ("glow",)
 LIGHT = (0.3, 0.9, 1.0)
 
 # The big cap: a rounded "squircle" dome round CENTER (flat-topped, with round shoulders), squashed underneath
-RX, RY, RZ = 1.32, 1.24, 0.54
+RX, RY, RZ = 1.6, 1.4, 0.54
 CENTER = Vector((0, 0, 0.67))
 ROUND = 3.2  # the dome's superellipse power: 2 is a plain ellipsoid, higher is flatter on top
 UNDER = 0.12  # how much the undersides are squashed up (nearly flat gills, so the stem shows)
@@ -88,24 +88,24 @@ def build():
         parts.append(finish(spot(75, a, 0.14), "glow"))
 
     # The chubby bulb of a stem, with the face on its front under the cap's glowing rim
-    parts.append(finish(ball("Stem", 1, (0, 0, 0.44), (0.95, 0.86, 0.44)), "stem"))
-    parts += face(Matrix.Translation((0, -0.83, 0.3)) @ Matrix.Rotation(math.radians(-8), 4, "X"), 0.85)
+    parts.append(finish(ball("Stem", 1, (0, 0, 0.46), (0.9, 0.82, 0.46)), "stem"))
+    parts += face(Matrix.Translation((0, -0.8, 0.38)) @ Matrix.Rotation(math.radians(-8), 4, "X"), 0.8)
 
-    # Three little glowing mushrooms sprouting from the stem's sides and peeking out from under the big rim:
-    # left, right and back, each on a short stalk leaning out of the bulb
-    for name, azimuth, reach, h, size in (
-        ("Left", 172, 1.5, 0.44, 0.34),
-        ("Right", 18, 1.5, 0.36, 0.29),
-        ("Back", 72, 1.48, 0.42, 0.31),
+    # Three little glowing mushrooms branching off the stem's back and standing up behind the big cap, a
+    # glowing crown of different heights clear of the rider
+    for name, (x, y), h, size in (
+        ("Left", (-0.72, 1.45), 1.45, 0.42),
+        ("Right", (0.8, 1.4), 1.12, 0.36),
+        ("Middle", (0.08, 1.75), 0.86, 0.28),
     ):
-        d = Vector((math.cos(math.radians(azimuth)), math.sin(math.radians(azimuth)), 0))
-        root = d * 0.72 + Vector((0, 0, 0.26))
-        tip = d * reach + Vector((0, 0, h))
-        parts.append(finish(tube(name + "Stalk", [tuple(root), tuple((root + tip) / 2 + Vector((0, 0, -0.04))), tuple(tip)], 0.13), "stem"))
-        axis = Vector((0, 0, 1)).lerp(d, 0.35).normalized()
+        d = Vector((x, y, 0)).normalized()
+        tip = Vector((x, y, h)) + d * 0.1
+        stalk = [(x * 0.45, 0.62, 0.3), (x * 0.9, y - 0.12, 0.42), (x, y, 0.55 + (h - 0.55) * 0.5), tuple(tip)]
+        parts.append(finish(tube(name + "Stalk", stalk, 0.16), "stem"))
+        axis = Vector((0, 0, 1)).lerp(d, 0.2).normalized()
         rot = Vector((0, 0, 1)).rotation_difference(axis).to_matrix().to_4x4()
-        small = mushroom_cap(name + "Cap", (0, 0, 0), (size, size, size * 0.7), 2.4)
-        parts.append(finish(placed(small, Matrix.Translation(tip + axis * 0.04) @ rot), "glow"))
+        small = mushroom_cap(name + "Cap", (0, 0, 0), (size, size, size * 0.85), 2.2)
+        parts.append(finish(placed(small, Matrix.Translation(tip) @ rot), "glow"))
 
     parts.append(front_marker(2 * RY))
     return parts

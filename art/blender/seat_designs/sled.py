@@ -5,8 +5,18 @@ with a pull rope looped from it, snow puffs on the deck's corners and a Cubeling
 import math
 
 from mathutils import Matrix
-
-from seatkit import FACE_COLORS, ball, blob, box, cylinder, face, finish, front_marker, subdivide, tube
+from seatkit import (
+    FACE_COLORS,
+    ball,
+    blob,
+    box,
+    cylinder,
+    face,
+    finish,
+    front_marker,
+    subdivide,
+    tube,
+)
 
 NAME = "Sled"
 TITLE = "Sled Seat"

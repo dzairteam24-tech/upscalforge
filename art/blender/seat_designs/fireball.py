@@ -5,8 +5,16 @@ and sides (yellow ones inside the orange), and a Cubeling face on its front."""
 import math
 
 from mathutils import Matrix, Vector
-
-from seatkit import FACE_COLORS, ball, blob, face, finish, front_marker, placed, split_below
+from seatkit import (
+    FACE_COLORS,
+    ball,
+    blob,
+    face,
+    finish,
+    front_marker,
+    placed,
+    split_below,
+)
 
 NAME = "Fireball"
 TITLE = "Fire Cloud Seat"

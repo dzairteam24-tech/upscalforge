@@ -27,7 +27,7 @@ COLORS = {
 TONES = ("twig", "twiglight", "twigdark")
 
 # The nest wall's outer radius by height: narrow foot, fat belly, rim leaning back in a little
-PROFILE = ((0.12, 0.95), (0.3, 1.35), (0.55, 1.62), (0.8, 1.7), (1.02, 1.66), (1.2, 1.56), (1.3, 1.44))
+PROFILE = ((0.12, 0.95), (0.3, 1.35), (0.55, 1.62), (0.78, 1.7), (0.98, 1.65), (1.1, 1.55), (1.18, 1.45))
 
 
 def wall_radius(z):
@@ -65,7 +65,7 @@ def build():
     # The bowl underneath it all (dark, so gaps between twigs read as shadow): a lathe of the wall profile
     bowl = ball("Bowl", 1, (0, 0, 0), (1, 1, 1))
     for v in bowl.data.vertices:
-        z = 0.08 + (v.co.z + 1) / 2 * 1.2
+        z = 0.08 + (v.co.z + 1) / 2 * 1.08
         r = wall_radius(z) - 0.06
         k = math.hypot(v.co.x, v.co.y)
         a = math.atan2(v.co.y, v.co.x)
@@ -80,8 +80,8 @@ def build():
     # Twigs wound round the wall: wobbly rings at rising heights, each tone in turn, each a little tilted
     twigs = {tone: [] for tone in TONES}
     n = 44
-    for j in range(15):
-        z0 = 0.16 + j * 0.077
+    for j in range(14):
+        z0 = 0.16 + j * 0.072
         phase, tilt, wob = j * 1.7, 0.05 + 0.03 * (j % 3), 0.025 * (1 + j % 2)
         pts = []
         for i in range(n):
@@ -97,7 +97,7 @@ def build():
             a = 2 * math.pi * i / 72
             d = 0.08 * math.sin(9 * a + k * math.pi)
             r = 1.38 + d
-            pts.append((math.cos(a) * r, math.sin(a) * r, 1.3 + 0.06 * math.cos(9 * a + k * math.pi)))
+            pts.append((math.cos(a) * r, math.sin(a) * r, 1.17 + 0.06 * math.cos(9 * a + k * math.pi)))
         twigs[TONES[k]].append(twig("RimTwig", pts, 0.09, closed=True))
     # Loose twig ends sticking out here and there
     for angle, z, length, tone in ((30, 1.0, 0.5, 0), (150, 0.7, 0.45, 1), (215, 1.15, 0.55, 2), (330, 0.55, 0.4, 1), (95, 1.2, 0.45, 0)):
@@ -148,7 +148,7 @@ def build():
         parts.append(finish(placed(speck, egg_frame), "speck"))
 
     # Two small feathers poking out of the rim at the back left, fanned apart
-    for yaw, tilt, at in ((160, 68, (-1.2, 0.75, 1.15)), (125, 55, (-0.85, 1.1, 1.15))):
+    for yaw, tilt, at in ((160, 68, (-1.2, 0.75, 1.05)), (125, 55, (-0.85, 1.1, 1.05))):
         frame = Matrix.Translation(at) @ Matrix.Rotation(math.radians(yaw - 90), 4, "Z") @ Matrix.Rotation(math.radians(tilt), 4, "X")
         vane = ball("Feather", 1, (0, 0.45, 0), (0.15, 0.45, 0.03))
         for v in vane.data.vertices:

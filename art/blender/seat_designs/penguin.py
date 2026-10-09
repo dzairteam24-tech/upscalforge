@@ -8,8 +8,18 @@ import math
 import bmesh
 import bpy
 from mathutils import Matrix, Vector
-
-from seatkit import FACE_COLORS, ball, blob, box, cone, finish, front_marker, placed, torus, apply_modifiers, subdivide
+from seatkit import (
+    FACE_COLORS,
+    ball,
+    blob,
+    box,
+    cone,
+    finish,
+    front_marker,
+    placed,
+    subdivide,
+    torus,
+)
 
 NAME = "Penguin"
 TITLE = "Penguin Seat"
