@@ -13,3 +13,10 @@
 | props_pixel.glb | NeonCube, GridPillar, ArcadeScreen, PixelTree, PixelHeart, PixelFlower | good; NeonCube and GridPillar touch, so the split joins them (split them apart) |
 
 To redo later: none yet.
+
+## The style for every new design (ChatGPT image, then Meshy Image to 3D)
+
+Elegant and minimal: very simple clean silhouettes, smooth rounded forms, ONE signature element per object, no
+clutter (no crates, boxes, gifts, signs, lanterns, flags, bushes, small decorations, text), one cohesive soft
+pastel palette with small gold accents, smooth matte plastic look, 3/4 view from slightly above, plain white
+background. Meshy: Smart Topology, poly count 15000, Texture on, Pose off, export GLB.
