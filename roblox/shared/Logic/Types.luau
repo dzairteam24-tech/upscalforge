@@ -68,6 +68,7 @@ export type PlayerData = {
 	gemShop: { day: number, deals: { [string]: boolean }, storage: number },
 	clan: { id: string, rewardWeek: number, day: number, everyday: number }, -- "" when not in a clan; everyday = today's Break/Hatch points
 	events: { [string]: { tokens: number, bought: { [string]: boolean } } }, -- event id -> tokens and shop buys
+	nest: { slots: number, eggs: { [string]: { zone: number, start: number } } }, -- incubator slot ("1"..) -> its egg's zone and os.time() it went in
 }
 
 -- Rewarded ad limits: watches per UTC day and per-reward cooldowns.

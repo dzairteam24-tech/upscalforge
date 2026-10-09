@@ -96,6 +96,7 @@ local function template(): PlayerData
 		gemShop = { day = -1, deals = {}, storage = 0 },
 		clan = { id = "", rewardWeek = 0, day = -1, everyday = 0 },
 		events = {},
+		nest = { slots = 3, eggs = {} },
 	}
 end
 

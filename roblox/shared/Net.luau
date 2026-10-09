@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 
 local EVENTS = {
 	-- client -> server
+	"NestUse",
 	"ToggleAuto",
 	"Hatch",
 	"EquipPet",

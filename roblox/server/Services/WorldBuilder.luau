@@ -9,6 +9,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local World1 = require(Shared.Config.World1)
 local PetModel = require(Shared.PetModel)
 local MapLayout = require(Shared.Logic.MapLayout)
+local Nest = require(Shared.Logic.Nest)
+local NestConfig = require(Shared.Config.Nest)
 local MapTheme = require(Shared.Config.MapTheme)
 local HubBuilder = require(script.Parent.HubBuilder)
 
@@ -18,6 +20,8 @@ WorldBuilder.eggPositions = {} :: { [number]: Vector3 }
 
 -- Trading Plaza: a platform east of the Hub with booths where players sell creatures for gems.
 WorldBuilder.PLAZA_SIDE = Vector3.new(1, 0, 0)
+-- The Nest field: the players' islands with their incubators (NestService), west of the Hub
+WorldBuilder.NEST_SIDE = Vector3.new(-1, 0, 0)
 WorldBuilder.PLAZA_BOOTHS = 8
 
 local buildEgg: (parent: Instance, position: Vector3, color: Color3, size: number, title: string, golden: boolean) -> BasePart
@@ -276,6 +280,7 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 		})
 		ground.Parent = model
 		table.insert(openSides, WorldBuilder.PLAZA_SIDE)
+		table.insert(openSides, WorldBuilder.NEST_SIDE)
 		ground.Color = HUB_GRASS
 		ground:SetAttribute("BaseColor", HUB_GRASS)
 		HubBuilder.build(model, folder, openSides)
@@ -567,6 +572,135 @@ local function buildProfessor(folder: Folder)
 	built.model.Parent = folder
 end
 
+---------------------------------------------------------------------------------------------------------------
+-- The Nest field (Config/Nest): eight islands in two rows along a path, each with eight incubator pads.
+-- NestService gives each player one and fills the pads (attributes); NestClient draws the eggs and timers.
+
+local NEST_PLOT = 56 -- an island's width
+local NEST_GAP = 8
+local NEST_PATH = 20 -- the path between the two rows
+
+function WorldBuilder.nestCenter(): Vector3
+	local width = 2 * NEST_PLOT + NEST_PATH + 16
+	return MapLayout.center(0) + WorldBuilder.NEST_SIDE * (MapLayout.HUB_SIZE / 2 + 30 + width / 2)
+end
+
+-- Where an island is (1..PLOTS) and which way its front (toward the path) faces
+function WorldBuilder.nestPlot(index: number): (Vector3, Vector3)
+	local center = WorldBuilder.nestCenter()
+	local side = if index % 2 == 1 then -1 else 1 -- odd ones in the row west of the path, even ones east
+	local row = (index - 1) // 2
+	local rows = math.ceil(NestConfig.PLOTS / 2)
+	local z = (row - (rows - 1) / 2) * (NEST_PLOT + NEST_GAP)
+	local out = Vector3.new(side, 0, 0)
+	return center + out * (NEST_PATH / 2 + NEST_PLOT / 2) + Vector3.new(0, 0, z), -out
+end
+
+-- The incubator pads' spots on an island: two rows of four, in front of the owner's sign
+function WorldBuilder.nestPad(index: number, slot: number): Vector3
+	local plot, front = WorldBuilder.nestPlot(index)
+	local right = Vector3.new(front.Z, 0, -front.X)
+	local column = (slot - 1) % 4
+	local row = (slot - 1) // 4
+	return plot + front * (8 - row * 14) + right * ((column - 1.5) * 12)
+end
+
+local function buildNestField(folder: Folder)
+	local center = WorldBuilder.nestCenter()
+	local rows = math.ceil(NestConfig.PLOTS / 2)
+	local depth = rows * NEST_PLOT + (rows - 1) * NEST_GAP + 16
+	local width = 2 * NEST_PLOT + NEST_PATH + 16
+	local model = Instance.new("Model")
+	model.Name = "NestField"
+	-- The bridge from the Hub, the path down the middle and the open sky round the islands
+	local hubEdge = MapLayout.center(0).X - MapLayout.HUB_SIZE / 2
+	local fieldEdge = center.X + width / 2
+	part({
+		Name = "NestBridge",
+		Size = Vector3.new(hubEdge - fieldEdge, 4, MapLayout.BRIDGE_WIDTH),
+		Position = Vector3.new((hubEdge + fieldEdge) / 2, -2, center.Z),
+		Color = Color3.fromRGB(150, 110, 70),
+		Material = Enum.Material.WoodPlanks,
+	}).Parent = model
+	part({
+		Name = "Ground",
+		Size = Vector3.new(NEST_PATH + 8, 4, depth),
+		Position = center + Vector3.new(0, -2, 0),
+		Color = Color3.fromRGB(226, 208, 172),
+		Material = Enum.Material.Pavement,
+	}).Parent = model
+	part({
+		Name = "Ground",
+		Size = Vector3.new(width, 4, MapLayout.BRIDGE_WIDTH),
+		Position = center + Vector3.new(0, -2, 0),
+		Color = Color3.fromRGB(226, 208, 172),
+		Material = Enum.Material.Pavement,
+	}).Parent = model
+	local sign = part({ Name = "Sign", Size = Vector3.one, Position = center + Vector3.new(width / 2 - 4, 16, 0), Transparency = 1, CanCollide = false, CanQuery = false })
+	label(sign, "🥚 The Nest", UDim2.fromScale(16, 3.4), Vector3.zero)
+	sign.Parent = model
+	-- Invisible walls round the field's outer edge
+	for _, s in { -1, 1 } do
+		part({ Name = "Border", Size = Vector3.new(width, 12, 1), Position = center + Vector3.new(0, 6, s * (depth / 2 + 0.5)), Transparency = 1 }).Parent = model
+	end
+	part({ Name = "Border", Size = Vector3.new(1, 12, depth), Position = center + Vector3.new(-width / 2 - 0.5, 6, 0), Transparency = 1 }).Parent = model
+	for _, s in { -1, 1 } do
+		-- (the Hub side, open where the bridge comes in)
+		local length = (depth - MapLayout.BRIDGE_WIDTH) / 2
+		part({ Name = "Border", Size = Vector3.new(1, 12, length), Position = center + Vector3.new(width / 2 + 0.5, 6, s * (MapLayout.BRIDGE_WIDTH / 2 + length / 2)), Transparency = 1 }).Parent = model
+	end
+
+	for index = 1, NestConfig.PLOTS do
+		local plotCenter, front = WorldBuilder.nestPlot(index)
+		local plot = Instance.new("Model")
+		plot.Name = "NestPlot_" .. index
+		plot:SetAttribute("Plot", index)
+		part({
+			Name = "Ground",
+			Size = Vector3.new(NEST_PLOT, 4, NEST_PLOT),
+			Position = plotCenter + Vector3.new(0, -2, 0),
+			Color = Color3.fromRGB(118, 190, 92),
+			Material = Enum.Material.Grass,
+		}).Parent = plot
+		-- The owner's sign at the back
+		local board = part({
+			Name = "OwnerSign",
+			Size = Vector3.new(1, 1, 1),
+			Position = plotCenter - front * (NEST_PLOT / 2 - 6) + Vector3.new(0, 10, 0),
+			Transparency = 1,
+			CanCollide = false,
+			CanQuery = false,
+		})
+		label(board, "Free island", UDim2.fromScale(14, 2.6), Vector3.zero)
+		board.Parent = plot
+		for slot = 1, Nest.maxSlots() do
+			local at = WorldBuilder.nestPad(index, slot)
+			local pad = part({
+				Name = "Incubator",
+				Shape = Enum.PartType.Cylinder,
+				Size = Vector3.new(1.4, 8, 8),
+				CFrame = CFrame.new(at + Vector3.new(0, 0.7, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+				Color = Color3.fromRGB(240, 232, 214),
+			})
+			pad:SetAttribute("Plot", index)
+			pad:SetAttribute("Slot", slot)
+			pad:AddTag("NestPad")
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.ActionText = "Use"
+			prompt.ObjectText = "Incubator"
+			prompt.MaxActivationDistance = 10
+			prompt.RequiresLineOfSight = false
+			prompt.Enabled = false -- NestClient turns on the owner's
+			prompt:SetAttribute("NestPlot", index)
+			prompt:SetAttribute("NestSlot", slot)
+			prompt.Parent = pad
+			pad.Parent = plot
+		end
+		plot.Parent = model
+	end
+	model.Parent = folder
+end
+
 local PLAZA_SIZE = 90
 
 function WorldBuilder.plazaCenter(): Vector3
@@ -710,6 +844,7 @@ function WorldBuilder.build()
 	end
 	buildProfessor(folder)
 	buildPlaza(folder)
+	buildNestField(folder)
 
 	folder.Parent = workspace
 	return folder

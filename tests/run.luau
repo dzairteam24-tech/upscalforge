@@ -1866,6 +1866,37 @@ test("SeatPose crosses the feet in front, within a standard leg's reach, knees o
 	end
 end)
 
+-- The Nest
+local Nest = R(Shared.Logic.Nest)
+local NestConfig = R(Shared.Config.Nest)
+test("Nest: later eggs incubate longer and cost more", function()
+	assert(Nest.incubateSeconds(1) == NestConfig.BASE_SECONDS, "zone 1 takes the base time")
+	for zone = 2, 10 do
+		assert(Nest.incubateSeconds(zone) > Nest.incubateSeconds(zone - 1), "zone " .. zone .. " slower")
+		assert(Nest.eggPrice(zone) > Nest.eggPrice(zone - 1), "zone " .. zone .. " dearer")
+	end
+	assert(Nest.incubateSeconds(10) <= 45 * 60, "zone 10 under 45 minutes")
+end)
+test("Nest: incubators to buy, then none", function()
+	assert(Nest.slotPrice(NestConfig.SLOTS_START) ~= nil, "the first extra one has a price")
+	assert(Nest.slotPrice(Nest.maxSlots()) == nil, "no price past the last")
+end)
+test("Nest: the weather is the same all through a window and every kind comes", function()
+	local seen = {}
+	for window = 0, 2000 do
+		local t = window * NestConfig.WEATHER_SECONDS
+		local a, ends = Nest.weatherAt(t)
+		local b = Nest.weatherAt(t + NestConfig.WEATHER_SECONDS - 1)
+		assert(a.id == b.id, "steady within a window")
+		assert(ends == t + NestConfig.WEATHER_SECONDS, "ends with its window")
+		seen[a.id] = (seen[a.id] or 0) + 1
+	end
+	for _, weather in NestConfig.WEATHERS do
+		assert((seen[weather.id] or 0) > 0, weather.id .. " comes")
+	end
+	assert(seen.Clear > seen.Neon * 4, "clear sky much more often than neon night")
+end)
+
 print(("%d passed, %d failed"):format(passed, failed))
 if failed > 0 then
 	process.exit(1)

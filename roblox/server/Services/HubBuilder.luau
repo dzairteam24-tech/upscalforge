@@ -192,7 +192,7 @@ end
 local function buildIslets(model: Instance, center: Vector3)
 	local islets = {
 		{ offset = Vector3.new(-270, 22, -170), size = 26 },
-		{ offset = Vector3.new(-296, -6, 46), size = 22 },
+		{ offset = Vector3.new(-440, -6, 46), size = 22 }, -- (beyond the Nest field)
 		{ offset = Vector3.new(-234, 30, 250), size = 24 },
 		{ offset = Vector3.new(50, -4, 286), size = 28 },
 		{ offset = Vector3.new(266, 26, 234), size = 22 },

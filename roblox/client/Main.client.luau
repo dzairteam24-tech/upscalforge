@@ -35,6 +35,7 @@ local PetFollow = require(Controllers.PetFollow)
 local RideClient = require(Controllers.RideClient)
 local TutorialClient = require(Controllers.TutorialClient)
 local SoundClient = require(Controllers.SoundClient)
+local NestClient = require(Controllers.NestClient)
 
 Store.init()
 
@@ -82,3 +83,4 @@ PetFollow.init()
 RideClient.init()
 TutorialClient.init(gui)
 SoundClient.init()
+NestClient.init(gui)

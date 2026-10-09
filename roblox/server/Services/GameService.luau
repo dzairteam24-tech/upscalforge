@@ -275,6 +275,13 @@ function GameService.setHatcher(fn: (Player, number, number, number, string?) ->
 	hatchEggs = fn
 end
 
+-- Hatches one of a zone's eggs that the player already paid for (the Nest's incubators)
+function GameService.hatchPaid(player: Player, zoneId: number, luck: number, minVariant: string?)
+	if hatchEggs then
+		hatchEggs(player, zoneId, 1, luck, minVariant)
+	end
+end
+
 -- Free eggs (ad rewards, daily rewards): from the zone the player stands in, or their best unlocked egg.
 function GameService.grantFreeEggs(player: Player, count: number, luck: number?, minVariant: string?)
 	local data = DataService.get(player)
