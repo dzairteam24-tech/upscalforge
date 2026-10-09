@@ -21,6 +21,7 @@ sys.path.insert(0, HERE)
 import bpy  # noqa: E402
 from mathutils import Matrix, Vector  # noqa: E402
 
+import logos  # noqa: E402
 import seatkit  # noqa: E402
 from seatkit import ball, box, cylinder, finish, placed, torus, tube  # noqa: E402
 
@@ -35,7 +36,6 @@ COLORS = {
     "door": (0.42, 0.2, 0.08),
     "glass": (0.45, 0.72, 1.0),
     "frame": (0.97, 0.9, 0.78),
-    "plaque": (0.98, 0.95, 0.9),
 }
 
 W, D = 11.0, 8.4  # the walls' footprint (each variant sets its own)
@@ -52,6 +52,10 @@ VARIANTS = [
     {"name": "Trips", "roof": (0.15, 0.62, 0.8), "w": 10.5, "d": 8.4, "h": 6.8, "top": "pillow", "windows": "square", "chimney": True},
     {"name": "Arcade", "roof": (0.9, 0.25, 0.55), "w": 11.5, "d": 8.8, "h": 6.4, "top": "bumps", "windows": "square", "chimney": False},
 ]
+
+
+LOGO_BUILDS = {name: make for name, make, _ in logos.LOGOS}
+LOGO_COLORS = {name: {"logo_" + r: c for r, c in colors.items()} for name, _, colors in logos.LOGOS}
 
 
 def build(v):
@@ -92,15 +96,18 @@ def build(v):
     gable = box("Gable", (6.2, 2.8, 6.6), (0, -(D + 2.6) / 2 + 1.5, ROOF_Z + 3.3), bevel=1.35, segments=6)
     parts.append(finish(gable, "roof"))
 
-    # The plaque on the gable: a blank disc in a thick gold ring, facing the front
+    # The plaque on the gable: the shop's logo (logos.py) in a thick gold ring, facing the front
     front_y = -(D + 2.6) / 2 + 0.15
     plaque_z = ROOF_Z + 3.7
-    disc = cylinder("Plaque", 2.05, 0.3, (0, front_y - 0.05, plaque_z), vertices=48, bevel=0.08)
-    disc.rotation_euler = (math.pi / 2, 0, 0)
-    parts.append(finish(seatkit.bake(disc), "plaque"))
     ring = torus("Rim", 2.15, 0.28, (0, front_y - 0.12, plaque_z))
     ring.rotation_euler = (math.pi / 2, 0, 0)
     parts.append(finish(seatkit.bake(ring), "gold"))
+    scale = 1.8
+    for obj in LOGO_BUILDS[v["name"]]():
+        seatkit.bake(obj)  # (some pieces keep their place as the object's location)
+        obj.scale = (scale, scale, scale)
+        obj.location = (0, front_y - 0.2 - logos.FRONT * scale, plaque_z)
+        parts.append(finish(seatkit.bake(obj), "logo_" + obj["role"]))
 
     # Door: an arched wooden door in a gold arch, a gold knob
     door_y = -D / 2 - 0.2
@@ -211,7 +218,7 @@ def main():
     groups = []
     for v in VARIANTS:
         seatkit.current["seat"] = "Building" + v["name"]
-        seatkit.current["colors"] = {**COLORS, "roof": v["roof"]}
+        seatkit.current["colors"] = {**COLORS, "roof": v["roof"], **LOGO_COLORS[v["name"]]}
         groups.append(build(v))
     if "roblox" in sys.argv[1:]:
         export(groups)
