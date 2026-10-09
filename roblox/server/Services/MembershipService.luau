@@ -71,7 +71,9 @@ local function teleport(player: Player, zoneId: any)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if root then
-		root.CFrame = CFrame.new(MapLayout.center(zoneId) + Vector3.new(0, 5, -12))
+		-- (at the zone's base, by the egg, facing in)
+		local at = MapLayout.basePoint(zoneId, 20, 0) + Vector3.new(0, 5, 0)
+		root.CFrame = CFrame.lookAt(at, at - MapLayout.entrance(zoneId))
 		runtime.target = nil
 	end
 end

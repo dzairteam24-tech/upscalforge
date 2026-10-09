@@ -99,65 +99,48 @@ end
 
 local HUB_GRASS = Color3.fromRGB(118, 190, 92)
 
--- The terrace on each zone's east side: a paved pad outside the wall, through its own opening, with the
--- stations a player keeps going back to, so they don't have to walk back to the town for them
-local NOOK_SIDE = Vector3.new(1, 0, 0)
-local NOOK_SIZE = Vector3.new(44, 0, 76) -- X out from the wall, Z along it
+-- The base just inside each zone's entrance: the stations a player keeps going back to (beside the egg), so
+-- they never have to walk back to the town for them
 local STATIONS = {
-	{ name = "Upgrades", icon = "⬆️", ui = "Shop", color = Color3.fromRGB(255, 196, 64) },
-	{ name = "Gifts", icon = "🎁", ui = "Daily", color = Color3.fromRGB(240, 96, 120) },
-	{ name = "Pets", icon = "🐾", ui = "Pets", color = Color3.fromRGB(110, 200, 140) },
-	{ name = "Teleport", icon = "✨", ui = "Teleport", color = Color3.fromRGB(120, 160, 255) },
+	{ name = "Upgrades", icon = "⬆️", ui = "Shop", color = Color3.fromRGB(255, 196, 64), across = -34 },
+	{ name = "Gifts", icon = "🎁", ui = "Daily", color = Color3.fromRGB(240, 96, 120), across = -20 },
+	{ name = "Pets", icon = "🐾", ui = "Pets", color = Color3.fromRGB(110, 200, 140), across = 20 },
+	{ name = "Teleport", icon = "✨", ui = "Teleport", color = Color3.fromRGB(120, 160, 255), across = 34 },
 }
+local STATION_INWARD = 14 -- studs in from the entrance edge
 
-local function buildNook(zone: World1.Zone, center: Vector3, model: Instance)
+local function buildStations(zone: World1.Zone, model: Instance)
 	local theme = MapTheme.get(zone.id)
-	local nook = Instance.new("Model")
-	nook.Name = "Terrace"
-	local inner = center.X + MapLayout.PLATFORM / 2 + WALL_T -- the wall's outer face
-	local middle = Vector3.new(inner + NOOK_SIZE.X / 2, 0, center.Z)
-	part({
-		Name = "Ground",
-		Size = Vector3.new(NOOK_SIZE.X + WALL_T, 4, NOOK_SIZE.Z),
-		Position = middle + Vector3.new(-WALL_T / 2, -2, 0),
-		Color = theme.capColor,
-		Material = Enum.Material.Pavement,
-	}).Parent = nook
-	-- A low wall round its three open sides
-	local railH = 4
-	for _, side in { -1, 1 } do
-		wall(nook, "Rail", middle + Vector3.new(0, 0, side * (NOOK_SIZE.Z / 2 + 1)), Vector3.new(NOOK_SIZE.X, 0, 2), theme, railH)
-	end
-	wall(nook, "Rail", middle + Vector3.new(NOOK_SIZE.X / 2 + 1, 0, 0), Vector3.new(2, 0, NOOK_SIZE.Z + 4), theme, railH)
-	-- The stations in a row along the back, facing the opening
-	for i, station in STATIONS do
-		local z = center.Z + (i - (#STATIONS + 1) / 2) * (NOOK_SIZE.Z - 12) / #STATIONS
-		local at = Vector3.new(inner + NOOK_SIZE.X - 10, 0, z)
-		local base = part({
+	local folder = Instance.new("Model")
+	folder.Name = "Stations"
+	local center = MapLayout.center(zone.id)
+	for _, station in STATIONS do
+		local at = MapLayout.basePoint(zone.id, STATION_INWARD, station.across)
+		local facing = CFrame.lookAt(at, Vector3.new(center.X, at.Y, center.Z)) -- toward the zone
+		part({
 			Name = "Station",
 			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(1.2, 10, 10),
+			Size = Vector3.new(1.2, 9, 9),
 			CFrame = CFrame.new(at + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)),
 			Color = theme.wallColor,
-		})
-		base.Parent = nook
+		}).Parent = folder
 		local stand = part({
 			Name = station.name,
-			Size = Vector3.new(4, 6, 6),
-			Position = at + Vector3.new(0, 4.2, 0),
+			Size = Vector3.new(5, 5, 3),
+			CFrame = facing * CFrame.new(0, 3.7, 0),
 			Color = station.color,
 		})
-		stand.Parent = nook
+		stand.Parent = folder
 		part({
 			Name = "Glow",
 			Shape = Enum.PartType.Ball,
-			Size = Vector3.one * 3,
-			Position = at + Vector3.new(0, 8.6, 0),
+			Size = Vector3.one * 2.6,
+			Position = at + Vector3.new(0, 7.6, 0),
 			Color = station.color,
 			Material = Enum.Material.Neon,
 			CanCollide = false,
-		}).Parent = nook
-		label(stand, station.icon .. " " .. station.name, UDim2.fromScale(10, 2.2), Vector3.new(0, 8, 0))
+		}).Parent = folder
+		label(stand, station.icon .. " " .. station.name, UDim2.fromScale(9, 2), Vector3.new(0, 7, 0))
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Open"
 		prompt.ObjectText = station.name
@@ -166,7 +149,104 @@ local function buildNook(zone: World1.Zone, center: Vector3, model: Instance)
 		prompt:SetAttribute("OpenUI", station.ui)
 		prompt.Parent = stand
 	end
-	nook.Parent = model
+	folder.Parent = model
+end
+
+-- The zone's ground: a square with rounded corners (a cross of two slabs and a disc in each corner)
+local function buildGround(zone: World1.Zone, center: Vector3, model: Instance)
+	local size, r = MapLayout.PLATFORM, MapLayout.CORNER
+	local material = MapTheme.get(zone.id).ground
+	local pieces = {
+		{ size = Vector3.new(size - 2 * r, 4, size), at = center },
+		{ size = Vector3.new(size, 4, size - 2 * r), at = center },
+	}
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			table.insert(pieces, { disc = true, at = center + Vector3.new(sx, 0, sz) * (size / 2 - r) })
+		end
+	end
+	for _, piece in pieces do
+		local ground = part({
+			Name = "Ground",
+			Shape = if piece.disc then Enum.PartType.Cylinder else Enum.PartType.Block,
+			Size = if piece.disc then Vector3.new(4, 2 * r, 2 * r) else piece.size,
+			CFrame = CFrame.new(piece.at + Vector3.new(0, -2, 0)) * (if piece.disc then CFrame.Angles(0, 0, math.rad(90)) else CFrame.identity),
+			Color = zone.color,
+			Material = material,
+		})
+		ground:SetAttribute("BaseColor", zone.color)
+		ground.Parent = model
+	end
+end
+
+-- A piece of wall turned to lie along `direction` (for the rounded corners)
+local function turnedWall(parent: Instance, at: Vector3, direction: Vector3, length: number, style: { wall: Enum.Material, wallColor: Color3, capColor: Color3 })
+	-- (turned about Y so its length, -Z, runs along `direction`)
+	local frame = CFrame.new(at.X, 0, at.Z) * CFrame.Angles(0, math.atan2(-direction.X, -direction.Z), 0)
+	part({
+		Name = "BorderCorner",
+		Size = Vector3.new(WALL_T, WALL_H + 4, length),
+		CFrame = frame * CFrame.new(0, WALL_H / 2 - 2, 0),
+		Color = style.wallColor,
+		Material = style.wall,
+	}).Parent = parent
+	part({
+		Name = "WallCap",
+		Size = Vector3.new(WALL_T + 1, 2, length + 1),
+		CFrame = frame * CFrame.new(0, WALL_H + 1, 0),
+		Color = style.capColor,
+		CanCollide = false,
+	}).Parent = parent
+end
+
+-- The low border round a zone, following its rounded corners, with an opening (and towers and an arch)
+-- toward each zone it links to
+local function buildBorder(zone: World1.Zone, center: Vector3, model: Instance, openSides: { Vector3 })
+	local theme = MapTheme.get(zone.id)
+	local walls = Instance.new("Model")
+	walls.Name = "Walls"
+	local half, r, gap = MapLayout.PLATFORM / 2, MapLayout.CORNER, MapLayout.BRIDGE_WIDTH
+	for _, side in { Vector3.new(1, 0, 0), Vector3.new(-1, 0, 0), Vector3.new(0, 0, 1), Vector3.new(0, 0, -1) } do
+		local isX = side.X ~= 0
+		local open = table.find(openSides, side) ~= nil
+		local straight = half - r -- from the middle of the side to where the corner starts
+		local segments = if open
+			then { { offset = -(straight + gap / 2) / 2, length = straight - gap / 2 }, { offset = (straight + gap / 2) / 2, length = straight - gap / 2 } }
+			else { { offset = 0, length = 2 * straight } }
+		local line = center + side * (half + WALL_T / 2)
+		for _, segment in segments do
+			local along = if isX then Vector3.new(0, 0, segment.offset) else Vector3.new(segment.offset, 0, 0)
+			wall(walls, "Border", line + along, if isX then Vector3.new(WALL_T, 0, segment.length) else Vector3.new(segment.length, 0, WALL_T), theme)
+		end
+		if open then
+			local across = if isX then Vector3.new(0, 0, 1) else Vector3.new(1, 0, 0)
+			local edge = gap / 2 + (WALL_T + 3) / 2
+			tower(walls, line + across * edge, theme)
+			tower(walls, line - across * edge, theme)
+			part({
+				Name = "Arch",
+				Size = if isX then Vector3.new(WALL_T + 2, 5, gap + 2) else Vector3.new(gap + 2, 5, WALL_T + 2),
+				Position = line + Vector3.new(0, WALL_H - 2.5, 0),
+				Color = theme.capColor,
+				CanCollide = false,
+			}).Parent = walls
+		end
+	end
+	-- The corners: a quarter circle each, in short straight pieces
+	local steps = 4
+	local radius = r + WALL_T / 2
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			local pivot = center + Vector3.new(sx, 0, sz) * (half - r)
+			for i = 1, steps do
+				local a = (i - 0.5) / steps * math.pi / 2
+				local out = Vector3.new(sx * math.cos(a), 0, sz * math.sin(a))
+				local tangent = Vector3.new(-out.Z * sx * sz, 0, out.X * sx * sz)
+				turnedWall(walls, pivot + out * radius, tangent, 2 * radius * math.sin(math.pi / 4 / steps) + 1, theme)
+			end
+		end
+	end
+	walls.Parent = model
 end
 
 local function buildZone(zone: World1.Zone, folder: Folder)
@@ -174,16 +254,6 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 	local model = Instance.new("Model")
 	model.Name = "Zone_" .. zone.id
 	model:SetAttribute("ZoneId", zone.id)
-
-	local ground = part({
-		Name = "Ground",
-		Size = Vector3.new(MapLayout.size(zone.id), 4, MapLayout.size(zone.id)),
-		Position = center + Vector3.new(0, -2, 0),
-		Color = zone.color,
-		Material = MapTheme.get(zone.id).ground,
-	})
-	ground:SetAttribute("BaseColor", zone.color)
-	ground.Parent = model
 
 	-- Border so players can't fall off, with an opening wherever a bridge connects
 	local half = MapLayout.PLATFORM / 2
@@ -198,6 +268,13 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 	end
 	if zone.id == 0 then
 		-- The Hub is a floating island town instead of a walled zone
+		local ground = part({
+			Name = "Ground",
+			Size = Vector3.new(MapLayout.HUB_SIZE, 4, MapLayout.HUB_SIZE),
+			Position = center + Vector3.new(0, -2, 0),
+			Material = MapTheme.get(zone.id).ground,
+		})
+		ground.Parent = model
 		table.insert(openSides, WorldBuilder.PLAZA_SIDE)
 		ground.Color = HUB_GRASS
 		ground:SetAttribute("BaseColor", HUB_GRASS)
@@ -205,59 +282,22 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 		model.Parent = folder
 		return
 	end
-	-- (the east side opens onto the zone's terrace, with the upgrades and the other stations)
-	table.insert(openSides, NOOK_SIDE)
-	local theme = MapTheme.get(zone.id)
-	local walls = Instance.new("Model")
-	walls.Name = "Walls"
-	for _, side in { Vector3.new(1, 0, 0), Vector3.new(-1, 0, 0), Vector3.new(0, 0, 1), Vector3.new(0, 0, -1) } do
-		local isX = side.X ~= 0
-		local open = false
-		for _, openSide in openSides do
-			if openSide == side then
-				open = true
-			end
-		end
-		-- Two segments around a gap the width of a bridge, or one full wall
-		local segments = if open
-			then {
-				{ offset = -(MapLayout.PLATFORM + MapLayout.BRIDGE_WIDTH) / 4, length = (MapLayout.PLATFORM - MapLayout.BRIDGE_WIDTH) / 2 },
-				{ offset = (MapLayout.PLATFORM + MapLayout.BRIDGE_WIDTH) / 4, length = (MapLayout.PLATFORM - MapLayout.BRIDGE_WIDTH) / 2 },
-			}
-			else { { offset = 0, length = MapLayout.PLATFORM } }
-		local line = center + side * (half + WALL_T / 2)
-		for _, segment in segments do
-			local along = if isX then Vector3.new(0, 0, segment.offset) else Vector3.new(segment.offset, 0, 0)
-			wall(walls, "Border", line + along, if isX then Vector3.new(WALL_T, 0, segment.length) else Vector3.new(segment.length, 0, WALL_T), theme)
-		end
-		-- Corner towers (each corner once: on the X sides) and an arch over the entrance
-		if isX then
-			tower(walls, line + Vector3.new(0, 0, half + WALL_T / 2), theme)
-			tower(walls, line - Vector3.new(0, 0, half + WALL_T / 2), theme)
-		end
-		if open then
-			local across = if isX then Vector3.new(0, 0, 1) else Vector3.new(1, 0, 0)
-			local edge = MapLayout.BRIDGE_WIDTH / 2 + (WALL_T + 3) / 2
-			tower(walls, line + across * edge, theme)
-			tower(walls, line - across * edge, theme)
-			part({
-				Name = "Arch",
-				Size = if isX then Vector3.new(WALL_T + 2, 5, MapLayout.BRIDGE_WIDTH + 2) else Vector3.new(MapLayout.BRIDGE_WIDTH + 2, 5, WALL_T + 2),
-				Position = line + Vector3.new(0, WALL_H - 2.5, 0),
-				Color = theme.capColor,
-				CanCollide = false,
-			}).Parent = walls
-		end
-	end
-	walls.Parent = model
-	buildNook(zone, center, model)
+	buildGround(zone, center, model)
+	buildBorder(zone, center, model, openSides)
+	buildStations(zone, model)
 
-	-- A few block "trees" and rocks for decoration, placed on a ring so they don't block sources
+	-- A few block "trees" and rocks for decoration, placed on a ring so they don't block sources (nor the
+	-- base: the egg and the stations)
 	local rng = Random.new(zone.id * 97)
+	local entrance = MapLayout.entrance(zone.id)
 	for i = 1, 18 do
 		local angle = (i / 18) * math.pi * 2 + rng:NextNumber(-0.1, 0.1)
 		local radius = half - 8
-		local pos = center + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+		local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		if direction:Dot(entrance) > 0.4 then
+			continue
+		end
+		local pos = center + direction * radius
 		local trunk = part({
 			Name = "Decor",
 			Size = Vector3.new(2, 6, 2),
@@ -299,7 +339,7 @@ local function buildZone(zone: World1.Zone, folder: Folder)
 	-- The Legendary Egg stands next to the last zone's egg
 	local legendary = World1.eggs[World1.LEGENDARY_EGG]
 	if legendary and legendary.zone == zone.id then
-		local eggPos = MapLayout.eggPosition(zone.id) + Vector3.new(26, 0, 0)
+		local eggPos = MapLayout.basePoint(zone.id, 30, 17) -- beside the zone's egg
 		local egg = buildEgg(model, eggPos, Color3.fromRGB(255, 200, 70), 9, legendary.name, true)
 		local sparkles = Instance.new("ParticleEmitter")
 		sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
