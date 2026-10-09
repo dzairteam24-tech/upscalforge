@@ -14,8 +14,9 @@ local PropLooks = require(Shared.Config.PropLooks)
 
 local PropService = {}
 
-local BAND = { 88, 96 } -- distance from the zone's middle to the edge band (the sources stop at 84, walls at 100)
-local SPACING = 11 -- studs between props along an edge, roughly (about 50 props, 50K triangles a zone)
+-- Distance from the zone's middle to the edge band (the sources stop 16 studs from the wall)
+local BAND = { MapLayout.PLATFORM / 2 - 12, MapLayout.PLATFORM / 2 - 4 }
+local SPACING = 10 -- studs between props along an edge, roughly
 local ENTRANCE = 20 -- keep this far from the middle of each edge (the bridges' openings)
 local SIZE_JITTER = { 0.85, 1.2 }
 local WAIT_FOR_MODEL = 60 -- seconds to wait for the props model to load

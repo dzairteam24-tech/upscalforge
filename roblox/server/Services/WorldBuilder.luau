@@ -428,7 +428,7 @@ local function buildBridge(a: number, b: number, folder: Folder)
 	-- Gate in the middle: a solid door in an iron frame, colored like the zone behind it. Clients hide the
 	-- door and turn off its collision locally once both sides are unlocked; the frame stays.
 	local behind = World1.zonesById[b]
-	local doorHeight = WALL_H - 6
+	local doorHeight = WALL_H - 2 -- (too tall to jump over)
 	local across = if isX then Vector3.new(0, 0, 1) else Vector3.new(1, 0, 0)
 	local iron = Color3.fromRGB(58, 60, 68)
 	for _, sideSign in walledSides do

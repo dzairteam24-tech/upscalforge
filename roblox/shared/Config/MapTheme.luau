@@ -35,7 +35,7 @@ local themes: { [number]: Theme } = {
 }
 
 local MapTheme = {
-	WALL_HEIGHT = 40, -- taller than the camera usually sits, so each zone feels closed
+	WALL_HEIGHT = 14, -- too tall to jump, low enough to see over to the next zone
 	WALL_THICKNESS = 4,
 	-- Bridges between zones are walled corridors in this neutral stone
 	CORRIDOR = { wall = Enum.Material.Slate, wallColor = rgb(118, 112, 106), capColor = rgb(170, 160, 150) } :: { wall: Enum.Material, wallColor: Color3, capColor: Color3 },

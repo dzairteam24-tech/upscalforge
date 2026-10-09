@@ -4,10 +4,12 @@
 local World1 = require(script.Parent.Parent.Config.World1)
 
 local MapLayout = {
-	CELL = 260,
-	PLATFORM = 200, -- each zone is a 200 x 200 square, 60 studs of bridge apart
+	CELL = 150,
+	-- Each zone is a 120 x 120 square, 30 studs of bridge apart: small and full of coin sources, so a player
+	-- is never far from the next thing to break, the next egg or the next gate (like Pet Simulator 99)
+	PLATFORM = 120,
 	HUB_SIZE = 400, -- the Hub is bigger than a zone: it's where everyone meets
-	HUB_BRIDGE = 60, -- length of the bridge from the Hub to Spawn Meadow
+	HUB_BRIDGE = 30, -- length of the bridge from the Hub to Spawn Meadow
 	BRIDGE_WIDTH = 24,
 	SOURCE_SPACING = 14, -- minimum distance between coin sources (the vault is 12 studs wide)
 }
