@@ -87,8 +87,8 @@ def build():
     cz = DECK_Z + 0.06 + ch / 2
     top = cz + ch / 2
 
-    def pad(name, size, grow=0.0):
-        obj = box(name, (size[0] + grow, size[1] + grow, ch + grow), (0, 0.05, cz), bevel=0.13, segments=4)
+    def pad(name, size, grow=0.0, dx=0.0, dy=0.0):
+        obj = box(name, (size[0] + grow, size[1] + grow, ch + grow), (dx, 0.05 + dy, cz), bevel=0.13, segments=4)
         subdivide(obj, 1)
         for v in obj.data.vertices:
             rr = math.hypot(v.co.x / (cw * 0.42), (v.co.y - 0.05) / (cd * 0.42))
@@ -99,13 +99,9 @@ def build():
     parts.append(finish(pad("Cushion", (cw, cd)), "cushion"))
     for off in (-0.62, 0.62):
         for w, role, shift in ((0.2, "plaid", 0.0), (0.04, "plaidthin", 0.16), (0.04, "plaidthin", -0.16)):
-            across = pad("Band", (w, cd), 0.016)  # front to back
-            for v in across.data.vertices:
-                v.co.x += off + shift
+            across = pad("Band", (w, cd), 0.016, dx=off + shift)  # front to back
             parts.append(finish(across, role))
-            along = pad("Band", (cw, w), 0.016 if role == "plaid" else 0.024)  # side to side
-            for v in along.data.vertices:
-                v.co.y += off + shift
+            along = pad("Band", (cw, w), 0.024 if role == "plaid" else 0.032, dy=off + shift)  # side to side
             parts.append(finish(along, role))
     # a tuft button in each plaid square's corner
     for x in (-0.62, 0.62):

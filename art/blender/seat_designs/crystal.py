@@ -19,7 +19,7 @@ ORDER = 3
 TOP = 1.05  # the crystal slab's flat top, where the rider sits
 COLORS = {
     **FACE_COLORS,
-    "rock": (0.3, 0.24, 0.42),
+    "rock": (0.3, 0.2, 0.48),
     "crystal": (0.42, 0.16, 0.85),
     "lilac": (0.78, 0.6, 1.0),
     "glow": (0.95, 0.55, 1.0),

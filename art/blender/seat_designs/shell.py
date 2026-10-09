@@ -14,21 +14,21 @@ NAME = "Shell"
 TITLE = "Shell Seat"
 ZONE = 4
 ORDER = 1
-TOP = 1.05  # the cushion's top in the middle, where the rider sits
+TOP = 1.0  # the cushion's top in the middle, where the rider sits
 COLORS = {
     **FACE_COLORS,
-    "shell": (1.0, 0.5, 0.36),
-    "inner": (1.0, 0.8, 0.72),
-    "cushion": (1.0, 0.62, 0.72),
+    "shell": (1.0, 0.4, 0.28),
+    "inner": (1.0, 0.68, 0.58),
+    "cushion": (1.0, 0.55, 0.68),
     "pearl": (0.95, 0.93, 0.92),
 }
 
 RIBS = 10  # ribs across the fan (from one side of the hinge to the other)
-RIB = 0.05  # how far the ribs stand out
+RIB = 0.085  # how far the ribs stand out
 THICK = 0.1  # the shell wall
 
 
-def valve(name, rx, ry, depth, power=2.0, rings=18, around=160):
+def valve(name, rx, ry, depth, power=2.0, taper=0.3, rings=18, around=160):
     """One half of the shell: an oval bowl opening up (+Z), its lowest point at the origin, rim `depth` above,
     `rx` by `ry` wide. Ribs radiate from the hinge at its back (+Y): the wall is corrugated along its normal,
     so both sides show them and the rim comes out scalloped. Returns (outside, inside) as two objects."""
@@ -38,6 +38,8 @@ def valve(name, rx, ry, depth, power=2.0, rings=18, around=160):
         rho = i / rings
         th = 2 * math.pi * j / around
         x, y = math.cos(th) * rho * rx, math.sin(th) * rho * ry
+        # a scallop's fan outline: narrowing toward the hinge at the back
+        x *= 1 - taper * max(y / ry, 0) ** 1.5
         z = depth * rho**power
         # the bowl's outward normal (down and out), from the slope of z = depth * rho^power
         k = depth * power * rho ** (power - 2) if rho > 0 else 0
@@ -96,7 +98,7 @@ def build():
     # rider and its ribs fan out from the bottom
     hinge = (0, bry - 0.05, base + bdepth - 0.06)
     trx, try_, tdepth = 1.55, 0.86, 0.42
-    upper = valve("ShellUpper", trx, try_, tdepth, power=2.2)
+    upper = valve("ShellUpper", trx, try_, tdepth, power=2.2, taper=0.55)
     m = (
         Matrix.Translation(hinge)
         @ Matrix.Rotation(math.radians(-104), 4, "X")
@@ -122,7 +124,7 @@ def build():
     parts.append(finish(roll, "shell"))
 
     # The soft cushion in the bowl, puffing a little over the rim, flat-topped and dipped where the rider sits
-    cushion = ball("Cushion", 1, (0, -0.05, 0.62), (1.36, 1.18, 0.5))
+    cushion = ball("Cushion", 1, (0, -0.1, 0.76), (1.26, 1.05, 0.37))
     bake(cushion)
     sub = cushion.modifiers.new("Sub", "SUBSURF")
     sub.levels = 1
@@ -130,13 +132,13 @@ def build():
     for v in cushion.data.vertices:
         if v.co.z > TOP:
             v.co.z = TOP + (v.co.z - TOP) * 0.3
-        rr = math.hypot(v.co.x / 0.85, (v.co.y + 0.05) / 0.8)
+        rr = math.hypot(v.co.x / 0.85, (v.co.y + 0.1) / 0.8)
         if v.co.z > TOP - 0.2 and rr < 1:
             v.co.z -= 0.07 * (1 - rr * rr)
     parts.append(finish(cushion, "cushion"))
 
     # The big glossy pearl nestled at the back, against the open top half
-    parts.append(finish(ball("Pearl", 0.3, (0, 1.2, TOP + 0.1)), "pearl"))
+    parts.append(finish(ball("Pearl", 0.34, (0, 1.26, TOP + 0.2)), "pearl"))
 
     # The face on the front lip, tilted half way to the bowl's slope so it reads from the front
     rho = 0.83

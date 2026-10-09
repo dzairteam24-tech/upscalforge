@@ -12,7 +12,7 @@ NAME = "Ice"
 TITLE = "Ice Block Seat"
 ZONE = 9
 ORDER = 1
-TOP = 1.12  # the snow cap's top in the middle
+TOP = 1.05  # the snow cap's top in the middle
 COLORS = {
     **FACE_COLORS,
     "ice": (0.42, 0.72, 0.96),
@@ -38,41 +38,55 @@ def build():
     parts = []
     hw, hd = WIDTH / 2, DEPTH / 2
 
-    # The block: a box whose edges are cut off in two flat bevels, so it reads as a chunk of cut ice
-    block = box("Block", (WIDTH, DEPTH, BLOCK_TOP), (0, 0, 0.05 + BLOCK_TOP / 2), bevel=0.24, segments=2)
-    # a slight taper toward the bottom and a lean on the facets, so it looks hewn rather than machined
+    # The block: a box with its edges cut off in one flat chamfer and its corners nudged a little off true, so
+    # it reads as a hewn chunk of ice; drawn flat-shaded so every facet catches the light on its own
+    block = box("Block", (WIDTH, DEPTH, BLOCK_TOP), (0, 0, 0.05 + BLOCK_TOP / 2), bevel=0.3, segments=1)
     for v in block.data.vertices:
         t = 1 - (v.co.z - 0.05) / BLOCK_TOP  # 0 at the top, 1 at the bottom
-        v.co.x *= 1 - 0.07 * t
-        v.co.y *= 1 - 0.07 * t
+        v.co.x *= 1 - 0.08 * t
+        v.co.y *= 1 - 0.08 * t
+        if 0.1 < v.co.z < BLOCK_TOP - 0.05:  # leave the bottom flat and the top level for the snow
+            v.co.x += 0.06 * math.sin(v.co.y * 5.1 + v.co.z * 3.0)
+            v.co.y += 0.06 * math.sin(v.co.x * 4.3 + v.co.z * 2.0)
     parts.append(finish(block, "ice"))
+    for poly in block.data.polygons:
+        poly.use_smooth = False
 
-    # Pale shards frozen into the block, half sticking out of its sides and back corners
+    # Pale shards frozen into the block: flat six-sided crystals lying in its side and back faces, just proud
+    # of the surface. (position, which face, tilt in the face, length, width)
     shards = [
-        ((-hw + 0.02, 0.45, 0.5), 0, 35, 0.75, 0.13),
-        ((-hw + 0.04, -0.35, 0.42), 0, -20, 0.5, 0.1),
-        ((hw - 0.02, 0.2, 0.5), 0, -40, 0.8, 0.13),
-        ((hw - 0.04, -0.6, 0.38), 0, 25, 0.45, 0.09),
-        ((-0.7, hd - 0.02, 0.5), 30, 0, 0.7, 0.12),
-        ((0.55, hd - 0.02, 0.45), -25, 0, 0.6, 0.11),
+        ((-hw + 0.08, 0.5, 0.5), "x", 30, 0.7, 0.16),
+        ((-hw + 0.1, -0.45, 0.42), "x", -25, 0.45, 0.12),
+        ((hw - 0.08, 0.25, 0.48), "x", -35, 0.75, 0.16),
+        ((hw - 0.1, -0.7, 0.4), "x", 20, 0.42, 0.11),
+        ((-0.75, hd - 0.08, 0.5), "y", 30, 0.7, 0.16),
+        ((0.55, hd - 0.08, 0.46), "y", -25, 0.55, 0.13),
+        ((1.25, -hd + 0.12, 0.42), "y", -20, 0.4, 0.1),
     ]
-    for (x, y, z), rx, ry, length, radius in shards:
-        m = Matrix.Translation((x, y, z)) @ Matrix.Rotation(math.radians(ry), 4, "Y") @ Matrix.Rotation(math.radians(rx), 4, "X")
-        parts.append(finish(crystal("Shard", length, radius, m), "shard"))
+    for (x, y, z), axis, tilt, length, width in shards:
+        shard = crystal("Shard", length, width, Matrix.Scale(0.6, 4, (1, 0, 0)))  # flattened along its X
+        if axis == "x":
+            m = Matrix.Translation((x, y, z)) @ Matrix.Rotation(math.radians(tilt), 4, "X")
+        else:
+            m = Matrix.Translation((x, y, z)) @ Matrix.Rotation(math.radians(tilt), 4, "Y") @ Matrix.Rotation(math.pi / 2, 4, "Z")
+        parts.append(finish(placed(shard, m), "shard"))
 
     # The snow cap: a flat pillow of snow over the block's top, its edge rolled into soft lumps that spill a
     # little over the sides, with a few longer drips; flattened and dipped where the rider sits
-    puffs = [(1.0, (0, 0, BLOCK_TOP + 0.04), (hw - 0.05, hd - 0.05, 0.13))]
-    n = 22
+    puffs = []
+    for gx in (-1.0, -0.33, 0.33, 1.0):
+        for gy in (-0.85, 0.0, 0.85):
+            puffs.append((0.5, (gx * (hw - 0.55), gy * (hd - 0.6) / 0.85, BLOCK_TOP + 0.06), (1.25, 1.25, 0.28)))
+    n = 30
     for i in range(n):
         a = 2 * math.pi * i / n
         # points round a rounded rectangle just inside the block's top edge
         cx, cy = math.cos(a), math.sin(a)
-        k = 1 / max(abs(cx) / (hw - 0.12), abs(cy) / (hd - 0.12))
+        k = 1 / max(abs(cx) / (hw - 0.2), abs(cy) / (hd - 0.2))
         x, y = cx * k, cy * k
-        x = math.copysign(min(abs(x), hw - 0.12), x)
-        y = math.copysign(min(abs(y), hd - 0.12), y)
-        r = 0.2 if i % 2 == 0 else 0.17
+        x = math.copysign(min(abs(x), hw - 0.2), x)
+        y = math.copysign(min(abs(y), hd - 0.2), y)
+        r = 0.21 if i % 2 == 0 else 0.18
         puffs.append((r, (x, y, BLOCK_TOP + 0.02), (1, 1, 0.8)))
     # drips running down the block's front and sides
     for x, y, z, r in ((-0.95, -hd + 0.06, 0.82, 0.13), (0.3, -hd + 0.07, 0.86, 0.11), (1.0, -hd + 0.06, 0.8, 0.12),
@@ -89,12 +103,12 @@ def build():
     parts.append(finish(snow, "snow"))
 
     # Icicles hanging from the snow's lip at the front corners and along the sides
-    icicles = [(-1.38, -hd - 0.02, 0.42), (-1.18, -hd - 0.02, 0.3), (1.2, -hd - 0.02, 0.36), (1.4, -hd - 0.02, 0.26),
-               (-hw - 0.02, -0.4, 0.34), (-hw - 0.02, 0.2, 0.24), (-hw - 0.02, 0.45, 0.3),
-               (hw + 0.02, -0.7, 0.3), (hw + 0.02, 0.35, 0.4), (hw + 0.02, 0.6, 0.26)]
+    icicles = [(-1.32, -hd - 0.03, 0.42), (-1.08, -hd - 0.03, 0.26), (1.15, -hd - 0.03, 0.3), (1.36, -hd - 0.03, 0.4),
+               (-hw - 0.03, -0.3, 0.36), (-hw - 0.03, 0.05, 0.24),
+               (hw + 0.03, -0.45, 0.28), (hw + 0.03, 0.55, 0.38), (0.9, hd + 0.03, 0.32), (-0.2, hd + 0.03, 0.26)]
     for x, y, length in icicles:
         top_z = BLOCK_TOP + 0.02
-        parts.append(finish(cone("Icicle", 0.008, 0.075, length, (x, y, top_z - length / 2), vertices=10), "shard"))
+        parts.append(finish(cone("Icicle", 0.01, 0.1, length, (x, y, top_z - length / 2), vertices=12), "shard"))
 
     # The face on the block's front, under the snow
     fz = 0.5
