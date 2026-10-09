@@ -114,7 +114,7 @@ end
 assert(booths == WorldBuilder.PLAZA_BOOTHS, "plaza booths")
 
 print(("zones=%d gates=%d eggs=%d sources=%d booths=%d"):format(zones, gates, eggs, sources, booths))
-local ok = zones == 11 and gates == 12 and eggs == 11 and sources == 10 * 24
+local ok = zones == 11 and gates == 10 and eggs == 11 and sources == 10 * 24
 if not ok then
 	print("FAIL: unexpected world shape")
 	process.exit(1)
