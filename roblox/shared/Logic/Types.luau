@@ -60,7 +60,6 @@ export type PlayerData = {
 	wheel: { lastFree: number }, -- UTC day of the last free spin
 	rides: { [string]: boolean },
 	equippedRide: string?,
-	seatsIntroduced: boolean?, -- a saved Cubeling Ride moved to the Cloud Seat once, when seats came
 	auras: { [string]: boolean },
 	equippedAura: string?,
 	hatchFx: { [string]: boolean },

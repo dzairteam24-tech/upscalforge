@@ -342,31 +342,6 @@ function GameService.refresh(player: Player)
 			child:Destroy()
 		end
 	end
-	-- Cubeling Ride: the strongest creature in the team carries the player. Clients draw it (RideClient)
-	-- and hide it from the followers; the character stands higher while there is one to ride.
-	local rideDef = if data.equippedRide and data.rides[data.equippedRide] then Cosmetics.rideById[data.equippedRide] else nil
-	local ridePetId = ""
-	if rideDef and rideDef.style == "creature" then
-		local bestPower = -1
-		for _, petId in data.equipped do
-			local pet = data.pets[petId]
-			if pet and wanted[petId] then
-				local petPower = PetMath.basePower(pet)
-				if petPower > bestPower then
-					ridePetId, bestPower = petId, petPower
-				end
-			end
-		end
-	end
-	local wasRiding = (player:GetAttribute("RidePetId") or "") ~= ""
-	if player:GetAttribute("RidePetId") ~= ridePetId then
-		player:SetAttribute("RidePetId", ridePetId)
-		player:SetAttribute("RidePet", if ridePetId ~= "" then wanted[ridePetId] else "")
-		if wasRiding ~= (ridePetId ~= "") then
-			GameService.refreshTitles(player) -- stand higher or lower
-		end
-	end
-
 	for petId, value in wanted do
 		local existing = (folder :: Folder):FindFirstChild(petId) :: StringValue?
 		if not existing then
@@ -745,28 +720,19 @@ local function applyTitles(player: Player, character: Model)
 
 	-- Ride: a floating seat (clients draw it); the character sits higher on it
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local oldRide = character:FindFirstChild("Ride")
-	if oldRide then
-		oldRide:Destroy()
-	end
 	local baseHip = character:GetAttribute("BaseHipHeight")
 	if humanoid and typeof(baseHip) ~= "number" then
 		baseHip = humanoid.HipHeight
 		character:SetAttribute("BaseHipHeight", baseHip)
 	end
 	local rideDef = if data.equippedRide and data.rides[data.equippedRide] then Cosmetics.rideById[data.equippedRide] else nil
-	local onCreature = rideDef ~= nil and rideDef.style == "creature"
-	-- A floating seat: clients draw it under the player and pose them on it (RideClient), so nothing is welded
+	-- Clients draw the seat under the player and pose them on it (RideClient), so nothing is welded
 	local onSeat = rideDef ~= nil and rideDef.style == "seat"
 	player:SetAttribute("RideSeat", if onSeat and rideDef then rideDef.seat or "" else "")
 	if humanoid and typeof(baseHip) == "number" then
-		-- On a creature the player sits on its saddle (RideClient plays the sit pose). R6 legs aren't part of HipHeight, so they come off. Nothing to
-		-- sit on with an empty team.
-		local riding = (player:GetAttribute("RidePetId") or "") ~= ""
+		-- R6 legs aren't part of HipHeight, so they come off
 		local legs = if humanoid.RigType == Enum.HumanoidRigType.R6 then 2 else 0
-		if onCreature and riding then
-			humanoid.HipHeight = math.max(baseHip, Cosmetics.RIDE_HIP - legs)
-		elseif onSeat then
+		if onSeat then
 			humanoid.HipHeight = Cosmetics.SEAT_HIP - legs
 		else
 			humanoid.HipHeight = baseHip
@@ -983,18 +949,6 @@ local function onLoaded(player: Player, data: PlayerData)
 		data.hatchFx = data.hatchFx or {}
 		for _, fx in Cosmetics.hatchFx do
 			data.hatchFx[fx.id] = true
-		end
-	end
-	-- The floating seats replaced the creature as the ride you start on: move a saved Cubeling Ride over once
-	-- (it stays in Style for anyone who picks it again)
-	-- Rides that are gone (the old boards, the pony): back on the Cloud Seat
-	if data.equippedRide and not Cosmetics.rideById[data.equippedRide] then
-		data.equippedRide = Cosmetics.RIDE_DEFAULT
-	end
-	if not data.seatsIntroduced then
-		data.seatsIntroduced = true
-		if data.equippedRide == "Cubeling" then
-			data.equippedRide = Cosmetics.RIDE_DEFAULT
 		end
 	end
 	leaderstats(player)

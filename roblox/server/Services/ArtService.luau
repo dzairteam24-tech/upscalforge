@@ -66,9 +66,9 @@ local function loadMapArt()
 	print("[Art] Map art loaded")
 end
 
--- A Cubeling Ride model (Config/Art SADDLE_ASSET_ID, PONY_ASSET_ID) into ReplicatedStorage.<name> (RideModel)
-local function loadRideArt(name: string, id: number)
-	-- (added last, so it wins over a model placed by hand: RideModel uses the newest)
+-- The floating seats' model (Config/Art SEATS_ASSET_ID) into ReplicatedStorage.<name> (SeatModel)
+local function loadSeatArt(name: string, id: number)
+	-- (added last, so it wins over a model placed by hand: SeatModel uses the newest)
 	if id == 0 then
 		return
 	end
@@ -96,9 +96,7 @@ end
 
 function ArtService.init()
 	task.spawn(loadMapArt)
-	task.spawn(loadRideArt, "SaddleModel", Art.SADDLE_ASSET_ID)
-	task.spawn(loadRideArt, "PonyModel", Art.PONY_ASSET_ID)
-	task.spawn(loadRideArt, "SeatsModel", Art.SEATS_ASSET_ID)
+	task.spawn(loadSeatArt, "SeatsModel", Art.SEATS_ASSET_ID)
 	if ReplicatedStorage:FindFirstChild("CreatureModels") then
 		return -- placed by hand in Studio
 	end

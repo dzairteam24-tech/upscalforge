@@ -1,41 +1,24 @@
--- Cubeling Ride: draws the creature each player is riding (player attribute "RidePet", set by the server
--- from the strongest creature in their team) under their character, every frame on each client.
+-- Floating seats: draws the seat each player sits on (player attribute "RideSeat", the seat's name, set by the
+-- server from their equipped ride) under their character, every frame on each client.
 --
--- The creature comes from RideModel: a pony with the creature's head and a saddle (art: the riding model
--- sheet). Creature and rider move as one body: no hop, the creature walks with its legs and leans a
--- little into the run, and a jump lifts both. Each client poses every rider itself every frame (the joints'
--- Transform, so no uploaded animation is needed): the rider leans a little forward and RideIK bends the arms
--- so the hands hold the handle's grips and the legs so the feet stand in the stirrups, whatever the avatar's
--- size. The rider's own client turns off
--- their walk animations and sets the height they sit at. PetFollow hides the ridden creature from the
--- followers.
---
--- Floating seats (player attribute "RideSeat", the seat's name): the seat (SeatModel) floats under the
--- rider, who sits on it cross-legged (SeatPose: feet crossed in front, hands on the knees), bobbing gently.
+-- The seat (SeatModel) floats under the rider, bobbing gently and tipping a little into the run; the rider
+-- sits on it cross-legged (SeatPose: feet crossed in front, hands on the knees). Each client poses every
+-- rider itself every frame through the joints' Transform (RideIK bends the arms and legs, so no uploaded
+-- animation is needed and it fits any avatar's size). The rider's own client turns off their walk animations
+-- and sets the height they float at.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local RideModel = require(Shared.RideModel)
 local RideIK = require(Shared.RideIK)
 local SeatModel = require(Shared.SeatModel)
 local SeatPose = require(Shared.SeatPose)
-local Cosmetics = require(Shared.Config.Cosmetics)
 
 local RideClient = {}
 
--- Legs walk in diagonal pairs, like the followers
-local LEG_PHASE = { legFL = 0, legBR = 0, legFR = math.pi, legBL = math.pi }
-
--- The rider leans this much forward at the waist (degrees). Arms and legs are solved every frame (RideIK) so
--- the hands hold the handle's grips and the feet stand in the stirrups, whatever the avatar's size.
-local LEAN = -10
--- Where elbows and knees point: elbows down, out and a little back; knees forward and out
-local ELBOW_POLE = { out = 0.7, down = 1, back = 0.3 }
-local KNEE_POLE = { forward = 1, out = 0.8 }
--- Only when a limb can't be solved (a rig without those joints): a fixed riding pose, in degrees
+-- Only when a limb can't be solved (a rig without those joints): a fixed pose, in degrees
 local POSE = {
 	hipPitch = 95,
 	hipRoll = 45,
@@ -45,26 +28,8 @@ local POSE = {
 	armRoll = 48,
 	elbowPitch = 68,
 }
--- Jumping: the creature tucks its legs (front forward, back backward) and tilts with its climb or fall
-local JUMP_TUCK = 40
-local JUMP_TILT = 12
-local FRONT_LEGS = { legFL = true, legFR = true }
 -- R6 legs aren't part of HipHeight: the root's bottom stands this high above the ground plus HipHeight
 local R6_LEGS = 2
-
-type Mount = {
-	value: string,
-	ride: RideModel.Ride,
-	phase: number,
-	openUntil: number,
-	nextChirp: number,
-	mouthOpen: boolean,
-	run: number, -- 0 standing .. 1 running, eased
-	air: number, -- 0 on the ground .. 1 in a jump, eased
-	posed: Model?, -- the character whose joints this mount is posing
-}
-
-local mounts: { [Player]: Mount } = {}
 
 -- A floating seat under a player
 type SeatMount = {
@@ -83,15 +48,7 @@ local SEAT_FORWARD = 0.45 -- the seat's middle is this far in front of the hips 
 local container = Instance.new("Folder")
 container.Name = "Rides"
 local LOCAL = Players.LocalPlayer
-local seated: Model? = nil -- the local character, while it rides (its walk animations are off)
-
-local function parse(value: string): { s: string, v: string, z: string }?
-	local s, v, z = string.match(value, "^([^|]+)|([^|]+)|([^|]+)")
-	if not s then
-		return nil
-	end
-	return { s = s :: string, v = v :: string, z = z :: string }
-end
+local seated: Model? = nil -- the local character, while it sits on a seat (its walk animations are off)
 
 ---------------------------------------------------------------------------------------------------------------
 -- Rider pose: R15 joints bent through their Transform, set after animations every frame
@@ -205,48 +162,6 @@ local function solveLimb(joints: { [string]: Instance }, parentFrame: CFrame, na
 end
 
 -- Poses a rider on their mount: leaning a little forward, hands on the grips, feet in the stirrups (flat)
-local function poseRider(character: Model, ride: RideModel.Ride)
-	local joints = jointsOf(character)
-	local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	local lowerTorso = character:FindFirstChild("LowerTorso") :: BasePart?
-	if not root or not lowerTorso then
-		return
-	end
-	-- The torso's frames, from the root, with the lean (what the joints will make of them this frame)
-	local rootJoint = frameOf(joints.Root)
-	local lower = if rootJoint then rootJoint.parent.CFrame * rootJoint.c0 * (joints.Root :: any).Transform * rootJoint.c1:Inverse() else lowerTorso.CFrame
-	local lean = CFrame.Angles(math.rad(LEAN), 0, 0)
-	setTransform(joints.Waist, lean)
-	local waist = frameOf(joints.Waist)
-	local upper = if waist then lower * waist.c0 * lean * waist.c1:Inverse() else lower
-	local frame = root.CFrame
-	for _, side in { "Left", "Right" } do
-		local s = if side == "Left" then -1 else 1
-		-- Arm: the hand's grip on the handle's grip on its side
-		local grip = ride.grips[side]
-		local tip = attachmentIn(character, side .. "Hand", side .. "GripAttachment")
-		local elbowPole = upper.RightVector * (s * ELBOW_POLE.out) - upper.UpVector * ELBOW_POLE.down - upper.LookVector * ELBOW_POLE.back
-		if not (grip and solveLimb(joints, upper, { side .. "Shoulder", side .. "Elbow", side .. "Wrist" }, tip, grip.WorldPosition, elbowPole)) then
-			fixedLimb(joints, side, "arm")
-		end
-		setTransform(joints[side .. "Wrist"], CFrame.identity)
-		-- Leg: the sole on the stirrup's tread, the foot flat and facing forward
-		local tread = ride.stirrups[side]
-		local sole = attachmentIn(character, side .. "Foot", side .. "FootAttachment")
-		local kneePole = frame.LookVector * KNEE_POLE.forward + frame.RightVector * (s * KNEE_POLE.out)
-		local shin, ankle
-		if tread then
-			shin, ankle = solveLimb(joints, lower, { side .. "Hip", side .. "Knee", side .. "Ankle" }, sole, tread.WorldPosition, kneePole)
-		end
-		if shin and ankle then
-			setTransform(joints[side .. "Ankle"], RideIK.orient(shin, ankle.c0, ankle.c1, frame.Rotation))
-		else
-			fixedLimb(joints, side, "leg")
-			setTransform(joints[side .. "Ankle"], CFrame.identity)
-		end
-	end
-end
-
 -- How long the character's leg is, hip joint to sole, over a standard R15 leg: the seat pose scales with it
 local function legScale(joints: { [string]: Instance }, sole: CFrame): number
 	local a, b, c = frameOf(joints.LeftHip), frameOf(joints.LeftKnee), frameOf(joints.LeftAnkle)
@@ -296,11 +211,7 @@ local function poseSeated(character: Model)
 	end
 end
 
-local function setPose(character: Model, on: boolean, ride: RideModel.Ride?)
-	if on and ride then
-		poseRider(character, ride)
-		return
-	end
+local function clearPose(character: Model)
 	local joints = jointsOf(character)
 	for _, name in POSED do
 		setTransform(joints[name], CFrame.identity)
@@ -308,7 +219,7 @@ local function setPose(character: Model, on: boolean, ride: RideModel.Ride?)
 end
 
 ---------------------------------------------------------------------------------------------------------------
--- The local rider: walk animations off while riding, and the height that puts their hips on the saddle
+-- The local rider: walk animations off while sitting
 
 local function stand()
 	if not seated then
@@ -342,9 +253,9 @@ local function sit(character: Model)
 end
 
 -- How far the rider's hip joints are below their HumanoidRootPart's center, measured on the character: the
--- hip attachments of the R15 LowerTorso (the riding pose bends the legs, not the LowerTorso, so it doesn't
+-- hip attachments of the R15 LowerTorso (the sitting pose bends the legs, not the LowerTorso, so it doesn't
 -- change this). It depends on the avatar's body and scale, which is why it isn't a constant: a fixed guess
--- sat small avatars inside the saddle. R6, or a rig without those attachments: the hips are at the root's
+-- sat small avatars inside the seat. R6, or a rig without those attachments: the hips are at the root's
 -- bottom.
 local function hipsBelowRoot(character: Model, root: BasePart): number
 	local lower = character:FindFirstChild("LowerTorso")
@@ -356,68 +267,13 @@ local function hipsBelowRoot(character: Model, root: BasePart): number
 	return root.Size.Y / 2
 end
 
--- The local rider's HipHeight that puts the creature's feet on the ground while their hips are on the saddle
-local function seatHeight(mount: Mount, humanoid: Humanoid, character: Model, root: BasePart): number
-	local rootAboveFeet = hipsBelowRoot(character, root) + mount.ride.seat.Y + Cosmetics.RIDE_CREATURE_HEIGHT / 2
-	local legs = if humanoid.RigType == Enum.HumanoidRigType.R6 then R6_LEGS else 0
-	return rootAboveFeet - root.Size.Y / 2 - legs
-end
-
----------------------------------------------------------------------------------------------------------------
--- Mounts
-
-local function remove(player: Player)
-	local mount = mounts[player]
-	if mount then
-		if mount.posed then
-			setPose(mount.posed, false)
-		end
-		mount.ride.built.model:Destroy()
-		mounts[player] = nil
-	end
-end
-
-local function build(player: Player, value: string)
-	remove(player)
-	local pet = parse(value)
-	if not pet then
-		return
-	end
-	local ride = RideModel.build(pet)
-	ride.built.model.Parent = container
-	mounts[player] = {
-		value = value,
-		ride = ride,
-		phase = math.random() * math.pi * 2,
-		openUntil = 0,
-		nextChirp = os.clock() + 2,
-		mouthOpen = false,
-		run = 0,
-		air = 0,
-		posed = nil,
-	}
-end
-
 local function syncSeat()
 	local character = LOCAL.Character
-	local value = LOCAL:GetAttribute("RidePet")
 	local seat = LOCAL:GetAttribute("RideSeat")
-	if character and ((type(value) == "string" and value ~= "") or (type(seat) == "string" and seat ~= "")) then
+	if character and type(seat) == "string" and seat ~= "" then
 		sit(character)
 	else
 		stand()
-	end
-end
-
-local function sync(player: Player)
-	local value = player:GetAttribute("RidePet")
-	if type(value) ~= "string" or value == "" then
-		remove(player)
-	elseif not mounts[player] or mounts[player].value ~= value then
-		build(player, value)
-	end
-	if player == LOCAL then
-		syncSeat()
 	end
 end
 
@@ -425,7 +281,7 @@ local function removeSeat(player: Player)
 	local mount = seats[player]
 	if mount then
 		if mount.posed then
-			setPose(mount.posed, false)
+			clearPose(mount.posed)
 		end
 		mount.seat.model:Destroy()
 		seats[player] = nil
@@ -452,7 +308,9 @@ local function syncSeatRide(player: Player)
 end
 
 -- Draws every floating seat under its rider; the local rider's HipHeight floats them (with a gentle bob)
-local function drawSeats(dt: number, parts: { BasePart }, cframes: { CFrame })
+local function draw(dt: number)
+	local parts: { BasePart } = {}
+	local cframes: { CFrame } = {}
 	local now = os.clock()
 	for player, mount in seats do
 		local seat = mount.seat
@@ -491,99 +349,6 @@ local function drawSeats(dt: number, parts: { BasePart }, cframes: { CFrame })
 			table.insert(cframes, frame * seat.offsets[i])
 		end
 	end
-end
-
-local function setMouth(mount: Mount, open: boolean)
-	if mount.mouthOpen == open then
-		return
-	end
-	mount.mouthOpen = open
-	local built = mount.ride.built
-	for i, anim in built.anims do
-		if anim == "mouthO" then
-			built.parts[i].Transparency = if open then 0 else 1
-		elseif anim == "mouthC" then
-			built.parts[i].Transparency = if open then 1 else 0
-		end
-	end
-end
-
--- Draws every creature under its rider
-local function draw(dt: number)
-	local parts: { BasePart } = {}
-	local cframes: { CFrame } = {}
-	local now = os.clock()
-	local height = Cosmetics.RIDE_CREATURE_HEIGHT
-	for player, mount in mounts do
-		local built = mount.ride.built
-		local character = player.Character
-		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		if not character or not root or not humanoid then
-			built.model.Parent = nil
-			continue
-		end
-		built.model.Parent = container
-		if player == LOCAL and seated == character then
-			local hip = seatHeight(mount, humanoid, character, root)
-			if math.abs(humanoid.HipHeight - hip) > 0.01 then
-				humanoid.HipHeight = hip
-			end
-		end
-
-		local velocity = root.AssemblyLinearVelocity
-		local moving = Vector3.new(velocity.X, 0, velocity.Z).Magnitude > 2
-		local airborne = humanoid.FloorMaterial == Enum.Material.Air
-		-- The creature is fixed under the rider, at the exact distance that puts the rider's hips on the saddle:
-		-- they never come apart, so a jump lifts both. (Measuring the ground instead left the creature behind
-		-- at the start of a jump.)
-		-- (the saddle's seat goes exactly where the rider's hips are)
-		local feetY = root.Position.Y - hipsBelowRoot(character, root) - mount.ride.seat.Y - height / 2
-		local look = root.CFrame.LookVector
-		local flat = Vector3.new(look.X, 0, look.Z)
-		flat = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.new(0, 0, -1)
-		-- The saddle (seat.Z behind the creature's middle) is under the rider, so the middle is ahead of them
-		local ahead = flat * mount.ride.seat.Z
-		local center = Vector3.new(root.Position.X + ahead.X, feetY + height / 2, root.Position.Z + ahead.Z)
-		mount.run += ((if moving and not airborne then 1 else 0) - mount.run) * math.min(1, dt * 6)
-		mount.air += ((if airborne then 1 else 0) - mount.air) * math.min(1, dt * 12)
-		-- A slight lean into the run on the ground; in a jump, nose up while climbing and down while falling
-		local climb = math.clamp(velocity.Y / 40, -1, 1)
-		local tilt = math.rad(-4) * mount.run * (1 - mount.air) + math.rad(JUMP_TILT) * climb * mount.air
-		local frame = CFrame.lookAt(center, center + flat) * CFrame.Angles(tilt, 0, 0)
-
-		if now >= mount.nextChirp then
-			mount.openUntil = now + 0.4 + math.random() * 0.4
-			mount.nextChirp = now + 4 + math.random() * 6
-		end
-		setMouth(mount, now < mount.openUntil)
-
-		for i, p in built.parts do
-			local cf = mount.ride.offsets[i]
-			local anim = built.anims[i]
-			local swing: CFrame? = nil
-			if anim then
-				local leg = LEG_PHASE[anim]
-				if leg and (mount.run > 0.05 or mount.air > 0.05) then
-					local walk = math.sin(now * 14 + mount.phase + leg) * math.rad(32) * mount.run * (1 - mount.air)
-					local tuck = math.rad(if FRONT_LEGS[anim] then JUMP_TUCK else -JUMP_TUCK) * mount.air
-					swing = CFrame.Angles(walk + tuck, 0, 0)
-				elseif string.sub(anim, 1, 4) == "wing" then
-					local side = if anim == "wingL" then 1 else -1
-					swing = CFrame.Angles(0, 0, side * (math.sin(now * (if moving then 16 else 8) + mount.phase) * math.rad(30) + math.rad(8)))
-				elseif anim == "tail" then
-					swing = CFrame.Angles(0, math.sin(now * (if moving then 14 else 5) + mount.phase) * math.rad(22), 0)
-				end
-			end
-			local pivot = mount.ride.pivots[i]
-			if swing and pivot then
-				cf = CFrame.new(pivot) * swing * CFrame.new(-pivot) * cf
-			end
-			table.insert(parts, p)
-			table.insert(cframes, frame * cf)
-		end
-	end
-	drawSeats(dt, parts, cframes)
 	if #parts > 0 then
 		workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
 	end
@@ -594,7 +359,7 @@ local function pose()
 	for player, mount in seats do
 		local character = player.Character
 		if mount.posed and mount.posed ~= character then
-			setPose(mount.posed, false)
+			clearPose(mount.posed)
 			mount.posed = nil
 		end
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -603,28 +368,12 @@ local function pose()
 			mount.posed = character
 		end
 	end
-	for player, mount in mounts do
-		local character = player.Character
-		if mount.posed and mount.posed ~= character then
-			setPose(mount.posed, false)
-			mount.posed = nil
-		end
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		if character and humanoid and humanoid.RigType == Enum.HumanoidRigType.R15 then
-			setPose(character, true, mount.ride)
-			mount.posed = character
-		end
-	end
 end
 
 local function watch(player: Player)
-	player:GetAttributeChangedSignal("RidePet"):Connect(function()
-		sync(player)
-	end)
 	player:GetAttributeChangedSignal("RideSeat"):Connect(function()
 		syncSeatRide(player)
 	end)
-	sync(player)
 	syncSeatRide(player)
 end
 
@@ -634,27 +383,17 @@ function RideClient.init()
 		watch(player)
 	end
 	Players.PlayerAdded:Connect(watch)
-	Players.PlayerRemoving:Connect(function(player)
-		remove(player)
-		removeSeat(player)
-	end)
+	Players.PlayerRemoving:Connect(removeSeat)
 	LOCAL.CharacterAdded:Connect(function(character)
 		seated = nil -- the old character took its state with it
 		character:WaitForChild("Humanoid")
 		character:WaitForChild("Animate", 5)
 		syncSeat()
 	end)
-	-- The creature models, the pony and the saddle may arrive after the first build (under any name: RideModel
-	-- finds the pony and saddle by their parts): rebuild everyone's ride then, once their parts are in
+	-- The seat models may arrive after the first build (under any name: SeatModel finds them by their parts):
+	-- rebuild everyone's seat then, once their parts are in
 	ReplicatedStorage.ChildAdded:Connect(function()
 		task.delay(1, function()
-			local riding: { [Player]: string } = {}
-			for player, mount in mounts do
-				riding[player] = mount.value
-			end
-			for player, value in riding do
-				build(player, value)
-			end
 			local sitting: { [Player]: string } = {}
 			for player, mount in seats do
 				sitting[player] = mount.name

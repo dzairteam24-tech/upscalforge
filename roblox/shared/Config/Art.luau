@@ -12,19 +12,11 @@
 -- The server loads it into Workspace.MapArt. A child named "Zone_3" replaces zone 3's block trees.
 -- 0 = none yet: the map keeps its block decorations.
 --
--- SADDLE_ASSET_ID, PONY_ASSET_ID: the Cubeling Ride's saddle and pony body (import art/models/Saddle.glb and
--- art/models/Pony.glb in Studio, right-click each model > Save to Roblox, paste their IDs here). The server
--- loads them into ReplicatedStorage. 0 = not uploaded yet: rides use a saddle/pony model put directly in
--- ReplicatedStorage by hand (any name: RideModel finds them by their Saddle__/Pony__ parts, the newest
--- winning), or else the saddle made of parts and the reshaped creature.
---
 -- SEATS_ASSET_ID: the floating seats (import art/models/Seats.glb in Studio, Save to Roblox, paste its ID
--- here). Loaded into ReplicatedStorage like the saddle; until then seats are drawn as a plain cloud of balls.
+-- here). The server loads it into ReplicatedStorage; until then seats are drawn as a plain cloud of balls.
 
 return {
 	CREATURE_MODELS_ASSET_ID = 91371129157419,
 	MAP_ART_ASSET_ID = 0,
-	SADDLE_ASSET_ID = 98611574786833,
-	PONY_ASSET_ID = 83201461968098,
 	SEATS_ASSET_ID = 139829960209417,
 }

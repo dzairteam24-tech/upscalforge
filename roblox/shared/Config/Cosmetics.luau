@@ -6,8 +6,6 @@ local SeatLooks = require(script.Parent.SeatLooks)
 export type Title = { id: string, text: string, color: Color3 }
 export type Trail = { id: string, name: string, colors: { Color3 } }
 -- Rides: something the character stands on. Every ride gives the same speed, so they're look only.
--- The "creature" style (the Cubeling Ride: the strongest creature in the team carries the player) is retired:
--- no ride uses it now (RideModel and RideClient still support it).
 -- The "seat" style is a floating seat the player sits on cross-legged (SeatModel; `seat` names its model in
 -- art/models/Seats.glb, SeatLooks). Three per zone. The meadow's Cloud Seat is everyone's from the start and
 -- can't be traded; the others come from the Battle Pass (SEAT_PASS) or as gifts (`gift`: the daily reward's
@@ -152,18 +150,6 @@ return {
 	hatchFx = hatchFx,
 	hatchFxById = hatchFxById,
 	RIDE_SPEED = 1.6,
-	-- The ridden creature (RideModel): the pony model this many studs per unit (its back is 2.35 units high), its
-	-- feet RIDE_CREATURE_HEIGHT / 2 below its center
-	RIDE_CREATURE_HEIGHT = 10,
-	RIDE_PONY_SCALE = 1.6,
-	-- Until the pony model is loaded: the creature this tall, this much narrower and longer than its shape and
-	-- its legs this much longer, with the saddle's middle this far back (a share of its length) from its middle
-	RIDE_STRETCH_HEIGHT = 8.5,
-	RIDE_LEG_EXTRA = 3,
-	RIDE_SLIM = 0.75,
-	RIDE_LONG = 1.35,
-	RIDE_SEAT_BACK = 0.2,
-	RIDE_HIP = 4.8, -- the rider's HipHeight on it, roughly (RideClient sets the exact one for the saddle)
 	SEAT_HIP = 2.6, -- the rider's HipHeight on a floating seat, roughly (RideClient sets the exact one)
 	RIDE_DEFAULT = "Seat_Cloud", -- what the Ride button puts you on
 	RIDE_STARTERS = { "Seat_Cloud" }, -- every player has these
