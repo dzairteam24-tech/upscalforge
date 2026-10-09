@@ -743,7 +743,7 @@ local function applyTitles(player: Player, character: Model)
 	end
 	gui.Parent = head
 
-	-- Ride: welded under the feet; the character floats a little higher while riding
+	-- Ride: a floating seat (clients draw it); the character sits higher on it
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	local oldRide = character:FindFirstChild("Ride")
 	if oldRide then
@@ -769,38 +769,7 @@ local function applyTitles(player: Player, character: Model)
 		elseif onSeat then
 			humanoid.HipHeight = Cosmetics.SEAT_HIP - legs
 		else
-			humanoid.HipHeight = baseHip + (if rideDef and not onCreature then 0.6 else 0)
-		end
-		if rideDef and not onCreature and not onSeat then
-			local ride = Instance.new("Model")
-			ride.Name = "Ride"
-			local footY = -(root.Size.Y / 2 + baseHip + 0.6) + 0.2
-			local function piece(size: Vector3, offset: CFrame, color: Color3, material: Enum.Material, shape: Enum.PartType?)
-				local p = Instance.new("Part")
-				p.Size = size
-				p.Color = color
-				p.Material = material
-				p.Shape = shape or Enum.PartType.Block
-				p.CanCollide = false
-				p.CanQuery = false
-				p.CanTouch = false
-				p.Massless = true
-				p.CFrame = root.CFrame * offset
-				local weld = Instance.new("WeldConstraint")
-				weld.Part0 = root
-				weld.Part1 = p
-				weld.Parent = p
-				p.Parent = ride
-			end
-			if rideDef.style == "cloud" then
-				for i, x in { -1.1, 0, 1.1 } do
-					piece(Vector3.one * (if i == 2 then 2.4 else 1.9), CFrame.new(x, footY, 0.2 * i - 0.4), rideDef.color, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-				end
-			else
-				piece(Vector3.new(2.4, 0.25, 5), CFrame.new(0, footY, 0), rideDef.color, Enum.Material.SmoothPlastic)
-				piece(Vector3.new(2.5, 0.08, 5.1), CFrame.new(0, footY - 0.16, 0), rideDef.glow, Enum.Material.Neon)
-			end
-			ride.Parent = character
+			humanoid.HipHeight = baseHip
 		end
 	end
 
@@ -1018,6 +987,10 @@ local function onLoaded(player: Player, data: PlayerData)
 	end
 	-- The floating seats replaced the creature as the ride you start on: move a saved Cubeling Ride over once
 	-- (it stays in Style for anyone who picks it again)
+	-- Rides that are gone (the old boards, the pony): back on the Cloud Seat
+	if data.equippedRide and not Cosmetics.rideById[data.equippedRide] then
+		data.equippedRide = Cosmetics.RIDE_DEFAULT
+	end
 	if not data.seatsIntroduced then
 		data.seatsIntroduced = true
 		if data.equippedRide == "Cubeling" then

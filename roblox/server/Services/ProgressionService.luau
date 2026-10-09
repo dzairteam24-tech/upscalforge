@@ -290,7 +290,7 @@ local function equipCosmetic(player: Player, kind: any, id: any)
 		end
 		data.equippedTrail = if id == "" then nil else id
 	elseif kind == "ride" then
-		if id ~= "" and not data.rides[id] then
+		if id ~= "" and not (data.rides[id] and Cosmetics.rideById[id]) then
 			return
 		end
 		data.equippedRide = if id == "" then nil else id

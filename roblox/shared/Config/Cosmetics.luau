@@ -6,8 +6,8 @@ local SeatLooks = require(script.Parent.SeatLooks)
 export type Title = { id: string, text: string, color: Color3 }
 export type Trail = { id: string, name: string, colors: { Color3 } }
 -- Rides: something the character stands on. Every ride gives the same speed, so they're look only.
--- The "creature" style is the Cubeling Ride: the strongest creature in the team carries the player
--- (RideClient draws it). Everyone has it from the start.
+-- The "creature" style (the Cubeling Ride: the strongest creature in the team carries the player) is retired:
+-- no ride uses it now (RideModel and RideClient still support it).
 -- The "seat" style is a floating seat the player sits on cross-legged (SeatModel; `seat` names its model in
 -- art/models/Seats.glb, SeatLooks). Three per zone. The meadow's Cloud Seat is everyone's from the start and
 -- can't be traded; the others come from the Battle Pass (SEAT_PASS) or as gifts (`gift`: the daily reward's
@@ -79,17 +79,7 @@ local trails: { Trail } = {
 	},
 }
 
-local rides: { Ride } = {
-	{ id = "Cubeling", name = "Cubeling Ride", style = "creature", color = Color3.fromRGB(255, 200, 90), glow = Color3.fromRGB(255, 240, 180) },
-	-- Everyone gets this one early (Journey step 3), so the ride speed is never something you pay for
-	{ id = "Starter", name = "Starter Board", style = "board", color = Color3.fromRGB(107, 203, 119), glow = Color3.fromRGB(220, 255, 220) },
-	{ id = "Skateboard", name = "Skateboard", style = "board", color = Color3.fromRGB(229, 83, 75), glow = Color3.fromRGB(255, 220, 120) },
-	{ id = "S1_Hoverboard", name = "Comet Board", style = "board", color = Color3.fromRGB(60, 70, 100), glow = Color3.fromRGB(91, 184, 245) },
-	{ id = "PixelBoard", name = "Pixel Board", style = "board", color = Color3.fromRGB(40, 30, 60), glow = Color3.fromRGB(185, 140, 255) },
-	{ id = "S1_Cloud", name = "Cloud", style = "cloud", color = Color3.fromRGB(245, 248, 255), glow = Color3.fromRGB(200, 230, 255) },
-	{ id = "E_Broom", name = "Broom Board", style = "board", color = Color3.fromRGB(90, 60, 40), glow = Color3.fromRGB(255, 140, 40) },
-	{ id = "E_Sled", name = "Snow Sled", style = "board", color = Color3.fromRGB(200, 60, 60), glow = Color3.fromRGB(150, 220, 255) },
-}
+local rides: { Ride } = {} -- the floating seats, below
 
 local auras: { Aura } = {
 	{ id = "Sparkle", name = "Sparkle Aura", style = "sparkle", colors = { Color3.fromRGB(255, 240, 160), Color3.fromRGB(255, 255, 255) } },
@@ -176,5 +166,5 @@ return {
 	RIDE_HIP = 4.8, -- the rider's HipHeight on it, roughly (RideClient sets the exact one for the saddle)
 	SEAT_HIP = 2.6, -- the rider's HipHeight on a floating seat, roughly (RideClient sets the exact one)
 	RIDE_DEFAULT = "Seat_Cloud", -- what the Ride button puts you on
-	RIDE_STARTERS = { "Cubeling", "Seat_Cloud" }, -- every player has these
+	RIDE_STARTERS = { "Seat_Cloud" }, -- every player has these
 }

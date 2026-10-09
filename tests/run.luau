@@ -1088,7 +1088,7 @@ test("Tickets come from trips and quests; rides come from Rank and the pass", fu
 	eq(reward.tickets, 12, "8 tickets x1.5 same element")
 	assert((Progression.DAILY_QUEST_REWARD.tickets or 0) > 0, "daily quests give tickets")
 	local perks = AchievementLogic.perks(7)
-	eq(perks.rides[1], "Skateboard")
+	eq(perks.rides[1], "Seat_Bee")
 	for _, perk in AchievementConfig.rankPerks do
 		if perk.ride then
 			assert(Cosmetics.rideById[perk.ride], "missing ride " .. perk.ride)

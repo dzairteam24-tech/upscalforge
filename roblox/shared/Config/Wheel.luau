@@ -23,6 +23,6 @@ local slices: { Slice } = {
 return {
 	slices = slices,
 	TICKET_COST = 5,
-	JACKPOT_RIDE = "PixelBoard",
+	JACKPOT_RIDE = "Seat_Gamepad",
 	JACKPOT_GEMS_IF_OWNED = 250,
 }

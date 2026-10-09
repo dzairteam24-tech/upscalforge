@@ -56,7 +56,7 @@ local list: { Event } = {
 		shop = {
 			{ id = "Title", price = 300, title = "E_Spooky", once = true },
 			{ id = "Trail", price = 600, trail = "E_Pumpkin", once = true },
-			{ id = "Ride", price = 1200, ride = "E_Broom", once = true },
+			{ id = "Ride", price = 1200, ride = "Seat_Fireball", once = true },
 			{ id = "Elixir", price = 60, itemId = "Elixir_Luck_2", amount = 1 },
 			{ id = "Sticker", price = 150, itemId = "Sticker_Star_1", amount = 1 },
 			{ id = "Key", price = 200, itemId = "KeyHalf_Golden", amount = 1 },
@@ -75,7 +75,7 @@ local list: { Event } = {
 		shop = {
 			{ id = "Title", price = 300, title = "E_Frosty", once = true },
 			{ id = "Trail", price = 600, trail = "E_Snow", once = true },
-			{ id = "Ride", price = 1200, ride = "E_Sled", once = true },
+			{ id = "Ride", price = 1200, ride = "Seat_Sled", once = true },
 			{ id = "Elixir", price = 60, itemId = "Elixir_Coins_3", amount = 1 },
 			{ id = "Sticker", price = 150, itemId = "Sticker_Coin_2", amount = 1 },
 			{ id = "Gadget", price = 120, itemId = "Gadget_CoinTotem", amount = 1 },

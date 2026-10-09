@@ -75,7 +75,7 @@ local function prizeFor(data: PlayerData, sliceId: string): Progression.Reward
 	elseif sliceId == "Eggs" then
 		return { freeEggs = 3, freeEggLuck = 2 }
 	end
-	-- Jackpot: the Pixel Board ride (or gems if owned) and a Holo sticker
+	-- Jackpot: the Gamepad Seat (or gems if owned) and a Holo sticker
 	local families = Items.stickerFamilies
 	local holo = Items.stickerId(families[1 + math.floor(random() * #families)].id, 3)
 	if data.rides[WheelConfig.JACKPOT_RIDE] then

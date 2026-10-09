@@ -79,21 +79,21 @@ local PASS_XP_PER_LEVEL = 200 -- 10,000 XP in all: about 17 days of quests in a 
 local SEASON_DAYS = 30
 local SEASON_START_DAY = 20730 -- UTC day number of season 1's first day (2026-10-04)
 
--- Free track: something every level. Premium track: cosmetics every 5 levels (titles, trails, rides), each
--- with a floating seat (Cosmetics SEAT_PASS).
+-- Free track: something every level. Premium track: cosmetics every 5 levels (titles, trails), each with a
+-- floating seat (Cosmetics SEAT_PASS).
 local function passReward(level: number, premium: boolean): Reward?
 	if premium then
 		local cosmetics: { [number]: Reward } = {
 			[5] = { title = "S1_Rookie", seat = "Seat_Blossom" },
 			[10] = { trail = "S1_Sky", seat = "Seat_Stump" },
 			[15] = { title = "S1_Collector", seat = "Seat_Shell" },
-			[20] = { trail = "S1_Lava", ride = "S1_Hoverboard", seat = "Seat_RedShroom" },
+			[20] = { trail = "S1_Lava", seat = "Seat_RedShroom" },
 			[25] = { title = "S1_Hunter", seat = "Seat_Cactus" },
 			[30] = { trail = "S1_Neon", seat = "Seat_Snowman" },
 			[35] = { title = "S1_Tamer", seat = "Seat_Lava" },
 			[40] = { trail = "S1_Pixel", seat = "Seat_Ice" },
 			[45] = { title = "S1_Pixel", seat = "Seat_Cube" },
-			[50] = { title = "S1_Champion", trail = "S1_Rainbow", ride = "S1_Cloud", seat = "Seat_Dragon" },
+			[50] = { title = "S1_Champion", trail = "S1_Rainbow", seat = "Seat_Dragon" },
 		}
 		return cosmetics[level]
 	end
