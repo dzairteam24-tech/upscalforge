@@ -90,6 +90,21 @@ end
 
 function EventService.init()
 	BreakableService.Broken:Connect(onBroken)
+	-- Each haul the team brings in counts like a coin pile broken
+	GameService.Gathered:Connect(function(player)
+		local event = GameService.event()
+		local data = DataService.get(player)
+		if not event or not data then
+			return
+		end
+		local tokens = Events.tokensFor(event, "Pile", function()
+			return rng:NextNumber()
+		end)
+		if tokens > 0 then
+			stateFor(data, event.id).tokens += tokens
+			GameService.markDirty(player)
+		end
+	end)
 	Net.event("EventBuy").OnServerEvent:Connect(buy)
 	-- Tell clients which event runs (so a Studio test event shows too)
 	task.spawn(function()

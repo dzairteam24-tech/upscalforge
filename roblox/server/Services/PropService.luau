@@ -1,24 +1,21 @@
 --!strict
--- Map props (art/blender/decor.py, art/models/Decor.glb; Config/PropLooks): textured models placed in a band
--- along the edges of the zones they decorate (outside the coin sources, inside the walls), in place of the
--- block trees WorldBuilder puts there ("Decor"). The props model is loaded by ArtService into
+-- Map props (art/blender/decor.py, art/models/Decor.glb; Config/PropLooks): textured models placed round
+-- each tier's egg in the Egg Garden, the props of that tier's world (its "zones"). The props model is loaded by ArtService into
 -- ReplicatedStorage (Config/Art PROPS_ASSET_ID), or imported there by hand: any model with parts named
--- Prop__<Name>. Without it the block trees stay. The town's props (Town.glb) are placed by HubBuilder with
+-- Prop__<Name>. Without it the garden has none. The town's props (Town.glb) are placed by HubBuilder with
 -- PropService.spawn.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local MapLayout = require(Shared.Logic.MapLayout)
 local PropLooks = require(Shared.Config.PropLooks)
+
+local WorldBuilder = require(script.Parent.WorldBuilder)
 
 local PropService = {}
 
--- Distance from the zone's middle to the edge band (the sources stop 16 studs from the wall)
-local BAND = { MapLayout.PLATFORM / 2 - 12, MapLayout.PLATFORM / 2 - 4 }
-local SPACING = 10 -- studs between props along an edge, roughly
-local ENTRANCE = MapLayout.BRIDGE_WIDTH / 2 + 5 -- keep this far from the middle of each edge (the gates)
-local BASE_GAP = 42 -- and this far along the entrance's edge (the stations stand there)
+local PER_EGG = 4 -- props round each egg in the garden
+local PROP_SCALE = 0.7 -- (smaller than in the old zones: they frame an egg)
 local SIZE_JITTER = { 0.85, 1.2 }
 local WAIT_FOR_MODEL = 60 -- seconds to wait for the props model to load
 
@@ -98,32 +95,25 @@ local function pick(kit: { Entry }, rng: Random): Entry
 	return kit[#kit]
 end
 
+-- A few of a tier's props round its egg in the Egg Garden (behind it and to its sides, off the lawn)
 local function place(zoneId: number, kit: { Entry }, parent: Instance)
+	local egg = WorldBuilder.eggPositions[zoneId]
+	if not egg then
+		return
+	end
 	local rng = Random.new(zoneId * 131)
-	local center = MapLayout.center(zoneId)
-	local entrance = MapLayout.entrance(zoneId)
-	local reach = MapLayout.PLATFORM / 2 - MapLayout.CORNER -- (not into the rounded corners)
+	local outward = (Vector3.new(egg.X, 0, egg.Z) - WorldBuilder.gardenCenter()) * Vector3.new(1, 0, 1)
+	outward = if outward.Magnitude > 1 then outward.Unit else Vector3.new(0, 0, -1)
+	local side = Vector3.new(outward.Z, 0, -outward.X)
 	local folder = Instance.new("Model")
-	folder.Name = "Props"
-	-- Along each of the four edges, skipping the middle where a gate may come in, and the base (the egg
-	-- and the stations) along the entrance
-	for side = 0, 3 do
-		local angle = side * math.pi / 2
-		local out = Vector3.new(math.round(math.cos(angle)), 0, math.round(math.sin(angle)))
-		local along = Vector3.new(-out.Z, 0, out.X)
-		local gap = if out:Dot(entrance) > 0.5 then BASE_GAP else ENTRANCE
-		local t = -reach
-		while t < reach do
-			t += SPACING * rng:NextNumber(0.75, 1.3)
-			if math.abs(t) < gap or math.abs(t) > reach then
-				continue
-			end
-			local entry = pick(kit, rng)
-			local spot = center + out * rng:NextNumber(BAND[1], BAND[2]) + along * t
-			local yaw = CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
-			local prop = spawnFrom(entry.source, entry.look, CFrame.new(spot) * yaw, rng:NextNumber(SIZE_JITTER[1], SIZE_JITTER[2]))
-			prop.Parent = folder
-		end
+	folder.Name = "Props_" .. zoneId
+	for i = 1, PER_EGG do
+		local entry = pick(kit, rng)
+		local across = (i - (PER_EGG + 1) / 2) * 7 + rng:NextNumber(-1.5, 1.5)
+		local spot = Vector3.new(egg.X, 0, egg.Z) + outward * rng:NextNumber(9, 13) + side * across
+		local yaw = CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+		local prop = spawnFrom(entry.source, entry.look, CFrame.new(spot) * yaw, rng:NextNumber(SIZE_JITTER[1], SIZE_JITTER[2]) * PROP_SCALE)
+		prop.Parent = folder
 	end
 	folder.Parent = parent
 end
@@ -140,15 +130,13 @@ local function decorate(sources: { [string]: BasePart })
 			end
 		end
 	end
+	local garden = world:WaitForChild("EggGarden", 30)
+	if not garden then
+		return
+	end
 	for zoneId, kit in kits do
-		local zone = world:WaitForChild("Zone_" .. zoneId, 30)
-		if zone and not zone:FindFirstChild("Props") then
-			for _, piece in zone:GetChildren() do
-				if piece.Name == "Decor" then
-					piece:Destroy()
-				end
-			end
-			place(zoneId, kit, zone)
+		if not garden:FindFirstChild("Props_" .. zoneId) then
+			place(zoneId, kit, garden)
 		end
 	end
 	print("[Props] placed in", (function()
@@ -178,7 +166,7 @@ function PropService.init()
 			task.wait(1)
 		end
 		if not hasZoneProps() then
-			print("[Props] no props model in ReplicatedStorage (no Prop__ parts): the block trees stay")
+			print("[Props] no props model in ReplicatedStorage (no Prop__ parts): the garden has no props")
 			return
 		end
 		task.wait(1) -- let the rest of the model arrive

@@ -15,6 +15,7 @@ export type Runtime = {
 	combo: number,
 	lastBreak: number,
 	lastTap: number,
+	gather: number, -- seconds of earning since the team's last haul (GameService)
 	lastHatch: number,
 	boosts: { [string]: Boost },
 	timers: { [string]: number },
@@ -41,6 +42,7 @@ function State.create(player: Player): Runtime
 		combo = 0,
 		lastBreak = 0,
 		lastTap = 0,
+		gather = 0,
 		lastHatch = 0,
 		boosts = {},
 		timers = {},

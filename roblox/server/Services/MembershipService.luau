@@ -15,6 +15,7 @@ local Net = require(Shared.Net)
 
 local DataService = require(script.Parent.DataService)
 local GameService = require(script.Parent.GameService)
+local WorldBuilder = require(script.Parent.WorldBuilder)
 local State = require(script.Parent.State)
 
 type PlayerData = Types.PlayerData
@@ -71,9 +72,11 @@ local function teleport(player: Player, zoneId: any)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if root then
-		-- (at the zone's base, by the egg, facing in)
-		local at = MapLayout.basePoint(zoneId, 20, 0) + Vector3.new(0, 5, 0)
-		root.CFrame = CFrame.lookAt(at, at - MapLayout.entrance(zoneId))
+		-- (in front of that tier's egg in the Egg Garden, facing it)
+		local egg = WorldBuilder.eggPositions[zoneId] or MapLayout.center(0)
+		local toward = (WorldBuilder.gardenCenter() - egg) * Vector3.new(1, 0, 1)
+		local at = Vector3.new(egg.X, 5, egg.Z) + (if toward.Magnitude > 1 then toward.Unit * 12 else Vector3.new(0, 0, 12))
+		root.CFrame = CFrame.lookAt(at, Vector3.new(egg.X, at.Y, egg.Z))
 		runtime.target = nil
 	end
 end

@@ -73,14 +73,13 @@ local big = BreakableService.spawnSpecial(1, "Big", { s = "Kitty", v = "Lava", z
 local guardian = BreakableService.spawnSpecial(1, "Guardian", { s = "Bear", v = "Normal", z = "Titan" }, Vector3.new(-20, 0, 20), 10000, 300)
 assert(big.part:FindFirstChildOfClass("Model"), "Big has a model")
 assert(#BreakableService.specials() == 2, "two specials")
-assert(#BreakableService.aliveInZone(1) == 24, "specials are not in the instant-break list")
+assert(#BreakableService.aliveInZone(1) == 0, "specials are not in the instant-break list")
 BreakableService.despawn(big)
 BreakableService.despawn(guardian)
 assert(#BreakableService.specials() == 0, "despawned")
 
--- Every bridge end must be open: no invisible border wall where a bridge meets a platform
+-- Every path off the Hub must be open: no invisible border wall where a bridge meets an island
 local MapLayout = Loader.require(Shared.Logic.MapLayout)
-local World1 = Loader.require(Shared.Config.World1)
 local function blocked(point)
 	for _, descendant in world:GetDescendants() do
 		if descendant:IsA("BasePart") and descendant.Name == "Border" then
@@ -94,16 +93,28 @@ local function blocked(point)
 	end
 	return false
 end
-for _, zone in World1.zones do
-	local center = MapLayout.center(zone.id)
-	for _, other in zone.links do
-		local direction = (MapLayout.center(other) - center).Unit
-		local edge = center + direction * (MapLayout.size(zone.id) / 2 + 0.5) + Vector3.new(0, 3, 0)
-		assert(not blocked(edge), ("zone %d is walled off toward zone %d"):format(zone.id, other))
+for _, side in { WorldBuilder.GARDEN_SIDE, WorldBuilder.PLAZA_SIDE, WorldBuilder.NEST_SIDE } do
+	local edge = MapLayout.center(0) + side * (MapLayout.HUB_SIZE / 2 + 0.5) + Vector3.new(0, 3, 0)
+	assert(not blocked(edge), "the hub is walled off toward " .. tostring(side))
+end
+local gardenEdge = WorldBuilder.gardenCenter() - WorldBuilder.GARDEN_SIDE * 60.5 + Vector3.new(0, 3, 0)
+assert(not blocked(gardenEdge), "the Egg Garden is walled off toward the Hub")
+local nestEdge = WorldBuilder.nestCenter() - WorldBuilder.NEST_SIDE * 74.5 + Vector3.new(0, 3, 0)
+assert(not blocked(nestEdge), "the Nest field is walled off toward the Hub")
+
+-- Every tier's egg is in the garden, and every locked one has its cage
+local cages = 0
+for _, descendant in world:GetDescendants() do
+	if descendant:IsA("BasePart") and descendant:HasTag("Gate") then
+		cages += 1
 	end
 end
-local hubEdge = MapLayout.center(0) + WorldBuilder.PLAZA_SIDE * (MapLayout.HUB_SIZE / 2 + 0.5) + Vector3.new(0, 3, 0)
-assert(not blocked(hubEdge), "the hub is walled off toward the plaza")
+local pads = 0
+for _, descendant in world:GetDescendants() do
+	if descendant:IsA("BasePart") and descendant:HasTag("NestPad") then
+		pads += 1
+	end
+end
 
 local booths = 0
 for _, descendant in world:GetDescendants() do
@@ -113,8 +124,8 @@ for _, descendant in world:GetDescendants() do
 end
 assert(booths == WorldBuilder.PLAZA_BOOTHS, "plaza booths")
 
-print(("zones=%d gates=%d eggs=%d sources=%d booths=%d"):format(zones, gates, eggs, sources, booths))
-local ok = zones == 11 and gates == 10 and eggs == 11 and sources == 10 * 24
+print(("zones=%d gates=%d eggs=%d cages=%d pads=%d sources=%d booths=%d"):format(zones, gates, eggs, cages, pads, sources, booths))
+local ok = zones == 1 and gates == 0 and eggs == 11 and cages == 10 and pads == 64 and sources == 0
 if not ok then
 	print("FAIL: unexpected world shape")
 	process.exit(1)

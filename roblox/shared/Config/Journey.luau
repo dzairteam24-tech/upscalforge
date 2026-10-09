@@ -16,7 +16,7 @@ export type Step = {
 }
 
 local steps: { Step } = {
-	{ event = "Break", goal = 20, text = "Break 20 coin sources", say = "Welcome to Green Valley! Let's start easy: break some coin sources.", reward = { gems = 10 } },
+	{ event = "Break", goal = 20, text = "Bring in 20 hauls with your team", say = "Welcome to Green Valley! Let's start easy: put a creature in your team and it earns coins for you.", reward = { gems = 10 } },
 	{ event = "Hatch", goal = 5, text = "Hatch 5 eggs", say = "Coins buy eggs, and eggs give friends. Hatch a few!", reward = { gems = 10, items = { { id = "Elixir_Coins_2", amount = 1 } } } },
 	{ event = "Zone", goal = 2, max = true, text = "Open the Flower Field", say = "The Flower Field is just past the gate. Can you open it?", reward = { gems = 40 } },
 	{ event = "Combo", goal = 10, max = true, text = "Reach a 10 combo", say = "Tap fast and keep breaking: combos give more coins.", reward = { gems = 15 } },

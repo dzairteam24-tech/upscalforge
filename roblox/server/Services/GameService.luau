@@ -61,6 +61,10 @@ end
 GameService.Progress = Signal.new() :: Signal.Signal<Player, string, number>
 -- Fired for every creature hatched (species, variant), even auto-deleted ones
 GameService.Hatched = Signal.new() :: Signal.Signal<Player, string, string>
+-- Fired each time a player's team brings in a haul (GATHER_SECONDS of earning): what breaking a coin source
+-- was before the zones were taken out (quests, the Journey, event tokens count it)
+GameService.Gathered = Signal.new() :: Signal.Signal<Player>
+local GATHER_SECONDS = 2
 
 function GameService.progress(player: Player, event: string, amount: number)
 	GameService.Progress:Fire(player, event, amount)
@@ -129,7 +133,6 @@ petDisplay.Name = "PetDisplay"
 petDisplay.Parent = ReplicatedStorage
 
 local rng = Random.new()
-local lastValidPosition: { [Player]: CFrame } = {}
 local hatchEggs: ((Player, number, number, number, string?) -> ())? = nil
 
 ---------------------------------------------------------------------------------------------------------------
@@ -982,7 +985,6 @@ local function onRemoving(player: Player)
 	if folder then
 		folder:Destroy()
 	end
-	lastValidPosition[player] = nil
 	State.remove(player)
 end
 
@@ -1067,26 +1069,16 @@ local function tickPlayer(player: Player, runtime: State.Runtime, data: PlayerDa
 		return
 	end
 
-	-- Zone tracking and gate enforcement
-	local zoneId = MapLayout.zoneAt(root.Position)
-	if zoneId and not data.unlockedZones[tostring(zoneId)] then
-		local back = lastValidPosition[player] or CFrame.new(MapLayout.center(0) + Vector3.new(0, 5, 20))
-		root.CFrame = back
-		GameService.notify(player, "Unlock this zone at its gate first", "error")
-		return
-	end
-	if zoneId then
-		lastValidPosition[player] = root.CFrame
-	end
-	if zoneId ~= runtime.zoneId and zoneId ~= nil then
-		runtime.zoneId = zoneId
-		if runtime.target then
-			local source = BreakableService.get(runtime.target)
-			if source and source.zoneId ~= zoneId then
-				runtime.target = nil
-			end
+	-- The team works for the furthest egg tier the player has unlocked (its element, rift and totems count)
+	local best = 1
+	for _, zone in World1.zones do
+		if zone.id > best and data.unlockedZones[tostring(zone.id)] then
+			best = zone.id
 		end
 	end
+	runtime.zoneId = best
+	-- (in the Hub the team can fight the World Boss)
+	local inHub = MapLayout.inHub(root.Position)
 
 	if not comboActive(runtime, now) then
 		runtime.combo = 0
@@ -1103,15 +1095,26 @@ local function tickPlayer(player: Player, runtime: State.Runtime, data: PlayerDa
 	end
 	-- Auto mode picks the next source; Magnet skills do it in manual mode too, in a wider radius
 	local magnet = Effects.get(runtime.effects, "Magnet")
-	-- In the Hub (zone 0) the only target is the World Boss
-	if not source and (runtime.auto or magnet > 1) and runtime.zoneId and runtime.zoneId >= 0 then
-		source = BreakableService.nearest(runtime.zoneId, root.Position, Constants.AUTO_TARGET_RANGE * magnet)
+	-- The only targets left are specials: the World Boss in the Hub, and Bigs and guardians in the Egg Garden
+	if not source and (runtime.auto or magnet > 1) then
+		source = if inHub then BreakableService.nearest(0, root.Position, Constants.AUTO_TARGET_RANGE * magnet) else nil
+		source = source or BreakableService.nearest(best, root.Position, Constants.AUTO_TARGET_RANGE * magnet)
 		runtime.target = if source then source.name else nil
 	end
 	player:SetAttribute("Target", runtime.target or "")
 
 	if source and #data.equipped > 0 then
 		GameService.collectFrom(player, source, runtime.power * dt)
+	elseif #data.equipped > 0 then
+		-- Otherwise the team earns by itself, wherever the player is: its power in coins a second
+		local raw = runtime.power * dt
+		GameService.addCoins(player, raw * coinMultiplier(runtime, data, nil, now, best, true), best, raw)
+		runtime.gather += dt
+		if runtime.gather >= GATHER_SECONDS then
+			runtime.gather -= GATHER_SECONDS
+			GameService.progress(player, "Break", 1)
+			GameService.Gathered:Fire(player)
+		end
 	end
 	-- Auto Tap cartridge: two taps per second without clicking
 	if source and (Gear.get(runtime.gear, "AutoTap") > 0 or runtime.passes.AutoTap) and now - runtime.lastTap >= 0.5 then

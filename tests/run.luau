@@ -1468,17 +1468,11 @@ test("Inventory.sanitize drops missing, away and duplicate creatures and respect
 	eq(holder.equipped[2], "c")
 end)
 
-test("MapLayout.zoneAt finds the zone under a position", function()
+test("MapLayout.inHub tells the Hub's island from the rest", function()
 	local MapLayoutT = R(Shared.Logic.MapLayout)
-	for _, zone in World1.zones do
-		eq(MapLayoutT.zoneAt(MapLayoutT.center(zone.id)), zone.id)
-	end
-	-- The middle of the bridge from Spawn Meadow to the (bigger) Hub
-	local toHub = (MapLayoutT.center(0) - MapLayoutT.center(1)).Unit
-	local midway = MapLayoutT.center(1) + toHub * (MapLayoutT.size(1) / 2 + MapLayoutT.HUB_BRIDGE / 2)
-	eq(MapLayoutT.zoneAt(midway), nil, "on the bridge between two platforms")
-	local between = MapLayoutT.center(2) + (MapLayoutT.center(1) - MapLayoutT.center(2)) * 0.5
-	eq(MapLayoutT.zoneAt(between), nil, "on the bridge between two zones")
+	assert(MapLayoutT.inHub(MapLayoutT.center(0)), "the Hub's middle")
+	local edge = MapLayoutT.center(0) + Vector3.new(0, 0, -(MapLayoutT.HUB_SIZE / 2 + MapLayoutT.HUB_BRIDGE / 2))
+	assert(not MapLayoutT.inHub(edge), "on the bridge to the Egg Garden")
 end)
 
 -- Events -----------------------------------------------------------------------------------------------------

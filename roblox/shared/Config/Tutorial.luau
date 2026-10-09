@@ -8,9 +8,8 @@ export type Step = {
 }
 
 local steps: { Step } = {
-	{ event = "Break", text = "Tap a coin pile to break it. Your creatures help you!", target = "Breakable" },
-	{ event = "Hatch", text = "Collect coins, then walk to the egg and hatch a new creature", target = "Egg" },
-	{ event = "Zone", text = "Keep collecting and unlock the next zone at a gate", target = "Gate" },
+	{ event = "Hatch", text = "Walk to the Egg Garden and hatch a creature: your team earns coins for you", target = "Egg" },
+	{ event = "Zone", text = "Save up and open the next egg's cage in the garden", target = "Gate" },
 }
 
 return {

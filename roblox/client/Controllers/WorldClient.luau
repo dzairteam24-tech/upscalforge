@@ -12,7 +12,6 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local World1 = require(Shared.Config.World1)
 local Format = require(Shared.Logic.Format)
-local MapLayout = require(Shared.Logic.MapLayout)
 local Reload = require(Shared.Logic.Reload)
 local Net = require(Shared.Net)
 
@@ -279,8 +278,18 @@ local function updateRift()
 	marker.Material = Enum.Material.Neon
 	marker.Color = Color3.fromRGB(142, 91, 217)
 	marker.Transparency = 0.55
-	marker.Size = Vector3.new(0.6, MapLayout.PLATFORM - 10, MapLayout.PLATFORM - 10)
-	marker.CFrame = CFrame.new(MapLayout.center(zoneId) + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	-- (a glowing ring round that tier's egg in the Egg Garden)
+	local egg: BasePart? = nil
+	for _, stand in CollectionService:GetTagged("EggStand") do
+		if stand:IsA("BasePart") and stand:GetAttribute("ZoneId") == zoneId and stand:GetAttribute("EggId") == nil then
+			egg = stand
+		end
+	end
+	if not egg then
+		return
+	end
+	marker.Size = Vector3.new(0.6, 26, 26)
+	marker.CFrame = CFrame.new(Vector3.new(egg.Position.X, 0.4, egg.Position.Z)) * CFrame.Angles(0, 0, math.rad(90))
 	local gui = Instance.new("BillboardGui")
 	gui.Size = UDim2.fromScale(22, 4) -- studs: smaller the farther it is, so it doesn't cover the zone names
 	gui.StudsOffset = Vector3.new(0, 34, 0)

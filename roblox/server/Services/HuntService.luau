@@ -20,6 +20,7 @@ local MapLayout = require(Shared.Logic.MapLayout)
 local BreakableService = require(script.Parent.BreakableService)
 local DataService = require(script.Parent.DataService)
 local GameService = require(script.Parent.GameService)
+local WorldBuilder = require(script.Parent.WorldBuilder)
 local State = require(script.Parent.State)
 
 local HuntService = {}
@@ -66,11 +67,17 @@ local function bigInterval(zoneId: number): number
 	return math.max(Hunt.BIG_MIN_INTERVAL, Hunt.BIG_INTERVAL / hunt)
 end
 
+-- Bigs and guardians show up in the Egg Garden, on the lawn in front of their tier's egg
+local function nearEgg(zoneId: number, spread: number): Vector3
+	local egg = WorldBuilder.eggPositions[zoneId] or MapLayout.center(0)
+	local inward = (WorldBuilder.gardenCenter() - egg) * Vector3.new(1, 0, 1)
+	inward = if inward.Magnitude > 1 then inward.Unit else Vector3.new(0, 0, 1)
+	local side = Vector3.new(inward.Z, 0, -inward.X)
+	return Vector3.new(egg.X, 0, egg.Z) + inward * (16 + rng:NextNumber() * spread) + side * (rng:NextNumber(-1, 1) * spread)
+end
+
 local function randomSpot(zoneId: number): Vector3
-	local center = MapLayout.center(zoneId)
-	local angle = rng:NextNumber() * math.pi * 2
-	local radius = rng:NextNumber(18, MapLayout.PLATFORM / 2 - 20)
-	return center + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+	return nearEgg(zoneId, 8)
 end
 
 local function spawnBig(zoneId: number)
@@ -90,8 +97,7 @@ local function spawnGuardian(zoneId: number, eligible: { Player })
 	local speciesId = zone.species[math.min(4, #zone.species)]
 	local pet = { s = speciesId, v = "Normal", z = "Titan" }
 	local coins = zone.restoreGoal * Hunt.GUARDIAN_COINS
-	local center = MapLayout.center(zoneId) + Vector3.new(0, 0, -12)
-	local source = BreakableService.spawnSpecial(zoneId, "Guardian", pet, center, coins, Hunt.GUARDIAN_LIFETIME)
+	local source = BreakableService.spawnSpecial(zoneId, "Guardian", pet, nearEgg(zoneId, 0), coins, Hunt.GUARDIAN_LIFETIME)
 	for _, player in eligible do
 		(source.special :: BreakableService.Special).eligible[player] = true
 	end

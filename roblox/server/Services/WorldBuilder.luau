@@ -1,7 +1,7 @@
--- Builds the World 1 map from config: zone platforms, bridges with gates, egg stands and the Hub.
+-- Builds the world: the Hub (the town), the Egg Garden north of it with every tier's egg, the Trading Plaza
+-- east and the Nest field west, where each player's incubators hatch eggs in real time. The zones of
+-- Config/World1 are the egg tiers now: unlocking one opens its egg's cage in the garden.
 -- Everything is made of simple blocks so the game runs without uploaded assets.
--- Each zone is closed by a tall themed wall (Config/MapTheme) and the bridges are walled corridors with a
--- solid gate, so a player sees the zone they're in and has to unlock a gate to find out what's next.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -11,7 +11,6 @@ local PetModel = require(Shared.PetModel)
 local MapLayout = require(Shared.Logic.MapLayout)
 local Nest = require(Shared.Logic.Nest)
 local NestConfig = require(Shared.Config.Nest)
-local MapTheme = require(Shared.Config.MapTheme)
 local HubBuilder = require(script.Parent.HubBuilder)
 
 local WorldBuilder = {}
@@ -22,6 +21,8 @@ WorldBuilder.eggPositions = {} :: { [number]: Vector3 }
 WorldBuilder.PLAZA_SIDE = Vector3.new(1, 0, 0)
 -- The Nest field: the players' islands with their incubators (NestService), west of the Hub
 WorldBuilder.NEST_SIDE = Vector3.new(-1, 0, 0)
+-- The Egg Garden, north of the Hub
+WorldBuilder.GARDEN_SIDE = Vector3.new(0, 0, -1)
 WorldBuilder.PLAZA_BOOTHS = 8
 
 local buildEgg: (parent: Instance, position: Vector3, color: Color3, size: number, title: string, golden: boolean) -> BasePart
@@ -59,309 +60,24 @@ local function label(parent: Instance, text: string, size: UDim2, offset: Vector
 	gui.Parent = parent
 end
 
-local WALL_H = MapTheme.WALL_HEIGHT
-local WALL_T = MapTheme.WALL_THICKNESS
-
--- A straight piece of wall from the ground up, with a lighter band along its top. `size` is the wall's
--- footprint (X and Z); `name` lets the smoke test find the zone borders. `height` is the wall's (WALL_H).
-local function wall(parent: Instance, name: string, position: Vector3, size: Vector3, style: { wall: Enum.Material, wallColor: Color3, capColor: Color3 }, height: number?)
-	local h = height or WALL_H
-	part({
-		Name = name,
-		Size = Vector3.new(size.X, h + 4, size.Z),
-		Position = Vector3.new(position.X, h / 2 - 2, position.Z),
-		Color = style.wallColor,
-		Material = style.wall,
-	}).Parent = parent
-	part({
-		Name = "WallCap",
-		Size = Vector3.new(size.X + 1, 2, size.Z + 1),
-		Position = Vector3.new(position.X, h + 1, position.Z),
-		Color = style.capColor,
-		CanCollide = false,
-	}).Parent = parent
-end
-
--- A square tower, a bit wider and taller than the wall: on the corners and on each side of an entrance.
-local function tower(parent: Instance, position: Vector3, style: { wall: Enum.Material, wallColor: Color3, capColor: Color3 })
-	local width = WALL_T + 3
-	part({
-		Name = "Tower",
-		Size = Vector3.new(width, WALL_H + 10, width),
-		Position = Vector3.new(position.X, (WALL_H + 10) / 2 - 4, position.Z),
-		Color = style.wallColor:Lerp(Color3.new(0, 0, 0), 0.12),
-		Material = style.wall,
-	}).Parent = parent
-	part({
-		Name = "TowerCap",
-		Size = Vector3.new(width + 2, 3, width + 2),
-		Position = Vector3.new(position.X, WALL_H + 7.5, position.Z),
-		Color = style.capColor,
-		CanCollide = false,
-	}).Parent = parent
-end
-
 local HUB_GRASS = Color3.fromRGB(118, 190, 92)
 
--- The base just inside each zone's entrance: the stations a player keeps going back to (beside the egg), so
--- they never have to walk back to the town for them
-local STATIONS = {
-	{ name = "Upgrades", icon = "⬆️", ui = "Shop", color = Color3.fromRGB(255, 196, 64), across = -34 },
-	{ name = "Gifts", icon = "🎁", ui = "Daily", color = Color3.fromRGB(240, 96, 120), across = -20 },
-	{ name = "Pets", icon = "🐾", ui = "Pets", color = Color3.fromRGB(110, 200, 140), across = 20 },
-	{ name = "Teleport", icon = "✨", ui = "Teleport", color = Color3.fromRGB(120, 160, 255), across = 34 },
-}
-local STATION_INWARD = 14 -- studs in from the entrance edge
-
-local function buildStations(zone: World1.Zone, model: Instance)
-	local theme = MapTheme.get(zone.id)
-	local folder = Instance.new("Model")
-	folder.Name = "Stations"
-	local center = MapLayout.center(zone.id)
-	for _, station in STATIONS do
-		local at = MapLayout.basePoint(zone.id, STATION_INWARD, station.across)
-		local facing = CFrame.lookAt(at, Vector3.new(center.X, at.Y, center.Z)) -- toward the zone
-		part({
-			Name = "Station",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(1.2, 9, 9),
-			CFrame = CFrame.new(at + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-			Color = theme.wallColor,
-		}).Parent = folder
-		local stand = part({
-			Name = station.name,
-			Size = Vector3.new(5, 5, 3),
-			CFrame = facing * CFrame.new(0, 3.7, 0),
-			Color = station.color,
-		})
-		stand.Parent = folder
-		part({
-			Name = "Glow",
-			Shape = Enum.PartType.Ball,
-			Size = Vector3.one * 2.6,
-			Position = at + Vector3.new(0, 7.6, 0),
-			Color = station.color,
-			Material = Enum.Material.Neon,
-			CanCollide = false,
-		}).Parent = folder
-		label(stand, station.icon .. " " .. station.name, UDim2.fromScale(9, 2), Vector3.new(0, 7, 0))
-		local prompt = Instance.new("ProximityPrompt")
-		prompt.ActionText = "Open"
-		prompt.ObjectText = station.name
-		prompt.MaxActivationDistance = 12
-		prompt.RequiresLineOfSight = false
-		prompt:SetAttribute("OpenUI", station.ui)
-		prompt.Parent = stand
-	end
-	folder.Parent = model
-end
-
--- The zone's ground: a square with rounded corners (a cross of two slabs and a disc in each corner)
-local function buildGround(zone: World1.Zone, center: Vector3, model: Instance)
-	local size, r = MapLayout.PLATFORM, MapLayout.CORNER
-	local material = MapTheme.get(zone.id).ground
-	local pieces = {
-		{ size = Vector3.new(size - 2 * r, 4, size), at = center },
-		{ size = Vector3.new(size, 4, size - 2 * r), at = center },
-	}
-	for _, sx in { -1, 1 } do
-		for _, sz in { -1, 1 } do
-			table.insert(pieces, { disc = true, at = center + Vector3.new(sx, 0, sz) * (size / 2 - r) })
-		end
-	end
-	for _, piece in pieces do
-		local ground = part({
-			Name = "Ground",
-			Shape = if piece.disc then Enum.PartType.Cylinder else Enum.PartType.Block,
-			Size = if piece.disc then Vector3.new(4, 2 * r, 2 * r) else piece.size,
-			CFrame = CFrame.new(piece.at + Vector3.new(0, -2, 0)) * (if piece.disc then CFrame.Angles(0, 0, math.rad(90)) else CFrame.identity),
-			Color = zone.color,
-			Material = material,
-		})
-		ground:SetAttribute("BaseColor", zone.color)
-		ground.Parent = model
-	end
-end
-
--- A piece of wall turned to lie along `direction` (for the rounded corners)
-local function turnedWall(parent: Instance, at: Vector3, direction: Vector3, length: number, style: { wall: Enum.Material, wallColor: Color3, capColor: Color3 })
-	-- (turned about Y so its length, -Z, runs along `direction`)
-	local frame = CFrame.new(at.X, 0, at.Z) * CFrame.Angles(0, math.atan2(-direction.X, -direction.Z), 0)
-	part({
-		Name = "BorderCorner",
-		Size = Vector3.new(WALL_T, WALL_H + 4, length),
-		CFrame = frame * CFrame.new(0, WALL_H / 2 - 2, 0),
-		Color = style.wallColor,
-		Material = style.wall,
-	}).Parent = parent
-	part({
-		Name = "WallCap",
-		Size = Vector3.new(WALL_T + 1, 2, length + 1),
-		CFrame = frame * CFrame.new(0, WALL_H + 1, 0),
-		Color = style.capColor,
-		CanCollide = false,
-	}).Parent = parent
-end
-
--- The low border round a zone, following its rounded corners, with an opening (and towers and an arch)
--- toward each zone it links to
-local function buildBorder(zone: World1.Zone, center: Vector3, model: Instance, openSides: { Vector3 })
-	local theme = MapTheme.get(zone.id)
-	local walls = Instance.new("Model")
-	walls.Name = "Walls"
-	local half, r, gap = MapLayout.PLATFORM / 2, MapLayout.CORNER, MapLayout.BRIDGE_WIDTH
-	for _, side in { Vector3.new(1, 0, 0), Vector3.new(-1, 0, 0), Vector3.new(0, 0, 1), Vector3.new(0, 0, -1) } do
-		local isX = side.X ~= 0
-		local open = table.find(openSides, side) ~= nil
-		local straight = half - r -- from the middle of the side to where the corner starts
-		local segments = if open
-			then { { offset = -(straight + gap / 2) / 2, length = straight - gap / 2 }, { offset = (straight + gap / 2) / 2, length = straight - gap / 2 } }
-			else { { offset = 0, length = 2 * straight } }
-		local line = center + side * (half + WALL_T / 2)
-		for _, segment in segments do
-			local along = if isX then Vector3.new(0, 0, segment.offset) else Vector3.new(segment.offset, 0, 0)
-			wall(walls, "Border", line + along, if isX then Vector3.new(WALL_T, 0, segment.length) else Vector3.new(segment.length, 0, WALL_T), theme)
-		end
-		if open then
-			local across = if isX then Vector3.new(0, 0, 1) else Vector3.new(1, 0, 0)
-			local edge = gap / 2 + (WALL_T + 3) / 2
-			tower(walls, line + across * edge, theme)
-			tower(walls, line - across * edge, theme)
-			part({
-				Name = "Arch",
-				Size = if isX then Vector3.new(WALL_T + 2, 5, gap + 2) else Vector3.new(gap + 2, 5, WALL_T + 2),
-				Position = line + Vector3.new(0, WALL_H - 2.5, 0),
-				Color = theme.capColor,
-				CanCollide = false,
-			}).Parent = walls
-		end
-	end
-	-- The corners: a quarter circle each, in short straight pieces
-	local steps = 4
-	local radius = r + WALL_T / 2
-	for _, sx in { -1, 1 } do
-		for _, sz in { -1, 1 } do
-			local pivot = center + Vector3.new(sx, 0, sz) * (half - r)
-			for i = 1, steps do
-				local a = (i - 0.5) / steps * math.pi / 2
-				local out = Vector3.new(sx * math.cos(a), 0, sz * math.sin(a))
-				local tangent = Vector3.new(-out.Z * sx * sz, 0, out.X * sx * sz)
-				turnedWall(walls, pivot + out * radius, tangent, 2 * radius * math.sin(math.pi / 4 / steps) + 1, theme)
-			end
-		end
-	end
-	walls.Parent = model
-end
-
-local function buildZone(zone: World1.Zone, folder: Folder)
-	local center = MapLayout.center(zone.id)
+-- The Hub: the floating island town (HubBuilder), open toward the Egg Garden, the plaza and the Nest
+local function buildHub(folder: Folder)
+	local center = MapLayout.center(0)
 	local model = Instance.new("Model")
-	model.Name = "Zone_" .. zone.id
-	model:SetAttribute("ZoneId", zone.id)
-
-	-- Border so players can't fall off, with an opening wherever a bridge connects
-	local half = MapLayout.PLATFORM / 2
-	local openSides: { Vector3 } = {}
-	for _, other in zone.links do
-		local delta = MapLayout.center(other) - center
-		if math.abs(delta.X) > math.abs(delta.Z) then
-			table.insert(openSides, Vector3.new(math.sign(delta.X), 0, 0))
-		else
-			table.insert(openSides, Vector3.new(0, 0, math.sign(delta.Z)))
-		end
-	end
-	if zone.id == 0 then
-		-- The Hub is a floating island town instead of a walled zone
-		local ground = part({
-			Name = "Ground",
-			Size = Vector3.new(MapLayout.HUB_SIZE, 4, MapLayout.HUB_SIZE),
-			Position = center + Vector3.new(0, -2, 0),
-			Material = MapTheme.get(zone.id).ground,
-		})
-		ground.Parent = model
-		table.insert(openSides, WorldBuilder.PLAZA_SIDE)
-		table.insert(openSides, WorldBuilder.NEST_SIDE)
-		ground.Color = HUB_GRASS
-		ground:SetAttribute("BaseColor", HUB_GRASS)
-		HubBuilder.build(model, folder, openSides)
-		model.Parent = folder
-		return
-	end
-	buildGround(zone, center, model)
-	buildBorder(zone, center, model, openSides)
-	buildStations(zone, model)
-
-	-- A few block "trees" and rocks for decoration, placed on a ring so they don't block sources (nor the
-	-- base: the egg and the stations)
-	local rng = Random.new(zone.id * 97)
-	local entrance = MapLayout.entrance(zone.id)
-	for i = 1, 18 do
-		local angle = (i / 18) * math.pi * 2 + rng:NextNumber(-0.1, 0.1)
-		local radius = half - 8
-		local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
-		if direction:Dot(entrance) > 0.4 then
-			continue
-		end
-		local pos = center + direction * radius
-		local trunk = part({
-			Name = "Decor",
-			Size = Vector3.new(2, 6, 2),
-			Position = pos + Vector3.new(0, 3, 0),
-			Color = Color3.fromRGB(120, 85, 60),
-		})
-		local leaves = part({
-			Name = "Decor",
-			Size = Vector3.new(7, 6, 7),
-			Position = pos + Vector3.new(0, 8, 0),
-			Color = zone.color:Lerp(Color3.new(0, 0, 0), 0.25),
-		})
-		leaves:SetAttribute("BaseColor", leaves.Color)
-		trunk.Parent = model
-		leaves.Parent = model
-	end
-
-	-- Zone name sign
-	local sign = part({
-		Name = "Sign",
-		Size = Vector3.new(1, 1, 1),
-		Position = center + Vector3.new(0, 26, 0),
-		Transparency = 1,
-		CanCollide = false,
-		CanQuery = false,
+	model.Name = "Zone_0"
+	model:SetAttribute("ZoneId", 0)
+	local ground = part({
+		Name = "Ground",
+		Size = Vector3.new(MapLayout.HUB_SIZE, 4, MapLayout.HUB_SIZE),
+		Position = center + Vector3.new(0, -2, 0),
+		Color = HUB_GRASS,
+		Material = Enum.Material.Grass,
 	})
-	label(sign, zone.name, UDim2.fromScale(18, 3.6), Vector3.zero)
-	sign.Parent = model
-
-	-- Egg stand
-	if zone.eggPrice > 0 then
-		local eggPos = MapLayout.eggPosition(zone.id)
-		local egg = buildEgg(model, eggPos, zone.color, 8, zone.name .. " Egg", false)
-		egg:SetAttribute("ZoneId", zone.id)
-		egg:AddTag("EggStand")
-		WorldBuilder.eggPositions[zone.id] = egg.Position
-	end
-
-	-- The Legendary Egg stands next to the last zone's egg
-	local legendary = World1.eggs[World1.LEGENDARY_EGG]
-	if legendary and legendary.zone == zone.id then
-		local eggPos = MapLayout.basePoint(zone.id, 30, 17) -- beside the zone's egg
-		local egg = buildEgg(model, eggPos, Color3.fromRGB(255, 200, 70), 9, legendary.name, true)
-		local sparkles = Instance.new("ParticleEmitter")
-		sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-		sparkles.Color = ColorSequence.new(Color3.fromRGB(255, 230, 140), Color3.fromRGB(200, 140, 255))
-		sparkles.LightEmission = 0.8
-		sparkles.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 0) })
-		sparkles.Lifetime = NumberRange.new(1, 1.8)
-		sparkles.Speed = NumberRange.new(1, 2.5)
-		sparkles.SpreadAngle = Vector2.new(180, 180)
-		sparkles.Rate = 20
-		sparkles.Parent = egg
-		egg:SetAttribute("ZoneId", zone.id)
-		egg:SetAttribute("EggId", legendary.id)
-		egg:AddTag("EggStand")
-		WorldBuilder.eggPositions[legendary.id] = egg.Position
-	end
-
+	ground:SetAttribute("BaseColor", HUB_GRASS)
+	ground.Parent = model
+	HubBuilder.build(model, folder, { WorldBuilder.GARDEN_SIDE, WorldBuilder.PLAZA_SIDE, WorldBuilder.NEST_SIDE })
 	model.Parent = folder
 end
 
@@ -424,91 +140,89 @@ function buildEgg(parent: Instance, position: Vector3, color: Color3, size: numb
 	return egg
 end
 
-local function buildBridge(a: number, b: number, folder: Folder)
-	local ca, cb = MapLayout.center(a), MapLayout.center(b)
-	-- Middle of the gap between the two platforms (they can differ in size)
-	local dir = (cb - ca).Unit
-	local mid = ((ca + dir * MapLayout.size(a) / 2) + (cb - dir * MapLayout.size(b) / 2)) / 2
-	local delta = cb - ca
-	local isX = math.abs(delta.X) > math.abs(delta.Z)
-	local length = (if isX then math.abs(delta.X) else math.abs(delta.Z)) - (MapLayout.size(a) + MapLayout.size(b)) / 2
-	local bridge = part({
-		Name = ("Bridge_%d_%d"):format(a, b),
-		Size = if isX
-			then Vector3.new(length, 4, MapLayout.BRIDGE_WIDTH)
-			else Vector3.new(MapLayout.BRIDGE_WIDTH, 4, length),
-		Position = mid + Vector3.new(0, -2, 0),
-		Color = if a == 0 then Color3.fromRGB(150, 110, 70) else Color3.fromRGB(150, 140, 125),
-		Material = if a == 0 then Enum.Material.WoodPlanks else Enum.Material.Cobblestone,
-	})
-	bridge.Parent = folder
+---------------------------------------------------------------------------------------------------------------
+-- The Egg Garden, north of the Hub: every egg in one place, from the first to the Legendary, on an arc round
+-- a lawn. A locked egg stands in a cage ("Gate", drawn by WorldClient) that opens when its tier is unlocked.
 
-	-- The bridge out of the Hub stays an open wooden bridge (the Hub is a floating island) and its gate
-	-- never closes (the first zone is free), so it gets rails and no gate frame.
-	if a == 0 then
-		for _, sideSign in { -1, 1 } do
-			local offset = if isX
-				then Vector3.new(0, 1.5, sideSign * (MapLayout.BRIDGE_WIDTH / 2 + 0.5))
-				else Vector3.new(sideSign * (MapLayout.BRIDGE_WIDTH / 2 + 0.5), 1.5, 0)
-			part({
-				Name = "Rail",
-				Size = if isX then Vector3.new(length, 3, 1) else Vector3.new(1, 3, length),
-				Position = mid + offset,
-				Color = Color3.fromRGB(120, 84, 52),
-				Material = Enum.Material.Wood,
-			}).Parent = folder
+local GARDEN_SIZE = Vector3.new(240, 0, 120)
+local GARDEN_CORNER = 30
+
+function WorldBuilder.gardenCenter(): Vector3
+	return MapLayout.center(0) + WorldBuilder.GARDEN_SIDE * (MapLayout.HUB_SIZE / 2 + MapLayout.HUB_BRIDGE + GARDEN_SIZE.Z / 2)
+end
+
+-- Where a tier's egg stands (its zone id), on the arc; the Legendary Egg in the middle
+function WorldBuilder.gardenEgg(zoneId: number): Vector3
+	local center = WorldBuilder.gardenCenter()
+	local tiers = 0
+	for _, zone in World1.zones do
+		if zone.eggPrice > 0 then
+			tiers += 1
 		end
 	end
+	local a = math.rad(-72 + (zoneId - 1) * 144 / math.max(1, tiers - 1))
+	-- (north is -Z: the arc bows away from the bridge)
+	return center + Vector3.new(math.sin(a) * 100, 0, 28 - math.cos(a) * 72)
+end
 
-	-- Corridor walls, so from a bridge you only see the gate ahead and the zone behind
-	local style = MapTheme.CORRIDOR
-	local walledSides: { number } = if a == 0 then {} else { -1, 1 }
-	for _, sideSign in walledSides do
-		local offset = if isX
-			then Vector3.new(0, 0, sideSign * (MapLayout.BRIDGE_WIDTH / 2 + WALL_T / 2))
-			else Vector3.new(sideSign * (MapLayout.BRIDGE_WIDTH / 2 + WALL_T / 2), 0, 0)
-		wall(folder, "CorridorWall", mid + offset, if isX then Vector3.new(length, 0, WALL_T) else Vector3.new(WALL_T, 0, length), style)
+local function buildGardenGround(model: Instance, center: Vector3)
+	local sx, sz, r = GARDEN_SIZE.X, GARDEN_SIZE.Z, GARDEN_CORNER
+	local color = Color3.fromRGB(123, 201, 111)
+	local pieces = {
+		{ size = Vector3.new(sx - 2 * r, 4, sz), at = center },
+		{ size = Vector3.new(sx, 4, sz - 2 * r), at = center },
+	}
+	for _, ax in { -1, 1 } do
+		for _, az in { -1, 1 } do
+			table.insert(pieces, { disc = true, at = center + Vector3.new(ax * (sx / 2 - r), 0, az * (sz / 2 - r)) })
+		end
 	end
-
-	-- Gate in the middle: a solid door in an iron frame, colored like the zone behind it. Clients hide the
-	-- door and turn off its collision locally once both sides are unlocked; the frame stays.
-	local behind = World1.zonesById[b]
-	local doorHeight = WALL_H - 2 -- (too tall to jump over)
-	local across = if isX then Vector3.new(0, 0, 1) else Vector3.new(1, 0, 0)
-	local iron = Color3.fromRGB(58, 60, 68)
-	for _, sideSign in walledSides do
-		part({
-			Name = "GatePost",
-			Size = Vector3.new(WALL_T + 2, WALL_H + 8, WALL_T + 2),
-			Position = mid + across * sideSign * (MapLayout.BRIDGE_WIDTH / 2 + WALL_T / 2) + Vector3.new(0, (WALL_H + 8) / 2 - 2, 0),
-			Color = iron,
-			Material = Enum.Material.Metal,
-		}).Parent = folder
+	for _, piece in pieces do
+		local ground = part({
+			Name = "Ground",
+			Shape = if piece.disc then Enum.PartType.Cylinder else Enum.PartType.Block,
+			Size = if piece.disc then Vector3.new(4, 2 * r, 2 * r) else piece.size,
+			CFrame = CFrame.new(piece.at + Vector3.new(0, -2, 0)) * (if piece.disc then CFrame.Angles(0, 0, math.rad(90)) else CFrame.identity),
+			Color = color,
+			Material = Enum.Material.Grass,
+		})
+		ground:SetAttribute("BaseColor", color)
+		ground.Parent = model
 	end
+	-- A paved path from the bridge to the Legendary Egg
 	part({
-		Name = "GateLintel",
-		Transparency = if a == 0 then 1 else 0,
-		Size = if isX then Vector3.new(WALL_T + 2, 6, MapLayout.BRIDGE_WIDTH + 2) else Vector3.new(MapLayout.BRIDGE_WIDTH + 2, 6, WALL_T + 2),
-		Position = mid + Vector3.new(0, doorHeight + 3, 0),
-		Color = behind.color,
-		Material = Enum.Material.Neon,
+		Name = "Path",
+		Size = Vector3.new(MapLayout.BRIDGE_WIDTH - 6, 0.3, sz / 2),
+		Position = center + Vector3.new(0, 0.15, sz / 4),
+		Color = Color3.fromRGB(226, 208, 172),
+		Material = Enum.Material.Pavement,
 		CanCollide = false,
-	}).Parent = folder
-	local gate = part({
-		Name = ("Gate_%d_%d"):format(a, b),
-		Size = if isX
-			then Vector3.new(2, doorHeight, MapLayout.BRIDGE_WIDTH)
-			else Vector3.new(MapLayout.BRIDGE_WIDTH, doorHeight, 2),
-		Position = mid + Vector3.new(0, doorHeight / 2, 0),
-		Color = behind.color:Lerp(Color3.new(0, 0, 0), 0.35),
-		Material = Enum.Material.Metal,
+	}).Parent = model
+	-- Invisible walls round the edge (open toward the bridge)
+	local half = Vector3.new(sx / 2, 0, sz / 2)
+	part({ Name = "Border", Size = Vector3.new(sx, 12, 1), Position = center + Vector3.new(0, 6, -half.Z - 0.5), Transparency = 1 }).Parent = model
+	for _, ax in { -1, 1 } do
+		part({ Name = "Border", Size = Vector3.new(1, 12, sz), Position = center + Vector3.new(ax * (half.X + 0.5), 6, 0), Transparency = 1 }).Parent = model
+		local length = (sx - MapLayout.BRIDGE_WIDTH) / 2
+		part({ Name = "Border", Size = Vector3.new(length, 12, 1), Position = center + Vector3.new(ax * (MapLayout.BRIDGE_WIDTH / 2 + length / 2), 6, half.Z + 0.5), Transparency = 1 }).Parent = model
+	end
+end
+
+-- The cage round a locked egg: a door (a "Gate" between the tier before and this one) on each side
+local function buildCage(model: Instance, zoneId: number, at: Vector3)
+	local zone = World1.zonesById[zoneId]
+	local cage = part({
+		Name = ("Gate_%d_%d"):format(zoneId - 1, zoneId),
+		Size = Vector3.new(15, 17, 15),
+		Position = at + Vector3.new(0, 8.5, 0),
+		Color = zone.color:Lerp(Color3.new(0, 0, 0), 0.35),
+		Material = Enum.Material.Glass,
 	})
-	gate:SetAttribute("ZoneA", a)
-	gate:SetAttribute("ZoneB", b)
-	gate:AddTag("Gate")
-	-- The lock, the zone and the price are painted on both faces of the door (WorldClient fills them in)
-	local faces: { Enum.NormalId } = if isX then { Enum.NormalId.Left, Enum.NormalId.Right } else { Enum.NormalId.Front, Enum.NormalId.Back }
-	for _, face in faces do
+	cage:SetAttribute("ZoneA", zoneId - 1)
+	cage:SetAttribute("ZoneB", zoneId)
+	cage:AddTag("Gate")
+	-- The lock, the tier and the price on each face (WorldClient fills them in)
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right } do
 		local gui = Instance.new("SurfaceGui")
 		gui.Face = face
 		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
@@ -516,20 +230,89 @@ local function buildBridge(a: number, b: number, folder: Folder)
 		gui.LightInfluence = 0
 		local text = Instance.new("TextLabel")
 		text.Name = "Text"
+		text.Size = UDim2.fromScale(0.9, 0.5)
 		text.AnchorPoint = Vector2.new(0.5, 0.5)
 		text.Position = UDim2.fromScale(0.5, 0.45)
-		text.Size = UDim2.fromScale(0.85, 0.4)
 		text.BackgroundTransparency = 1
-		text.Font = Enum.Font.FredokaOne
 		text.TextScaled = true
+		text.Font = Enum.Font.FredokaOne
 		text.TextColor3 = Color3.new(1, 1, 1)
 		text.TextStrokeTransparency = 0.2
-		text.Text = ""
 		text.Parent = gui
-		gui.Parent = gate
+		gui.Parent = cage
 	end
-	gate.Parent = folder
+	cage.Parent = model
 end
+
+local function buildEggGarden(folder: Folder)
+	local center = WorldBuilder.gardenCenter()
+	local model = Instance.new("Model")
+	model.Name = "EggGarden"
+	buildGardenGround(model, center)
+	local sign = part({ Name = "Sign", Size = Vector3.one, Position = center + Vector3.new(0, 26, 10), Transparency = 1, CanCollide = false, CanQuery = false })
+	label(sign, "🥚 Egg Garden", UDim2.fromScale(18, 3.6), Vector3.zero)
+	sign.Parent = model
+	for _, zone in World1.zones do
+		if zone.eggPrice <= 0 then
+			continue
+		end
+		local at = WorldBuilder.gardenEgg(zone.id)
+		local egg = buildEgg(model, at, zone.color, 8, zone.name .. " Egg", false)
+		egg:SetAttribute("ZoneId", zone.id)
+		egg:AddTag("EggStand")
+		WorldBuilder.eggPositions[zone.id] = egg.Position
+		if zone.gateCost > 0 then
+			buildCage(model, zone.id, at)
+		end
+	end
+	-- The Legendary Egg in the middle, caged until its tier is unlocked
+	local legendary = World1.eggs[World1.LEGENDARY_EGG]
+	if legendary then
+		local at = center + Vector3.new(0, 0, -6)
+		local egg = buildEgg(model, at, Color3.fromRGB(255, 200, 70), 9, legendary.name, true)
+		local sparkles = Instance.new("ParticleEmitter")
+		sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		sparkles.Color = ColorSequence.new(Color3.fromRGB(255, 230, 140), Color3.fromRGB(200, 140, 255))
+		sparkles.LightEmission = 0.8
+		sparkles.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 0) })
+		sparkles.Lifetime = NumberRange.new(1, 1.8)
+		sparkles.Speed = NumberRange.new(1, 2.5)
+		sparkles.SpreadAngle = Vector2.new(180, 180)
+		sparkles.Rate = 20
+		sparkles.Parent = egg
+		egg:SetAttribute("ZoneId", legendary.zone)
+		egg:SetAttribute("EggId", legendary.id)
+		egg:AddTag("EggStand")
+		WorldBuilder.eggPositions[legendary.id] = egg.Position
+		buildCage(model, legendary.zone, at)
+	end
+	model.Parent = folder
+end
+
+-- The wooden bridge from the Hub to the Egg Garden
+local function buildGardenBridge(folder: Folder)
+	local hubEdge = MapLayout.center(0) + WorldBuilder.GARDEN_SIDE * (MapLayout.HUB_SIZE / 2)
+	local gardenEdge = WorldBuilder.gardenCenter() - WorldBuilder.GARDEN_SIDE * (GARDEN_SIZE.Z / 2)
+	local mid = (hubEdge + gardenEdge) / 2
+	local length = (hubEdge - gardenEdge).Magnitude
+	part({
+		Name = "Bridge_0_1",
+		Size = Vector3.new(MapLayout.BRIDGE_WIDTH, 4, length),
+		Position = mid + Vector3.new(0, -2, 0),
+		Color = Color3.fromRGB(150, 110, 70),
+		Material = Enum.Material.WoodPlanks,
+	}).Parent = folder
+	for _, sideSign in { -1, 1 } do
+		part({
+			Name = "Rail",
+			Size = Vector3.new(1, 3, length),
+			Position = mid + Vector3.new(sideSign * (MapLayout.BRIDGE_WIDTH / 2 + 0.5), 1.5, 0),
+			Color = Color3.fromRGB(120, 84, 52),
+			Material = Enum.Material.Wood,
+		}).Parent = folder
+	end
+end
+
 
 -- Professor Cubo: the Journey's NPC near the spawn. Talking to him opens the Quests window.
 local function buildProfessor(folder: Folder)
@@ -828,20 +611,9 @@ function WorldBuilder.build()
 	local folder = Instance.new("Folder")
 	folder.Name = "World"
 
-	for _, zone in World1.zones do
-		buildZone(zone, folder)
-	end
-	local done: { [string]: boolean } = {}
-	for _, zone in World1.zones do
-		for _, other in zone.links do
-			local a, b = math.min(zone.id, other), math.max(zone.id, other)
-			local id = a .. "_" .. b
-			if not done[id] then
-				done[id] = true
-				buildBridge(a, b, folder)
-			end
-		end
-	end
+	buildHub(folder)
+	buildGardenBridge(folder)
+	buildEggGarden(folder)
 	buildProfessor(folder)
 	buildPlaza(folder)
 	buildNestField(folder)

@@ -52,7 +52,7 @@ local WEEKLY_QUEST_REWARD: Reward = { xp = 400, gems = 60, tickets = 5 }
 
 local DAILY_TEMPLATES: { QuestTemplate } = {
 	{ id = "d_coins", event = "Coins", text = "Collect {goal} coins", goal = 150, scaleWithEgg = true },
-	{ id = "d_break", event = "Break", text = "Break {goal} coin sources", goal = 150 },
+	{ id = "d_break", event = "Break", text = "Bring in {goal} hauls with your team", goal = 150 },
 	{ id = "d_hatch", event = "Hatch", text = "Hatch {goal} eggs", goal = 30 },
 	{ id = "d_combo", event = "Combo", text = "Reach a {goal} combo", goal = 20, max = true },
 	{ id = "d_fuse", event = "Fuse", text = "Fuse {goal} times", goal = 2 },
@@ -63,7 +63,7 @@ local DAILY_TEMPLATES: { QuestTemplate } = {
 
 local WEEKLY_TEMPLATES: { QuestTemplate } = {
 	{ id = "w_coins", event = "Coins", text = "Collect {goal} coins", goal = 1500, scaleWithEgg = true },
-	{ id = "w_break", event = "Break", text = "Break {goal} coin sources", goal = 1500 },
+	{ id = "w_break", event = "Break", text = "Bring in {goal} hauls with your team", goal = 1500 },
 	{ id = "w_hatch", event = "Hatch", text = "Hatch {goal} eggs", goal = 300 },
 	{ id = "w_big", event = "Big", text = "Defeat {goal} Bigs", goal = 5 },
 	{ id = "w_guardian", event = "Guardian", text = "Defeat {goal} zone guardian", goal = 1, needs = "Restored" },
