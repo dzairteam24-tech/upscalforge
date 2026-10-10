@@ -318,6 +318,7 @@ test("the Wild: biomes get harder, the treadmill trains speed, eggs 4-8 only com
 	end
 	assert(Wild.outruns(WildConfig.START_SPEED, WildConfig.BIOMES[1]), "a new player outruns the first biome")
 	assert(Wild.needs(WildConfig.BIOMES[#WildConfig.BIOMES]) <= WildConfig.MAX_SPEED, "the last biome can be escaped")
+	assert(not Wild.outruns(WildConfig.START_SPEED, WildConfig.BIOMES[2]), "the second biome needs training")
 	assert(Wild.train(16, 2, 10) > Wild.train(16, 1, 10), "a better treadmill trains faster")
 	assert(Wild.trainRate(1, 40) < Wild.trainRate(1, 16), "harder when already fast")
 	eq(Wild.train(WildConfig.MAX_SPEED, 5, 100), WildConfig.MAX_SPEED, "capped")

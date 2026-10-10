@@ -1,6 +1,6 @@
 --!strict
--- The Wild (Config/Wild, Logic/Wild, built by WorldService): a player steals an egg from a nest and runs back
--- through the gate with it; the biome's guardians chase them (and any guardian they run past), and if one
+-- The Wild (Config/Wild, Logic/Wild, built by WorldService): a player steals an egg from a nest; a moment later
+-- the nearest of that biome's guardians comes after them, inside its biome only (out of it they're safe). If it
 -- catches them the egg goes back to its nest and they're sent back to the gate. Through the gate, the egg goes
 -- into their bag. The nests fill up again every few minutes. Also: speed, trained on the treadmill in each
 -- garden (and upgraded at its console), and the HUD's Home and Wild buttons.
@@ -27,7 +27,7 @@ local RaidService = require(script.Parent.RaidService)
 local WildService = {}
 
 type Nest = { egg: BasePart, prompt: ProximityPrompt, full: boolean, biome: number, index: number }
-type Carry = { nest: Nest, part: Part }
+type Carry = { nest: Nest, part: Part, safe: boolean }
 type Guardian = {
 	biome: number,
 	home: Vector3,
@@ -35,6 +35,7 @@ type Guardian = {
 	wander: Vector3,
 	rest: number,
 	chasing: Player?,
+	wakeAt: number, -- (os.clock(): when the chase starts)
 	built: PetModel.Built?,
 	tag: Part,
 }
@@ -150,14 +151,14 @@ local function steal(player: Player, nest: Nest)
 	mesh.Parent = part
 	part.Position = root.Position + Vector3.new(0, 5, 0)
 	part.Parent = workspace
-	carrying[player] = { nest = nest, part = part }
+	carrying[player] = { nest = nest, part = part, safe = false }
 	player:SetAttribute("WildEgg", true) -- (RaidService and HeistService won't let them carry another)
 	applySpeed(player)
 	local biome = WildConfig.BIOMES[nest.biome]
 	if Wild.outruns(data.speed, biome) then
-		IslandService.notify(player, "Got it! Run back through the gate! 🏃", "success")
+		IslandService.notify(player, ("Got it! Run out of the %s before its guardian wakes up! 🏃"):format(biome.name), "success")
 	else
-		IslandService.notify(player, ("Got it! But the guardians here are fast: ⚡ %d to outrun them. Run!"):format(Wild.needs(biome)), "info")
+		IslandService.notify(player, ("Got it! But its guardian is faster than you (⚡ %d needed). Run!"):format(Wild.needs(biome)), "info")
 	end
 	-- The nearest free guardian of the biome comes after them
 	local best: Guardian? = nil
@@ -170,6 +171,7 @@ local function steal(player: Player, nest: Nest)
 	end
 	if best then
 		best.chasing = player
+		best.wakeAt = os.clock() + WildConfig.WAKE
 	end
 end
 
@@ -249,19 +251,19 @@ local function spawnGuardians()
 			text.Font = Enum.Font.FredokaOne
 			text.TextColor3 = Color3.fromRGB(255, 120, 110)
 			text.TextStrokeTransparency = 0.3
-			text.Text = ("🐾 Guardian · ⚡ %d"):format(biome.guardian)
+			text.Text = ("🐾 %s · ⚡ %d needed"):format(biome.name, Wild.needs(biome))
 			text.Parent = gui
 			gui.Parent = tag
 			tag.Parent = folder
-			local guardian: Guardian = { biome = i, home = home, position = home, wander = home, rest = 0, chasing = nil, built = nil, tag = tag }
+			local guardian: Guardian = { biome = i, home = home, position = home, wander = home, rest = 0, chasing = nil, wakeAt = 0, built = nil, tag = tag }
 			table.insert(guardians, guardian)
 			draw(guardian)
 		end
 	end
 end
 
--- Ten times a second: guardians wander near home, chase thieves (their own biome's, or any carrying an egg
--- past them), and catch them; thieves carry their egg, and keep it once through the gate
+-- Ten times a second: guardians wander near home, chase the thief of their biome's egg (while they're still in
+-- the biome), and catch them; thieves carry their egg, and keep it once through the gate
 local STEP = 0.1
 local pending = 0
 local function tick(frame: number)
@@ -281,25 +283,21 @@ local function tick(frame: number)
 		carry.part.Position = root.Position + Vector3.new(0, 5, 0)
 		if Layout.pastGate(root.Position) then
 			finish(player, true)
+		elseif not carry.safe and Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= carry.nest.biome then
+			carry.safe = true
+			IslandService.notify(player, "😮‍💨 You got away! Walk the egg back through the gate", "success")
 		end
 	end
 	for _, guardian in guardians do
 		local biome = WildConfig.BIOMES[guardian.biome]
-		-- A thief running past
-		if not guardian.chasing then
-			for player in carrying do
-				local root = rootOf(player)
-				if root and (root.Position - guardian.position).Magnitude <= WildConfig.SEE_RANGE then
-					guardian.chasing = player
-					break
-				end
-			end
-		end
 		local target: Vector3
 		local speed = biome.guardian
 		local thief = guardian.chasing
-		local root = if thief and carrying[thief] then rootOf(thief) else nil
-		if thief and root then
+		local carry = if thief then carrying[thief] else nil
+		local root = if thief and carry and not carry.safe then rootOf(thief) else nil
+		if thief and root and os.clock() < guardian.wakeAt then
+			continue -- (waking up: the thief's head start)
+		elseif thief and root then
 			target = Vector3.new(root.Position.X, 0, root.Position.Z)
 			if (target - guardian.position).Magnitude <= WildConfig.CATCH_RANGE then
 				IslandService.notify(thief, "🐾 A guardian caught you! The egg went back to its nest", "error")
@@ -307,10 +305,6 @@ local function tick(frame: number)
 				root.CFrame = gateSpot()
 				root.AssemblyLinearVelocity = Vector3.zero
 				continue
-			end
-			-- (it gives up at the gate)
-			if Layout.pastGate(target) then
-				guardian.chasing = nil
 			end
 		else
 			guardian.chasing = nil
