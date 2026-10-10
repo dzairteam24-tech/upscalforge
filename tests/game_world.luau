@@ -78,19 +78,21 @@ for index = 1, IslandConfig.ISLANDS do
 		return math.abs(p.X) <= area.size.X / 2 - 1 and math.abs(p.Z) <= area.size.Z / 2 - 1
 	end
 	for slot = 1, maxPads do
-		local p = frame:PointToObjectSpace(Layout.incubator(index, slot)) - Layout.HATCHERY.center
-		assert(Vector3.new(p.X, 0, p.Z).Magnitude <= Layout.HATCHERY.radius - 2, ("nest %d on the hatchery floor"):format(slot))
+		local spot = Layout.incubator(index, slot)
+		assert(inside(spot, Layout.HATCHERY), ("nest %d on the hatchery deck"):format(slot))
+		assert(math.abs(frame:PointToObjectSpace(spot).X) - 2.2 >= Layout.PATH_WIDTH / 2, "nests off the path")
 		for other = slot + 1, maxPads do
-			assert((Layout.incubator(index, slot) - Layout.incubator(index, other)).Magnitude >= 4.6, "nests don't touch")
+			assert((spot - Layout.incubator(index, other)).Magnitude >= 4.6, "nests don't touch")
 		end
 	end
-	local hatch = Layout.HATCHERY.center
-	assert(hatch.X - Layout.HATCHERY.radius >= Layout.PATH_WIDTH / 2, "the hatchery is off the path")
-	local pasture = Layout.PASTURE
-	assert(pasture.center.X + pasture.size.X / 2 <= -Layout.PATH_WIDTH / 2, "the pasture is off the path")
-	assert(pasture.size.X * pasture.size.Z >= 1000, "a roomy pasture")
+	local hatchery, pasture = Layout.HATCHERY, Layout.PASTURE
+	assert(hatchery.center.Z + hatchery.size.Z / 2 <= pasture.center.Z - pasture.size.Z / 2, "the hatchery before the pasture")
+	assert(pasture.size.X * pasture.size.Z >= 1400, "a roomy pasture")
+	assert(Layout.HOUSE.Z - 3 >= pasture.center.Z + pasture.size.Z / 2, "the house behind the pasture")
 	for slot = 1, IslandConfig.PENS + #IslandConfig.PEN_PRICES do
 		assert(inside(Layout.pen(index, slot), Layout.PASTURE), ("creature %d in the pasture"):format(slot))
+		local p = frame:PointToObjectSpace(Layout.pen(index, slot)) - Layout.POND.center
+		assert(Vector3.new(p.X, 0, p.Z).Magnitude > Layout.POND.radius + 2, "not in the pond")
 	end
 	local center = Layout.garden(index).Position
 	assert(math.abs(center.X) - Layout.GARDEN_SIZE / 2 >= Layout.STREET_WIDTH / 2, "clear of the street")

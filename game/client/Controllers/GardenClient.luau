@@ -144,9 +144,11 @@ local roamers: { [Model]: Roamer } = {}
 
 local function pastureSpot(index: number): Vector3
 	local center, size = Layout.pasture(index)
-	local x = (math.random() - 0.5) * (size.X - 3)
-	local z = (math.random() - 0.5) * (size.Z - 3)
-	return center:PointToWorldSpace(Vector3.new(x, 0, z))
+	local spot = Vector3.zero
+	repeat -- (not in the pond)
+		spot = Vector3.new((math.random() - 0.5) * (size.X - 3), 0, (math.random() - 0.5) * (size.Z - 3))
+	until (spot + Layout.PASTURE.center - Layout.POND.center).Magnitude > Layout.POND.radius + 2
+	return center:PointToWorldSpace(spot)
 end
 
 local function coinPop(model: Model, amount: number)

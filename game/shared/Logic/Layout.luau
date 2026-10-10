@@ -66,20 +66,24 @@ function Layout.gate(index: number): CFrame
 	return Layout.garden(index) * CFrame.new(0, 0, -Layout.GARDEN_SIZE / 2)
 end
 
--- Inside a garden (its frame's space, front -Z toward the gate): the path runs from the gate up the middle to
--- the nest house at the back. The pasture, where the creatures roam, takes the whole of one side; on the other,
--- the hatchery: a round floor with the nests in a ring round a warm lamp.
-Layout.PASTURE = { center = Vector3.new(-16, 0, -1), size = Vector3.new(24, 0, 52) }
-Layout.HATCHERY = { center = Vector3.new(16, 0, 1), radius = 11, ring = 7 }
-Layout.HOUSE = Vector3.new(0, 0, 24)
+-- Inside a garden (its frame's space, front -Z toward the gate): the gate opens onto the hatchery, a wooden
+-- deck across the front with the nests either side of a short path, so the owner guards them from the gate. The
+-- path leads on into the pasture, which fills the rest of the garden round a pond; the nest house stands in a
+-- back corner behind it.
+Layout.HATCHERY = { center = Vector3.new(0, 0, -20), size = Vector3.new(50, 0, 16) }
+Layout.PASTURE = { center = Vector3.new(0, 0, 5.5), size = Vector3.new(54, 0, 29) }
+Layout.POND = { center = Vector3.new(0, 0, 5.5), radius = 4.5 }
+Layout.HOUSE = Vector3.new(17, 0, 25)
 Layout.PATH_WIDTH = 6
 
--- A nest's spot (an incubator) in a garden: on the hatchery's ring, the first (the safe one) nearest the path
+-- A nest's spot (an incubator): two by two on each side of the path, the first ones (the safe one first) beside
+-- the path and nearest the pasture, then outward
+local NESTS = {
+	Vector3.new(-10, 0, -16), Vector3.new(10, 0, -16), Vector3.new(-10, 0, -24), Vector3.new(10, 0, -24),
+	Vector3.new(-19, 0, -16), Vector3.new(19, 0, -16), Vector3.new(-19, 0, -24), Vector3.new(19, 0, -24),
+}
 function Layout.incubator(index: number, slot: number): Vector3
-	local count = IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES
-	local angle = (slot - 1) * 2 * math.pi / count
-	local inside = Layout.HATCHERY.center + Vector3.new(-math.cos(angle), 0, math.sin(angle)) * Layout.HATCHERY.ring
-	return Layout.garden(index):PointToWorldSpace(inside)
+	return Layout.garden(index):PointToWorldSpace(NESTS[slot])
 end
 
 -- The pasture's middle and size in the world (the creatures roam inside it)
@@ -87,11 +91,11 @@ function Layout.pasture(index: number): (CFrame, Vector3)
 	return Layout.garden(index) * CFrame.new(Layout.PASTURE.center), Layout.PASTURE.size
 end
 
--- Where a creature living in the garden starts (spread over the pasture; it wanders from there)
+-- Where a creature living in the garden starts: in a ring round the pond (it wanders from there)
 function Layout.pen(index: number, slot: number): Vector3
-	local column = (slot - 1) % 3
-	local row = (slot - 1) // 3
-	local inside = Layout.PASTURE.center + Vector3.new((column - 1) * 7, 0, 18 - row * 12)
+	local count = IslandConfig.PENS + #IslandConfig.PEN_PRICES
+	local angle = (slot - 1) * 2 * math.pi / count
+	local inside = Layout.POND.center + Vector3.new(math.sin(angle) * 17, 0, -math.cos(angle) * 9)
 	return Layout.garden(index):PointToWorldSpace(inside)
 end
 

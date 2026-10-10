@@ -276,49 +276,46 @@ local function buildGarden(world: Instance, index: number)
 	gate:SetAttribute("Island", index)
 	gate:AddTag("Gate")
 
-	-- The path from the gate up the middle to the nest house
-	local pathLength = half + Layout.HOUSE.Z - 4
-	part(model, { Name = "Path", Size = Vector3.new(Layout.PATH_WIDTH, 0.3, pathLength), CFrame = at(0, 0.45, -half + pathLength / 2), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
+	-- The path from the gate over the hatchery into the pasture
+	local hatchery, pasture = Layout.HATCHERY, Layout.PASTURE
+	local pathEnd = pasture.center.Z - pasture.size.Z / 2 + 2
+	local pathLength = pathEnd + half
+	part(model, { Name = "Path", Size = Vector3.new(Layout.PATH_WIDTH, 0.3, pathLength), CFrame = at(0, 0.85, -half + pathLength / 2), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
 
-	-- The nest house at the back, with its owner's name
-	local house = Layout.HOUSE
-	part(model, { Name = "House", Size = Vector3.new(10, 6, 6), CFrame = at(house.X, 3.4, house.Z), Color = rgb(250, 238, 214) })
-	part(model, { Name = "HouseRoof", Size = Vector3.new(11.5, 1.6, 7.5), CFrame = at(house.X, 7.2, house.Z), Color = GOLD })
-	part(model, { Name = "HouseDoor", Size = Vector3.new(2.4, 3.8, 0.3), CFrame = at(house.X, 2.3, house.Z - 3.05), Color = WOOD_DARK })
-	local board = part(model, { Name = "OwnerSign", Size = Vector3.one, CFrame = at(house.X, 11.5, house.Z), Transparency = 1, CanCollide = false, CanQuery = false })
-	label(board, "Free garden", 16, 3, Vector3.zero)
-
-	-- The hatchery: a round wooden floor with a warm lamp in the middle and the nests in a ring round it, each
-	-- on a stone stand under a glass dome (the safe one ringed in gold)
-	local hatchery = Layout.HATCHERY
+	-- The hatchery: a wooden deck across the front, the nests either side of the path, each on a stone stand under
+	-- a glass dome (the safe one ringed in gold), and a warm lamp on each side
 	local hc = at(hatchery.center.X, 0, hatchery.center.Z)
-	part(model, { Name = "Deck", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, hatchery.radius * 2, hatchery.radius * 2), CFrame = hc * CFrame.new(0, 0.5, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = WOOD, Material = Enum.Material.WoodPlanks })
-	part(model, { Name = "LampPost", Size = Vector3.new(0.8, 6, 0.8), CFrame = hc * CFrame.new(0, 3.5, 0), Color = WOOD_DARK })
-	local lamp = part(model, { Name = "Lamp", Shape = Enum.PartType.Ball, Size = Vector3.one * 2.2, CFrame = hc * CFrame.new(0, 7, 0), Color = rgb(255, 170, 80), Material = Enum.Material.Neon, CanCollide = false })
-	local warmth = Instance.new("PointLight")
-	warmth.Color = rgb(255, 180, 100)
-	warmth.Range = 16
-	warmth.Brightness = 1.2
-	warmth.Parent = lamp
-	label(lamp, "🥚 Hatchery", 10, 2, Vector3.new(0, 3, 0))
+	part(model, { Name = "Deck", Size = hatchery.size + Vector3.new(0, 0.6, 0), CFrame = hc * CFrame.new(0, 0.5, 0), Color = WOOD, Material = Enum.Material.WoodPlanks })
+	for _, side in { -1, 1 } do
+		local post = hc * CFrame.new(side * 14.5, 0, 0)
+		part(model, { Name = "LampPost", Size = Vector3.new(0.8, 6, 0.8), CFrame = post * CFrame.new(0, 3.8, 0), Color = WOOD_DARK })
+		local lamp = part(model, { Name = "Lamp", Shape = Enum.PartType.Ball, Size = Vector3.one * 2, CFrame = post * CFrame.new(0, 7.2, 0), Color = rgb(255, 170, 80), Material = Enum.Material.Neon, CanCollide = false })
+		local warmth = Instance.new("PointLight")
+		warmth.Color = rgb(255, 180, 100)
+		warmth.Range = 14
+		warmth.Brightness = 1.2
+		warmth.Parent = lamp
+	end
+	local hatchSign = part(model, { Name = "HatcherySign", Size = Vector3.one, CFrame = hc * CFrame.new(0, 7, hatchery.size.Z / 2), Transparency = 1, CanCollide = false, CanQuery = false })
+	label(hatchSign, "🥚 Hatchery", 10, 2, Vector3.zero)
 	for slot = 1, IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES do
 		local spot = Layout.incubator(index, slot)
 		local safe = slot == RaidConfig.SAFE_SLOT
 		local base = CFrame.new(spot)
-		part(model, { Name = "NestStand", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.6, 4, 4), CFrame = base * CFrame.new(0, 1.6, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(206, 196, 184), Material = Enum.Material.Slate })
-		part(model, { Name = "NestRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 4.4, 4.4), CFrame = base * CFrame.new(0, 2.5, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = if safe then GOLD else WOOD_DARK, CanCollide = false })
+		part(model, { Name = "NestStand", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.6, 4, 4), CFrame = base * CFrame.new(0, 1.8, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(206, 196, 184), Material = Enum.Material.Slate })
+		part(model, { Name = "NestRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 4.4, 4.4), CFrame = base * CFrame.new(0, 2.7, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = if safe then GOLD else WOOD_DARK, CanCollide = false })
 		local pad = part(model, {
 			Name = "Incubator",
 			Shape = Enum.PartType.Cylinder,
 			Size = Vector3.new(0.6, 3.6, 3.6),
-			CFrame = base * CFrame.new(0, 2.6, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			CFrame = base * CFrame.new(0, 2.8, 0) * CFrame.Angles(0, 0, math.rad(90)),
 			Color = STRAW,
 			Material = Enum.Material.Fabric,
 		})
 		pad:SetAttribute("Island", index)
 		pad:SetAttribute("Slot", slot)
 		pad:AddTag("Incubator")
-		local dome = part(model, { Name = "Dome", Shape = Enum.PartType.Ball, Size = Vector3.one * 4, CFrame = base * CFrame.new(0, 3.4, 0), Color = rgb(220, 240, 255), Material = Enum.Material.Glass, Transparency = 0.7, CanCollide = false, CanQuery = false })
+		local dome = part(model, { Name = "Dome", Shape = Enum.PartType.Ball, Size = Vector3.one * 4, CFrame = base * CFrame.new(0, 3.6, 0), Color = rgb(220, 240, 255), Material = Enum.Material.Glass, Transparency = 0.7, CanCollide = false, CanQuery = false })
 		dome:SetAttribute("Slot", slot)
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Use"
@@ -331,23 +328,33 @@ local function buildGarden(world: Instance, index: number)
 		prompt.Parent = pad
 	end
 
-	-- The pasture: a meadow behind a low hedge (open toward the path) where the creatures roam
-	local pasture = Layout.PASTURE
+	-- The pasture: a meadow behind a low hedge (open where the path comes in) round a pond, where the creatures roam
 	part(model, { Name = "Pasture", Size = pasture.size + Vector3.new(0, 0.3, 0), CFrame = at(pasture.center.X, 0.45, pasture.center.Z), Color = rgb(108, 186, 92), Material = Enum.Material.Grass, CanCollide = false })
+	local pond = Layout.POND
+	part(model, { Name = "Pond", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, pond.radius * 2, pond.radius * 2), CFrame = at(pond.center.X, 0.7, pond.center.Z) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(100, 180, 235), Material = Enum.Material.Glass, Transparency = 0.2, CanCollide = false })
+	part(model, { Name = "PondEdge", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.25, pond.radius * 2 + 1.4, pond.radius * 2 + 1.4), CFrame = at(pond.center.X, 0.66, pond.center.Z) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(206, 196, 184), Material = Enum.Material.Slate, CanCollide = false })
 	local function hedge(cf: CFrame, length: number)
 		part(model, { Name = "Hedge", Size = Vector3.new(length, 1.6, 1.2), CFrame = cf * CFrame.new(0, 0.8, 0), Color = rgb(80, 150, 70), Material = Enum.Material.Grass, CanCollide = false })
 	end
 	local px, pz = pasture.center.X, pasture.center.Z
 	local hx, hz = pasture.size.X / 2, pasture.size.Z / 2
 	hedge(at(px, 0, pz + hz), pasture.size.X)
-	hedge(at(px, 0, pz - hz), pasture.size.X)
-	hedge(at(px - hx, 0, pz) * CFrame.Angles(0, math.rad(90), 0), pasture.size.Z)
-	-- (the side along the path, with an opening in the middle)
 	for _, s in { -1, 1 } do
-		hedge(at(px + hx, 0, pz + s * (hz / 2 + 2)) * CFrame.Angles(0, math.rad(90), 0), hz - 4)
+		hedge(at(px + s * hx, 0, pz) * CFrame.Angles(0, math.rad(90), 0), pasture.size.Z)
+		-- (the front, toward the hatchery, open where the path comes in)
+		local piece = hx - Layout.PATH_WIDTH / 2 - 1
+		hedge(at(px + s * (hx - piece / 2), 0, pz - hz), piece)
 	end
 	local pastureSign = part(model, { Name = "PastureSign", Size = Vector3.one, CFrame = at(px, 5, pz - hz + 1), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(pastureSign, "🌷 Pasture", 10, 2, Vector3.zero)
+
+	-- The nest house in a back corner, behind the pasture, with its owner's name
+	local house = Layout.HOUSE
+	part(model, { Name = "House", Size = Vector3.new(10, 6, 6), CFrame = at(house.X, 3.4, house.Z), Color = rgb(250, 238, 214) })
+	part(model, { Name = "HouseRoof", Size = Vector3.new(11.5, 1.6, 7.5), CFrame = at(house.X, 7.2, house.Z), Color = GOLD })
+	part(model, { Name = "HouseDoor", Size = Vector3.new(2.4, 3.8, 0.3), CFrame = at(house.X, 2.3, house.Z - 3.05), Color = WOOD_DARK })
+	local board = part(model, { Name = "OwnerSign", Size = Vector3.one, CFrame = at(house.X, 11.5, house.Z), Transparency = 1, CanCollide = false, CanQuery = false })
+	label(board, "Free garden", 16, 3, Vector3.zero)
 
 	local creatures = Instance.new("Model")
 	creatures.Name = "Creatures"
