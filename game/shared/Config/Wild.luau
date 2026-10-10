@@ -34,9 +34,10 @@ return {
 	CARRY = 0.9, -- a player carrying an egg runs this much of their speed
 	START_SPEED = 16,
 	MAX_SPEED = 70,
-	-- Sprint (Shift, or the button on a phone): faster for as long as it's held. Not while carrying an egg: the
-	-- chases stay fair.
-	SPRINT = 1.5, -- times the player's speed
+	-- On the floating seat (MoveService) the player goes this many times their own speed, up to SEAT_MAX_SPEED.
+	-- Not while carrying an egg: the chases stay fair.
+	SEAT_SPEED = 4,
+	SEAT_MAX_SPEED = 100,
 	-- The treadmill in each garden: walking on it trains speed, `gains` a second per level (less the faster the
 	-- player already is), the next level costing `prices`
 	TREADMILL_GAINS = { 0.05, 0.1, 0.2, 0.35, 0.6 },

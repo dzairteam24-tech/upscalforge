@@ -97,7 +97,7 @@ local function template(): Data
 		storage = 1,
 		starter = false,
 		daily = { day = -1, progress = {}, claimed = false },
-		seat = "Cloud",
+		seat = "",
 		seats = { Cloud = true },
 	}
 end

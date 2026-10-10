@@ -1,11 +1,10 @@
 --!strict
--- How players get around besides walking: Sprint (Config/Wild SPRINT) while it's held, never while carrying an
--- egg; and the floating seat they ride (SeatModel, drawn by RideClient), which is only a look: everyone moves
--- the same.
+-- The floating seat (SeatModel, drawn by RideClient): the player gets on and off it with the HUD's button, and
+-- rides it faster than they walk (Config/Wild SEAT_SPEED, WildService.applySpeed), but never while carrying an
+-- egg. Everyone has the Cloud seat; the others are only looks.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Net = require(Shared.Net)
@@ -15,27 +14,11 @@ local WildService = require(script.Parent.WildService)
 
 local MoveService = {}
 
-local wants: { [Player]: boolean } = {} -- holding Sprint
-
-local function setSprinting(player: Player, on: boolean)
-	if (player:GetAttribute("Sprinting") == true) ~= on then
-		player:SetAttribute("Sprinting", on)
-		WildService.applySpeed(player)
-	end
-end
-
-local function step()
-	for _, player in Players:GetPlayers() do
-		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-		local moving = humanoid ~= nil and humanoid.MoveDirection.Magnitude > 0.3
-		setSprinting(player, wants[player] == true and moving and not WildService.busy(player))
-	end
-end
-
 -- Puts the player on their floating seat (or off it)
 local function applySeat(player: Player)
 	local data = DataService.get(player)
 	player:SetAttribute("RideSeat", if data and data.seats[data.seat] then data.seat else "")
+	WildService.applySpeed(player)
 end
 
 local function chooseSeat(player: Player, name: any)
@@ -48,17 +31,27 @@ local function chooseSeat(player: Player, name: any)
 end
 
 function MoveService.init()
-	Net.event("Sprint").OnServerEvent:Connect(function(player, on)
-		wants[player] = on == true
-	end)
 	Net.event("Seat").OnServerEvent:Connect(chooseSeat)
 	DataService.onLoaded(function(player)
 		applySeat(player)
 	end)
-	Players.PlayerRemoving:Connect(function(player)
-		wants[player] = nil
+	Players.PlayerAdded:Connect(function(player)
+		player.CharacterAdded:Connect(function(character)
+			character:WaitForChild("Humanoid", 10)
+			applySeat(player)
+		end)
 	end)
-	RunService.Heartbeat:Connect(step)
+	-- Picking up or losing an egg (the Heist's, a raid's) changes what the seat gives: kept up to date here
+	task.spawn(function()
+		while true do
+			task.wait(0.25)
+			for _, player in Players:GetPlayers() do
+				if player:GetAttribute("RideSeat") ~= "" and player:GetAttribute("RideSeat") ~= nil then
+					WildService.applySpeed(player)
+				end
+			end
+		end
+	end)
 end
 
 return MoveService

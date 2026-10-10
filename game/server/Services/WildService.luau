@@ -54,16 +54,19 @@ local function humanoidOf(player: Player): Humanoid?
 	return character and character:FindFirstChildOfClass("Humanoid")
 end
 
--- The player's run speed, as it should be now (slower with an egg, faster sprinting: MoveService; RaidService
--- slows a raid thief itself)
+-- The player's run speed, as it should be now (slower with an egg, faster on the floating seat: MoveService;
+-- RaidService slows a raid thief itself)
 local function applySpeed(player: Player)
 	local data = DataService.get(player)
 	local humanoid = humanoidOf(player)
 	if not data or not humanoid or RaidService.isCarrying(player) then
 		return
 	end
-	local sprinting = player:GetAttribute("Sprinting") == true and not HeistService.isCarrier(player)
-	humanoid.WalkSpeed = if carrying[player] then Wild.carrying(data.speed) elseif sprinting then data.speed * WildConfig.SPRINT else data.speed
+	local seat = player:GetAttribute("RideSeat")
+	local riding = type(seat) == "string" and seat ~= "" and not HeistService.isCarrier(player)
+	humanoid.WalkSpeed = if carrying[player] then Wild.carrying(data.speed)
+		elseif riding then math.min(WildConfig.SEAT_MAX_SPEED, data.speed * WildConfig.SEAT_SPEED)
+		else data.speed
 	player:SetAttribute("Speed", data.speed)
 end
 WildService.applySpeed = applySpeed
