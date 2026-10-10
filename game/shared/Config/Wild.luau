@@ -38,9 +38,7 @@ return {
 	GOLDEN_MUTATION = "Golden",
 	GOLDEN_GUARDIAN = 1.15, -- times the guardian's speed, chasing a Golden Egg
 	DROP_TIME = 60, -- a thief caught by a guardian drops the egg there: it waits this long, then goes home
-	-- Players can steal a Wild egg from each other on the way back (not in a Peaceful private server)
-	ROB_RANGE = 10,
-	ROB_GUARD = 4, -- seconds a new carrier can't be robbed
+	GRAB_RANGE = 10, -- how close a player must be to grab a dropped egg
 	RESET = 300, -- every nest gets its egg back this often
 	CARRY = 0.9, -- a player carrying an egg runs this much of their speed
 	-- Speed (⚡) is a big number that grows without end (0, 200, 5K, 1.5M...); how fast the player really walks

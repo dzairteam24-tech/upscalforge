@@ -80,7 +80,7 @@ local SHOPS = {
 	{ name = "Food Shop", art = "Potion", ui = "Food", color = rgb(160, 110, 230) },
 	{ name = "Lucky Spin", art = "Spin", ui = "Soon", color = rgb(255, 150, 80) },
 	{ name = "Trips", art = "Trips", ui = "Soon", color = rgb(80, 190, 220) },
-	{ name = "Arcade", art = "Arcade", ui = "Soon", color = rgb(240, 110, 170) },
+	{ name = "Gear Shop", art = "Arcade", ui = "Gear", color = rgb(240, 110, 170) },
 }
 WorldService.SHOPS = SHOPS
 

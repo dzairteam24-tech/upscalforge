@@ -3,7 +3,8 @@
 -- an egg; a moment later that biome's guardian wakes and comes after them, inside its biome only (out of it
 -- they're safe). If it catches them they drop the egg right there and are sent back to the gate: the egg waits
 -- a minute for whoever picks it up (then goes back to its nest). Through the gate, the egg goes into their bag. The nests fill up again every few minutes, some biomes with a golden nest (a Golden Egg,
--- chased harder). On the way back, other players can steal the egg from the one carrying it. Also: speed, trained on the treadmill in each
+-- chased harder). On the way back, other players can knock the egg out of the carrier's hands with their bat
+-- (GearService). Also: speed, trained on the treadmill in each
 -- garden (and upgraded at its console), and the HUD's Home and Wild buttons.
 
 local Players = game:GetService("Players")
@@ -29,7 +30,7 @@ local RaidService = require(script.Parent.RaidService)
 local WildService = {}
 
 type Nest = { egg: BasePart, prompt: ProximityPrompt, full: boolean, golden: boolean, color: Color3, biome: number, index: number }
-type Carry = { nest: Nest, part: Part, safe: boolean, golden: boolean, guardUntil: number }
+type Carry = { nest: Nest, part: Part, safe: boolean, golden: boolean }
 type Drop = { nest: Nest, part: Part, golden: boolean, expires: number }
 type Guardian = {
 	biome: number,
@@ -107,7 +108,6 @@ end
 -- Nests and carrying
 
 local GOLD = Color3.fromRGB(255, 205, 70)
-local PEACEFUL = game.PrivateServerId ~= "" and game.PrivateServerOwnerId ~= 0
 
 local function setFull(nest: Nest, full: boolean)
 	nest.full = full
@@ -186,8 +186,7 @@ local function hold(player: Player, held: Carry)
 	held.part:SetAttribute("Carrier", player.UserId)
 	local prompt = held.part:FindFirstChildOfClass("ProximityPrompt")
 	if prompt then
-		prompt.ActionText = "Steal"
-		prompt.Enabled = not PEACEFUL -- (no stealing from each other in a Peaceful server)
+		prompt.Enabled = false -- (only once it's dropped)
 	end
 	applySpeed(player)
 end
@@ -226,7 +225,6 @@ local function drop(player: Player, at: Vector3)
 	held.part:SetAttribute("Carrier", 0)
 	local prompt = held.part:FindFirstChildOfClass("ProximityPrompt")
 	if prompt then
-		prompt.ActionText = "Grab"
 		prompt.Enabled = true
 	end
 	drops[held.part] = { nest = held.nest, part = held.part, golden = held.golden, expires = os.clock() + WildConfig.DROP_TIME }
@@ -236,12 +234,12 @@ end
 function WildService.pickUp(player: Player, part: BasePart)
 	local dropped = drops[part]
 	local root = rootOf(player)
-	if not dropped or not root or busy(player) or (root.Position - part.Position).Magnitude > WildConfig.ROB_RANGE + 4 then
+	if not dropped or not root or busy(player) or (root.Position - part.Position).Magnitude > WildConfig.GRAB_RANGE + 4 then
 		return
 	end
 	drops[part] = nil
 	local safe = Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= dropped.nest.biome
-	hold(player, { nest = dropped.nest, part = dropped.part, safe = safe, golden = dropped.golden, guardUntil = os.clock() + WildConfig.ROB_GUARD })
+	hold(player, { nest = dropped.nest, part = dropped.part, safe = safe, golden = dropped.golden })
 	if not safe then
 		wake(dropped.nest.biome, player, root.Position)
 		IslandService.notify(player, "🥚 Got it back! Run before the guardian wakes up!", "success")
@@ -278,22 +276,18 @@ local function steal(player: Player, nest: Nest)
 	part.Position = root.Position + Vector3.new(0, 5, 0)
 	part.Parent = workspace
 	part:AddTag("WildCarry")
-	-- Others can steal it on the way back, or grab it where it's dropped
+	-- Anyone can grab it where it's dropped (knocked out with a bat, or caught by the guardian)
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Steal"
+	prompt.ActionText = "Grab"
 	prompt.ObjectText = (if golden then "✨ Golden " else "") .. (Hatch.egg(WildConfig.BIOMES[nest.biome].tier) or { name = "Egg" }).name
 	prompt.HoldDuration = 0.5
-	prompt.MaxActivationDistance = WildConfig.ROB_RANGE
+	prompt.MaxActivationDistance = WildConfig.GRAB_RANGE
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = part
 	prompt.Triggered:Connect(function(taker)
-		if drops[part] then
-			WildService.pickUp(taker, part)
-		else
-			WildService.rob(taker, part)
-		end
+		WildService.pickUp(taker, part)
 	end)
-	hold(player, { nest = nest, part = part, safe = false, golden = golden, guardUntil = os.clock() + WildConfig.ROB_GUARD })
+	hold(player, { nest = nest, part = part, safe = false, golden = golden })
 	local biome = WildConfig.BIOMES[nest.biome]
 	if Wild.outruns(data.power, biome) then
 		IslandService.notify(player, ("Got it! Run out of the %s before its guardian wakes up! 🏃"):format(biome.name), "success")
@@ -303,42 +297,13 @@ local function steal(player: Player, nest: Nest)
 	wake(nest.biome, player, root.Position)
 end
 
--- Another player takes a Wild egg from the one carrying it (their guardian, if still after it, now chases
--- the robber)
-function WildService.rob(robber: Player, part: BasePart)
-	local victim: Player? = nil
-	for player, carry in carrying do
-		if carry.part == part then
-			victim = player
-		end
+-- A bat knocked the egg out of a carrier's hands (GearService): it drops right there
+function WildService.knock(player: Player)
+	local root = rootOf(player)
+	if carrying[player] and root then
+		IslandService.notify(player, "💥 Knocked out of your hands! Grab it back!", "error")
+		drop(player, root.Position)
 	end
-	local carry = if victim then carrying[victim] else nil
-	local root, victimRoot = rootOf(robber), if victim then rootOf(victim) else nil
-	local robberData = DataService.get(robber)
-	if not victim or not carry or victim == robber or not root or not victimRoot or not robberData or busy(robber) then
-		return
-	end
-	if os.clock() < carry.guardUntil or (root.Position - victimRoot.Position).Magnitude > WildConfig.ROB_RANGE + 4 then
-		return
-	end
-	local victimData = DataService.get(victim)
-	if victimData and os.time() - victimData.firstPlayed < RaidConfig.NEW_PLAYER_SAFE then
-		IslandService.notify(robber, ("%s is new here: leave their egg be"):format(victim.DisplayName), "error")
-		return
-	end
-	carrying[victim] = nil
-	victim:SetAttribute("WildEgg", nil)
-	applySpeed(victim)
-	carry.safe = Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= carry.nest.biome
-	carry.guardUntil = os.clock() + WildConfig.ROB_GUARD
-	hold(robber, carry)
-	for _, guardian in guardians do
-		if guardian.chasing == victim then
-			guardian.chasing = robber
-		end
-	end
-	IslandService.notify(robber, "🥚 You stole it! Run to the gate!", "success")
-	IslandService.notify(victim, ("😱 %s stole your egg! Get it back!"):format(robber.DisplayName), "error")
 end
 
 -- Every nest gets its egg back (not the ones being carried)

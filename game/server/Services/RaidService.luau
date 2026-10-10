@@ -331,6 +331,14 @@ local function schedule()
 	end
 end
 
+-- A bat knocked the egg out of a thief's hands (GearService): it goes back to its owner
+function RaidService.knock(thief: Player)
+	if carrying[thief] then
+		IslandService.notify(thief, "💥 Knocked out of your hands! The egg went back", "error")
+		finish(thief, false)
+	end
+end
+
 -- Whether a player is running off with someone's egg
 function RaidService.isCarrying(player: Player): boolean
 	return carrying[player] ~= nil

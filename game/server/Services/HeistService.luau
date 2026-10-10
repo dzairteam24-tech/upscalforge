@@ -183,6 +183,13 @@ local function follow()
 	end
 end
 
+-- A bat knocked the Heist Egg out of its carrier's hands (GearService)
+function HeistService.knock(player: Player)
+	if player == carrier then
+		drop()
+	end
+end
+
 function HeistService.init()
 	Players.PlayerRemoving:Connect(function(player)
 		if player == carrier then

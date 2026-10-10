@@ -519,13 +519,12 @@ function GardenClient.init()
 					updateGate(gate)
 				end
 			end
-			-- Nobody sees a Steal prompt on the Wild egg they're carrying themselves
+			-- A Wild egg can be grabbed once it's dropped
 			for _, carried in CollectionService:GetTagged("WildCarry") do
 				local prompt = carried:FindFirstChildOfClass("ProximityPrompt")
 				if prompt then
-					local carrier = carried:GetAttribute("Carrier")
-					-- (dropped: anyone can grab it; carried: stolen from, but not in a Peaceful server)
-					prompt.Enabled = carrier ~= LOCAL.UserId and (carrier == 0 or workspace:GetAttribute("Peaceful") ~= true)
+					-- (only a dropped one: anyone can grab it)
+					prompt.Enabled = carried:GetAttribute("Carrier") == 0
 				end
 			end
 			for _, egg in CollectionService:GetTagged("HeistEgg") do

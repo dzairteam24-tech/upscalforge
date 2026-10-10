@@ -30,6 +30,8 @@ local SnapConfig = R(Shared.Config.Snap)
 local Snap = R(Shared.Logic.Snap)
 local DailyConfig = R(Shared.Config.Daily)
 local Daily = R(Shared.Logic.Daily)
+local GearConfig = R(Shared.Config.Gear)
+local Gear = R(Shared.Logic.Gear)
 
 local passed, failed = 0, 0
 local function test(name: string, fn: () -> ())
@@ -236,6 +238,17 @@ test("daily tasks: three different ones a day, they change, a new day starts fre
 	eq(state.claimed, false, "a new day")
 	eq(next(state.progress), nil, "fresh progress")
 	eq(Daily.day(86400 * 3 + 5), 3)
+end)
+
+test("the bat: a weak bat needs many hits on a strong one, a strong bat few", function()
+	eq(Gear.hitsNeeded(1, 1), GearConfig.HITS, "same bats")
+	eq(Gear.hitsNeeded(1, #GearConfig.BATS), math.min(GearConfig.MAX_HITS, GearConfig.HITS + #GearConfig.BATS - 1), "a new player on a strong one")
+	assert(Gear.hitsNeeded(1, #GearConfig.BATS) > Gear.hitsNeeded(#GearConfig.BATS, 1), "the stronger bat wins")
+	eq(Gear.hitsNeeded(#GearConfig.BATS, 1), 1, "never fewer than one")
+	eq(Gear.upgradePrice(#GearConfig.BATS), nil, "the top bat")
+	for level = 2, #GearConfig.BATS do
+		assert(GearConfig.BATS[level].price > GearConfig.BATS[level - 1].price, "better bats cost more")
+	end
 end)
 
 test("an egg pays itself back: a tier's average creature earns its price in under 10 minutes", function()
