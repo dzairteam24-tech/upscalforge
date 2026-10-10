@@ -16,7 +16,7 @@
 | `python art/blender/cubelings.py Kitty "Ice Fox"` | مخلوقات بالاسم: render + `.glb` + palette لكل واحد |
 | `python art/blender/cubelings.py zone 3` | الـ 4 مخلوقات تاع منطقة، و `renders/zone3_lineup.png` (الزاوية 3/4 جنب لجنب) |
 | `python art/blender/cubelings.py legendary` | الـ 10 أسطوريين، و `renders/legendaries_lineup.png` |
-| `python art/blender/cubelings.py roblox` | الملف تاع اللعبة: `models/Cubelings_Roblox.glb` و `roblox/shared/Config/CreatureLooks.luau` (شوف تحت) |
+| `python art/blender/cubelings.py roblox` | الملف تاع اللعبة: `models/Cubelings_Roblox.glb` و `game/shared/Config/CreatureLooks.luau` (شوف تحت) |
 | `FAST=1 python art/blender/cubelings.py ...` | الزاوية 3/4 برك (معاينة سريعة) |
 
 - **مخلوق جديد:** زيد spec في `SPECIES` (المنطقة 1 في `cubelings.py`، والباقي في `species_zoo.py`)، والقطع (ذنين، قرون، جوانح، ذيول، كلاليب...) في `cubelings.py`
@@ -30,12 +30,12 @@
 
 ## في اللعبة
 
-1. `python art/blender/cubelings.py roblox` يخرج `models/Cubelings_Roblox.glb` و `roblox/shared/Config/CreatureLooks.luau` (اللون العادي تاع كل قطعة)
+1. `python art/blender/cubelings.py roblox` يخرج `models/Cubelings_Roblox.glb` و `game/shared/Config/CreatureLooks.luau` (اللون العادي تاع كل قطعة)
 2. في Studio: **Home ← Import 3D** واختار `models/Cubelings_Roblox.glb`
 3. **تجربة سريعة:** سمّي الموديل `CreatureModels` وحطو في **ReplicatedStorage**
-4. **باش يبقاو ديما:** **Save to Roblox** وحط الـ ID في `roblox/shared/Config/Art.luau` (`CREATURE_MODELS_ASSET_ID`). `ArtService` يحمّلهم وحدو في `ReplicatedStorage.CreatureModels`
+4. **باش يبقاو ديما:** **Save to Roblox** وحط الـ ID في `game/shared/Config/Art.luau` (`CREATURE_MODELS_ASSET_ID`). `ArtService` يحمّلهم وحدو في `ReplicatedStorage.CreatureModels`
 
-الكود (`roblox/shared/PetModel.luau`) يستنسخ قطع كل مخلوق، يكبّرهم على قد الحجم (Normal/Big/Titan)، ويبدّل الألوان والمواد على حسب الـ variant (مثلاً الأجزاء `glow` تولي Neon). بلا الموديلات، اللعبة ترسم المخلوقات بالمكعبات. التفاصيل في [docs/dev.md](../docs/dev.md#قبل-النشر) (المرحلة 6).
+الكود (`game/shared/PetModel.luau`) يستنسخ قطع كل مخلوق، يكبّرهم على قد الحجم (Normal/Big)، ويبدّل الألوان والمواد على حسب الـ variant (مثلاً الأجزاء `glow` تولي Neon). بلا الموديلات، اللعبة ترسم المخلوقات بالمكعبات.
 
 **مهم:** كي تبدّل التصاميم، عاود `roblox` باش `CreatureLooks.luau` يبقى نفس القطع اللي في الـ `.glb`، وعاود الـ import في Studio.
 
