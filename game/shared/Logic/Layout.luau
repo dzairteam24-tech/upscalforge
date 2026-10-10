@@ -10,7 +10,7 @@ local Layout = {
 	SQUARE_RADIUS = 26, -- the square where players arrive
 	SHOP_DEPTH = 26, -- a shop's lot, from the street back
 	SHOP_SPACING = 30, -- between two shops' middles along the street
-	GARDEN_SIZE = 48,
+	GARDEN_SIZE = 60,
 	GARDEN_GAP = 10, -- between two gardens in a row
 	STREET_WIDTH = 26,
 	GATE_WIDTH = 16, -- the opening in a garden's front fence
@@ -67,19 +67,18 @@ function Layout.gate(index: number): CFrame
 end
 
 -- Inside a garden (its frame's space, front -Z toward the gate): the path runs from the gate up the middle to
--- the nest house at the back; the hatchery deck with the nests is on one side, the pasture where the
--- creatures roam on the other.
-Layout.HATCHERY = { center = Vector3.new(13, 0, 6), size = Vector3.new(16, 0, 28) }
-Layout.PASTURE = { center = Vector3.new(-13, 0, 2), size = Vector3.new(16, 0, 34) }
-Layout.HOUSE = Vector3.new(0, 0, 19)
+-- the nest house at the back. The pasture, where the creatures roam, takes the whole of one side; on the other,
+-- the hatchery: a round floor with the nests in a ring round a warm lamp.
+Layout.PASTURE = { center = Vector3.new(-16, 0, -1), size = Vector3.new(24, 0, 52) }
+Layout.HATCHERY = { center = Vector3.new(16, 0, 1), radius = 11, ring = 7 }
+Layout.HOUSE = Vector3.new(0, 0, 24)
 Layout.PATH_WIDTH = 6
 
--- A nest's spot (an incubator) in a garden: two by two on the hatchery deck, the first (the safe one) nearest
--- the house
+-- A nest's spot (an incubator) in a garden: on the hatchery's ring, the first (the safe one) nearest the path
 function Layout.incubator(index: number, slot: number): Vector3
-	local column = (slot - 1) % 2
-	local row = (slot - 1) // 2
-	local inside = Layout.HATCHERY.center + Vector3.new(if column == 0 then 3.5 else -3.5, 0, 10.5 - row * 6.5)
+	local count = IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES
+	local angle = (slot - 1) * 2 * math.pi / count
+	local inside = Layout.HATCHERY.center + Vector3.new(-math.cos(angle), 0, math.sin(angle)) * Layout.HATCHERY.ring
 	return Layout.garden(index):PointToWorldSpace(inside)
 end
 
@@ -92,7 +91,7 @@ end
 function Layout.pen(index: number, slot: number): Vector3
 	local column = (slot - 1) % 3
 	local row = (slot - 1) // 3
-	local inside = Layout.PASTURE.center + Vector3.new((column - 1) * 4.5, 0, 13 - row * 8.5)
+	local inside = Layout.PASTURE.center + Vector3.new((column - 1) * 7, 0, 18 - row * 12)
 	return Layout.garden(index):PointToWorldSpace(inside)
 end
 

@@ -288,34 +288,38 @@ local function buildGarden(world: Instance, index: number)
 	local board = part(model, { Name = "OwnerSign", Size = Vector3.one, CFrame = at(house.X, 11.5, house.Z), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(board, "Free garden", 16, 3, Vector3.zero)
 
-	-- The hatchery: a wooden deck with the nests, two by two
+	-- The hatchery: a round wooden floor with a warm lamp in the middle and the nests in a ring round it, each
+	-- on a stone stand under a glass dome (the safe one ringed in gold)
 	local hatchery = Layout.HATCHERY
-	part(model, { Name = "Deck", Size = hatchery.size + Vector3.new(0, 0.6, 0), CFrame = at(hatchery.center.X, 0.5, hatchery.center.Z), Color = WOOD, Material = Enum.Material.WoodPlanks })
-	local deckSign = part(model, { Name = "DeckSign", Size = Vector3.one, CFrame = at(hatchery.center.X, 5, hatchery.center.Z - hatchery.size.Z / 2 + 1), Transparency = 1, CanCollide = false, CanQuery = false })
-	label(deckSign, "🥚 Hatchery", 10, 2, Vector3.zero)
+	local hc = at(hatchery.center.X, 0, hatchery.center.Z)
+	part(model, { Name = "Deck", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, hatchery.radius * 2, hatchery.radius * 2), CFrame = hc * CFrame.new(0, 0.5, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = WOOD, Material = Enum.Material.WoodPlanks })
+	part(model, { Name = "LampPost", Size = Vector3.new(0.8, 6, 0.8), CFrame = hc * CFrame.new(0, 3.5, 0), Color = WOOD_DARK })
+	local lamp = part(model, { Name = "Lamp", Shape = Enum.PartType.Ball, Size = Vector3.one * 2.2, CFrame = hc * CFrame.new(0, 7, 0), Color = rgb(255, 170, 80), Material = Enum.Material.Neon, CanCollide = false })
+	local warmth = Instance.new("PointLight")
+	warmth.Color = rgb(255, 180, 100)
+	warmth.Range = 16
+	warmth.Brightness = 1.2
+	warmth.Parent = lamp
+	label(lamp, "🥚 Hatchery", 10, 2, Vector3.new(0, 3, 0))
 	for slot = 1, IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES do
 		local spot = Layout.incubator(index, slot)
 		local safe = slot == RaidConfig.SAFE_SLOT
-		-- The straw nest in a ring (gold for the safe one)
-		part(model, {
-			Name = "NestRing",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.8, 5.2, 5.2),
-			CFrame = CFrame.new(spot + Vector3.new(0, 1.1, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-			Color = if safe then GOLD else WOOD_DARK,
-			CanCollide = false,
-		})
+		local base = CFrame.new(spot)
+		part(model, { Name = "NestStand", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.6, 4, 4), CFrame = base * CFrame.new(0, 1.6, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(206, 196, 184), Material = Enum.Material.Slate })
+		part(model, { Name = "NestRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 4.4, 4.4), CFrame = base * CFrame.new(0, 2.5, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = if safe then GOLD else WOOD_DARK, CanCollide = false })
 		local pad = part(model, {
 			Name = "Incubator",
 			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(1, 4.4, 4.4),
-			CFrame = CFrame.new(spot + Vector3.new(0, 1.2, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+			Size = Vector3.new(0.6, 3.6, 3.6),
+			CFrame = base * CFrame.new(0, 2.6, 0) * CFrame.Angles(0, 0, math.rad(90)),
 			Color = STRAW,
 			Material = Enum.Material.Fabric,
 		})
 		pad:SetAttribute("Island", index)
 		pad:SetAttribute("Slot", slot)
 		pad:AddTag("Incubator")
+		local dome = part(model, { Name = "Dome", Shape = Enum.PartType.Ball, Size = Vector3.one * 4, CFrame = base * CFrame.new(0, 3.4, 0), Color = rgb(220, 240, 255), Material = Enum.Material.Glass, Transparency = 0.7, CanCollide = false, CanQuery = false })
+		dome:SetAttribute("Slot", slot)
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Use"
 		prompt.ObjectText = if safe then "Safe nest" else "Nest"

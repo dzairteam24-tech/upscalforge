@@ -78,8 +78,17 @@ for index = 1, IslandConfig.ISLANDS do
 		return math.abs(p.X) <= area.size.X / 2 - 1 and math.abs(p.Z) <= area.size.Z / 2 - 1
 	end
 	for slot = 1, maxPads do
-		assert(inside(Layout.incubator(index, slot), Layout.HATCHERY), ("nest %d on the deck"):format(slot))
+		local p = frame:PointToObjectSpace(Layout.incubator(index, slot)) - Layout.HATCHERY.center
+		assert(Vector3.new(p.X, 0, p.Z).Magnitude <= Layout.HATCHERY.radius - 2, ("nest %d on the hatchery floor"):format(slot))
+		for other = slot + 1, maxPads do
+			assert((Layout.incubator(index, slot) - Layout.incubator(index, other)).Magnitude >= 4.6, "nests don't touch")
+		end
 	end
+	local hatch = Layout.HATCHERY.center
+	assert(hatch.X - Layout.HATCHERY.radius >= Layout.PATH_WIDTH / 2, "the hatchery is off the path")
+	local pasture = Layout.PASTURE
+	assert(pasture.center.X + pasture.size.X / 2 <= -Layout.PATH_WIDTH / 2, "the pasture is off the path")
+	assert(pasture.size.X * pasture.size.Z >= 1000, "a roomy pasture")
 	for slot = 1, IslandConfig.PENS + #IslandConfig.PEN_PRICES do
 		assert(inside(Layout.pen(index, slot), Layout.PASTURE), ("creature %d in the pasture"):format(slot))
 	end
