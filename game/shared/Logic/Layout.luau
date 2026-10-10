@@ -133,8 +133,8 @@ end
 
 -- The Wild (Config/Wild): past the gate at the far (north) end of the street, a road runs on through the
 -- biomes one after another, nests on both sides of it. South of the gate is safe.
-Layout.BIOME_LENGTH = 70
-Layout.WILD_WIDTH = 100
+Layout.BIOME_LENGTH = 140
+Layout.WILD_WIDTH = 160
 Layout.ROAD_WIDTH = 14
 
 -- The gate into the Wild (the street's far end)
@@ -152,7 +152,7 @@ end
 function Layout.wildNest(i: number, k: number): Vector3
 	local side = if k % 2 == 1 then -1 else 1
 	local row = (k - 1) // 2
-	return Layout.biome(i) + Vector3.new(side * (Layout.ROAD_WIDTH / 2 + 16), 0, if row == 0 then 14 else -14)
+	return Layout.biome(i) + Vector3.new(side * (Layout.ROAD_WIDTH / 2 + 30), 0, if row == 0 then 30 else -30)
 end
 
 -- Which biome a position is in, if any

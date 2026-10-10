@@ -57,7 +57,7 @@ function MoveService.init()
 			for _, player in Players:GetPlayers() do
 				local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 				local moving = humanoid ~= nil and humanoid.MoveDirection.Magnitude > 0.3
-				local sprinting = wants[player] == true and moving and not WildService.busy(player)
+				local sprinting = wants[player] == true and moving and not WildService.slowed(player)
 				local riding = player:GetAttribute("RideSeat") ~= "" and player:GetAttribute("RideSeat") ~= nil
 				if (player:GetAttribute("Sprinting") == true) ~= sprinting then
 					player:SetAttribute("Sprinting", sprinting)

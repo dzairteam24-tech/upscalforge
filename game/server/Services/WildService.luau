@@ -67,7 +67,8 @@ local function applySpeed(player: Player)
 	local free = not HeistService.isCarrier(player)
 	local riding = type(seat) == "string" and seat ~= "" and free
 	local sprinting = player:GetAttribute("Sprinting") == true and free
-	humanoid.WalkSpeed = if carrying[player] then Wild.carrying(data.speed)
+	local carry = carrying[player]
+	humanoid.WalkSpeed = if carry and not carry.safe then Wild.carrying(data.speed)
 		elseif riding then math.min(WildConfig.SEAT_MAX_SPEED, data.speed * WildConfig.SEAT_SPEED)
 		elseif sprinting then data.speed * WildConfig.SPRINT
 		else data.speed
@@ -78,6 +79,12 @@ WildService.applySpeed = applySpeed
 -- Whether the player is carrying an egg (from the Wild, a raid or the Heist)
 function WildService.busy(player: Player): boolean
 	return carrying[player] ~= nil or RaidService.isCarrying(player) or HeistService.isCarrier(player)
+end
+
+-- Whether an egg slows the player down (a Wild egg only until they've got away from its guardian)
+function WildService.slowed(player: Player): boolean
+	local carry = carrying[player]
+	return (carry ~= nil and not carry.safe) or RaidService.isCarrying(player) or HeistService.isCarrier(player)
 end
 
 local function busy(player: Player): boolean
@@ -232,7 +239,7 @@ local function spawnGuardians()
 	local folder = world and world:FindFirstChild("Wild") and (world :: any).Wild:FindFirstChild("Guardians")
 	for i, biome in WildConfig.BIOMES do
 		for g = 1, WildConfig.GUARDIANS do
-			local home = Layout.biome(i) + Vector3.new(if g % 2 == 1 then -10 else 10, 0, 0)
+			local home = Layout.biome(i) + Vector3.new(if WildConfig.GUARDIANS == 1 then 0 elseif g % 2 == 1 then -10 else 10, 0, 0)
 			local tag = Instance.new("Part")
 			tag.Name = "GuardianTag"
 			tag.Size = Vector3.one
@@ -285,7 +292,8 @@ local function tick(frame: number)
 			finish(player, true)
 		elseif not carry.safe and Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= carry.nest.biome then
 			carry.safe = true
-			IslandService.notify(player, "😮‍💨 You got away! Walk the egg back through the gate", "success")
+			applySpeed(player)
+			IslandService.notify(player, "😮‍💨 You got away! Take the egg back through the gate", "success")
 		end
 	end
 	for _, guardian in guardians do
@@ -312,7 +320,7 @@ local function tick(frame: number)
 			if (guardian.wander - guardian.position).Magnitude < 0.5 then
 				guardian.rest -= dt
 				if guardian.rest <= 0 then
-					guardian.wander = guardian.home + Vector3.new(rng:NextNumber(-8, 8), 0, rng:NextNumber(-12, 12))
+					guardian.wander = guardian.home + Vector3.new(rng:NextNumber(-25, 25), 0, rng:NextNumber(-35, 35))
 					guardian.rest = rng:NextNumber(1, 4)
 				end
 				continue

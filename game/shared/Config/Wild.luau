@@ -28,7 +28,7 @@ local BIOMES: { Biome } = {
 return {
 	BIOMES = BIOMES,
 	NESTS = 4, -- nests in each biome, two each side of the road
-	GUARDIANS = 2, -- predators in each biome
+	GUARDIANS = 1, -- predators in each biome
 	CATCH_RANGE = 4, -- a guardian this close catches the player
 	WAKE = 1.5, -- seconds after an egg is taken before its guardian starts the chase
 	RESET = 300, -- every nest gets its egg back this often
