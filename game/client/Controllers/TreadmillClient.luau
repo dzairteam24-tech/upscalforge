@@ -71,7 +71,7 @@ local function addBelt(instance: Instance)
 	end)
 end
 
--- The slats slide back along the belt (toward the console), as a real belt under a runner
+-- The slats slide back along the belt (away from the console), as a real belt under a runner
 local function moveBelts(dt: number)
 	local camera = workspace.CurrentCamera
 	local eye = if camera then camera.CFrame.Position else Vector3.zero
@@ -82,7 +82,7 @@ local function moveBelts(dt: number)
 		local length = belt.Size.X
 		entry.offset = (entry.offset + BELT_SPEED * dt) % length
 		for i, slat in entry.slats do
-			local x = ((i - 1) * length / SLATS - entry.offset) % length - length / 2
+			local x = ((i - 1) * length / SLATS + entry.offset) % length - length / 2
 			slat.CFrame = belt.CFrame * CFrame.new(x, belt.Size.Y / 2 + 0.03, 0)
 		end
 	end
@@ -132,8 +132,8 @@ local function step()
 	local seated = LOCAL:GetAttribute("RideSeat")
 	local should = mill ~= nil and humanoid ~= nil and steering().Magnitude < 0.1 and (seated == nil or seated == "")
 	if should and character and humanoid and root and mill then
-		-- Facing along the belt, staying where they are
-		local facing = mill.RightVector
+		-- Facing the console, as on a real treadmill, staying where they are
+		local facing = -mill.RightVector
 		root.CFrame = CFrame.lookAt(root.Position, root.Position + Vector3.new(facing.X, 0, facing.Z))
 		root.AssemblyLinearVelocity = Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
 		local anim = runTrack(character, humanoid)
