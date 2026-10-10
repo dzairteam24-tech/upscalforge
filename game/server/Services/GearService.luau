@@ -3,6 +3,9 @@
 -- Swinging it at a player who carries an egg (from the Wild, a raid or the Heist) counts a hit; enough hits in a
 -- row knock the egg out of their hands (fewer with a better bat than theirs). Nobody carrying nothing is
 -- touched, nor a new player, nor anyone in a Peaceful private server.
+--
+-- Traps (bought there too) are set down in the Wild; a player carrying an egg who steps on someone else's is
+-- stuck for a moment.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,8 +13,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GearConfig = require(Shared.Config.Gear)
 local RaidConfig = require(Shared.Config.Raid)
+local WildConfig = require(Shared.Config.Wild)
 local Format = require(Shared.Logic.Format)
 local Gear = require(Shared.Logic.Gear)
+local Layout = require(Shared.Logic.Layout)
 local Net = require(Shared.Net)
 
 local DataService = require(script.Parent.DataService)
@@ -161,6 +166,137 @@ local function giveBat(player: Player)
 	tool.Parent = backpack
 end
 
+---------------------------------------------------------------------------------------------------------------
+-- Traps
+
+type Trap = { owner: Player, part: Part, expires: number }
+local traps: { Trap } = {}
+
+local function trapsSetBy(player: Player): number
+	local count = 0
+	for _, trap in traps do
+		count += if trap.owner == player then 1 else 0
+	end
+	return count
+end
+
+local giveTraps: (Player) -> ()
+
+local function setTrap(player: Player)
+	local data = DataService.get(player)
+	local root = rootOf(player)
+	if not data or not root or data.traps <= 0 then
+		return
+	end
+	if not Layout.biomeAt(root.Position, #WildConfig.BIOMES) then
+		IslandService.notify(player, "Traps go down in the Wild", "error")
+		return
+	end
+	if trapsSetBy(player) >= GearConfig.TRAP_MAX_SET then
+		IslandService.notify(player, ("You can only have %d traps down at once"):format(GearConfig.TRAP_MAX_SET), "error")
+		return
+	end
+	data.traps -= 1
+	local part = Instance.new("Part")
+	part.Name = "Trap"
+	part.Shape = Enum.PartType.Cylinder
+	part.Size = Vector3.new(0.3, 4, 4)
+	part.CFrame = CFrame.new(root.Position.X, 0.45, root.Position.Z) * CFrame.Angles(0, 0, math.rad(90))
+	part.Color = Color3.fromRGB(120, 110, 100)
+	part.Material = Enum.Material.Metal
+	part.Transparency = 0.35 -- (easy to miss when running)
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.Parent = workspace
+	table.insert(traps, { owner = player, part = part, expires = os.clock() + GearConfig.TRAP_TIME })
+	IslandService.notify(player, ("🪤 Trap set! (%d left)"):format(data.traps), "success")
+	giveTraps(player)
+	IslandService.push(player)
+end
+
+-- The traps tool, while the player has some
+function giveTraps(player: Player)
+	local data = DataService.get(player)
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not data or not backpack then
+		return
+	end
+	local tool = backpack:FindFirstChild("Traps") or (player.Character and player.Character:FindFirstChild("Traps"))
+	if data.traps <= 0 then
+		if tool then
+			tool:Destroy()
+		end
+		return
+	end
+	if not tool then
+		local created = Instance.new("Tool")
+		created.Name = "Traps"
+		created.RequiresHandle = false
+		created.CanBeDropped = false
+		created.Activated:Connect(function()
+			setTrap(player)
+		end)
+		created.Parent = backpack
+		tool = created
+	end
+	if tool and tool:IsA("Tool") then
+		tool.ToolTip = ("🪤 Trap ×%d: set it down in the Wild"):format(data.traps)
+	end
+end
+
+local function buyTrap(player: Player)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	if data.traps >= GearConfig.TRAP_MAX_HELD then
+		IslandService.notify(player, ("You can carry %d traps at most"):format(GearConfig.TRAP_MAX_HELD), "error")
+		return
+	end
+	if data.coins < GearConfig.TRAP_PRICE then
+		IslandService.notify(player, ("You need 🪙 %s"):format(Format.abbrev(GearConfig.TRAP_PRICE)), "error")
+		return
+	end
+	data.coins -= GearConfig.TRAP_PRICE
+	data.traps += 1
+	giveTraps(player)
+	IslandService.notify(player, ("🪤 Bought a trap (%d)"):format(data.traps), "success")
+	IslandService.push(player)
+end
+
+-- Ten times a second: traps catch egg carriers stepping on them, and old ones go
+local function checkTraps()
+	local now = os.clock()
+	for i = #traps, 1, -1 do
+		local trap = traps[i]
+		local sprung = false
+		if not PEACEFUL then
+			for _, player in Players:GetPlayers() do
+				local root = rootOf(player)
+				local data = DataService.get(player)
+				if player ~= trap.owner and root and data and carrying(player) and os.time() - data.firstPlayed >= RaidConfig.NEW_PLAYER_SAFE then
+					local flat = Vector3.new(root.Position.X - trap.part.Position.X, 0, root.Position.Z - trap.part.Position.Z)
+					if flat.Magnitude <= GearConfig.TRAP_RANGE then
+						WildService.stick(player, GearConfig.TRAP_STUCK)
+						Net.event("Bump"):FireAllClients(root.Position, "Trap")
+						IslandService.notify(player, ("🪤 %s's trap got you!"):format(trap.owner.DisplayName), "error")
+						if trap.owner.Parent then
+							IslandService.notify(trap.owner, ("🪤 Your trap caught %s!"):format(player.DisplayName), "success")
+						end
+						sprung = true
+						break
+					end
+				end
+			end
+		end
+		if sprung or now >= trap.expires or not trap.owner.Parent then
+			trap.part:Destroy()
+			table.remove(traps, i)
+		end
+	end
+end
+
 local function upgradeBat(player: Player)
 	local data = DataService.get(player)
 	if not data then
@@ -184,12 +320,21 @@ end
 
 function GearService.init()
 	Net.event("UpgradeBat").OnServerEvent:Connect(upgradeBat)
+	Net.event("BuyTrap").OnServerEvent:Connect(buyTrap)
 	DataService.onLoaded(function(player)
 		giveBat(player)
+		giveTraps(player)
 		player.CharacterAdded:Connect(function()
 			task.wait(0.5)
 			giveBat(player)
+			giveTraps(player)
 		end)
+	end)
+	task.spawn(function()
+		while true do
+			task.wait(0.1)
+			checkTraps()
+		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		combos[player] = nil

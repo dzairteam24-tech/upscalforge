@@ -22,6 +22,7 @@ local EVENTS = {
 	"SendHome", -- (id): a Homesick creature goes back where its egg was stolen from
 	"Snap", -- (id): it and matching creatures snap into one (Config/Snap)
 	"UpgradeBat", -- at the Gear Shop (Config/Gear)
+	"BuyTrap",
 	"ClaimDaily", -- the egg for doing all of today's tasks
 	"Sprint", -- (on)
 	"Seat", -- (seat name, or "" to stand): the floating seat the player rides (SeatModel)

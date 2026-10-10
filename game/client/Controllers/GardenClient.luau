@@ -448,7 +448,7 @@ function GardenClient.init()
 		local text = billboard(spot, 6, 2, Vector3.new(0, 4, 0))
 		local gui = text.Parent :: BillboardGui
 		gui.AlwaysOnTop = true
-		text.Text = if mutation == "Lava" then "🔥 BURN!" elseif mutation == "Crystal" then "💎 SLIP!" else "💥 BONK!"
+		text.Text = if mutation == "Lava" then "🔥 BURN!" elseif mutation == "Crystal" then "💎 SLIP!" elseif mutation == "Trap" then "🪤 TRAPPED!" else "💥 BONK!"
 		text.TextColor3 = if mutation == "Lava" then Color3.fromRGB(255, 120, 50) elseif mutation == "Crystal" then Color3.fromRGB(120, 200, 245) else Color3.fromRGB(255, 225, 90)
 		task.spawn(function()
 			for i = 1, 16 do

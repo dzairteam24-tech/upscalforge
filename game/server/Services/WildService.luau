@@ -65,10 +65,15 @@ end
 
 -- The player's run speed, as it should be now (slower with an egg; faster on the floating seat, or sprinting:
 -- MoveService; RaidService slows a raid thief itself)
+local stuckUntil: { [Player]: number } = {} -- (os.clock(): caught in a trap, GearService)
 local function applySpeed(player: Player)
 	local data = DataService.get(player)
 	local humanoid = humanoidOf(player)
 	if not data or not humanoid or RaidService.isCarrying(player) then
+		return
+	end
+	if os.clock() < (stuckUntil[player] or 0) then
+		humanoid.WalkSpeed = 0
 		return
 	end
 	local seat = player:GetAttribute("RideSeat")
@@ -84,6 +89,17 @@ local function applySpeed(player: Player)
 	player:SetAttribute("Speed", data.power)
 end
 WildService.applySpeed = applySpeed
+
+-- Holds the player where they are for a while (a trap)
+function WildService.stick(player: Player, seconds: number)
+	stuckUntil[player] = os.clock() + seconds
+	applySpeed(player)
+	task.delay(seconds + 0.05, function()
+		if player.Parent then
+			applySpeed(player)
+		end
+	end)
+end
 
 -- Whether the player is carrying an egg (from the Wild, a raid or the Heist)
 function WildService.busy(player: Player): boolean
@@ -625,6 +641,7 @@ function WildService.init()
 	Players.PlayerAdded:Connect(onCharacter)
 	Players.PlayerRemoving:Connect(function(player)
 		running[player] = nil
+		stuckUntil[player] = nil
 		finish(player, false)
 	end)
 	RunService.Heartbeat:Connect(tick)

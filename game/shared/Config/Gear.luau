@@ -27,4 +27,13 @@ return {
 	COMBO = 4, -- seconds: hits further apart than this start over
 	RANGE = 9, -- studs: how close the one hit must be
 	COOLDOWN = 0.6, -- seconds between two swings
+
+	-- Traps: bought at the Gear Shop, set down in the Wild. A player carrying an egg who steps on someone else's
+	-- trap is stuck there for a moment (the guardian, or a bat, catches up)
+	TRAP_PRICE = 2500,
+	TRAP_MAX_HELD = 10,
+	TRAP_MAX_SET = 3, -- set at once, per player
+	TRAP_TIME = 90, -- seconds a set trap lasts
+	TRAP_STUCK = 3, -- seconds stuck
+	TRAP_RANGE = 3.5,
 }
