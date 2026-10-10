@@ -15,6 +15,7 @@ local ShopWindow = require(UI.ShopWindow)
 local GardenClient = require(Controllers.GardenClient)
 local Guide = require(Controllers.Guide)
 local RideClient = require(Controllers.RideClient)
+local SprintClient = require(Controllers.SprintClient)
 
 Store.init()
 
@@ -33,3 +34,4 @@ Notify.mount(gui)
 GardenClient.init()
 Guide.init()
 RideClient.init()
+SprintClient.init()

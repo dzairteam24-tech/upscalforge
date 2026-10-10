@@ -1,7 +1,7 @@
 --!strict
--- The floating seat (SeatModel, drawn by RideClient): the player gets on and off it with the HUD's button, and
--- rides it faster than they walk (Config/Wild SEAT_SPEED, WildService.applySpeed), but never while carrying an
--- egg. Everyone has the Cloud seat; the others are only looks.
+-- Going faster than walking (WildService.applySpeed), but never while carrying an egg: Sprint while it's held
+-- (Config/Wild SPRINT), and the floating seat (SeatModel, drawn by RideClient), which the player gets on and off
+-- with the HUD's button and rides SEAT_SPEED times faster. Everyone has the Cloud seat; the others are looks.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,6 +13,8 @@ local DataService = require(script.Parent.DataService)
 local WildService = require(script.Parent.WildService)
 
 local MoveService = {}
+
+local wants: { [Player]: boolean } = {} -- holding Sprint
 
 -- Puts the player on their floating seat (or off it)
 local function applySeat(player: Player)
@@ -32,6 +34,12 @@ end
 
 function MoveService.init()
 	Net.event("Seat").OnServerEvent:Connect(chooseSeat)
+	Net.event("Sprint").OnServerEvent:Connect(function(player, on)
+		wants[player] = on == true
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		wants[player] = nil
+	end)
 	DataService.onLoaded(function(player)
 		applySeat(player)
 	end)
@@ -41,12 +49,20 @@ function MoveService.init()
 			applySeat(player)
 		end)
 	end)
-	-- Picking up or losing an egg (the Heist's, a raid's) changes what the seat gives: kept up to date here
+	-- Sprinting while holding it and moving; and picking up or losing an egg (the Heist's, a raid's) changes
+	-- what the seat or Sprint gives: kept up to date here
 	task.spawn(function()
 		while true do
-			task.wait(0.25)
+			task.wait(0.1)
 			for _, player in Players:GetPlayers() do
-				if player:GetAttribute("RideSeat") ~= "" and player:GetAttribute("RideSeat") ~= nil then
+				local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+				local moving = humanoid ~= nil and humanoid.MoveDirection.Magnitude > 0.3
+				local sprinting = wants[player] == true and moving and not WildService.busy(player)
+				local riding = player:GetAttribute("RideSeat") ~= "" and player:GetAttribute("RideSeat") ~= nil
+				if (player:GetAttribute("Sprinting") == true) ~= sprinting then
+					player:SetAttribute("Sprinting", sprinting)
+					WildService.applySpeed(player)
+				elseif riding or sprinting then
 					WildService.applySpeed(player)
 				end
 			end
