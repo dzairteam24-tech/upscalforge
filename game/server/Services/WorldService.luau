@@ -283,11 +283,11 @@ local function buildGarden(world: Instance, index: number)
 	part(model, { Name = "Path", Size = Vector3.new(Layout.PATH_WIDTH, 0.3, pathLength), CFrame = at(0, 0.85, -half + pathLength / 2), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
 
 	-- The hatchery: a wooden deck across the front, the nests either side of the path, each on a stone stand under
-	-- a glass dome (the safe one ringed in gold), and a warm lamp on each side
+	-- a glass dome (the safe one ringed in gold), and a warm lamp each side of the path
 	local hc = at(hatchery.center.X, 0, hatchery.center.Z)
 	part(model, { Name = "Deck", Size = hatchery.size + Vector3.new(0, 0.6, 0), CFrame = hc * CFrame.new(0, 0.5, 0), Color = WOOD, Material = Enum.Material.WoodPlanks })
 	for _, side in { -1, 1 } do
-		local post = hc * CFrame.new(side * 14.25, 0, 0)
+		local post = hc * CFrame.new(side * 4.4, 0, hatchery.size.Z / 2 - 1)
 		part(model, { Name = "LampPost", Size = Vector3.new(0.8, 6, 0.8), CFrame = post * CFrame.new(0, 3.8, 0), Color = WOOD_DARK })
 		local lamp = part(model, { Name = "Lamp", Shape = Enum.PartType.Ball, Size = Vector3.one * 2, CFrame = post * CFrame.new(0, 7.2, 0), Color = rgb(255, 170, 80), Material = Enum.Material.Neon, CanCollide = false })
 		local warmth = Instance.new("PointLight")

@@ -69,10 +69,10 @@ end
 -- Inside a garden (its frame's space, front -Z toward the gate): the gate opens onto the hatchery, a wooden
 -- deck across the front with the nests either side of a short path, so the owner guards them from the gate. The
 -- path leads on into the pasture, which fills the rest of the garden, back to the fence, round a pond.
-Layout.HATCHERY = { center = Vector3.new(0, 0, -23), size = Vector3.new(50, 0, 22) }
+Layout.HATCHERY = { center = Vector3.new(0, 0, -24), size = Vector3.new(66, 0, 20) }
 Layout.PASTURE = { center = Vector3.new(0, 0, 11.5), size = Vector3.new(62, 0, 43) }
 Layout.POND = { center = Vector3.new(0, 0, 11.5), radius = 5.5 }
-Layout.NEST_SIZE = 8 -- a nest's width (an egg in it is drawn to fit, whatever its tier)
+Layout.NEST_SIZE = 6 -- a nest's width (an egg in it is drawn to fit, whatever its tier)
 Layout.PATH_WIDTH = 6
 Layout.TROUGH = Vector3.new(-12, 0, -5) -- in the pasture, beside where the path comes in
 Layout.BARN = Vector3.new(23.5, 0, 26.5) -- the storage barn, in the pasture's back corner
@@ -92,12 +92,16 @@ function Layout.blocked(inside: Vector3): boolean
 	return false
 end
 
--- A nest's spot (an incubator): two by two on each side of the path, the first ones (the safe one first) beside
--- the path and nearest the pasture, then outward
-local NESTS = {
-	Vector3.new(-9, 0, -17.5), Vector3.new(9, 0, -17.5), Vector3.new(-9, 0, -28.5), Vector3.new(9, 0, -28.5),
-	Vector3.new(-19.5, 0, -17.5), Vector3.new(19.5, 0, -17.5), Vector3.new(-19.5, 0, -28.5), Vector3.new(19.5, 0, -28.5),
-}
+-- A nest's spot (an incubator): eight on each side of the path, in two rows of four; the first ones (the safe
+-- one first) beside the path, then outward
+local NESTS: { Vector3 } = {}
+for column = 0, 3 do
+	for _, z in { -19.5, -28.5 } do
+		for _, side in { -1, 1 } do
+			table.insert(NESTS, Vector3.new(side * (7.5 + column * 7), 0, z))
+		end
+	end
+end
 function Layout.incubator(index: number, slot: number): Vector3
 	return Layout.garden(index):PointToWorldSpace(NESTS[slot])
 end
