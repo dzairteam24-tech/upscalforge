@@ -1,14 +1,12 @@
 --!strict
 -- The bag: the eggs the player holds (they go into incubators on the island) and their creatures, each with
--- what it earns, to put on the island, take back or sell (or send home, when it's Homesick). And a button to make
--- room for more on the island.
+-- what it earns, to put on the island, take back or sell. And a button to make room for more on the island.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Creatures = require(Shared.Config.Creatures)
 local IslandConfig = require(Shared.Config.Island)
-local RaidConfig = require(Shared.Config.Raid)
 local Mutations = require(Shared.Config.Mutations)
 local Earn = require(Shared.Logic.Earn)
 local Format = require(Shared.Logic.Format)
@@ -97,7 +95,7 @@ function BagWindow.mount(gui: ScreenGui)
 		-- Creatures, best first
 		local list = {}
 		for id, creature in data.creatures do
-			table.insert(list, { id = id, creature = creature, rate = Earn.kept(creature), placed = table.find(data.placed, id) ~= nil })
+			table.insert(list, { id = id, creature = creature, rate = Earn.rate(creature), placed = table.find(data.placed, id) ~= nil })
 		end
 		table.sort(list, function(a, b)
 			if a.placed ~= b.placed then
@@ -133,9 +131,7 @@ function BagWindow.mount(gui: ScreenGui)
 			local name = Snap.name(entry.creature)
 			Theme.text(frame, { Text = name, Size = UDim2.new(0.42, -24, 0, 26), Position = UDim2.fromOffset(24, 4), TextXAlignment = Enum.TextXAlignment.Left })
 			Theme.text(frame, {
-				Text = if entry.creature.h
-					then ("🏠 Misses %s · 🪙 %s/s"):format(entry.creature.hn or "home", Format.abbrev(entry.rate))
-					else ("%s · 🪙 %s/s"):format(if species then species.rarity else "", Format.abbrev(entry.rate)),
+				Text = ("%s · 🪙 %s/s"):format(if species then species.rarity else "", Format.abbrev(entry.rate)),
 				Size = UDim2.new(0.42, -24, 0, 20),
 				Position = UDim2.fromOffset(24, 32),
 				TextColor3 = if species and RARITY_ORDER[species.rarity] >= 4 then Color3.fromRGB(190, 120, 255) else Theme.soft,
@@ -146,14 +142,9 @@ function BagWindow.mount(gui: ScreenGui)
 			end)
 			toggle.Size = UDim2.new(0.26, 0, 0, 40)
 			toggle.Position = UDim2.new(0.44, 0, 0, 9)
-			local worth = Earn.sellPrice({ s = entry.creature.s, m = entry.creature.m })
-			local sell = if entry.creature.h
-				then Theme.button(frame, ("🏠 Home 🪙%s"):format(Format.abbrev(worth * RaidConfig.SEND_HOME_REWARD)), Theme.gold, function()
-					Net.event("SendHome"):FireServer(entry.id)
-				end)
-				else Theme.button(frame, ("Sell 🪙%s"):format(Format.abbrev(worth)), Theme.red, function()
-					Net.event("SellCreature"):FireServer(entry.id)
-				end)
+			local sell = Theme.button(frame, ("Sell 🪙%s"):format(Format.abbrev(Earn.sellPrice(entry.creature))), Theme.red, function()
+				Net.event("SellCreature"):FireServer(entry.id)
+			end)
 			sell.Size = UDim2.new(0.27, 0, 0, 40)
 			sell.Position = UDim2.new(0.72, 0, 0, 9)
 		end

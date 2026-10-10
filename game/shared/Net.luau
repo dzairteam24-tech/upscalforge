@@ -11,15 +11,12 @@ local EVENTS = {
 	"PlaceCreature", -- (id)
 	"TakeCreature", -- (id)
 	"UseIncubator", -- (slot)
-	"StealEgg", -- (garden, slot), at Raid Time
 	"BuyIncubator",
 	"BuyPen",
 	"BuyStorage",
 	"BuyFood", -- (food id)
 	"Feed",
-	"StealFood", -- (garden), at Raid Time
 	"Travel", -- ("home" or "wild")
-	"SendHome", -- (id): a Homesick creature goes back where its egg was stolen from
 	"Snap", -- (id): it and matching creatures snap into one (Config/Snap)
 	"UpgradeBat", -- at the Gear Shop (Config/Gear)
 	"BuyTrap",
@@ -31,7 +28,7 @@ local EVENTS = {
 	"Notify", -- (text, kind)
 	"Hatched", -- (creature id, species, mutation), or (id, full name, "Snap") for a snapped one
 	"SpeedUp", -- (gain): a step on the treadmill
-	"Bump", -- (position, mutation): a garden's creatures bumped into a thief
+	"Bump", -- (position, kind: "Hit" or "Trap"): a bat hit a carrier, or a trap caught one
 }
 
 local FOLDER = "Remotes"

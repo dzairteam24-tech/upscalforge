@@ -1,8 +1,7 @@
 --!strict
--- The gardens on this screen: the eggs in the nests with their timers, the owner's nest prompts (and a
--- thief's, at Raid Time), the laser gates (always open for their owner), the creatures roaming the pastures
--- with their coins popping (and chasing intruders at Raid Time), the Heist Egg's timer, the Mother Cube, and what
--- the prompts in the world open.
+-- The gardens on this screen: the eggs in the nests with their timers, the owner's nest prompts, the laser
+-- gates (open only for their owner), the creatures roaming the pastures with their coins popping, the Heist
+-- Egg's timer, the Mother Cube, the treadmills, and what the prompts in the world open.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -11,9 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local RaidConfig = require(Shared.Config.Raid)
 local Format = require(Shared.Logic.Format)
-local Raid = require(Shared.Logic.Raid)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
 local Weather = require(Shared.Logic.Weather)
@@ -54,11 +51,6 @@ local function billboard(parent: Instance, width: number, height: number, offset
 	return text
 end
 
--- Whether it's Raid Time here (never in a Peaceful private server)
-local function raidOpen(): boolean
-	return workspace:GetAttribute("Peaceful") ~= true and (Raid.at(math.floor(now())))
-end
-
 -- Incubators
 local EGG_SIZE = Layout.NEST_SIZE * 0.45
 type Pad = { egg: Part, text: TextLabel }
@@ -97,14 +89,7 @@ local function updatePad(pad: BasePart)
 	end
 	local action = ""
 	local text = ""
-	local raid = raidOpen()
-	local carried = pad:GetAttribute("Carried") == true
-	if carried then
-		pad_.egg.Parent = nil
-	end
-	if carried then
-		text = if mine then "🚨 Stolen! Catch them!" else "🏃 Being stolen"
-	elseif owner == 0 then
+	if owner == 0 then
 		text = ""
 	elseif not open then
 		text = if price > 0 then "🔒 " .. Format.abbrev(price) else ""
@@ -123,22 +108,15 @@ local function updatePad(pad: BasePart)
 			action = "Check"
 		end
 	end
-	-- At Raid Time, someone else's egg can be stolen (not from the safe incubator)
-	local stealable = raid and not mine and owner ~= 0 and egg ~= nil and not carried and number(pad, "Slot") ~= RaidConfig.SAFE_SLOT
-	if stealable then
-		action = "Steal"
-	end
 	pad_.text.Text = text
 	local prompt = pad:FindFirstChildOfClass("ProximityPrompt")
 	if prompt then
-		prompt.Enabled = (mine and action ~= "" and not carried) or stealable
+		prompt.Enabled = mine and action ~= ""
 		prompt.ActionText = action
-		prompt.HoldDuration = if stealable then 1 else 0
 	end
 end
 
--- A trough: the owner's food and how long the creatures are fed; the owner feeds there, a thief steals food at
--- Raid Time
+-- A trough: the owner's food and how long the creatures are fed; the owner feeds there
 local troughTexts: { [BasePart]: TextLabel } = {}
 local function updateTrough(trough: BasePart)
 	local text = troughTexts[trough]
@@ -152,23 +130,19 @@ local function updateTrough(trough: BasePart)
 	local left = number(trough, "FedUntil") - now()
 	local fed = if left > 0 then ("😋 ×2 · %s"):format(Format.time(math.ceil(left))) else "😴 Hungry"
 	;(text :: TextLabel).Text = if owner == 0 then "" elseif mine then ("%s · 🌾 %d"):format(fed, food) else fed
-	local stealable = raidOpen() and not mine and owner ~= 0 and food > 0
 	local prompt = trough:FindFirstChildOfClass("ProximityPrompt")
 	if prompt then
-		prompt.Enabled = mine or stealable
-		prompt.ActionText = if stealable then "Steal food" else "Feed"
-		prompt.HoldDuration = if stealable then 1 else 0
+		prompt.Enabled = mine
+		prompt.ActionText = "Feed"
 	end
 end
 
--- A garden's laser gate: always open for its owner (on this screen only: the server keeps it shut for the
--- others until Raid Time)
+-- A garden's laser gate: open for its owner (on this screen only: the server keeps it shut for the others)
 local function updateGate(gate: BasePart)
 	local index = number(gate, "Island")
 	local mine = index ~= 0 and index == LOCAL:GetAttribute("Island")
-	local isOpen = gate:GetAttribute("Open") == true
-	gate.CanCollide = not (isOpen or mine)
-	gate.Transparency = if isOpen then 0.9 elseif mine then 0.75 else 0.45
+	gate.CanCollide = not mine
+	gate.Transparency = if mine then 0.75 else 0.45
 end
 
 -- The creatures roam their garden's pasture: each walks to a random spot, rests a moment, and walks on, hopping
@@ -232,62 +206,24 @@ local function addRoamer(model: Instance)
 	end)
 end
 
--- At Raid Time, who's in each garden that isn't theirs: garden -> their positions
-local CHASE_SPEED = 10
-local function intruders(): { [number]: { Vector3 } }
-	local found = {}
-	if not raidOpen() then
-		return found
-	end
-	for _, player in Players:GetPlayers() do
-		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		local index = root and Layout.gardenAt(root.Position)
-		if root and index and player:GetAttribute("Island") ~= index then
-			found[index] = found[index] or {}
-			table.insert(found[index], root.Position)
-		end
-	end
-	return found
-end
-
-local function nearest(from: Vector3, spots: { Vector3 }): Vector3
-	local best, distance = spots[1], math.huge
-	for _, spot in spots do
-		local d = (spot - from).Magnitude
-		if d < distance then
-			best, distance = spot, d
-		end
-	end
-	return best
-end
-
 local ANIMATE_RANGE = 160 -- studs from the camera: creatures further away hold still
 local function roam(dt: number)
 	local clock = os.clock()
-	local chased = intruders()
 	local camera = workspace.CurrentCamera
 	local eye = if camera then camera.CFrame.Position else Vector3.zero
 	for model, r in roamers do
 		if (r.at - eye).Magnitude > ANIMATE_RANGE then
 			continue
 		end
-		local spots = chased[number(model, "Island")]
-		local chasing = spots ~= nil
-		if spots then
-			r.target = nearest(r.at, spots)
-			r.rest = 0
-		end
 		local flat = Vector3.new(r.target.X, r.y, r.target.Z) - r.at
 		local walking = false
-		if chasing and flat.Magnitude < 2.5 then
-			walking = true -- (caught up: hopping at them)
-		elseif r.rest > 0 then
+		if r.rest > 0 then
 			r.rest -= dt
 		elseif flat.Magnitude < 0.5 then
 			r.rest = 1 + math.random() * 3
 			r.target = pastureSpot(number(model, "Island"))
 		else
-			r.at += flat.Unit * math.min(flat.Magnitude, (if chasing then CHASE_SPEED else 4) * dt)
+			r.at += flat.Unit * math.min(flat.Magnitude, 4 * dt)
 			walking = true
 		end
 		local hop = if walking then math.abs(math.sin(clock * 9 + r.phase)) * 0.5 else 0
@@ -397,11 +333,7 @@ function GardenClient.init()
 		end
 		local trough = prompt:GetAttribute("Trough")
 		if type(trough) == "number" then
-			if prompt.ActionText == "Steal food" then
-				Net.event("StealFood"):FireServer(trough)
-			else
-				Net.event("Feed"):FireServer()
-			end
+			Net.event("Feed"):FireServer()
 			return
 		end
 		if type(ui) == "string" then
@@ -412,11 +344,7 @@ function GardenClient.init()
 		end
 		local slot = prompt:GetAttribute("Slot")
 		if type(slot) == "number" then
-			if prompt.ActionText == "Steal" then
-				Net.event("StealEgg"):FireServer(garden, slot)
-			else
-				Net.event("UseIncubator"):FireServer(slot)
-			end
+			Net.event("UseIncubator"):FireServer(slot)
 		end
 	end)
 	-- "+2 ⚡" over the player at each step on the treadmill
@@ -439,7 +367,7 @@ function GardenClient.init()
 			gui:Destroy()
 		end)
 	end)
-	Net.event("Bump").OnClientEvent:Connect(function(position: Vector3, mutation: string)
+	Net.event("Bump").OnClientEvent:Connect(function(position: Vector3, kind: string)
 		local spot = Instance.new("Part")
 		spot.Anchored, spot.CanCollide, spot.CanQuery, spot.Transparency = true, false, false, 1
 		spot.Size = Vector3.one
@@ -448,8 +376,8 @@ function GardenClient.init()
 		local text = billboard(spot, 6, 2, Vector3.new(0, 4, 0))
 		local gui = text.Parent :: BillboardGui
 		gui.AlwaysOnTop = true
-		text.Text = if mutation == "Lava" then "🔥 BURN!" elseif mutation == "Crystal" then "💎 SLIP!" elseif mutation == "Trap" then "🪤 TRAPPED!" else "💥 BONK!"
-		text.TextColor3 = if mutation == "Lava" then Color3.fromRGB(255, 120, 50) elseif mutation == "Crystal" then Color3.fromRGB(120, 200, 245) else Color3.fromRGB(255, 225, 90)
+		text.Text = if kind == "Trap" then "🪤 TRAPPED!" else "💥 BONK!"
+		text.TextColor3 = if kind == "Trap" then Color3.fromRGB(120, 200, 245) else Color3.fromRGB(255, 225, 90)
 		task.spawn(function()
 			for i = 1, 16 do
 				gui.StudsOffsetWorldSpace = Vector3.new(0, 4 + i * 0.15, 0)

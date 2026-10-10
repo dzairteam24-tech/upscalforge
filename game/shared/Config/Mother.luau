@@ -5,9 +5,9 @@
 
 return {
 	EVERY = 60 * 60, -- it comes this often...
-	AT = 35 * 60, -- ...at this many seconds past (xx:35, between two Raid Times)
-	STUDIO_EVERY = 5 * 60, -- (in Studio, every 5 minutes for testing...
-	STUDIO_AT = 150, -- ...away from Raid Time)
+	AT = 35 * 60, -- ...at this many seconds past (xx:35)
+	STUDIO_EVERY = 5 * 60, -- (in Studio, every 5 minutes for testing)
+	STUDIO_AT = 150,
 	LASTS = 2 * 60, -- it stays this long
 	WARNING = 60, -- the server is told this long before
 

@@ -1,6 +1,6 @@
 --!strict
 -- The Gear Shop (GearService): the bat every player holds, upgraded with coins (never Robux). Hitting a player who
--- carries an egg (from the Wild, a raid or the Heist) knocks it out of their hands after enough hits: more when
+-- carries an egg (from the Wild or the Heist) knocks it out of their hands after enough hits: more when
 -- they have a better bat than you, fewer when yours is better (Logic/Gear), so a new player can't take an egg
 -- from a strong one with a hit. Players carrying nothing aren't touched: the bat is only for eggs.
 

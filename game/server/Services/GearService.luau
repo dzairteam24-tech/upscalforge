@@ -1,6 +1,6 @@
 --!strict
 -- The bat (Config/Gear, Logic/Gear): every player holds one (a tool), upgraded with coins at the Gear Shop.
--- Swinging it at a player who carries an egg (from the Wild, a raid or the Heist) counts a hit; enough hits in a
+-- Swinging it at a player who carries an egg (from the Wild or the Heist) counts a hit; enough hits in a
 -- row knock the egg out of their hands (fewer with a better bat than theirs). Nobody carrying nothing is
 -- touched, nor a new player, nor anyone in a Peaceful private server.
 --
@@ -12,7 +12,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GearConfig = require(Shared.Config.Gear)
-local RaidConfig = require(Shared.Config.Raid)
 local WildConfig = require(Shared.Config.Wild)
 local Format = require(Shared.Logic.Format)
 local Gear = require(Shared.Logic.Gear)
@@ -22,13 +21,13 @@ local Net = require(Shared.Net)
 local DataService = require(script.Parent.DataService)
 local HeistService = require(script.Parent.HeistService)
 local IslandService = require(script.Parent.IslandService)
-local RaidService = require(script.Parent.RaidService)
 local WildService = require(script.Parent.WildService)
 
 local GearService = {}
 
 local PEACEFUL = game.PrivateServerId ~= "" and game.PrivateServerOwnerId ~= 0
 local KNOCKED_GUARD = 4 -- seconds after being knocked (or picking an egg back up) before it counts again
+local NEW_PLAYER_SAFE = 15 * 60 -- a new player can't be hit or trapped for this long after they first play
 
 type Combo = { hits: number, last: number }
 local combos: { [Player]: Combo } = {} -- per target: the hits so far (each worth 1 / hits needed)
@@ -40,13 +39,11 @@ local function rootOf(player: Player): BasePart?
 end
 
 local function carrying(player: Player): boolean
-	return player:GetAttribute("WildEgg") == true or RaidService.isCarrying(player) or HeistService.isCarrier(player)
+	return player:GetAttribute("WildEgg") == true or HeistService.isCarrier(player)
 end
 
 local function knock(target: Player)
-	if RaidService.isCarrying(target) then
-		RaidService.knock(target)
-	elseif HeistService.isCarrier(target) then
+	if HeistService.isCarrier(target) then
 		HeistService.knock(target)
 		IslandService.notify(target, "💥 Knocked out of your hands!", "error")
 	else
@@ -84,7 +81,7 @@ local function swing(player: Player)
 	if not target or not targetData then
 		return
 	end
-	if os.time() - targetData.firstPlayed < RaidConfig.NEW_PLAYER_SAFE then
+	if os.time() - targetData.firstPlayed < NEW_PLAYER_SAFE then
 		IslandService.notify(player, ("%s is new here: leave them be"):format(target.DisplayName), "error")
 		return
 	end
@@ -99,7 +96,7 @@ local function swing(player: Player)
 	combo.last = now
 	local targetRoot = rootOf(target)
 	if targetRoot then
-		Net.event("Bump"):FireAllClients(targetRoot.Position, "Normal")
+		Net.event("Bump"):FireAllClients(targetRoot.Position, "Hit")
 	end
 	if combo.hits >= 0.999 then
 		combos[target] = nil
@@ -275,7 +272,7 @@ local function checkTraps()
 			for _, player in Players:GetPlayers() do
 				local root = rootOf(player)
 				local data = DataService.get(player)
-				if player ~= trap.owner and root and data and carrying(player) and os.time() - data.firstPlayed >= RaidConfig.NEW_PLAYER_SAFE then
+				if player ~= trap.owner and root and data and carrying(player) and os.time() - data.firstPlayed >= NEW_PLAYER_SAFE then
 					local flat = Vector3.new(root.Position.X - trap.part.Position.X, 0, root.Position.Z - trap.part.Position.Z)
 					if flat.Magnitude <= GearConfig.TRAP_RANGE then
 						WildService.stick(player, GearConfig.TRAP_STUCK)
@@ -319,6 +316,7 @@ local function upgradeBat(player: Player)
 end
 
 function GearService.init()
+	workspace:SetAttribute("Peaceful", PEACEFUL) -- (the HUD says so)
 	Net.event("UpgradeBat").OnServerEvent:Connect(upgradeBat)
 	Net.event("BuyTrap").OnServerEvent:Connect(buyTrap)
 	DataService.onLoaded(function(player)

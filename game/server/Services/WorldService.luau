@@ -10,7 +10,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local IslandConfig = require(Shared.Config.Island)
 local WildConfig = require(Shared.Config.Wild)
-local RaidConfig = require(Shared.Config.Raid)
 local TownLooks = require(Shared.Config.TownLooks)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
@@ -264,7 +263,7 @@ local function buildGarden(world: Instance, index: number)
 		fence(at(side * (Layout.GATE_WIDTH / 2 + piece / 2), 0, -half), piece)
 	end
 
-	-- The laser gate between two posts: shut for everyone but the owner, open for all at Raid Time
+	-- The laser gate between two posts: shut for everyone but the owner
 	for _, side in { -1, 1 } do
 		part(model, { Name = "GatePost", Size = Vector3.new(1.4, 7, 1.4), CFrame = at(side * (Layout.GATE_WIDTH / 2 + 0.2), 3.5, -half), Color = WOOD_DARK })
 		part(model, { Name = "GateLight", Shape = Enum.PartType.Ball, Size = Vector3.one * 1.4, CFrame = at(side * (Layout.GATE_WIDTH / 2 + 0.2), 7.4, -half), Color = LASER, Material = Enum.Material.Neon, CanCollide = false })
@@ -287,7 +286,7 @@ local function buildGarden(world: Instance, index: number)
 	part(model, { Name = "Path", Size = Vector3.new(Layout.PATH_WIDTH, 0.3, pathLength), CFrame = at(0, 0.85, -half + pathLength / 2), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
 
 	-- The hatchery: a wooden deck across the front, the nests either side of the path, each on a stone stand under
-	-- a glass dome (the safe one ringed in gold), and a warm lamp each side of the path
+	-- a glass dome (the first one ringed in gold), and a warm lamp each side of the path
 	local hc = at(hatchery.center.X, 0, hatchery.center.Z)
 	part(model, { Name = "Deck", Size = hatchery.size + Vector3.new(0, 0.6, 0), CFrame = hc * CFrame.new(0, 0.5, 0), Color = WOOD, Material = Enum.Material.WoodPlanks })
 	for _, side in { -1, 1 } do
@@ -305,10 +304,10 @@ local function buildGarden(world: Instance, index: number)
 	local nest = Layout.NEST_SIZE
 	for slot = 1, IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES do
 		local spot = Layout.incubator(index, slot)
-		local safe = slot == RaidConfig.SAFE_SLOT
+		local first = slot == 1 -- (golden: where the starter egg goes)
 		local base = CFrame.new(spot)
 		part(model, { Name = "NestStand", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.4, nest, nest), CFrame = base * CFrame.new(0, 1.5, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(206, 196, 184), Material = Enum.Material.Slate })
-		part(model, { Name = "NestRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, nest + 0.6, nest + 0.6), CFrame = base * CFrame.new(0, 2.4, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = if safe then GOLD else WOOD_DARK, CanCollide = false })
+		part(model, { Name = "NestRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, nest + 0.6, nest + 0.6), CFrame = base * CFrame.new(0, 2.4, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = if first then GOLD else WOOD_DARK, CanCollide = false })
 		local pad = part(model, {
 			Name = "Incubator",
 			Shape = Enum.PartType.Cylinder,
@@ -324,10 +323,10 @@ local function buildGarden(world: Instance, index: number)
 		dome:SetAttribute("Slot", slot)
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Use"
-		prompt.ObjectText = if safe then "Safe nest" else "Nest"
+		prompt.ObjectText = "Nest"
 		prompt.MaxActivationDistance = 9
 		prompt.RequiresLineOfSight = false
-		prompt.Enabled = false -- GardenClient turns on the owner's (and a thief's, at Raid Time)
+		prompt.Enabled = false -- GardenClient turns on the owner's
 		prompt:SetAttribute("Island", index)
 		prompt:SetAttribute("Slot", slot)
 		prompt.Parent = pad
@@ -350,7 +349,7 @@ local function buildGarden(world: Instance, index: number)
 		local piece = hx - Layout.PATH_WIDTH / 2 - 1
 		hedge(at(px + s * (hx - piece / 2), 0, pz - hz), piece)
 	end
-	-- The trough, where the owner feeds the creatures (and a thief can steal food at Raid Time)
+	-- The trough, where the owner feeds the creatures
 	local trough = at(Layout.TROUGH.X, 0, Layout.TROUGH.Z)
 	part(model, { Name = "TroughBox", Size = Vector3.new(6, 1.6, 2.6), CFrame = trough * CFrame.new(0, 1.4, 0), Color = WOOD, Material = Enum.Material.WoodPlanks })
 	for _, s in { -1, 1 } do
@@ -364,7 +363,7 @@ local function buildGarden(world: Instance, index: number)
 	feed.ObjectText = "Trough"
 	feed.MaxActivationDistance = 8
 	feed.RequiresLineOfSight = false
-	feed.Enabled = false -- GardenClient turns on the owner's (and a thief's, at Raid Time)
+	feed.Enabled = false -- GardenClient turns on the owner's
 	feed:SetAttribute("Trough", index)
 	feed.Parent = hay
 

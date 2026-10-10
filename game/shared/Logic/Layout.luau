@@ -2,7 +2,7 @@
 -- Where everything is: one street, walked from south to north. Players arrive in a small square with a fountain;
 -- the street leaves it northward past the six shops, three each side facing each other (the Egg Shop first,
 -- nearest the square), then past the players' gardens, also in two rows facing each other, so everyone sees
--- their neighbours. Each garden is fenced, with a laser gate onto the street (Config/Raid).
+-- their neighbours. Each garden is fenced, with a laser gate onto the street that only lets its owner in.
 
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 

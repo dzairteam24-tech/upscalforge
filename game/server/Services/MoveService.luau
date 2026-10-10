@@ -49,7 +49,7 @@ function MoveService.init()
 			applySeat(player)
 		end)
 	end)
-	-- Sprinting while holding it and moving; and picking up or losing an egg (the Heist's, a raid's) changes
+	-- Sprinting while holding it and moving; and picking up or losing an egg (the Heist's, the Wild's) changes
 	-- what the seat or Sprint gives: kept up to date here
 	task.spawn(function()
 		while true do

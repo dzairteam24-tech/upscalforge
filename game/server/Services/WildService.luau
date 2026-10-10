@@ -12,7 +12,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local RaidConfig = require(Shared.Config.Raid)
 local WildConfig = require(Shared.Config.Wild)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
@@ -25,7 +24,6 @@ local DailyService = require(script.Parent.DailyService)
 local DataService = require(script.Parent.DataService)
 local HeistService = require(script.Parent.HeistService)
 local IslandService = require(script.Parent.IslandService)
-local RaidService = require(script.Parent.RaidService)
 
 local WildService = {}
 
@@ -64,12 +62,12 @@ local function humanoidOf(player: Player): Humanoid?
 end
 
 -- The player's run speed, as it should be now (slower with an egg; faster on the floating seat, or sprinting:
--- MoveService; RaidService slows a raid thief itself)
+-- MoveService; stuck in a trap: GearService)
 local stuckUntil: { [Player]: number } = {} -- (os.clock(): caught in a trap, GearService)
 local function applySpeed(player: Player)
 	local data = DataService.get(player)
 	local humanoid = humanoidOf(player)
-	if not data or not humanoid or RaidService.isCarrying(player) then
+	if not data or not humanoid then
 		return
 	end
 	if os.clock() < (stuckUntil[player] or 0) then
@@ -101,19 +99,19 @@ function WildService.stick(player: Player, seconds: number)
 	end)
 end
 
--- Whether the player is carrying an egg (from the Wild, a raid or the Heist)
+-- Whether the player is carrying an egg (from the Wild or the Heist)
 function WildService.busy(player: Player): boolean
-	return carrying[player] ~= nil or RaidService.isCarrying(player) or HeistService.isCarrier(player)
+	return carrying[player] ~= nil or HeistService.isCarrier(player)
 end
 
 -- Whether an egg slows the player down (a Wild egg only until they've got away from its guardian)
 function WildService.slowed(player: Player): boolean
 	local carry = carrying[player]
-	return (carry ~= nil and not carry.safe) or RaidService.isCarrying(player) or HeistService.isCarrier(player)
+	return (carry ~= nil and not carry.safe) or HeistService.isCarrier(player)
 end
 
 local function busy(player: Player): boolean
-	return carrying[player] ~= nil or RaidService.isCarrying(player) or HeistService.isCarrier(player)
+	return carrying[player] ~= nil or HeistService.isCarrier(player)
 end
 
 local function gateSpot(): CFrame
@@ -198,7 +196,7 @@ end
 -- The player now carries this egg
 local function hold(player: Player, held: Carry)
 	carrying[player] = held
-	player:SetAttribute("WildEgg", true) -- (RaidService and HeistService won't let them carry another)
+	player:SetAttribute("WildEgg", true) -- (HeistService won't let them carry another)
 	held.part:SetAttribute("Carrier", player.UserId)
 	local prompt = held.part:FindFirstChildOfClass("ProximityPrompt")
 	if prompt then

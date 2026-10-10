@@ -8,7 +8,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Mutations = require(Shared.Config.Mutations)
 local Format = require(Shared.Logic.Format)
 local Daily = require(Shared.Logic.Daily)
-local Raid = require(Shared.Logic.Raid)
 local Weather = require(Shared.Logic.Weather)
 local Net = require(Shared.Net)
 
@@ -86,28 +85,22 @@ function HUD.mount(gui: ScreenGui)
 	local stroke = banner:FindFirstChildOfClass("UIStroke") :: UIStroke
 	banner.Parent = gui
 
-	-- Raid Time
-	local raid = Instance.new("Frame")
-	raid.Name = "Raid"
-	raid.AnchorPoint = Vector2.new(0.5, 0)
-	raid.Position = UDim2.new(0.5, 0, 0, 42)
-	raid.Size = UDim2.fromOffset(240, 28)
-	raid.BackgroundColor3 = Color3.fromRGB(40, 36, 54)
-	raid.BackgroundTransparency = 0.2
-	Theme.round(raid, 10)
-	local raidText = Theme.text(raid, { Size = UDim2.new(1, -12, 1, -6), Position = UDim2.fromOffset(6, 3), TextColor3 = Color3.new(1, 1, 1) })
-	raid.Parent = gui
+	-- A Peaceful private server says so (no bats or traps there: GearService)
+	local peaceful = Instance.new("Frame")
+	peaceful.Name = "Peaceful"
+	peaceful.AnchorPoint = Vector2.new(0.5, 0)
+	peaceful.Position = UDim2.new(0.5, 0, 0, 42)
+	peaceful.Size = UDim2.fromOffset(280, 28)
+	peaceful.BackgroundColor3 = Color3.fromRGB(40, 36, 54)
+	peaceful.BackgroundTransparency = 0.2
+	peaceful.Visible = false
+	Theme.round(peaceful, 10)
+	Theme.text(peaceful, { Text = "🕊️ Peaceful server: no bats or traps", Size = UDim2.new(1, -12, 1, -6), Position = UDim2.fromOffset(6, 3), TextColor3 = Color3.new(1, 1, 1) })
+	peaceful.Parent = gui
 
 	task.spawn(function()
 		while true do
-			local isOpen, changes = Raid.at(math.floor(workspace:GetServerTimeNow()))
-			local untilChange = Format.time(math.max(0, changes - math.floor(workspace:GetServerTimeNow())))
-			local peaceful = workspace:GetAttribute("Peaceful") == true
-			isOpen = isOpen and not peaceful
-			raidText.Text = if peaceful then "🕊️ Peaceful server: no Raid Time"
-				elseif isOpen then ("🚨 RAID TIME! Gates open · %s"):format(untilChange)
-				else ("🔒 Gates open in %s"):format(untilChange)
-			raid.BackgroundColor3 = if isOpen then Color3.fromRGB(220, 60, 80) else Color3.fromRGB(40, 36, 54)
+			peaceful.Visible = workspace:GetAttribute("Peaceful") == true
 			coins.Text = "🪙 " .. Format.abbrev(Store.coins())
 			local today = DailyWindow.state()
 			local ready = Daily.done(today) and not today.claimed

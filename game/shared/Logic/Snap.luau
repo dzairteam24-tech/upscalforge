@@ -6,7 +6,7 @@ local SnapConfig = require(script.Parent.Parent.Config.Snap)
 
 local Snap = {}
 
-export type Creature = { s: string, m: string, g: string?, h: number?, hn: string? }
+export type Creature = { s: string, m: string, g: string? }
 
 -- What a creature of this grade snaps into, if anything
 function Snap.next(grade: string?): SnapConfig.Grade?
@@ -18,9 +18,9 @@ function Snap.next(grade: string?): SnapConfig.Grade?
 	return nil
 end
 
--- Whether two creatures can snap together (a Homesick one can't: it isn't really theirs)
+-- Whether two creatures can snap together
 local function matches(a: Creature, b: Creature): boolean
-	if a.s ~= b.s or (a.g or "") ~= (b.g or "") or a.h or b.h then
+	if a.s ~= b.s or (a.g or "") ~= (b.g or "") then
 		return false
 	end
 	-- Plain ones need the same mutation too; Megas can be any
@@ -32,7 +32,7 @@ end
 function Snap.find(creatures: { [string]: Creature }, placed: { string }, id: string): ({ string }?, Creature?)
 	local first = creatures[id]
 	local grade = first and Snap.next(first.g)
-	if not first or not grade or first.h then
+	if not first or not grade then
 		return nil, nil
 	end
 	local loose, inGarden = {}, {}

@@ -17,8 +17,6 @@ local Hatch = R(Shared.Logic.Hatch)
 local Heist = R(Shared.Logic.Heist)
 local Stock = R(Shared.Logic.Stock)
 local Weather = R(Shared.Logic.Weather)
-local Raid = R(Shared.Logic.Raid)
-local RaidConfig = R(Shared.Config.Raid)
 local FoodConfig = R(Shared.Config.Food)
 local Food = R(Shared.Logic.Food)
 local WildConfig = R(Shared.Config.Wild)
@@ -118,42 +116,14 @@ test("earnings: mutations multiply, an island adds up, time away is capped", fun
 	eq(Earn.nextPrice(IslandConfig.PEN_PRICES, IslandConfig.PENS + #IslandConfig.PEN_PRICES, IslandConfig.PENS), nil, "no more")
 end)
 
-test("a Homesick creature sends a share home, and its owner keeps the rest", function()
-	local stolen = { s = "Bear", m = "Normal", h = 42 }
-	local rate = Earn.rate(stolen)
-	eq(Earn.kept(stolen), rate * (1 - RaidConfig.HOME_SHARE))
-	eq(Earn.islandRate({ a = stolen }, { "a" }), Earn.kept(stolen), "the island counts what's kept")
-	local shares = Earn.homeShares({ a = stolen, b = { s = "Cubby", m = "Normal" }, c = stolen }, { "a", "b" })
-	eq(shares[42], rate * RaidConfig.HOME_SHARE, "only the placed Homesick one")
-	eq(Earn.kept(stolen) + shares[42], rate, "nothing made from nothing")
-end)
-
-test("guards: more and better creatures guard better, the special ones bring their tricks", function()
-	local creatures = { a = { s = "Cubby", m = "Normal" }, b = { s = "Cubby", m = "Lava" }, c = { s = "Cubby", m = "Neon" } }
-	local guards = Raid.guards(creatures, { "a", "b" })
-	eq(guards.power, 1 + Mutations.byId.Lava.order)
-	assert(guards.lava and not guards.crystal and not guards.neon, "only Lava")
-	eq(Raid.guards(creatures, {}).power, 0, "an empty garden has no guards")
-	eq(Raid.bumpChance(0), 0)
-	assert(Raid.bumpChance(2) < Raid.bumpChance(6), "more power, more bumps")
-	eq(Raid.bumpChance(1000), RaidConfig.GUARD_MAX_CHANCE, "capped")
-end)
-
-test("the Mother Cube: once an hour for two minutes, never during Raid Time, hungrier with more players", function()
+test("the Mother Cube: once an hour for two minutes, hungrier with more players", function()
 	local visits = 0
 	for t = 0, 3 * 86400, 10 do
 		local on, start = Mother.at(t)
-		if on then
-			assert(not Raid.at(t), "not during Raid Time at " .. t)
-		end
 		if on and start == t then
 			visits += 1
 		end
 		assert(Mother.nextVisit(t) > t, "the next visit is later")
-		local studioOn = Mother.at(t, true)
-		if studioOn then
-			assert(not Raid.at(t), "studio visits not during Raid Time either at " .. t)
-		end
 	end
 	eq(visits, 72, "once an hour for three days")
 	eq(Mother.goal(1), MotherConfig.GOAL_MIN)
@@ -167,13 +137,12 @@ test("the Mother Cube: once an hour for two minutes, never during Raid Time, hun
 	end
 end)
 
-test("Cube Snap: four matching make a Mega, four Megas a Rainbow, and they earn and guard more", function()
+test("Cube Snap: four matching make a Mega, four Megas a Rainbow, and they earn more", function()
 	local c = {
 		a = { s = "Cubby", m = "Golden" },
 		b = { s = "Cubby", m = "Golden" },
 		c = { s = "Cubby", m = "Golden" },
 		d = { s = "Cubby", m = "Normal" }, -- another mutation: no
-		e = { s = "Cubby", m = "Golden", h = 7 }, -- Homesick: no
 		f = { s = "Kitty", m = "Golden" }, -- another creature: no
 	}
 	eq(Snap.find(c, {}, "a"), nil, "only three match")
@@ -186,7 +155,6 @@ test("Cube Snap: four matching make a Mega, four Megas a Rainbow, and they earn 
 	assert(not table.find(group, "b"), "the ones in the garden last")
 	eq(made.g, "Mega")
 	eq(made.m, "Golden")
-	eq(Snap.find(c, {}, "e"), nil, "a Homesick one can't snap")
 	-- Megas of any mutation make a Rainbow with the best one
 	local megas = {
 		a = { s = "Bear", m = "Normal", g = "Mega" },
@@ -199,12 +167,11 @@ test("Cube Snap: four matching make a Mega, four Megas a Rainbow, and they earn 
 	eq(rainbow.g, "Rainbow")
 	eq(rainbow.m, "Lava", "the best mutation")
 	eq(Snap.find({ a = { s = "Bear", m = "Normal", g = "Rainbow" } }, {}, "a"), nil, "Rainbow is the top")
-	-- Earnings and guarding
+	-- Earnings
 	local plain = { s = "Cubby", m = "Golden" }
 	local mega = { s = "Cubby", m = "Golden", g = "Mega" }
 	eq(Earn.rate(mega), Earn.rate(plain) * SnapConfig.byId.Mega.mult)
 	assert(Earn.rate(mega) > 4 * Earn.rate(plain), "a Mega beats the four it took")
-	eq(Raid.guards({ a = mega }, { "a" }).power, Mutations.byId.Golden.order * SnapConfig.byId.Mega.guard)
 	eq(Snap.name(mega), "Mega Golden Cubby")
 	eq(Snap.name({ s = "Cubby", m = "Normal" }), "Cubby")
 end)
@@ -299,15 +266,6 @@ test("Heist: rounds only on weekends, on the clock", function()
 	assert(not Heist.round(saturday + HeistConfig.ROUND + 1), "over after ROUND seconds")
 	assert(not Heist.round(saturday - 86400 + 30), "none on Friday")
 	eq(Heist.nextRound(saturday - 3600), saturday)
-end)
-
-test("Raid Time: the gates open on the clock for OPEN seconds every EVERY", function()
-	local t = 1000 * RaidConfig.EVERY
-	local isOpen, changes = Raid.at(t)
-	assert(isOpen and changes == t + RaidConfig.OPEN, "open at the start of a window")
-	isOpen, changes = Raid.at(t + RaidConfig.OPEN)
-	assert(not isOpen and changes == t + RaidConfig.EVERY, "shut after OPEN seconds until the next window")
-	assert(RaidConfig.OPEN < RaidConfig.EVERY / 4, "open only a small part of the time")
 end)
 
 test("food always pays, adds up to a cap, and counts while away", function()

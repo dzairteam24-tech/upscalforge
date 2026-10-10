@@ -2,9 +2,8 @@
 -- The heart of the game. Each player in the server gets one of the islands (WorldService) while they play.
 -- On it, incubators hatch eggs in real time, even while the player is away; an egg that finishes in a special
 -- weather (Logic/Weather) hatches at least that mutation. Hatched creatures live on the island and earn coins
--- every second, and for up to OFFLINE_HOURS while their owner is away. A creature hatched from a stolen egg is
--- Homesick: it sends a share of what it earns to the garden it was stolen from (Config/Raid HOME_SHARE), until
--- its owner sends it back home.
+-- every second, and for up to OFFLINE_HOURS while their owner is away. Nobody else can come in: a garden is
+-- never robbed.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,7 +14,6 @@ local DailyConfig = require(Shared.Config.Daily)
 local FoodConfig = require(Shared.Config.Food)
 local IslandConfig = require(Shared.Config.Island)
 local Mutations = require(Shared.Config.Mutations)
-local RaidConfig = require(Shared.Config.Raid)
 local SnapConfig = require(Shared.Config.Snap)
 local WildConfig = require(Shared.Config.Wild)
 local Earn = require(Shared.Logic.Earn)
@@ -39,8 +37,6 @@ local IslandService = {}
 local REACH = 14 -- how close to an incubator a player has to stand to use it
 
 local owners: { [number]: Player } = {}
--- Incubators whose egg a thief is carrying off right now (RaidService): owner -> slot -> true
-IslandService.carried = {} :: { [Player]: { [number]: boolean } }
 local islandOf: { [Player]: number } = {}
 local rng = Random.new()
 
@@ -95,9 +91,8 @@ function IslandService.bestFood(data: Data): FoodConfig.Food?
 	return nil
 end
 
--- Adds a hatched creature (it moves onto the island if there's room); nil when the player's storage is full.
--- `home` and `homeName`: the garden a stolen egg came from (the creature is Homesick).
-function IslandService.addCreature(player: Player, data: Data, species: string, mutation: string, home: number?, homeName: string?): string?
+-- Adds a hatched creature (it moves onto the island if there's room); nil when the player's storage is full
+function IslandService.addCreature(player: Player, data: Data, species: string, mutation: string): string?
 	local count = 0
 	for _ in data.creatures do
 		count += 1
@@ -108,7 +103,7 @@ function IslandService.addCreature(player: Player, data: Data, species: string, 
 	end
 	local id = tostring(data.nextId)
 	data.nextId += 1
-	data.creatures[id] = { s = species, m = mutation, h = home, hn = homeName }
+	data.creatures[id] = { s = species, m = mutation }
 	data.stats.hatched += 1
 	if #data.placed < data.pens then
 		table.insert(data.placed, id)
@@ -154,8 +149,6 @@ local function render(index: number, player: Player?, data: Data?)
 		pad:SetAttribute("Price", if data and slot == data.incubators + 1 then Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS) or 0 else 0)
 		pad:SetAttribute("Tier", if egg then egg.tier else 0)
 		pad:SetAttribute("Golden", egg ~= nil and egg.m ~= nil)
-		local marks = if player then IslandService.carried[player] else nil
-		pad:SetAttribute("Carried", marks ~= nil and marks[slot] == true)
 		pad:SetAttribute("Start", if egg then egg.start else 0)
 		pad:SetAttribute("Duration", if egg then Hatch.seconds(egg.tier) else 0)
 	end
@@ -207,9 +200,6 @@ local function assign(player: Player, data: Data)
 		local away = os.time() - data.lastSeen
 		local rate = Earn.islandRate(data.creatures, data.placed)
 		local coins = Earn.offline(rate, away) + Food.offlineBonus(rate, data.lastSeen, data.fedUntil, os.time())
-		for home, share in Earn.homeShares(data.creatures, data.placed) do
-			DataService.gift(home, Earn.offline(share, away))
-		end
 		if coins > 0 then
 			data.coins += coins
 			data.stats.earned += coins
@@ -318,10 +308,6 @@ local function useIncubator(player: Player, slot: any)
 		IslandService.notify(player, "New incubator! 🥚", "success")
 	else
 		local egg = data.incubating[key]
-		if egg and IslandService.carried[player] and IslandService.carried[player][slot] then
-			IslandService.notify(player, "A thief is running off with that egg! Catch them!", "error")
-			return
-		end
 		if egg then
 			local done = egg.start + Hatch.seconds(egg.tier)
 			local now = os.time()
@@ -333,16 +319,13 @@ local function useIncubator(player: Player, slot: any)
 			local species, mutation = Hatch.roll(egg.tier, function()
 				return rng:NextNumber()
 			end, Hatch.atLeast(weather.mutation, egg.m))
-			local id = IslandService.addCreature(player, data, species, mutation, egg.h, egg.hn)
+			local id = IslandService.addCreature(player, data, species, mutation)
 			if not id then
 				return
 			end
 			data.incubating[key] = nil
 			DailyService.add(player, "hatch")
 			Net.event("Hatched"):FireClient(player, id, species, mutation)
-			if egg.h then
-				task.delay(2, IslandService.notify, player, ("🏠 Your %s is Homesick: it misses %s and sends them %d%% of its coins. Send it home from your Bag for a reward!"):format(species, egg.hn or "its home", RaidConfig.HOME_SHARE * 100), "info")
-			end
 			if Mutations.byId[mutation].order >= 3 or Creatures.byId[species].rarity == "Legendary" then
 				for _, other in Players:GetPlayers() do
 					IslandService.notify(other, ("✨ %s hatched a %s%s!"):format(player.DisplayName, if mutation ~= "Normal" then mutation .. " " else "", species), "rare")
@@ -457,26 +440,6 @@ local function feed(player: Player)
 	IslandService.push(player)
 end
 
--- Sends a Homesick creature back where its egg was stolen from, for a reward
-local function sendHome(player: Player, id: any)
-	local data = DataService.get(player)
-	local creature = if data and type(id) == "string" then data.creatures[id] else nil
-	if not data or not creature or not creature.h or not throttle(player) then
-		return
-	end
-	local reward = Earn.sellPrice({ s = creature.s, m = creature.m }) * RaidConfig.SEND_HOME_REWARD
-	data.creatures[id] = nil
-	local at = table.find(data.placed, id)
-	if at then
-		table.remove(data.placed, at)
-	end
-	data.coins += reward
-	DataService.gift(creature.h, 0, { s = creature.s, m = creature.m })
-	IslandService.notify(player, ("🏠 You sent %s home to %s. Thank you! +🪙 %s"):format(creature.s, creature.hn or "its family", Format.abbrev(reward)), "success")
-	IslandService.render(player)
-	IslandService.push(player)
-end
-
 -- Cube Snap (Config/Snap): four matching creatures become one Mega, four Megas one Rainbow
 local function snap(player: Player, id: any)
 	local data = DataService.get(player)
@@ -531,18 +494,6 @@ local function claimDaily(player: Player)
 	IslandService.push(player)
 end
 
--- A gift came (DataService.gift): coins from Homesick creatures far away, or a creature back home
-local function gifted(player: Player, coins: number, creatures: { DataService.Creature })
-	for _, creature in creatures do
-		IslandService.notify(player, ("🏠 Your %s%s came back home!"):format(if creature.m ~= "Normal" then creature.m .. " " else "", creature.s), "rare")
-	end
-	if coins > 0 then
-		IslandService.notify(player, ("💌 Your creatures far away sent you 🪙 %s"):format(Format.abbrev(coins)), "success")
-	end
-	IslandService.render(player)
-	IslandService.push(player)
-end
-
 local function buyPen(player: Player)
 	local data = DataService.get(player)
 	if not data or not throttle(player) then
@@ -565,8 +516,6 @@ end
 
 function IslandService.init()
 	DataService.onLoaded(assign)
-	DataService.onGift(gifted)
-	Net.event("SendHome").OnServerEvent:Connect(sendHome)
 	Net.event("Snap").OnServerEvent:Connect(snap)
 	Net.event("ClaimDaily").OnServerEvent:Connect(claimDaily)
 	Players.PlayerRemoving:Connect(function(player)
@@ -596,9 +545,6 @@ function IslandService.init()
 						player:SetAttribute("Coins", data.coins)
 					end
 					player:SetAttribute("Rate", rate)
-					for home, share in Earn.homeShares(data.creatures, data.placed) do
-						DataService.gift(home, share)
-					end
 				end
 			end
 		end
