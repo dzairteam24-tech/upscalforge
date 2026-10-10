@@ -73,6 +73,23 @@ Layout.HATCHERY = { center = Vector3.new(0, 0, -20), size = Vector3.new(50, 0, 1
 Layout.PASTURE = { center = Vector3.new(0, 0, 9.5), size = Vector3.new(54, 0, 37) }
 Layout.POND = { center = Vector3.new(0, 0, 9.5), radius = 5 }
 Layout.PATH_WIDTH = 6
+Layout.TROUGH = Vector3.new(-12, 0, -4) -- in the pasture, beside where the path comes in
+Layout.BARN = Vector3.new(21, 0, 23) -- the storage barn, in the pasture's back corner
+
+-- What the creatures walk round (a spot in the garden's space and how far from it to keep)
+Layout.OBSTACLES = {
+	{ center = Layout.POND.center, radius = Layout.POND.radius + 2 },
+	{ center = Layout.TROUGH, radius = 4 },
+	{ center = Layout.BARN, radius = 7 },
+}
+function Layout.blocked(inside: Vector3): boolean
+	for _, obstacle in Layout.OBSTACLES do
+		if Vector3.new(inside.X - obstacle.center.X, 0, inside.Z - obstacle.center.Z).Magnitude < obstacle.radius then
+			return true
+		end
+	end
+	return false
+end
 
 -- A nest's spot (an incubator): two by two on each side of the path, the first ones (the safe one first) beside
 -- the path and nearest the pasture, then outward

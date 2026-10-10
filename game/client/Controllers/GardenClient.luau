@@ -126,6 +126,30 @@ local function updatePad(pad: BasePart)
 	end
 end
 
+-- A trough: the owner's food and how long the creatures are fed; the owner feeds there, a thief steals food at
+-- Raid Time
+local troughTexts: { [BasePart]: TextLabel } = {}
+local function updateTrough(trough: BasePart)
+	local text = troughTexts[trough]
+	if not text then
+		text = billboard(trough, 7, 1.6, Vector3.new(0, 3.2, 0))
+		troughTexts[trough] = text
+	end
+	local owner = number(trough, "Owner")
+	local mine = owner == LOCAL.UserId
+	local food = number(trough, "Food")
+	local left = number(trough, "FedUntil") - now()
+	local fed = if left > 0 then ("😋 ×2 · %s"):format(Format.time(math.ceil(left))) else "😴 Hungry"
+	;(text :: TextLabel).Text = if owner == 0 then "" elseif mine then ("%s · 🌾 %d"):format(fed, food) else fed
+	local stealable = Raid.at(math.floor(now())) and not mine and owner ~= 0 and food > 0
+	local prompt = trough:FindFirstChildOfClass("ProximityPrompt")
+	if prompt then
+		prompt.Enabled = mine or stealable
+		prompt.ActionText = if stealable then "Steal food" else "Feed"
+		prompt.HoldDuration = if stealable then 1 else 0
+	end
+end
+
 -- A garden's laser gate: always open for its owner (on this screen only: the server keeps it shut for the
 -- others until Raid Time)
 local function updateGate(gate: BasePart)
@@ -145,9 +169,9 @@ local roamers: { [Model]: Roamer } = {}
 local function pastureSpot(index: number): Vector3
 	local center, size = Layout.pasture(index)
 	local spot = Vector3.zero
-	repeat -- (not in the pond)
+	repeat -- (not in the pond, the trough or the barn)
 		spot = Vector3.new((math.random() - 0.5) * (size.X - 3), 0, (math.random() - 0.5) * (size.Z - 3))
-	until (spot + Layout.PASTURE.center - Layout.POND.center).Magnitude > Layout.POND.radius + 2
+	until not Layout.blocked(spot + Layout.PASTURE.center)
 	return center:PointToWorldSpace(spot)
 end
 
@@ -254,6 +278,20 @@ end
 function GardenClient.init()
 	ProximityPromptService.PromptTriggered:Connect(function(prompt)
 		local ui = prompt:GetAttribute("OpenUI")
+		local garden = prompt:GetAttribute("Island")
+		if type(ui) == "string" and type(garden) == "number" and garden ~= LOCAL:GetAttribute("Island") then
+			Notify.show("That's not your garden's", "error")
+			return
+		end
+		local trough = prompt:GetAttribute("Trough")
+		if type(trough) == "number" then
+			if prompt.ActionText == "Steal food" then
+				Net.event("StealFood"):FireServer(trough)
+			else
+				Net.event("Feed"):FireServer()
+			end
+			return
+		end
 		if type(ui) == "string" then
 			if ui == "Soon" or not Windows.open(ui) then
 				Notify.show("Coming soon! 🛠️", "info")
@@ -261,7 +299,6 @@ function GardenClient.init()
 			return
 		end
 		local slot = prompt:GetAttribute("Slot")
-		local garden = prompt:GetAttribute("Island")
 		if type(slot) == "number" then
 			if prompt.ActionText == "Steal" then
 				Net.event("StealEgg"):FireServer(garden, slot)
@@ -290,6 +327,11 @@ function GardenClient.init()
 			for _, pad in CollectionService:GetTagged("Incubator") do
 				if pad:IsA("BasePart") then
 					updatePad(pad)
+				end
+			end
+			for _, trough in CollectionService:GetTagged("Trough") do
+				if trough:IsA("BasePart") then
+					updateTrough(trough)
 				end
 			end
 			for _, gate in CollectionService:GetTagged("Gate") do

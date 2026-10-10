@@ -5,7 +5,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local FoodConfig = require(Shared.Config.Food)
 local Earn = require(Shared.Logic.Earn)
+local Food = require(Shared.Logic.Food)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Stock = require(Shared.Logic.Stock)
@@ -65,7 +67,27 @@ local function sell(player: Player, id: any)
 	IslandService.push(player)
 end
 
+-- The Food Shop: food for the trough, priced on what the player's garden earns
+local function buyFood(player: Player, id: any)
+	local data = DataService.get(player)
+	local food = if type(id) == "string" then FoodConfig.byId[id] else nil
+	if not data or not food then
+		return
+	end
+	local price = Food.price(food, Earn.islandRate(data.creatures, data.placed))
+	if data.coins < price then
+		IslandService.notify(player, ("You need 🪙 %s"):format(Format.abbrev(price)), "error")
+		return
+	end
+	data.coins -= price
+	data.food[food.id] = (data.food[food.id] or 0) + 1
+	IslandService.notify(player, ("Bought %s %s! Feed your creatures at the trough"):format(food.icon, food.name), "success")
+	IslandService.render(player)
+	IslandService.push(player)
+end
+
 function ShopService.init()
+	Net.event("BuyFood").OnServerEvent:Connect(buyFood)
 	Net.event("BuyEgg").OnServerEvent:Connect(buyEgg)
 	Net.event("SellCreature").OnServerEvent:Connect(sell)
 end

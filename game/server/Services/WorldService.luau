@@ -73,7 +73,7 @@ end
 local SHOPS = {
 	{ name = "Egg Shop", art = "Shop", ui = "Shop", color = rgb(110, 200, 140) },
 	{ name = "Trading", art = "Trade", ui = "Soon", color = rgb(90, 150, 240) },
-	{ name = "Potions", art = "Potion", ui = "Soon", color = rgb(160, 110, 230) },
+	{ name = "Food Shop", art = "Potion", ui = "Food", color = rgb(160, 110, 230) },
 	{ name = "Lucky Spin", art = "Spin", ui = "Soon", color = rgb(255, 150, 80) },
 	{ name = "Trips", art = "Trips", ui = "Soon", color = rgb(80, 190, 220) },
 	{ name = "Arcade", art = "Arcade", ui = "Soon", color = rgb(240, 110, 170) },
@@ -345,6 +345,39 @@ local function buildGarden(world: Instance, index: number)
 		local piece = hx - Layout.PATH_WIDTH / 2 - 1
 		hedge(at(px + s * (hx - piece / 2), 0, pz - hz), piece)
 	end
+	-- The trough, where the owner feeds the creatures (and a thief can steal food at Raid Time)
+	local trough = at(Layout.TROUGH.X, 0, Layout.TROUGH.Z)
+	part(model, { Name = "TroughBox", Size = Vector3.new(6, 1.6, 2.6), CFrame = trough * CFrame.new(0, 1.4, 0), Color = WOOD, Material = Enum.Material.WoodPlanks })
+	for _, s in { -1, 1 } do
+		part(model, { Name = "TroughLeg", Size = Vector3.new(0.6, 1, 2.6), CFrame = trough * CFrame.new(s * 2.5, 0.6, 0), Color = WOOD_DARK })
+	end
+	local hay = part(model, { Name = "Trough", Size = Vector3.new(5.2, 0.4, 1.8), CFrame = trough * CFrame.new(0, 2.25, 0), Color = STRAW, Material = Enum.Material.Fabric, CanCollide = false })
+	hay:SetAttribute("Island", index)
+	hay:AddTag("Trough")
+	local feed = Instance.new("ProximityPrompt")
+	feed.ActionText = "Feed"
+	feed.ObjectText = "Trough"
+	feed.MaxActivationDistance = 8
+	feed.RequiresLineOfSight = false
+	feed.Enabled = false -- GardenClient turns on the owner's (and a thief's, at Raid Time)
+	feed:SetAttribute("Trough", index)
+	feed.Parent = hay
+
+	-- The storage barn in the pasture's back corner: where the creatures not in the pasture are kept
+	local barn = at(Layout.BARN.X, 0, Layout.BARN.Z) * CFrame.Angles(0, math.rad(45), 0) -- (its door toward the pasture)
+	local shed = part(model, { Name = "Barn", Size = Vector3.new(9, 6, 7), CFrame = barn * CFrame.new(0, 3.4, 0), Color = rgb(206, 92, 72) })
+	part(model, { Name = "BarnRoof", Size = Vector3.new(10.4, 1.6, 8.4), CFrame = barn * CFrame.new(0, 7.2, 0), Color = rgb(250, 238, 214) })
+	part(model, { Name = "BarnDoor", Size = Vector3.new(3.4, 4.4, 0.3), CFrame = barn * CFrame.new(0, 2.6, -3.55), Color = rgb(250, 238, 214) })
+	label(shed, "📦 Storage", 10, 2, Vector3.new(0, 6.5, 0))
+	local open = Instance.new("ProximityPrompt")
+	open.ActionText = "Open"
+	open.ObjectText = "Storage"
+	open.MaxActivationDistance = 10
+	open.RequiresLineOfSight = false
+	open:SetAttribute("OpenUI", "Bag")
+	open:SetAttribute("Island", index)
+	open.Parent = shed
+
 	local pastureSign = part(model, { Name = "PastureSign", Size = Vector3.one, CFrame = at(px, 5, pz - hz + 1), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(pastureSign, "🌷 Pasture", 10, 2, Vector3.zero)
 

@@ -14,6 +14,10 @@ local EVENTS = {
 	"StealEgg", -- (garden, slot), at Raid Time
 	"BuyIncubator",
 	"BuyPen",
+	"BuyStorage",
+	"BuyFood", -- (food id)
+	"Feed",
+	"StealFood", -- (garden), at Raid Time
 	-- server -> client
 	"Data", -- (snapshot)
 	"Notify", -- (text, kind)

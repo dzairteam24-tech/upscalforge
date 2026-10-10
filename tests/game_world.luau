@@ -51,7 +51,7 @@ for _, d in world:GetDescendants() do
 	if d:IsA("BasePart") and d:HasTag("Gate") then
 		gates += 1
 	end
-	if d:IsA("ProximityPrompt") and d:GetAttribute("OpenUI") then
+	if d:IsA("ProximityPrompt") and d:GetAttribute("OpenUI") and not d:GetAttribute("Island") then
 		shops += 1
 	end
 end
@@ -93,7 +93,10 @@ for index = 1, IslandConfig.ISLANDS do
 		assert(inside(Layout.pen(index, slot), Layout.PASTURE), ("creature %d in the pasture"):format(slot))
 		local p = frame:PointToObjectSpace(Layout.pen(index, slot)) - Layout.POND.center
 		assert(Vector3.new(p.X, 0, p.Z).Magnitude > Layout.POND.radius + 2, "not in the pond")
+		assert(not Layout.blocked(frame:PointToObjectSpace(Layout.pen(index, slot))), "not in the trough or the barn")
 	end
+	assert(inside(frame:PointToWorldSpace(Layout.TROUGH), Layout.PASTURE) and inside(frame:PointToWorldSpace(Layout.BARN), Layout.PASTURE), "the trough and the barn in the pasture")
+	assert(math.abs(Layout.TROUGH.X) - 3 >= Layout.PATH_WIDTH / 2, "the trough off the path")
 	local center = Layout.garden(index).Position
 	assert(math.abs(center.X) - Layout.GARDEN_SIZE / 2 >= Layout.STREET_WIDTH / 2, "clear of the street")
 	for shop = 1, 6 do

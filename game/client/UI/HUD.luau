@@ -1,6 +1,7 @@
 --!strict
 -- The always-on screen: coins and what the island earns a second, the weather, and the bag button.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -68,7 +69,9 @@ function HUD.mount(gui: ScreenGui)
 			raidText.Text = if isOpen then ("🚨 RAID TIME! Gates open · %s"):format(untilChange) else ("🔒 Gates open in %s"):format(untilChange)
 			raid.BackgroundColor3 = if isOpen then Color3.fromRGB(220, 60, 80) else Color3.fromRGB(40, 36, 54)
 			coins.Text = "🪙 " .. Format.abbrev(Store.coins())
-			rate.Text = ("+%s / second"):format(Format.abbrev(Store.rate()))
+			local fedUntil = Players.LocalPlayer:GetAttribute("FedUntil")
+			local fed = type(fedUntil) == "number" and fedUntil > workspace:GetServerTimeNow()
+			rate.Text = ("+%s / second%s"):format(Format.abbrev(Store.rate()), if fed then " · 😋 fed" else "")
 			local now = workspace:GetServerTimeNow()
 			local weather, ends = Weather.at(math.floor(now))
 			local left = Format.time(math.max(0, math.ceil(ends - now)))

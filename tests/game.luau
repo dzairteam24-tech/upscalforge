@@ -19,6 +19,8 @@ local Stock = R(Shared.Logic.Stock)
 local Weather = R(Shared.Logic.Weather)
 local Raid = R(Shared.Logic.Raid)
 local RaidConfig = R(Shared.Config.Raid)
+local FoodConfig = R(Shared.Config.Food)
+local Food = R(Shared.Logic.Food)
 
 local passed, failed = 0, 0
 local function test(name: string, fn: () -> ())
@@ -153,6 +155,25 @@ test("Raid Time: the gates open on the clock for OPEN seconds every EVERY", func
 	isOpen, changes = Raid.at(t + RaidConfig.OPEN)
 	assert(not isOpen and changes == t + RaidConfig.EVERY, "shut after OPEN seconds until the next window")
 	assert(RaidConfig.OPEN < RaidConfig.EVERY / 4, "open only a small part of the time")
+end)
+
+test("food always pays, adds up to a cap, and counts while away", function()
+	for _, food in FoodConfig.LIST do
+		for _, rate in { 0, 5, 1000, 1e6 } do
+			local price = Food.price(food, rate)
+			assert(price >= food.min, "at least its minimum")
+			assert(rate == 0 or price < rate * (FoodConfig.BOOST - 1) * food.minutes * 60 or price == food.min, "cheaper than what it brings")
+		end
+	end
+	local hay = FoodConfig.byId.Hay
+	eq(Food.feed(0, 1000, hay), 1000 + hay.minutes * 60, "from now")
+	eq(Food.feed(1100, 1000, hay), 1100 + hay.minutes * 60, "adds up")
+	eq(Food.feed(1000 + FoodConfig.MAX_FED, 1000, hay), 1000 + FoodConfig.MAX_FED, "capped")
+	assert(Food.fed(1001, 1000) and not Food.fed(1000, 1000), "fed until")
+	eq(Food.offlineBonus(10, 1000, 1600, 5000), 10 * (FoodConfig.BOOST - 1) * 600, "only while fed")
+	eq(Food.offlineBonus(10, 1000, 900, 5000), 0, "not fed")
+	eq(Food.offlineBonus(10, 1000, 1e9, 1000 + 100), 10 * (FoodConfig.BOOST - 1) * 100, "only while away")
+	eq(#IslandConfig.STORAGE_PRICES, #IslandConfig.STORAGE - 1, "a price per bigger barn")
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))

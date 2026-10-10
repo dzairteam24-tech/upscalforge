@@ -71,6 +71,22 @@ function BagWindow.mount(gui: ScreenGui)
 			more.Size = UDim2.new(0.38, 0, 1, -12)
 			more.Position = UDim2.new(0.6, 0, 0, 6)
 		end
+		-- The storage barn
+		local count = 0
+		for _ in data.creatures do
+			count += 1
+		end
+		local barn = row(3, 48)
+		local level = math.clamp(data.storage, 1, #IslandConfig.STORAGE)
+		Theme.text(barn, { Text = ("📦 Storage: %d / %d"):format(count, IslandConfig.STORAGE[level]), Size = UDim2.new(0.6, -8, 1, -12), Position = UDim2.fromOffset(10, 6), TextXAlignment = Enum.TextXAlignment.Left })
+		local barnPrice = IslandConfig.STORAGE_PRICES[level]
+		if barnPrice then
+			local bigger = Theme.button(barn, ("→ %d · 🪙 %s"):format(IslandConfig.STORAGE[level + 1], Format.abbrev(barnPrice)), Theme.gold, function()
+				Net.event("BuyStorage"):FireServer()
+			end)
+			bigger.Size = UDim2.new(0.38, 0, 1, -12)
+			bigger.Position = UDim2.new(0.6, 0, 0, 6)
+		end
 		-- Creatures, best first
 		local list = {}
 		for id, creature in data.creatures do

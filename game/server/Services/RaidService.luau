@@ -156,6 +156,50 @@ local function steal(thief: Player, index: any, slot: any)
 	IslandService.notify(owner, ("🚨 %s is stealing your egg! Catch them!"):format(thief.DisplayName), "error")
 end
 
+-- Food from someone's trough, one at a time and once a raid from each garden: it goes straight into the
+-- thief's own trough
+local foodTaken: { [Player]: { [number]: number } } = {}
+local function stealFood(thief: Player, index: any)
+	if not open or type(index) ~= "number" then
+		return
+	end
+	local owner = IslandService.ownerOf(index)
+	local ownerData = owner and DataService.get(owner)
+	local thiefData = DataService.get(thief)
+	if not owner or not ownerData or not thiefData or owner == thief then
+		return
+	end
+	local _, raid = Raid.at(os.time())
+	local taken = foodTaken[thief] or {}
+	foodTaken[thief] = taken
+	if taken[index] == raid then
+		IslandService.notify(thief, "You already took food from this trough this raid", "error")
+		return
+	end
+	if os.time() - ownerData.firstPlayed < RaidConfig.NEW_PLAYER_SAFE then
+		IslandService.notify(thief, ("%s is new here: their garden is safe for now"):format(owner.DisplayName), "error")
+		return
+	end
+	local root = rootOf(thief)
+	if not root or (root.Position - Layout.garden(index):PointToWorldSpace(Layout.TROUGH)).Magnitude > RaidConfig.STEAL_RANGE + 3 then
+		return
+	end
+	local food = IslandService.bestFood(ownerData)
+	if not food then
+		IslandService.notify(thief, "The trough is empty", "error")
+		return
+	end
+	taken[index] = raid
+	ownerData.food[food.id] -= 1
+	thiefData.food[food.id] = (thiefData.food[food.id] or 0) + 1
+	IslandService.notify(thief, ("You took %s %s from %s's trough!"):format(food.icon, food.name, owner.DisplayName), "success")
+	IslandService.notify(owner, ("%s took %s %s from your trough!"):format(thief.DisplayName, food.icon, food.name), "error")
+	IslandService.render(owner)
+	IslandService.render(thief)
+	IslandService.push(owner)
+	IslandService.push(thief)
+end
+
 -- Every frame: the eggs ride with their thieves, who are caught, get home, or lose it
 local function follow()
 	for thief, carry in carrying do
@@ -206,6 +250,7 @@ end
 
 function RaidService.init()
 	Net.event("StealEgg").OnServerEvent:Connect(steal)
+	Net.event("StealFood").OnServerEvent:Connect(stealFood)
 	Players.PlayerRemoving:Connect(function(player)
 		finish(player, false)
 		for thief, carry in carrying do
@@ -214,6 +259,7 @@ function RaidService.init()
 			end
 		end
 		IslandService.carried[player] = nil
+		foodTaken[player] = nil
 	end)
 	RunService.Heartbeat:Connect(follow)
 	setGates(false)

@@ -76,11 +76,10 @@ local function pick(kit: { Entry }, rng: Random): Entry
 	return kit[#kit]
 end
 
--- The spots in a garden (its frame's space): its four corners, clear of the hatchery, the pasture and the house
+-- The spots in a garden (its frame's space): its corners (the barn has one)
 local function spots(): { Vector3 }
 	local corner = Layout.GARDEN_SIZE / 2 - 2.5
 	return {
-		Vector3.new(corner, 0, corner),
 		Vector3.new(-corner, 0, corner),
 		Vector3.new(corner, 0, -corner),
 		Vector3.new(-corner, 0, -corner),

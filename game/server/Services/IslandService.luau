@@ -9,9 +9,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Creatures = require(Shared.Config.Creatures)
+local FoodConfig = require(Shared.Config.Food)
 local IslandConfig = require(Shared.Config.Island)
 local Mutations = require(Shared.Config.Mutations)
 local Earn = require(Shared.Logic.Earn)
+local Food = require(Shared.Logic.Food)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
@@ -44,6 +46,7 @@ function IslandService.push(player: Player)
 	if data then
 		Net.event("Data"):FireClient(player, data, islandOf[player])
 		player:SetAttribute("Coins", data.coins)
+		player:SetAttribute("FedUntil", data.fedUntil)
 	end
 end
 
@@ -68,14 +71,30 @@ function IslandService.bestTier(data: Data): number
 	return best
 end
 
+-- How many creatures the player's barn holds
+function IslandService.storage(data: Data): number
+	return IslandConfig.STORAGE[math.clamp(data.storage, 1, #IslandConfig.STORAGE)]
+end
+
+-- The best food the player holds (the longest-lasting), if any
+function IslandService.bestFood(data: Data): FoodConfig.Food?
+	for i = #FoodConfig.LIST, 1, -1 do
+		local food = FoodConfig.LIST[i]
+		if (data.food[food.id] or 0) > 0 then
+			return food
+		end
+	end
+	return nil
+end
+
 -- Adds a hatched creature (it moves onto the island if there's room); nil when the player's storage is full
 function IslandService.addCreature(player: Player, data: Data, species: string, mutation: string): string?
 	local count = 0
 	for _ in data.creatures do
 		count += 1
 	end
-	if count >= IslandConfig.STORAGE then
-		IslandService.notify(player, "Your storage is full: sell some creatures from your bag", "error")
+	if count >= IslandService.storage(data) then
+		IslandService.notify(player, "Your storage is full: sell some creatures or grow your barn", "error")
 		return nil
 	end
 	local id = tostring(data.nextId)
@@ -97,6 +116,19 @@ local function render(index: number, player: Player?, data: Data?)
 		return
 	end
 	island:SetAttribute("Owner", if player then player.UserId else 0)
+	-- The trough shows how much food the owner holds and how long the creatures are fed
+	local trough = island:FindFirstChild("Trough")
+	if trough then
+		local count = 0
+		if data then
+			for _, n in data.food do
+				count += n
+			end
+		end
+		trough:SetAttribute("Owner", if player then player.UserId else 0)
+		trough:SetAttribute("Food", count)
+		trough:SetAttribute("FedUntil", if data then data.fedUntil else 0)
+	end
 	local sign = island:FindFirstChild("OwnerSign")
 	local text = sign and sign:FindFirstChild("Text", true)
 	if text and text:IsA("TextLabel") then
@@ -161,7 +193,8 @@ local function assign(player: Player, data: Data)
 	-- Coins the island earned while its owner was away
 	if data.lastSeen > 0 then
 		local away = os.time() - data.lastSeen
-		local coins = Earn.offline(Earn.islandRate(data.creatures, data.placed), away)
+		local rate = Earn.islandRate(data.creatures, data.placed)
+		local coins = Earn.offline(rate, away) + Food.offlineBonus(rate, data.lastSeen, data.fedUntil, os.time())
 		if coins > 0 then
 			data.coins += coins
 			data.stats.earned += coins
@@ -330,6 +363,54 @@ local function take(player: Player, id: any)
 	IslandService.push(player)
 end
 
+local function buyStorage(player: Player)
+	local data = DataService.get(player)
+	if not data or not throttle(player) then
+		return
+	end
+	local price = IslandConfig.STORAGE_PRICES[data.storage]
+	if not price then
+		IslandService.notify(player, "Your barn is as big as it gets", "error")
+		return
+	end
+	if data.coins < price then
+		IslandService.notify(player, ("You need 🪙 %s"):format(Format.abbrev(price)), "error")
+		return
+	end
+	data.coins -= price
+	data.storage += 1
+	IslandService.notify(player, ("Bigger barn! Room for %d creatures 📦"):format(IslandService.storage(data)), "success")
+	IslandService.push(player)
+end
+
+-- Feeds the creatures at the trough with the best food the player holds
+local function feed(player: Player)
+	local data = DataService.get(player)
+	local index = islandOf[player]
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not data or not index or not root or not throttle(player) then
+		return
+	end
+	if (root.Position - Layout.garden(index):PointToWorldSpace(Layout.TROUGH)).Magnitude > REACH then
+		return
+	end
+	local food = IslandService.bestFood(data)
+	if not food then
+		IslandService.notify(player, "No food: buy some at the Food Shop in town", "error")
+		return
+	end
+	local now = os.time()
+	if data.fedUntil >= now + FoodConfig.MAX_FED - 60 then
+		IslandService.notify(player, "Your creatures are full!", "error")
+		return
+	end
+	data.food[food.id] -= 1
+	data.fedUntil = Food.feed(data.fedUntil, now, food)
+	IslandService.notify(player, ("%s Yum! Your creatures earn ×%d for %s"):format(food.icon, FoodConfig.BOOST, Format.time(data.fedUntil - now)), "success")
+	IslandService.render(player)
+	IslandService.push(player)
+end
+
 local function buyPen(player: Player)
 	local data = DataService.get(player)
 	if not data or not throttle(player) then
@@ -360,6 +441,8 @@ function IslandService.init()
 	Net.event("PlaceCreature").OnServerEvent:Connect(place)
 	Net.event("TakeCreature").OnServerEvent:Connect(take)
 	Net.event("BuyPen").OnServerEvent:Connect(buyPen)
+	Net.event("BuyStorage").OnServerEvent:Connect(buyStorage)
+	Net.event("Feed").OnServerEvent:Connect(feed)
 	-- Earning: every second, each island's creatures bring in their coins
 	task.spawn(function()
 		while true do
@@ -368,6 +451,9 @@ function IslandService.init()
 				local data = DataService.get(player)
 				if data then
 					local rate = Earn.islandRate(data.creatures, data.placed)
+					if Food.fed(data.fedUntil, os.time()) then
+						rate *= FoodConfig.BOOST
+					end
 					if rate > 0 then
 						data.coins += rate
 						data.stats.earned += rate

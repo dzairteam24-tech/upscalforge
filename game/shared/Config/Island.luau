@@ -12,5 +12,6 @@ return {
 	BASE_INCUBATE = 60, -- seconds a tier 1 egg incubates (later tiers longer, Logic/Hatch)
 	OFFLINE_HOURS = 8, -- the island earns this long while its owner is away
 	SELL_SECONDS = 120, -- selling a creature pays this many seconds of its earnings
-	STORAGE = 60, -- creatures a player can keep (placed or not)
+	STORAGE = { 60, 100, 150 }, -- creatures a player can keep (placed or not), as their barn grows...
+	STORAGE_PRICES = { 50000, 2500000 }, -- ...for this much
 }

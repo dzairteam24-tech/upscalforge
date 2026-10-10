@@ -25,6 +25,9 @@ export type Data = {
 	lastSeen: number,
 	stats: { hatched: number, earned: number },
 	firstPlayed: number, -- os.time() of their first visit (a new player's garden can't be robbed at first)
+	food: { [string]: number }, -- food id -> how many the player holds (in their trough)
+	fedUntil: number, -- os.time() the creatures are fed until (Config/Food)
+	storage: number, -- the barn's level (Config/Island STORAGE)
 }
 
 local DataService = {}
@@ -67,6 +70,9 @@ local function template(): Data
 		lastSeen = 0,
 		stats = { hatched = 0, earned = 0 },
 		firstPlayed = 0,
+		food = {},
+		fedUntil = 0,
+		storage = 1,
 	}
 end
 
