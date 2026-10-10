@@ -491,7 +491,7 @@ local function buildGrounds(world: Instance)
 	local north = -Layout.WILD_GATE_DISTANCE
 	local growth = IslandConfig.PASTURE_GROWTH
 	local south = Layout.GARDEN_RADIUS + Layout.GARDEN_SIZE / 2 + growth[#growth] + 30
-	local half = Layout.GARDEN_RADIUS + 100
+	local half = Layout.GARDEN_RADIUS + 150
 	local middle = (north + south) / 2
 	part(world, {
 		Name = "Ground",
@@ -508,7 +508,7 @@ local function buildGrounds(world: Instance)
 	end
 	road(roads, Layout.around(Layout.SQUARE_RADIUS - 2, 0), Layout.wildGate(), w)
 	road(roads, Layout.around(Layout.SQUARE_RADIUS - 2, 180), Layout.around(Layout.GARDEN_ROAD_RADIUS, 180), w)
-	local last = Layout.gardenAngle(IslandConfig.ISLANDS) + Layout.GARDEN_STEP * 0.7
+	local last = Layout.gardenAngle(IslandConfig.ISLANDS) + Layout.GARDEN_STEP * 0.3
 	arc(roads, Layout.GARDEN_ROAD_RADIUS, 180 - last, 180 + last, w)
 	for index = 1, IslandConfig.ISLANDS do
 		local angle = 180 - Layout.gardenAngle(index)
