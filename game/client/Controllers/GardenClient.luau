@@ -1,8 +1,8 @@
 --!strict
 -- The gardens on this screen: the eggs in the nests with their timers, the owner's nest prompts (and a
 -- thief's, at Raid Time), the laser gates (always open for their owner), the creatures roaming the pastures
--- with their coins popping (and chasing intruders at Raid Time), the Heist Egg's timer, and what the prompts in
--- the world open.
+-- with their coins popping (and chasing intruders at Raid Time), the Heist Egg's timer, the Mother Cube, and what
+-- the prompts in the world open.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -315,6 +315,49 @@ local function updateHeist(egg: BasePart)
 	end
 end
 
+-- The Mother Cube: a face, a gentle bob and spin, and how full it is
+type Mother = { text: TextLabel, base: Vector3, face: TextLabel }
+local mothers: { [BasePart]: Mother } = {}
+local function updateMother(cube: BasePart)
+	local entry = mothers[cube]
+	if not entry then
+		local text = billboard(cube, 16, 4, Vector3.new(0, cube.Size.Y / 2 + 4, 0))
+		local gui = text.Parent :: BillboardGui
+		gui.AlwaysOnTop = true
+		gui.MaxDistance = 600
+		text.TextColor3 = Color3.fromRGB(255, 220, 120)
+		local faces = Instance.new("SurfaceGui")
+		faces.Face = Enum.NormalId.Front
+		faces.Parent = cube
+		local face = Instance.new("TextLabel")
+		face.Size = UDim2.fromScale(1, 1)
+		face.BackgroundTransparency = 1
+		face.TextScaled = true
+		face.Font = Enum.Font.FredokaOne
+		face.TextColor3 = Color3.fromRGB(70, 45, 30)
+		face.Parent = faces
+		local created = { text = text, base = cube.Position, face = face }
+		mothers[cube] = created
+		entry = created
+		cube.AncestryChanged:Connect(function()
+			if not cube.Parent then
+				mothers[cube] = nil
+			end
+		end)
+	end
+	local m = entry :: Mother
+	local full = cube:GetAttribute("Full") == true
+	local points, goal = number(cube, "Points"), math.max(1, number(cube, "Goal"))
+	local left = math.max(0, math.ceil(number(cube, "Ends") - now()))
+	local clock = os.clock()
+	-- Hungry, it bobs and looks around; full, it bounces for joy
+	local bob = if full then math.abs(math.sin(clock * 6)) * 2 else math.sin(clock * 2) * 0.8
+	cube.CFrame = CFrame.new(m.base + Vector3.new(0, bob, 0)) * CFrame.Angles(0, math.sin(clock * 0.7) * 0.6, 0)
+	m.face.Text = if full then "^ ‿ ^" elseif points / goal > 0.6 then "• ᴗ •" else "• o •"
+	local bar = string.rep("█", math.floor(math.min(points / goal, 1) * 10)) .. string.rep("░", 10 - math.floor(math.min(points / goal, 1) * 10))
+	m.text.Text = if full then "👑 MOTHER CUBE\n💛 FULL! Check your bag" else ("👑 MOTHER CUBE · %s\n🍽️ %s %d/%d"):format(Format.time(left), bar, points, goal)
+end
+
 function GardenClient.init()
 	ProximityPromptService.PromptTriggered:Connect(function(prompt)
 		local ui = prompt:GetAttribute("OpenUI")
@@ -382,6 +425,13 @@ function GardenClient.init()
 	end
 	CollectionService:GetInstanceAddedSignal("IslandCreature"):Connect(addRoamer)
 	RunService.RenderStepped:Connect(roam)
+	RunService.RenderStepped:Connect(function()
+		for _, cube in CollectionService:GetTagged("MotherCube") do
+			if cube:IsA("BasePart") then
+				updateMother(cube)
+			end
+		end
+	end)
 	task.spawn(function()
 		while true do
 			for _, pad in CollectionService:GetTagged("Incubator") do

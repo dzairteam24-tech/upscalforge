@@ -24,6 +24,8 @@ local Food = R(Shared.Logic.Food)
 local WildConfig = R(Shared.Config.Wild)
 local Wild = R(Shared.Logic.Wild)
 local ShopConfig = R(Shared.Config.Shop)
+local MotherConfig = R(Shared.Config.Mother)
+local Mother = R(Shared.Logic.Mother)
 
 local passed, failed = 0, 0
 local function test(name: string, fn: () -> ())
@@ -120,6 +122,34 @@ test("guards: more and better creatures guard better, the special ones bring the
 	eq(Raid.bumpChance(0), 0)
 	assert(Raid.bumpChance(2) < Raid.bumpChance(6), "more power, more bumps")
 	eq(Raid.bumpChance(1000), RaidConfig.GUARD_MAX_CHANCE, "capped")
+end)
+
+test("the Mother Cube: once an hour for two minutes, never during Raid Time, hungrier with more players", function()
+	local visits = 0
+	for t = 0, 3 * 86400, 10 do
+		local on, start = Mother.at(t)
+		if on then
+			assert(not Raid.at(t), "not during Raid Time at " .. t)
+		end
+		if on and start == t then
+			visits += 1
+		end
+		assert(Mother.nextVisit(t) > t, "the next visit is later")
+		local studioOn = Mother.at(t, true)
+		if studioOn then
+			assert(not Raid.at(t), "studio visits not during Raid Time either at " .. t)
+		end
+	end
+	eq(visits, 72, "once an hour for three days")
+	eq(Mother.goal(1), MotherConfig.GOAL_MIN)
+	eq(Mother.goal(6), 6 * MotherConfig.GOAL_PER_PLAYER)
+	eq(Mother.snackPrice(0), MotherConfig.SNACK_MIN)
+	eq(Mother.snackPrice(100), 100 * MotherConfig.SNACK_SECONDS)
+	eq(Mother.legendaryChance(0), 0)
+	eq(Mother.legendaryChance(1000), MotherConfig.LEGENDARY_MAX, "capped")
+	for id in MotherConfig.FOOD_POINTS do
+		assert(FoodConfig.byId[id], "a real food: " .. id)
+	end
 end)
 
 test("an egg pays itself back: a tier's average creature earns its price in under 10 minutes", function()
