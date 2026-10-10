@@ -9,9 +9,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local IslandConfig = require(Shared.Config.Island)
+local WildConfig = require(Shared.Config.Wild)
 local RaidConfig = require(Shared.Config.Raid)
 local TownLooks = require(Shared.Config.TownLooks)
+local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
+local Wild = require(Shared.Logic.Wild)
 
 local WorldService = {}
 
@@ -75,7 +78,7 @@ local SHOPS = {
 	{ name = "Trading", art = "Trade", ui = "Soon", color = rgb(90, 150, 240) },
 	{ name = "Food Shop", art = "Potion", ui = "Food", color = rgb(160, 110, 230) },
 	{ name = "Lucky Spin", art = "Spin", ui = "Soon", color = rgb(255, 150, 80) },
-	{ name = "Net Shop", art = "Trips", ui = "Trips", color = rgb(80, 190, 220) },
+	{ name = "Trips", art = "Trips", ui = "Soon", color = rgb(80, 190, 220) },
 	{ name = "Arcade", art = "Arcade", ui = "Soon", color = rgb(240, 110, 170) },
 }
 WorldService.SHOPS = SHOPS
@@ -364,6 +367,26 @@ local function buildGarden(world: Instance, index: number)
 	feed:SetAttribute("Trough", index)
 	feed.Parent = hay
 
+	-- The treadmill: walking on it trains the owner's speed (WildService); its console upgrades it
+	local mill = at(Layout.TREADMILL.X, 0, Layout.TREADMILL.Z)
+	part(model, { Name = "TreadmillBase", Size = Vector3.new(11, 0.8, 5.4), CFrame = mill * CFrame.new(0, 0.8, 0), Color = rgb(70, 74, 86) })
+	local belt = part(model, { Name = "Treadmill", Size = Vector3.new(10, 0.3, 4), CFrame = mill * CFrame.new(0, 1.35, 0), Color = rgb(40, 42, 50), Material = Enum.Material.Rubber })
+	belt:SetAttribute("Island", index)
+	for _, s in { -1, 1 } do
+		part(model, { Name = "TreadmillRail", Size = Vector3.new(10, 0.3, 0.3), CFrame = mill * CFrame.new(0, 3.6, s * 2.5), Color = rgb(200, 205, 215), Material = Enum.Material.Metal, CanCollide = false })
+		-- (walls at its ends: the runner stays on it)
+		part(model, { Name = "TreadmillEnd", Size = Vector3.new(0.4, 6, 5.4), CFrame = mill * CFrame.new(s * 5.2, 4, 0), Transparency = 1 })
+	end
+	local console = part(model, { Name = "TreadmillConsole", Size = Vector3.new(1, 3.6, 3), CFrame = mill * CFrame.new(-6.2, 2.4, 0), Color = rgb(200, 205, 215), Material = Enum.Material.Metal })
+	label(console, "🏃 Treadmill: walk on it to get faster", 16, 2.2, Vector3.new(0, 4.2, 0))
+	local upgrade = Instance.new("ProximityPrompt")
+	upgrade.ActionText = "Upgrade"
+	upgrade.ObjectText = "Treadmill"
+	upgrade.MaxActivationDistance = 8
+	upgrade.RequiresLineOfSight = false
+	upgrade:SetAttribute("Treadmill", index)
+	upgrade.Parent = console
+
 	-- The storage barn in the pasture's back corner: where the creatures not in the pasture are kept
 	local barn = at(Layout.BARN.X, 0, Layout.BARN.Z) * CFrame.Angles(0, math.rad(45), 0) -- (its door toward the pasture)
 	local shed = part(model, { Name = "Barn", Size = Vector3.new(9, 6, 7), CFrame = barn * CFrame.new(0, 3.4, 0), Color = rgb(206, 92, 72) })
@@ -413,32 +436,71 @@ local function buildStreet(world: Instance)
 		Color = PAVING,
 		Material = Enum.Material.Pavement,
 	})
-	for _, z in { south, north } do
-		part(world, { Name = "Border", Size = Vector3.new(width, 14, 1), Position = Vector3.new(start.X, 7, z), Transparency = 1 })
+	part(world, { Name = "Border", Size = Vector3.new(width, 14, 1), Position = Vector3.new(start.X, 7, south), Transparency = 1 })
+	-- (the north side open onto the Wild)
+	local piece = (width - Layout.WILD_WIDTH) / 2
+	for _, side in { -1, 1 } do
+		part(world, { Name = "Border", Size = Vector3.new(piece, 14, 1), Position = Vector3.new(start.X + side * (Layout.WILD_WIDTH / 2 + piece / 2), 7, north), Transparency = 1 })
 	end
 	for _, side in { -1, 1 } do
 		part(world, { Name = "Border", Size = Vector3.new(1, 14, south - north), Position = Vector3.new(start.X + side * width / 2, 7, middle), Transparency = 1 })
 	end
 end
 
--- The carpet down the middle of the street (Config/Hunt, Layout.carpet): the den the wild creatures come out of
--- at the far end, and the burrow they go into by the shops
-local function buildCarpet(world: Instance)
-	local den, burrow = Layout.carpet()
-	local length = (burrow - den).Magnitude
-	part(world, { Name = "Carpet", Size = Vector3.new(Layout.CARPET_WIDTH, 0.34, length), Position = (den + burrow) / 2 + Vector3.new(0, 0.17, 0), Color = rgb(206, 72, 72), Material = Enum.Material.Fabric })
+-- The Wild (Config/Wild, Layout.wildGate): an arch at the street's far end, then the road on through the biomes,
+-- each with its ground, its sign (and the speed needed to outrun its guardians) and its nests, each holding an
+-- egg (WildService takes it and puts it back)
+local function buildWild(world: Instance)
+	local wild = Instance.new("Model")
+	wild.Name = "Wild"
+	local gate = Layout.wildGate()
+	local count = #WildConfig.BIOMES
+	local length = count * Layout.BIOME_LENGTH
+	local middle = gate + Vector3.new(0, 0, -length / 2)
+	part(wild, { Name = "WildGround", Size = Vector3.new(Layout.WILD_WIDTH, 4, length + 8), Position = middle + Vector3.new(0, -2.1, -4), Color = rgb(150, 205, 120), Material = Enum.Material.Grass })
+	part(wild, { Name = "WildRoad", Size = Vector3.new(Layout.ROAD_WIDTH, 0.34, length), Position = middle + Vector3.new(0, 0.17, 0), Color = PAVING, Material = Enum.Material.Pavement })
+	-- The arch
 	for _, side in { -1, 1 } do
-		part(world, { Name = "CarpetEdge", Size = Vector3.new(0.6, 0.38, length), Position = (den + burrow) / 2 + Vector3.new(side * Layout.CARPET_WIDTH / 2, 0.19, 0), Color = GOLD })
+		part(wild, { Name = "ArchPost", Size = Vector3.new(2, 14, 2), Position = gate + Vector3.new(side * (Layout.ROAD_WIDTH / 2 + 2), 7, 0), Color = WOOD_DARK })
 	end
-	-- The den: a mossy cave mouth across the far end
-	local cave = part(world, { Name = "Den", Size = Vector3.new(Layout.CARPET_WIDTH + 8, 10, 6), Position = den + Vector3.new(0, 5, -3), Color = rgb(110, 140, 90), Material = Enum.Material.Slate })
-	part(world, { Name = "DenMouth", Size = Vector3.new(Layout.CARPET_WIDTH, 7, 0.4), Position = den + Vector3.new(0, 3.5, 0.1), Color = rgb(30, 34, 40), CanCollide = false })
-	label(cave, "🌿 Wild creatures! Catch them as they pass", 26, 3, Vector3.new(0, 8, 0))
-	-- The burrow: a hole they go into
-	disc(world, "Burrow", burrow + Vector3.new(0, 0.2, 0), Layout.CARPET_WIDTH / 2 + 0.5, 0.4, rgb(70, 52, 40), Enum.Material.Ground)
-	local creatures = Instance.new("Folder")
-	creatures.Name = "WildCreatures"
-	creatures.Parent = world
+	local arch = part(wild, { Name = "Arch", Size = Vector3.new(Layout.ROAD_WIDTH + 6, 2.4, 2.4), Position = gate + Vector3.new(0, 15, 0), Color = rgb(90, 160, 90) })
+	label(arch, "🌿 THE WILD · steal eggs, run back here!", 30, 3.2, Vector3.new(0, 4, 0))
+	for i, biome in WildConfig.BIOMES do
+		local center = Layout.biome(i)
+		part(wild, { Name = "BiomeGround", Size = Vector3.new(Layout.WILD_WIDTH, 0.3, Layout.BIOME_LENGTH), Position = center + Vector3.new(0, 0.15, 0), Color = biome.color, Material = Enum.Material.Grass })
+		local sign = part(wild, { Name = "BiomeSign", Size = Vector3.new(0.8, 6, 0.8), Position = center + Vector3.new(Layout.ROAD_WIDTH / 2 + 2, 3, Layout.BIOME_LENGTH / 2 - 2), Color = WOOD_DARK })
+		label(sign, ("%s · ⚡ %d to escape"):format(biome.name, Wild.needs(biome)), 18, 2.6, Vector3.new(0, 5, 0))
+		local egg = Hatch.egg(biome.tier)
+		for k = 1, WildConfig.NESTS do
+			local spot = Layout.wildNest(i, k)
+			part(wild, { Name = "WildNestBase", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 7, 7), CFrame = CFrame.new(spot + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = STRAW, Material = Enum.Material.Fabric })
+			part(wild, { Name = "WildNestRim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.2, 7.6, 7.6), CFrame = CFrame.new(spot + Vector3.new(0, 0.9, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = WOOD_DARK, Transparency = 0.2, CanCollide = false })
+			local eggPart = part(wild, { Name = "WildEgg", Shape = Enum.PartType.Ball, Size = Vector3.one * 3.2, Position = spot + Vector3.new(0, 2.8, 0), Color = if egg then egg.color else GOLD, CanCollide = false })
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.Sphere
+			mesh.Scale = Vector3.new(1, 1.3, 1)
+			mesh.Parent = eggPart
+			eggPart:SetAttribute("Biome", i)
+			eggPart:SetAttribute("Nest", k)
+			eggPart:AddTag("WildEgg")
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.ActionText = "Steal"
+			prompt.ObjectText = if egg then egg.name else "Egg"
+			prompt.HoldDuration = 0.5
+			prompt.MaxActivationDistance = 9
+			prompt.RequiresLineOfSight = false
+			prompt.Parent = eggPart
+		end
+	end
+	-- Invisible walls round it (open toward the street)
+	for _, side in { -1, 1 } do
+		part(wild, { Name = "Border", Size = Vector3.new(1, 14, length + 8), Position = middle + Vector3.new(side * Layout.WILD_WIDTH / 2, 7, -4), Transparency = 1 })
+	end
+	part(wild, { Name = "Border", Size = Vector3.new(Layout.WILD_WIDTH, 14, 1), Position = gate + Vector3.new(0, 7, -length - 8), Transparency = 1 })
+	local guardians = Instance.new("Folder")
+	guardians.Name = "Guardians"
+	guardians.Parent = wild
+	wild.Parent = world
 end
 
 function WorldService.island(index: number): Instance?
@@ -459,7 +521,7 @@ function WorldService.build(): Folder
 	for index = 1, IslandConfig.ISLANDS do
 		buildGarden(world, index)
 	end
-	buildCarpet(world)
+	buildWild(world)
 	world.Parent = workspace
 	return world
 end

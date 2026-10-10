@@ -18,14 +18,12 @@ local EVENTS = {
 	"BuyFood", -- (food id)
 	"Feed",
 	"StealFood", -- (garden), at Raid Time
-	"Travel", -- ("home")
-	"BuyNet", -- (net id)
-	"CatchTry", -- (wild id, server time of the click)
+	"Travel", -- ("home" or "wild")
+	"UpgradeTreadmill",
 	-- server -> client
 	"Data", -- (snapshot)
 	"Notify", -- (text, kind)
 	"Hatched", -- (creature id, species, mutation)
-	"CatchGame", -- (wild id, start, speed, center, width, net id): the catching game starts
 }
 
 local FOLDER = "Remotes"

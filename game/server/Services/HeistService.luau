@@ -110,7 +110,7 @@ local function startRound(start: number)
 	p.Parent = part
 	p.Triggered:Connect(function(player)
 		local current = egg
-		if player == carrier or not current then
+		if player == carrier or not current or player:GetAttribute("WildEgg") then
 			return
 		end
 		local root = rootOf(player)

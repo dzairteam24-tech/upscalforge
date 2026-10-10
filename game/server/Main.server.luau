@@ -10,11 +10,11 @@ local Services = script.Parent.Services
 local ArtService = require(Services.ArtService)
 local DataService = require(Services.DataService)
 local HeistService = require(Services.HeistService)
-local HuntService = require(Services.HuntService)
 local IslandService = require(Services.IslandService)
 local PropService = require(Services.PropService)
 local RaidService = require(Services.RaidService)
 local ShopService = require(Services.ShopService)
+local WildService = require(Services.WildService)
 local WorldService = require(Services.WorldService)
 
 Net.init()
@@ -25,7 +25,7 @@ IslandService.init()
 ShopService.init()
 HeistService.init()
 RaidService.init()
-HuntService.init()
+WildService.init()
 DataService.init()
 
 ArtService.init(function(name, model)
@@ -36,7 +36,7 @@ ArtService.init(function(name, model)
 		PropService.decorate()
 	elseif name == "CreatureModels" then
 		IslandService.redraw()
-		HuntService.redraw()
+		WildService.redraw()
 	end
 end)
 

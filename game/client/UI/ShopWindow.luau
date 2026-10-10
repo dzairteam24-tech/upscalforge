@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Eggs = require(Shared.Config.Eggs)
+local ShopConfig = require(Shared.Config.Shop)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Stock = require(Shared.Logic.Stock)
@@ -58,6 +59,12 @@ function ShopWindow.mount(gui: ScreenGui)
 		local data = Store.data
 		local bought = if data and data.shop.window == window_ then data.shop.bought else {}
 		for _, row in rows do
+			if not ShopConfig.STOCK[row.tier] then
+				row.stock.Text = "🌿 Wild only"
+				row.stock.TextColor3 = Theme.soft
+				row.buy.Visible = false
+				continue
+			end
 			local left = math.max(0, Stock.count(window_, row.tier) - (bought[tostring(row.tier)] or 0))
 			row.stock.Text = if left > 0 then ("%d in stock"):format(left) else "Sold out"
 			row.stock.TextColor3 = if left > 0 then Theme.ink else Theme.red

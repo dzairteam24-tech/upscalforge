@@ -44,6 +44,15 @@ function HUD.mount(gui: ScreenGui)
 	home.Size = UDim2.fromOffset(110, 48)
 	home.Position = UDim2.new(0, 132, 0, 86)
 
+	-- To the Wild's gate, and the player's speed (trained on the treadmill)
+	local wild = Theme.button(gui, "🌿 Wild", Theme.gold, function()
+		Net.event("Travel"):FireServer("wild")
+	end)
+	wild.Size = UDim2.fromOffset(110, 48)
+	wild.Position = UDim2.new(0, 12, 0, 142)
+	local speed = Theme.text(gui, { Size = UDim2.fromOffset(110, 48), Position = UDim2.new(0, 132, 0, 142), TextColor3 = Color3.new(1, 1, 1) })
+	speed.TextStrokeTransparency = 0.3
+
 	-- The weather
 	local banner = Instance.new("Frame")
 	banner.Name = "Weather"
@@ -77,6 +86,8 @@ function HUD.mount(gui: ScreenGui)
 			raidText.Text = if isOpen then ("🚨 RAID TIME! Gates open · %s"):format(untilChange) else ("🔒 Gates open in %s"):format(untilChange)
 			raid.BackgroundColor3 = if isOpen then Color3.fromRGB(220, 60, 80) else Color3.fromRGB(40, 36, 54)
 			coins.Text = "🪙 " .. Format.abbrev(Store.coins())
+			local playerSpeed = Players.LocalPlayer:GetAttribute("Speed")
+			speed.Text = ("⚡ %.1f"):format(if type(playerSpeed) == "number" then playerSpeed else 16)
 			local fedUntil = Players.LocalPlayer:GetAttribute("FedUntil")
 			local fed = type(fedUntil) == "number" and fedUntil > workspace:GetServerTimeNow()
 			rate.Text = ("+%s / second%s"):format(Format.abbrev(Store.rate()), if fed then " · 😋 fed" else "")

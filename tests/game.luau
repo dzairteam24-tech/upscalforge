@@ -21,8 +21,9 @@ local Raid = R(Shared.Logic.Raid)
 local RaidConfig = R(Shared.Config.Raid)
 local FoodConfig = R(Shared.Config.Food)
 local Food = R(Shared.Logic.Food)
-local HuntConfig = R(Shared.Config.Hunt)
-local Hunt = R(Shared.Logic.Hunt)
+local WildConfig = R(Shared.Config.Wild)
+local Wild = R(Shared.Logic.Wild)
+local ShopConfig = R(Shared.Config.Shop)
 
 local passed, failed = 0, 0
 local function test(name: string, fn: () -> ())
@@ -178,29 +179,25 @@ test("food always pays, adds up to a cap, and counts while away", function()
 	eq(#IslandConfig.STORAGE_PRICES, #IslandConfig.STORAGE - 1, "a price per bigger barn")
 end)
 
-test("the catching game: the marker sweeps, the green catches, nets help, zones open in order", function()
-	eq(Hunt.marker(0, 1), 0, "starts at the left")
-	eq(Hunt.marker(0.5, 1), 0.5, "goes right")
-	eq(Hunt.marker(1.5, 1), 0.5, "comes back")
-	eq(Hunt.marker(-3, 1), 0, "not before it starts")
-	assert(Hunt.hit(0.5, 1, 0.5, 0.2) and not Hunt.hit(0.1, 1, 0.5, 0.2), "in the green or not")
-	local basic, gold = HuntConfig.netById.Basic, HuntConfig.netById.Gold
-	local wBasic, sCommon = Hunt.bar("Common", basic)
-	local wGold = Hunt.bar("Common", gold)
-	local wEpic, sEpic = Hunt.bar("Epic", basic)
-	assert(wGold > wBasic and wEpic < wBasic and sEpic > sCommon, "rarer is harder, nets help")
-	assert(wGold <= HuntConfig.MAX_WIDTH, "never the whole bar")
-	eq(Hunt.netPrice(basic, 5), 0, "the basic net is free")
-	assert(Hunt.netPrice(gold, 8) > Hunt.netPrice(gold, 2), "nets cost more later")
+test("the Wild: biomes get harder, the treadmill trains speed, eggs 4-8 only come from the Wild", function()
 	local previous = 0
-	for _, zone in HuntConfig.ZONES do
-		assert(zone.need > previous and Hatch.egg(zone.need), "zones open in order")
-		previous = zone.need
-		for _, tier in zone.tiers do
-			assert(Hatch.egg(tier), "a zone's creatures exist")
-		end
+	for i, biome in WildConfig.BIOMES do
+		assert(biome.guardian > previous, "each biome's guardians are faster")
+		previous = biome.guardian
+		eq(biome.tier, i, "a biome per egg tier")
+		assert(Hatch.egg(biome.tier), "its eggs exist")
+		assert(Wild.outruns(Wild.needs(biome), biome) and not Wild.outruns(Wild.needs(biome) - 1, biome), "the speed it needs")
 	end
-	assert(Hunt.unlocked(HuntConfig.ZONES[1], 1), "the first zone is open from the start")
+	assert(Wild.outruns(WildConfig.START_SPEED, WildConfig.BIOMES[1]), "a new player outruns the first biome")
+	assert(not Wild.outruns(WildConfig.START_SPEED, WildConfig.BIOMES[2]), "but not the second")
+	assert(Wild.needs(WildConfig.BIOMES[#WildConfig.BIOMES]) <= WildConfig.MAX_SPEED, "the last biome can be escaped")
+	assert(Wild.train(16, 2, 10) > Wild.train(16, 1, 10), "a better treadmill trains faster")
+	assert(Wild.trainRate(1, 40) < Wild.trainRate(1, 16), "harder when already fast")
+	eq(Wild.train(WildConfig.MAX_SPEED, 5, 100), WildConfig.MAX_SPEED, "capped")
+	eq(#WildConfig.TREADMILL_PRICES, #WildConfig.TREADMILL_GAINS - 1, "a price per level")
+	for tier = 4, 8 do
+		assert(ShopConfig.STOCK[tier] == nil, "not in the Egg Shop")
+	end
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))

@@ -42,7 +42,8 @@ end
 local function setSpeed(player: Player, speed: number?)
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
-		humanoid.WalkSpeed = speed or 16
+		local data = DataService.get(player)
+		humanoid.WalkSpeed = speed or (if data then data.speed else 16) -- (back to the player's own speed)
 	end
 end
 
@@ -106,7 +107,7 @@ local function finish(thief: Player, stolen: boolean)
 end
 
 local function steal(thief: Player, index: any, slot: any)
-	if not open or type(index) ~= "number" or type(slot) ~= "number" or carrying[thief] then
+	if not open or type(index) ~= "number" or type(slot) ~= "number" or carrying[thief] or thief:GetAttribute("WildEgg") then
 		return
 	end
 	local owner = IslandService.ownerOf(index)

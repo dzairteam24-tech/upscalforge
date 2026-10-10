@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local IslandConfig = require(Shared.Config.Island)
+local WildConfig = require(Shared.Config.Wild)
 
 export type Creature = { s: string, m: string }
 export type Data = {
@@ -23,8 +24,9 @@ export type Data = {
 	shop: { window: number, bought: { [string]: number } }, -- eggs bought in the current restock window
 	nextId: number,
 	lastSeen: number,
-	stats: { hatched: number, earned: number, caught: number },
-	nets: { [string]: number }, -- net id -> how many the player holds (the basic net is free)
+	stats: { hatched: number, earned: number, stolen: number },
+	speed: number, -- how fast the player runs (Config/Wild), trained on the treadmill
+	treadmill: number, -- the treadmill's level
 	firstPlayed: number, -- os.time() of their first visit (a new player's garden can't be robbed at first)
 	food: { [string]: number }, -- food id -> how many the player holds (in their trough)
 	fedUntil: number, -- os.time() the creatures are fed until (Config/Food)
@@ -69,8 +71,9 @@ local function template(): Data
 		shop = { window = -1, bought = {} },
 		nextId = 1,
 		lastSeen = 0,
-		stats = { hatched = 0, earned = 0, caught = 0 },
-		nets = {},
+		stats = { hatched = 0, earned = 0, stolen = 0 },
+		speed = WildConfig.START_SPEED,
+		treadmill = 1,
 		firstPlayed = 0,
 		food = {},
 		fedUntil = 0,

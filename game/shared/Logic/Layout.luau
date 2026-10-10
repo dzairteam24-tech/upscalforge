@@ -80,12 +80,14 @@ Layout.POND = { center = Layout.PASTURE.center, radius = 6.5 }
 Layout.NEST_SIZE = 6 -- a nest's width (an egg in it is drawn to fit, whatever its tier)
 Layout.PATH_WIDTH = 6
 Layout.TROUGH = Vector3.new(-12, 0, PASTURE_FRONT + 5) -- in the pasture, beside where the path comes in
+Layout.TREADMILL = Vector3.new(16, 0, PASTURE_FRONT + 5) -- on the other side of the path (it runs along X)
 Layout.BARN = Vector3.new(HALF - 11.5, 0, HALF - 8.5) -- the storage barn, in the pasture's back corner
 
 -- What the creatures walk round (a spot in the garden's space and how far from it to keep)
 Layout.OBSTACLES = {
 	{ center = Layout.POND.center, radius = Layout.POND.radius + 2 },
 	{ center = Layout.TROUGH, radius = 4 },
+	{ center = Layout.TREADMILL, radius = 7.5 },
 	{ center = Layout.BARN, radius = 7 },
 }
 function Layout.blocked(inside: Vector3): boolean
@@ -129,12 +131,44 @@ function Layout.home(index: number): CFrame
 	return Layout.garden(index) * CFrame.new(0, 0, -HALF + 4) * CFrame.Angles(0, math.pi, 0)
 end
 
--- The carpet down the middle of the street where the wild creatures walk (Config/Hunt): from the den at the far
--- end, past every garden, to the burrow just past the shops. Returns its two ends (den first).
-Layout.CARPET_WIDTH = 8
-function Layout.carpet(): (Vector3, Vector3)
+-- The Wild (Config/Wild): past the gate at the far (north) end of the street, a road runs on through the
+-- biomes one after another, nests on both sides of it. South of the gate is safe.
+Layout.BIOME_LENGTH = 70
+Layout.WILD_WIDTH = 100
+Layout.ROAD_WIDTH = 14
+
+-- The gate into the Wild (the street's far end)
+function Layout.wildGate(): Vector3
 	local start, length = Layout.street()
-	return start + Vector3.new(0, 0, -length + 8), start + Vector3.new(0, 0, -Layout.shopsLength() - 2)
+	return start + Vector3.new(0, 0, -length)
+end
+
+-- A biome's middle (1 nearest the gate)
+function Layout.biome(i: number): Vector3
+	return Layout.wildGate() + Vector3.new(0, 0, -(i - 0.5) * Layout.BIOME_LENGTH)
+end
+
+-- A nest in a biome: two each side of the road
+function Layout.wildNest(i: number, k: number): Vector3
+	local side = if k % 2 == 1 then -1 else 1
+	local row = (k - 1) // 2
+	return Layout.biome(i) + Vector3.new(side * (Layout.ROAD_WIDTH / 2 + 16), 0, if row == 0 then 14 else -14)
+end
+
+-- Which biome a position is in, if any
+function Layout.biomeAt(position: Vector3, count: number): number?
+	local gate = Layout.wildGate()
+	local into = gate.Z - position.Z
+	if into < 0 or math.abs(position.X - gate.X) > Layout.WILD_WIDTH / 2 then
+		return nil
+	end
+	local i = into // Layout.BIOME_LENGTH + 1
+	return if i <= count then i else nil
+end
+
+-- Whether a position is back through the gate (where a thief is safe)
+function Layout.pastGate(position: Vector3): boolean
+	return position.Z > Layout.wildGate().Z
 end
 
 -- Which garden a position is in, if any

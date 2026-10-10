@@ -34,6 +34,7 @@ Loader.extraEnv = {
 local Vector3 = roblox.Vector3
 local WorldService = Loader.require(Server.Services.WorldService)
 local Layout = Loader.require(Shared.Logic.Layout)
+local WildConfig = Loader.require(Shared.Config.Wild)
 local IslandConfig = Loader.require(Shared.Config.Island)
 local PetModel = Loader.require(Shared.PetModel)
 
@@ -130,15 +131,26 @@ assert(#built.parts > 0 and built.height > 0, "a creature is drawn")
 
 print("world test passed")
 
--- The carpet: down the middle of the street, from the far end past every garden to the shops
-local den, burrow = Layout.carpet()
-assert(math.abs(den.X) < 0.01 and math.abs(burrow.X) < 0.01, "down the middle")
+-- The Wild: past the street's far end, its biomes one after another, their nests off the road
+local gate = Layout.wildGate()
 for index = 1, IslandConfig.ISLANDS do
-	local z = Layout.garden(index).Position.Z
-	assert(z < burrow.Z and z > den.Z, "past every garden")
+	assert(Layout.garden(index).Position.Z - Layout.GARDEN_SIZE / 2 > gate.Z, "the gardens are before the gate")
+	assert(Layout.pastGate(Layout.garden(index).Position), "a garden is safe")
 end
-for shop = 1, 6 do
-	assert(Layout.shop(shop).Position.Z > burrow.Z, "the shops are past the burrow")
+for i = 1, #WildConfig.BIOMES do
+	assert(Layout.biomeAt(Layout.biome(i), #WildConfig.BIOMES) == i, "a biome is where it says")
+	assert(not Layout.pastGate(Layout.biome(i)), "in the Wild")
+	for k = 1, WildConfig.NESTS do
+		local nest = Layout.wildNest(i, k)
+		assert(Layout.biomeAt(nest, #WildConfig.BIOMES) == i, "a nest in its biome")
+		assert(math.abs(nest.X) - 4 > Layout.ROAD_WIDTH / 2 and math.abs(nest.X) + 4 < Layout.WILD_WIDTH / 2, "off the road, inside the walls")
+	end
 end
-assert(world:FindFirstChild("Carpet") and world:FindFirstChild("WildCreatures"), "the carpet is built")
-print("carpet test passed")
+local wildEggs = 0
+for _, d in world.Wild:GetChildren() do
+	if d.Name == "WildEgg" then
+		wildEggs += 1
+	end
+end
+assert(wildEggs == #WildConfig.BIOMES * WildConfig.NESTS, "an egg in every nest")
+print("wild test passed")
