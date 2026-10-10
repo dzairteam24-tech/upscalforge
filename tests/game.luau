@@ -330,8 +330,18 @@ test("the Wild: biomes get harder, the treadmill trains speed, eggs 4-8 only com
 	assert(not Wild.outruns(0, WildConfig.BIOMES[2]), "the second biome needs training")
 	eq(Wild.walk(0), WildConfig.START_SPEED, "a new player walks at the start speed")
 	assert(Wild.walk(1e6) > Wild.walk(1e3) and Wild.walk(1e12) == WildConfig.WALK_MAX, "faster with more ⚡, capped")
-	eq(Wild.gain(0), WildConfig.TREADMILL_GAIN, "+2 a step with an empty garden")
-	assert(Wild.gain(10000) > 100 * Wild.gain(0), "a rich garden trains much faster")
+	eq(Wild.gain(1), 1, "the treadmill starts at +1")
+	eq(Wild.gain(2), 2, "then +2")
+	local before = 0
+	for level, step in WildConfig.TREADMILL do
+		assert(step.gain > before, "each level gives more")
+		before = step.gain
+		if level > 1 then
+			assert(step.price > WildConfig.TREADMILL[level - 1].price, "and costs more")
+		end
+	end
+	eq(Wild.upgradePrice(1), WildConfig.TREADMILL[2].price)
+	eq(Wild.upgradePrice(#WildConfig.TREADMILL), nil, "the top")
 	for tier = 4, 8 do
 		assert(ShopConfig.STOCK[tier] == nil, "not in the Egg Shop")
 	end

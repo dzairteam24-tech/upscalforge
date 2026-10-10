@@ -547,6 +547,27 @@ end
 ---------------------------------------------------------------------------------------------------------------
 -- Speed and the treadmill
 
+-- The owner upgrades their treadmill at its console, with coins
+local function upgradeTreadmill(player: Player, index: number)
+	local data = DataService.get(player)
+	if not data or IslandService.islandOf(player) ~= index then
+		return
+	end
+	local price = Wild.upgradePrice(data.treadmill)
+	if not price then
+		IslandService.notify(player, "Your treadmill is as good as it gets", "error")
+		return
+	end
+	if data.coins < price then
+		IslandService.notify(player, ("You need 🪙 %s"):format(Format.abbrev(price)), "error")
+		return
+	end
+	data.coins -= price
+	data.treadmill += 1
+	IslandService.notify(player, ("Treadmill upgraded! +%s ⚡ every second 🏃"):format(Format.abbrev(Wild.gain(data.treadmill))), "success")
+	IslandService.push(player)
+end
+
 -- Once a second: whoever is running on their own treadmill counts a second; every TREADMILL_EVERY of them they
 -- get TREADMILL_GAIN faster
 local running: { [Player]: number } = {}
@@ -566,9 +587,7 @@ local function train()
 				continue
 			end
 			running[player] = 0
-			-- (more the more the garden earns, fed or not)
-			local rate = player:GetAttribute("Rate")
-			local gain = Wild.gain(if type(rate) == "number" then rate else 0)
+			local gain = Wild.gain(data.treadmill)
 			data.power += gain
 			applySpeed(player)
 			Net.event("SpeedUp"):FireClient(player, gain)
@@ -619,6 +638,12 @@ function WildService.init()
 	spawnGuardians()
 	refill() -- (the first golden nests)
 	Net.event("Travel").OnServerEvent:Connect(travel)
+	game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt, player)
+		local index = prompt:GetAttribute("Treadmill")
+		if type(index) == "number" then
+			upgradeTreadmill(player, index)
+		end
+	end)
 	DataService.onLoaded(function(player, data)
 		player:SetAttribute("Speed", data.power)
 		applySpeed(player)

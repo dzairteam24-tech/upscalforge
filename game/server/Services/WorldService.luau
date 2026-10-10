@@ -379,7 +379,18 @@ local function buildGarden(world: Instance, index: number)
 		part(model, { Name = "TreadmillEnd", Size = Vector3.new(0.4, 6, 5.4), CFrame = mill * CFrame.new(s * 5.2, 4, 0), Transparency = 1 })
 	end
 	local console = part(model, { Name = "TreadmillConsole", Size = Vector3.new(1, 3.6, 3), CFrame = mill * CFrame.new(-6.2, 2.4, 0), Color = rgb(200, 205, 215), Material = Enum.Material.Metal })
-	label(console, ("🏃 Run on it: +%d ⚡"):format(WildConfig.TREADMILL_GAIN), 16, 2.2, Vector3.new(0, 4.2, 0))
+	local consoleText = label(console, "🏃 Treadmill", 16, 2.2, Vector3.new(0, 4.2, 0))
+	consoleText.Name = "TreadmillText"
+	local upgrade = Instance.new("ProximityPrompt")
+	upgrade.ActionText = "Upgrade"
+	upgrade.ObjectText = "Treadmill"
+	upgrade.MaxActivationDistance = 10
+	upgrade.RequiresLineOfSight = false
+	upgrade.Enabled = false -- (GardenClient: the owner's only)
+	upgrade:SetAttribute("Treadmill", index)
+	upgrade.Parent = console
+	console:AddTag("TreadmillConsole")
+	console:SetAttribute("Island", index)
 
 	-- The storage barn in the pasture's back corner: where the creatures not in the pasture are kept
 	local barn = at(Layout.BARN.X, 0, Layout.BARN.Z) * CFrame.Angles(0, math.rad(45), 0) -- (its door toward the pasture)

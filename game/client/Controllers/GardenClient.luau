@@ -17,9 +17,11 @@ local Raid = require(Shared.Logic.Raid)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
 local Weather = require(Shared.Logic.Weather)
+local Wild = require(Shared.Logic.Wild)
 local Net = require(Shared.Net)
 
 local Notify = require(script.Parent.Parent.UI.Notify)
+local Store = require(script.Parent.Parent.Store)
 local Windows = require(script.Parent.Parent.UI.Windows)
 
 local GardenClient = {}
@@ -493,6 +495,23 @@ function GardenClient.init()
 			for _, trough in CollectionService:GetTagged("Trough") do
 				if trough:IsA("BasePart") then
 					updateTrough(trough)
+				end
+			end
+			-- The treadmills' consoles: the owner sees their level and the upgrade
+			for _, console in CollectionService:GetTagged("TreadmillConsole") do
+				local prompt = console:FindFirstChildOfClass("ProximityPrompt")
+				local text = console:FindFirstChild("TreadmillText", true)
+				local mine = console:GetAttribute("Island") == LOCAL:GetAttribute("Island")
+				local data = Store.data
+				local level = if mine and data then data.treadmill or 1 else 0
+				if text and text:IsA("TextLabel") then
+					text.Text = if level > 0 then ("🏃 +%s ⚡ / second"):format(Format.abbrev(Wild.gain(level))) else "🏃 Treadmill"
+				end
+				if prompt then
+					local price = if level > 0 then Wild.upgradePrice(level) else nil
+					prompt.Enabled = price ~= nil
+					prompt.ObjectText = if price then ("Treadmill: +%s → +%s ⚡"):format(Format.abbrev(Wild.gain(level)), Format.abbrev(Wild.gain(level + 1))) else "Treadmill"
+					prompt.ActionText = if price then ("Upgrade · 🪙 %s"):format(Format.abbrev(price)) else "Max"
 				end
 			end
 			for _, gate in CollectionService:GetTagged("Gate") do

@@ -56,10 +56,19 @@ return {
 	-- Not while carrying an egg: the chases stay fair.
 	SEAT_SPEED = 4,
 	SEAT_MAX_SPEED = 120,
-	-- The treadmill in front of each garden: running on it, every TREADMILL_EVERY seconds the player gets
-	-- TREADMILL_GAIN ⚡, plus more the more their garden earns (its coins a second to the TREADMILL_POWER), like
-	-- Steal an Egg: better creatures, faster training. No coins spent: only running.
-	TREADMILL_GAIN = 2,
-	TREADMILL_POWER = 0.7,
-	TREADMILL_EVERY = 5,
+	-- The treadmill in front of each garden (like Steal an Egg's): running on it, every TREADMILL_EVERY seconds
+	-- the player gets their level's ⚡. Its console upgrades it with coins (never Robux: speed isn't sold).
+	TREADMILL = {
+		{ gain = 1, price = 0 },
+		{ gain = 2, price = 500 },
+		{ gain = 5, price = 3000 },
+		{ gain = 10, price = 15000 },
+		{ gain = 25, price = 75000 },
+		{ gain = 50, price = 400000 },
+		{ gain = 100, price = 2000000 },
+		{ gain = 250, price = 10000000 },
+		{ gain = 500, price = 50000000 },
+		{ gain = 1000, price = 250000000 },
+	},
+	TREADMILL_EVERY = 1,
 }

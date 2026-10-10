@@ -13,9 +13,15 @@ function Wild.walk(power: number): number
 	return math.min(WildConfig.WALK_MAX, WildConfig.START_SPEED + WildConfig.WALK_PER_DOUBLING * doublings)
 end
 
--- ⚡ a step on the treadmill gives, for a garden earning `rate` coins a second
-function Wild.gain(rate: number): number
-	return WildConfig.TREADMILL_GAIN + math.floor(math.max(0, rate) ^ WildConfig.TREADMILL_POWER)
+-- ⚡ a step on the treadmill gives at its level
+function Wild.gain(level: number): number
+	return WildConfig.TREADMILL[math.clamp(level, 1, #WildConfig.TREADMILL)].gain
+end
+
+-- What the treadmill's next level costs, or nil at the top
+function Wild.upgradePrice(level: number): number?
+	local next = WildConfig.TREADMILL[level + 1]
+	return if next then next.price else nil
 end
 
 -- How fast a player runs while carrying an egg
