@@ -1,25 +1,30 @@
 --!strict
--- Where everything is: one street, walked from south to north. Players arrive in a small square with a fountain;
--- the street leaves it northward past the six shops, three each side facing each other (the Egg Shop first,
--- nearest the square), then past the players' gardens, also in two rows facing each other, so everyone sees
--- their neighbours. Each garden is fenced, with a laser gate onto the street that only lets its owner in.
+-- Where everything is (docs/images/map-plan.png): players arrive on a round square in the middle (no fountain).
+-- North of it, the shops stand on an arc, each facing the square, with a ring road round the square linking
+-- them; a straight road runs north from the square to the big gate into the Wild. South of the square, the
+-- players' gardens stand side by side on a wider arc, their laser gates (only the owner gets in) facing the
+-- square, an arc road running past all the gates.
 
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 
 local Layout = {
 	SQUARE_RADIUS = 26, -- the square where players arrive
-	SHOP_DEPTH = 26, -- a shop's lot, from the street back
-	SHOP_SPACING = 30, -- between two shops' middles along the street
+	RING_RADIUS = 120, -- the ring road round the square
+	SHOP_RADIUS = 150, -- the shops' middles, this far from the square's
+	SHOP_DEPTH = 26, -- a shop's lot, from its front back
+	GARDEN_RADIUS = 300, -- the gardens' middles, this far from the square's
+	GARDEN_STEP = 18, -- degrees between two gardens on their arc
+	GARDEN_ROAD_RADIUS = 238, -- the arc road past the gardens' gates
+	ROAD_WIDTH_TOWN = 20,
+	WILD_GATE_DISTANCE = 260, -- the big gate into the Wild, this far north of the square
 	GARDEN_SIZE = 80,
-	GARDEN_GAP = 10, -- between two gardens in a row
-	STREET_WIDTH = 26,
 	GATE_WIDTH = 16, -- the opening in a garden's front fence
 	FENCE_HEIGHT = 10, -- the invisible wall behind the low picket fence (too tall to jump)
 	CENTER = Vector3.new(0, 0, 0),
 }
 
-local SHOPS = 6
-local ROWS = math.ceil(IslandConfig.ISLANDS / 2)
+-- The shops' spots on their arc: degrees from north, west negative (the road north runs between them)
+Layout.SHOP_ANGLES = { -50, -24, 32 }
 
 -- A frame at `at` (on the ground) turned about Y so its front (-Z) faces `target` (no lookAt: the same in
 -- every runtime)
@@ -28,40 +33,30 @@ function Layout.facing(at: Vector3, target: Vector3): CFrame
 	return CFrame.new(at) * CFrame.Angles(0, math.atan2(-d.X, -d.Z), 0)
 end
 
--- Where the street starts (the square's north edge) and how long it is (past the shops and the gardens)
-function Layout.street(): (Vector3, number)
-	local start = Layout.CENTER + Vector3.new(0, 0, -Layout.SQUARE_RADIUS + 4)
-	local length = Layout.shopsLength() + ROWS * (Layout.GARDEN_SIZE + Layout.GARDEN_GAP) + 10
-	return start, length
+-- A point on a circle round the square, `degrees` from north (west negative)
+local function around(radius: number, degrees: number): Vector3
+	local a = math.rad(degrees)
+	return Layout.CENTER + Vector3.new(math.sin(a) * radius, 0, -math.cos(a) * radius)
 end
+Layout.around = around
 
--- How much of the street the shops take
-function Layout.shopsLength(): number
-	return math.ceil(SHOPS / 2) * Layout.SHOP_SPACING + 6
-end
-
--- A shop's spot (1..6) beside the street, facing it: odd ones west, even ones east, from the square northward
+-- A shop's spot, facing the square
 function Layout.shop(index: number): CFrame
-	local start = Layout.CENTER + Vector3.new(0, 0, -Layout.SQUARE_RADIUS + 4)
-	local side = if index % 2 == 1 then -1 else 1
-	local row = (index - 1) // 2
-	local z = start.Z - 6 - Layout.SHOP_SPACING / 2 - row * Layout.SHOP_SPACING
-	local at = Vector3.new(start.X + side * (Layout.STREET_WIDTH / 2 + Layout.SHOP_DEPTH / 2), 0, z)
-	return Layout.facing(at, Vector3.new(start.X, 0, z))
+	return Layout.facing(around(Layout.SHOP_RADIUS, Layout.SHOP_ANGLES[index]), Layout.CENTER)
 end
 
--- A garden's middle, its front (-Z) facing the street. Odd ones west of the street, even ones east, from the
--- plaza northward.
+-- How far round (degrees from south, west negative) a garden stands: the first in the west
+function Layout.gardenAngle(index: number): number
+	return (index - (IslandConfig.ISLANDS + 1) / 2) * Layout.GARDEN_STEP
+end
+
+-- A garden's middle, its front (-Z, its gate) facing the square
 function Layout.garden(index: number): CFrame
-	local side = if index % 2 == 1 then -1 else 1
-	local row = (index - 1) // 2
-	local start = Layout.street()
-	local z = start.Z - Layout.shopsLength() - Layout.GARDEN_GAP - Layout.GARDEN_SIZE / 2 - row * (Layout.GARDEN_SIZE + Layout.GARDEN_GAP)
-	local at = Vector3.new(start.X + side * (Layout.STREET_WIDTH / 2 + Layout.GARDEN_SIZE / 2), 0, z)
-	return Layout.facing(at, Vector3.new(start.X, 0, z))
+	local at = around(Layout.GARDEN_RADIUS, 180 - Layout.gardenAngle(index))
+	return Layout.facing(at, Layout.CENTER)
 end
 
--- The middle of a garden's gate (in its front fence, onto the street)
+-- The middle of a garden's gate (in its front fence, toward the square)
 function Layout.gate(index: number): CFrame
 	return Layout.garden(index) * CFrame.new(0, 0, -Layout.GARDEN_SIZE / 2)
 end
@@ -81,7 +76,7 @@ Layout.NEST_SIZE = 6 -- a nest's width (an egg in it is drawn to fit, whatever i
 Layout.PATH_WIDTH = 6
 Layout.TROUGH = Vector3.new(-12, 0, PASTURE_FRONT + 5) -- in the pasture, beside where the path comes in
 -- The treadmill: outside, in front of the garden beside its gate, along the fence (it runs along X), where the
--- street sees its owner training
+-- road past the gardens sees its owner training
 Layout.TREADMILL = Vector3.new(Layout.GATE_WIDTH / 2 + 8, 0, -HALF - 4.5)
 Layout.BARN = Vector3.new(HALF - 11.5, 0, HALF - 8.5) -- the storage barn, in the pasture's back corner
 
@@ -132,16 +127,15 @@ function Layout.home(index: number): CFrame
 	return Layout.garden(index) * CFrame.new(0, 0, -HALF + 4) * CFrame.Angles(0, math.pi, 0)
 end
 
--- The Wild (Config/Wild): past the gate at the far (north) end of the street, a road runs on through the
--- biomes one after another, nests on both sides of it. South of the gate is safe.
+-- The Wild (Config/Wild): past the big gate north of the square, a road runs on through the biomes one after
+-- another, nests on both sides of it. South of the gate is safe.
 Layout.BIOME_LENGTH = 140
 Layout.WILD_WIDTH = 160
 Layout.ROAD_WIDTH = 14
 
--- The gate into the Wild (the street's far end)
+-- The big gate into the Wild
 function Layout.wildGate(): Vector3
-	local start, length = Layout.street()
-	return start + Vector3.new(0, 0, -length)
+	return Layout.CENTER + Vector3.new(0, 0, -Layout.WILD_GATE_DISTANCE)
 end
 
 -- A biome's middle (1 nearest the gate)

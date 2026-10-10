@@ -1,7 +1,7 @@
 --!strict
--- Builds the world (Logic/Layout): the square with its fountain where players arrive, and the street north of it,
--- past the six shops and then the players' gardens, each in two rows facing each other across the street; each
--- garden fenced, with its laser gate, incubators and owner's sign. Everything is simple parts, so it works
+-- Builds the world (Logic/Layout, docs/images/map-plan.png): the round square where players arrive, the shops on
+-- an arc north of it, the big gate into the Wild beyond them, and the players' gardens on an arc south of it, each
+-- fenced, with its laser gate toward the square, incubators and owner's sign; the roads between them. Everything is simple parts, so it works
 -- before the 3D art loads; once the town model (Config/Art TOWN_ASSET_ID) is in, each shop is drawn with its
 -- building from art/models/Town.glb.
 
@@ -72,13 +72,11 @@ end
 ---------------------------------------------------------------------------------------------------------------
 -- The town
 
--- The six shops, in order along the street from the square (Layout.shop), and the art building each is drawn with
+-- The shops, in the order of their spots on the arc north of the square (Layout.shop), and the art building
+-- each is drawn with
 local SHOPS = {
 	{ name = "Egg Shop", art = "Shop", ui = "Shop", color = rgb(110, 200, 140) },
-	{ name = "Trading", art = "Trade", ui = "Soon", color = rgb(90, 150, 240) },
 	{ name = "Food Shop", art = "Potion", ui = "Food", color = rgb(160, 110, 230) },
-	{ name = "Lucky Spin", art = "Spin", ui = "Soon", color = rgb(255, 150, 80) },
-	{ name = "Trips", art = "Trips", ui = "Soon", color = rgb(80, 190, 220) },
 	{ name = "Gear Shop", art = "Arcade", ui = "Gear", color = rgb(240, 110, 170) },
 }
 WorldService.SHOPS = SHOPS
@@ -116,12 +114,8 @@ end
 local function buildTown(world: Instance)
 	local town = Instance.new("Model")
 	town.Name = "Town"
-	-- The square where players arrive, with the fountain
+	-- The square where players arrive (no fountain: room for the Mother Cube and the Heist Egg)
 	disc(town, "Plaza", Layout.CENTER + Vector3.new(0, 0.1, 0), Layout.SQUARE_RADIUS, 0.3, PAVING, Enum.Material.Pavement)
-	disc(town, "Fountain", Layout.CENTER + Vector3.new(0, 0.8, 0), 7, 1.6, rgb(240, 240, 250), Enum.Material.Marble)
-	local water = disc(town, "Water", Layout.CENTER + Vector3.new(0, 1.2, 0), 6.2, 1.2, rgb(90, 180, 240), Enum.Material.Glass)
-	water.Transparency = 0.2
-	disc(town, "Fountain", Layout.CENTER + Vector3.new(0, 3, 0), 1.6, 4, rgb(240, 240, 250), Enum.Material.Marble)
 	local sign = part(town, { Name = "Sign", Size = Vector3.one, Position = Layout.CENTER + Vector3.new(0, 18, 0), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(sign, "🥚 Cubeling Nest", 22, 4, Vector3.zero)
 	for index = 1, #SHOPS do
@@ -150,7 +144,7 @@ local function extents(p: BasePart): Vector3
 end
 
 -- Draws a shop with its art building from the town model (parts Building<Name>__<role>): in the booth's
--- place and size, its front (where the logo is) toward the fountain, colored from Config/TownLooks.
+-- place and size, its front (where the logo is) toward the square, colored from Config/TownLooks.
 local function dressShop(root: Instance, shop: Shop): boolean
 	local pattern = "^Building" .. shop.art .. "__(.+)$"
 	local pieces: { { part: BasePart, role: string } } = {}
@@ -419,39 +413,72 @@ local function buildGarden(world: Instance, index: number)
 	model.Parent = world
 end
 
--- The ground under the square, the street, the shops and the gardens, the street's paving, and invisible walls round it all
-local function buildStreet(world: Instance)
-	local start, length = Layout.street()
-	local width = Layout.STREET_WIDTH + 2 * math.max(Layout.GARDEN_SIZE, Layout.SHOP_DEPTH) + 24
-	local south = Layout.CENTER.Z + Layout.SQUARE_RADIUS + 6
-	local north = start.Z - length - 4
-	local middle = (south + north) / 2
-	part(world, {
-		Name = "Ground",
-		Size = Vector3.new(width, 4, south - north),
-		Position = Vector3.new(start.X, -2.1, middle),
-		Color = rgb(150, 205, 120),
-		Material = Enum.Material.Grass,
-	})
-	part(world, {
-		Name = "Street",
-		Size = Vector3.new(Layout.STREET_WIDTH, 0.3, length),
-		Position = start + Vector3.new(0, 0.15, -length / 2),
+-- A straight stretch of paving from `a` to `b`
+local function road(parent: Instance, a: Vector3, b: Vector3, width: number)
+	local flat = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
+	part(parent, {
+		Name = "Road",
+		Size = Vector3.new(width, 0.3, flat.Magnitude),
+		CFrame = Layout.facing((a + b) / 2, (a + b) / 2 + flat) * CFrame.new(0, 0.15, 0),
 		Color = PAVING,
 		Material = Enum.Material.Pavement,
+		CanCollide = false,
 	})
-	part(world, { Name = "Border", Size = Vector3.new(width, 14, 1), Position = Vector3.new(start.X, 7, south), Transparency = 1 })
-	-- (the north side open onto the Wild)
-	local piece = (width - Layout.WILD_WIDTH) / 2
-	for _, side in { -1, 1 } do
-		part(world, { Name = "Border", Size = Vector3.new(piece, 14, 1), Position = Vector3.new(start.X + side * (Layout.WILD_WIDTH / 2 + piece / 2), 7, north), Transparency = 1 })
-	end
-	for _, side in { -1, 1 } do
-		part(world, { Name = "Border", Size = Vector3.new(1, 14, south - north), Position = Vector3.new(start.X + side * width / 2, 7, middle), Transparency = 1 })
+end
+
+-- A paved arc round the square, `radius` from it, between two angles (degrees from north), in short pieces
+local function arc(parent: Instance, radius: number, from: number, to: number, width: number)
+	local pieces = math.max(2, math.ceil(math.abs(to - from) / 6))
+	for k = 0, pieces - 1 do
+		local a1 = from + (to - from) * k / pieces
+		local a2 = from + (to - from) * (k + 1) / pieces
+		-- (each piece a little longer, so they meet without gaps)
+		local mid, half = (a1 + a2) / 2, (a2 - a1) / 2 * 1.15
+		road(parent, Layout.around(radius, mid - half), Layout.around(radius, mid + half), width)
 	end
 end
 
--- The Wild (Config/Wild, Layout.wildGate): an arch at the street's far end, then the road on through the biomes,
+-- The ground under it all, the roads (the ring round the square and the shops' paths, the road north to the
+-- Wild's gate, the road south and the arc past the gardens' gates), and invisible walls round it (open onto the
+-- Wild)
+local function buildGrounds(world: Instance)
+	local w = Layout.ROAD_WIDTH_TOWN
+	local north = -Layout.WILD_GATE_DISTANCE
+	local south = Layout.GARDEN_RADIUS + Layout.GARDEN_SIZE * 0.75 + 10
+	local half = Layout.GARDEN_RADIUS + 60
+	local middle = (north + south) / 2
+	part(world, {
+		Name = "Ground",
+		Size = Vector3.new(half * 2, 4, south - north),
+		Position = Vector3.new(Layout.CENTER.X, -2.1, middle),
+		Color = rgb(150, 205, 120),
+		Material = Enum.Material.Grass,
+	})
+	local roads = Instance.new("Model")
+	roads.Name = "Roads"
+	arc(roads, Layout.RING_RADIUS, 0, 360, w * 0.8)
+	for _, angle in Layout.SHOP_ANGLES do
+		road(roads, Layout.around(Layout.RING_RADIUS, angle), Layout.around(Layout.SHOP_RADIUS - Layout.SHOP_DEPTH / 2 + 4, angle), w * 0.7)
+	end
+	road(roads, Layout.around(Layout.SQUARE_RADIUS - 2, 0), Layout.wildGate(), w)
+	road(roads, Layout.around(Layout.SQUARE_RADIUS - 2, 180), Layout.around(Layout.GARDEN_ROAD_RADIUS, 180), w)
+	local last = Layout.gardenAngle(IslandConfig.ISLANDS) + Layout.GARDEN_STEP * 0.7
+	arc(roads, Layout.GARDEN_ROAD_RADIUS, 180 - last, 180 + last, w)
+	for index = 1, IslandConfig.ISLANDS do
+		local angle = 180 - Layout.gardenAngle(index)
+		road(roads, Layout.around(Layout.GARDEN_ROAD_RADIUS, angle), Layout.gate(index).Position, Layout.GATE_WIDTH)
+	end
+	roads.Parent = world
+	-- Walls (the north one open in the middle onto the Wild)
+	part(world, { Name = "Border", Size = Vector3.new(half * 2, 14, 1), Position = Vector3.new(Layout.CENTER.X, 7, south), Transparency = 1 })
+	local piece = (half * 2 - Layout.WILD_WIDTH) / 2
+	for _, side in { -1, 1 } do
+		part(world, { Name = "Border", Size = Vector3.new(piece, 14, 1), Position = Vector3.new(Layout.CENTER.X + side * (Layout.WILD_WIDTH / 2 + piece / 2), 7, north), Transparency = 1 })
+		part(world, { Name = "Border", Size = Vector3.new(1, 14, south - north), Position = Vector3.new(Layout.CENTER.X + side * half, 7, middle), Transparency = 1 })
+	end
+end
+
+-- The Wild (Config/Wild, Layout.wildGate): a big arch north of the square, then the road on through the biomes,
 -- each with its ground, its sign (and the speed needed to outrun its guardians) and its nests, each holding an
 -- egg (WildService takes it and puts it back)
 local function buildWild(world: Instance)
@@ -465,10 +492,13 @@ local function buildWild(world: Instance)
 	part(wild, { Name = "WildRoad", Size = Vector3.new(Layout.ROAD_WIDTH, 0.34, length), Position = middle + Vector3.new(0, 0.17, 0), Color = PAVING, Material = Enum.Material.Pavement })
 	-- The arch
 	for _, side in { -1, 1 } do
-		part(wild, { Name = "ArchPost", Size = Vector3.new(2, 14, 2), Position = gate + Vector3.new(side * (Layout.ROAD_WIDTH / 2 + 2), 7, 0), Color = WOOD_DARK })
+		part(wild, { Name = "GateTower", Size = Vector3.new(10, 36, 10), Position = gate + Vector3.new(side * 24, 18, 0), Color = rgb(120, 116, 110), Material = Enum.Material.Slate })
+		part(wild, { Name = "GateTowerTop", Size = Vector3.new(12, 3, 12), Position = gate + Vector3.new(side * 24, 37.5, 0), Color = rgb(90, 160, 90) })
 	end
-	local arch = part(wild, { Name = "Arch", Size = Vector3.new(Layout.ROAD_WIDTH + 6, 2.4, 2.4), Position = gate + Vector3.new(0, 15, 0), Color = rgb(90, 160, 90) })
-	label(arch, "🌿 THE WILD · steal eggs, run back here!", 30, 3.2, Vector3.new(0, 4, 0))
+	local arch = part(wild, { Name = "Arch", Size = Vector3.new(58, 7, 8), Position = gate + Vector3.new(0, 31, 0), Color = rgb(90, 160, 90) })
+	label(arch, "🌿 THE WILD", 40, 7, Vector3.new(0, 9, 0))
+	local glow = part(wild, { Name = "GateGlow", Size = Vector3.new(38, 27.5, 0.4), Position = gate + Vector3.new(0, 13.9, 0), Color = rgb(120, 255, 160), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false })
+	glow.Transparency = 0.75
 	for i, biome in WildConfig.BIOMES do
 		local center = Layout.biome(i)
 		part(wild, { Name = "BiomeGround", Size = Vector3.new(Layout.WILD_WIDTH, 0.3, Layout.BIOME_LENGTH), Position = center + Vector3.new(0, 0.15, 0), Color = biome.color, Material = Enum.Material.Grass })
@@ -496,7 +526,7 @@ local function buildWild(world: Instance)
 			prompt.Parent = eggPart
 		end
 	end
-	-- Invisible walls round it (open toward the street)
+	-- Invisible walls round it (open toward the square)
 	for _, side in { -1, 1 } do
 		part(wild, { Name = "Border", Size = Vector3.new(1, 14, length + 8), Position = middle + Vector3.new(side * Layout.WILD_WIDTH / 2, 7, -4), Transparency = 1 })
 	end
@@ -521,7 +551,7 @@ function WorldService.build(): Folder
 	local world = Instance.new("Folder")
 	world.Name = "World"
 	buildTown(world)
-	buildStreet(world)
+	buildGrounds(world)
 	for index = 1, IslandConfig.ISLANDS do
 		buildGarden(world, index)
 	end

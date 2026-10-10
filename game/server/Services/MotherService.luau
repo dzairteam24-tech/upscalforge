@@ -1,5 +1,5 @@
 --!strict
--- The Mother Cube (Config/Mother, Logic/Mother): once an hour a giant hungry cube lands over the fountain, and
+-- The Mother Cube (Config/Mother, Logic/Mother): once an hour a giant hungry cube lands over the square, and
 -- everyone in the server feeds it together, with food from their trough or a snack bought on the spot. Full
 -- before it leaves, it lays an egg for each player who fed it: one of the best tier they've hatched, or with
 -- a chance that grows with what they gave, a Legendary Egg. In Studio it comes every 5 minutes, for testing.
@@ -142,7 +142,7 @@ local function land(start: number)
 	prompt.Triggered:Connect(feed)
 	part.Parent = workspace
 	cube = part
-	everyone(("👑 The MOTHER CUBE landed at the fountain! Feed it together (%d needed) for eggs!"):format(goal), "rare")
+	everyone(("👑 The MOTHER CUBE landed in the square! Feed it together (%d needed) for eggs!"):format(goal), "rare")
 end
 
 local function leave()
@@ -167,7 +167,7 @@ local function tick()
 	local nextVisit = Mother.nextVisit(now, STUDIO)
 	if not on and nextVisit - now <= MotherConfig.WARNING and warned ~= nextVisit then
 		warned = nextVisit
-		everyone(("👑 The Mother Cube lands at the fountain in %s!"):format(Format.time(nextVisit - now)), "info")
+		everyone(("👑 The Mother Cube lands in the square in %s!"):format(Format.time(nextVisit - now)), "info")
 	end
 end
 

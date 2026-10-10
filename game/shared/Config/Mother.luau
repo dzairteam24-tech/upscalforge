@@ -1,5 +1,5 @@
 --!strict
--- The Mother Cube: once an hour a giant hungry cube lands over the fountain, and the whole server feeds it
+-- The Mother Cube: once an hour a giant hungry cube lands over the square, and the whole server feeds it
 -- together. If it's full before it leaves, it lays an egg for everyone who fed it; the more they gave, the
 -- better their chance of a Legendary Egg. Logic/Mother has the schedule, MotherService runs it.
 
@@ -20,6 +20,6 @@ return {
 	LEGENDARY_PER_POINT = 0.02, -- each point a player gave adds this chance of a Legendary Egg...
 	LEGENDARY_MAX = 0.25, -- ...up to this (otherwise, an egg of the best tier they've hatched)
 	SIZE = 10, -- studs
-	HEIGHT = 14, -- over the fountain
+	HEIGHT = 14, -- over the square
 	REACH = 24, -- how close to it a player can feed it
 }

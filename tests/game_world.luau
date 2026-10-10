@@ -32,6 +32,7 @@ Loader.extraEnv = {
 }
 
 local Vector3 = roblox.Vector3
+local CFrame = roblox.CFrame
 local WorldService = Loader.require(Server.Services.WorldService)
 local Layout = Loader.require(Shared.Logic.Layout)
 local WildConfig = Loader.require(Shared.Config.Wild)
@@ -61,10 +62,10 @@ print(("gardens=%d gates=%d incubators=%d shops=%d"):format(gardens, gates, pads
 assert(gardens == IslandConfig.ISLANDS, "one garden per player")
 assert(gates == IslandConfig.ISLANDS, "a gate per garden")
 assert(pads == IslandConfig.ISLANDS * maxPads, "every incubator in every garden")
-assert(shops == 6, "six shops")
+assert(shops == #Layout.SHOP_ANGLES, "a shop on each spot")
 
--- Every incubator and pen spot lies in its garden; the gardens face each other across the street, clear of
--- it, of the plaza and of each other; each gate opens onto the street
+-- Every incubator and pen spot lies in its garden; the gardens stand on their arc south of the square, their gates
+-- toward it, clear of each other, of the shops and of the road to the Wild
 for index = 1, IslandConfig.ISLANDS do
 	for slot = 1, maxPads do
 		assert(Layout.gardenAt(Layout.incubator(index, slot)) == index, ("incubator %d in garden %d"):format(slot, index))
@@ -99,31 +100,36 @@ for index = 1, IslandConfig.ISLANDS do
 	assert(inside(frame:PointToWorldSpace(Layout.TROUGH), Layout.PASTURE) and inside(frame:PointToWorldSpace(Layout.BARN), Layout.PASTURE), "the trough and the barn in the pasture")
 	assert(math.abs(Layout.TROUGH.X) - 3 >= Layout.PATH_WIDTH / 2, "the trough off the path")
 	local center = Layout.garden(index).Position
-	assert(math.abs(center.X) - Layout.GARDEN_SIZE / 2 >= Layout.STREET_WIDTH / 2, "clear of the street")
-	for shop = 1, 6 do
-		local s = Layout.shop(shop).Position
-		assert(center.Z + Layout.GARDEN_SIZE / 2 < s.Z - Layout.SHOP_SPACING / 2, "north of the shops")
-	end
 	local gate = Layout.gate(index).Position
-	assert(math.abs(math.abs(gate.X) - Layout.STREET_WIDTH / 2) < 0.01, "the gate is on the street")
-	if index % 2 == 1 then
-		local across = Layout.garden(index + 1).Position
-		assert(math.abs(across.Z - center.Z) < 0.01 and across.X > 0 and center.X < 0, "facing its neighbour across the street")
+	assert(center.Z > Layout.CENTER.Z + Layout.SQUARE_RADIUS, "south of the square")
+	assert((gate - Layout.CENTER).Magnitude < (center - Layout.CENTER).Magnitude - Layout.GARDEN_SIZE / 2 + 0.01, "its gate toward the square")
+	assert((gate - Layout.CENTER).Magnitude > Layout.GARDEN_ROAD_RADIUS + Layout.ROAD_WIDTH_TOWN / 2, "past the arc road")
+	-- (its corners and its treadmill in nobody else's garden)
+	local spots = { frame:PointToWorldSpace(Layout.TREADMILL) }
+	for _, corner in { Vector3.new(-1, 0, -1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, 1), Vector3.new(1, 0, 1) } do
+		table.insert(spots, frame:PointToWorldSpace(corner * (Layout.GARDEN_SIZE / 2 - 0.5)))
 	end
-	for other = index + 1, IslandConfig.ISLANDS do
-		local d = Layout.garden(other).Position - center
-		assert(math.max(math.abs(d.X), math.abs(d.Z)) >= Layout.GARDEN_SIZE, "gardens don't overlap")
+	for _, spot in spots do
+		local other = Layout.gardenAt(spot)
+		assert(other == nil or other == index, ("garden %d runs into garden %s"):format(index, tostring(other)))
+	end
+	if index > 1 then
+		assert(Layout.garden(index).Position.X > Layout.garden(index - 1).Position.X, "from west to east")
 	end
 end
 assert(Layout.gardenAt(Layout.CENTER) == nil, "the square is no garden")
--- The shops: three each side of the street, facing each other, the Egg Shop first (nearest the square)
-for shop = 1, 6 do
-	local at = Layout.shop(shop).Position
-	assert(math.abs(at.X) - Layout.SHOP_DEPTH / 2 >= Layout.STREET_WIDTH / 2 - 0.01, "beside the street")
-	assert(at.Z < Layout.CENTER.Z - Layout.SQUARE_RADIUS + 4, "north of the square")
+-- The shops: on their arc north of the square, facing it, clear of the road to the Wild and of each other
+for shop = 1, #Layout.SHOP_ANGLES do
+	local frame = Layout.shop(shop)
+	local at = frame.Position
+	assert(at.Z < Layout.CENTER.Z - Layout.SQUARE_RADIUS, "north of the square")
+	assert(math.abs(at.X) - Layout.SHOP_DEPTH / 2 >= Layout.ROAD_WIDTH_TOWN / 2, "off the road to the Wild")
+	assert((frame * CFrame.new(0, 0, -10)).Position.Magnitude < at.Magnitude, "facing the square")
 	assert(Layout.gardenAt(at) == nil, "not in a garden")
+	for other = shop + 1, #Layout.SHOP_ANGLES do
+		assert((Layout.shop(other).Position - at).Magnitude >= Layout.SHOP_DEPTH + 10, "shops apart")
+	end
 end
-assert(Layout.shop(1).Position.Z > Layout.shop(6).Position.Z, "the Egg Shop is nearest the square")
 
 -- A creature drawn without the 3D models
 local built = PetModel.build({ s = "Kitty", v = "Golden", z = "Normal" })

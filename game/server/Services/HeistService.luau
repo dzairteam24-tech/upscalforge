@@ -132,7 +132,7 @@ local function startRound(start: number)
 	end)
 	part.Parent = workspace
 	egg, prompt = part, p
-	everyone("🥚 EGG HEIST! A Heist Egg dropped by the fountain: carry it home to your garden!", "rare")
+	everyone("🥚 EGG HEIST! A Heist Egg dropped in the square: carry it home to your garden!", "rare")
 end
 
 -- The schedule, once a second: the warning, the start and the end
@@ -142,7 +142,7 @@ local function schedule()
 	local nextStart = Heist.nextRound(now, ALWAYS)
 	if not on and nextStart - now <= HeistConfig.WARNING and warned ~= nextStart then
 		warned = nextStart
-		everyone(("🥚 Egg Heist in %s! Get ready by the fountain"):format(Format.time(nextStart - now)), "info")
+		everyone(("🥚 Egg Heist in %s! Get ready in the square"):format(Format.time(nextStart - now)), "info")
 	end
 	if on and not egg and roundStart ~= start then
 		startRound(start)
