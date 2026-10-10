@@ -2,7 +2,8 @@
 -- The Wild (Config/Wild, Logic/Wild, built by WorldService): a player steals an egg from a nest; a moment later
 -- the nearest of that biome's guardians comes after them, inside its biome only (out of it they're safe). If it
 -- catches them the egg goes back to its nest and they're sent back to the gate. Through the gate, the egg goes
--- into their bag. The nests fill up again every few minutes. Also: speed, trained on the treadmill in each
+-- into their bag. The nests fill up again every few minutes, some biomes with a golden nest (a Golden Egg,
+-- chased harder). On the way back, other players can steal the egg from the one carrying it. Also: speed, trained on the treadmill in each
 -- garden (and upgraded at its console), and the HUD's Home and Wild buttons.
 
 local Players = game:GetService("Players")
@@ -10,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local RaidConfig = require(Shared.Config.Raid)
 local WildConfig = require(Shared.Config.Wild)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
@@ -26,8 +28,8 @@ local RaidService = require(script.Parent.RaidService)
 
 local WildService = {}
 
-type Nest = { egg: BasePart, prompt: ProximityPrompt, full: boolean, biome: number, index: number }
-type Carry = { nest: Nest, part: Part, safe: boolean }
+type Nest = { egg: BasePart, prompt: ProximityPrompt, full: boolean, golden: boolean, color: Color3, biome: number, index: number }
+type Carry = { nest: Nest, part: Part, safe: boolean, golden: boolean, guardUntil: number }
 type Guardian = {
 	biome: number,
 	home: Vector3,
@@ -98,10 +100,42 @@ end
 ---------------------------------------------------------------------------------------------------------------
 -- Nests and carrying
 
+local GOLD = Color3.fromRGB(255, 205, 70)
+local PEACEFUL = game.PrivateServerId ~= "" and game.PrivateServerOwnerId ~= 0
+
 local function setFull(nest: Nest, full: boolean)
 	nest.full = full
 	nest.egg.Transparency = if full then 0 else 1
 	nest.prompt.Enabled = full
+end
+
+-- Makes a nest golden (or plain again): its egg shines, with a label over it
+local function setGolden(nest: Nest, golden: boolean)
+	nest.golden = golden
+	nest.egg.Color = if golden then GOLD else nest.color
+	nest.egg.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	local label = nest.egg:FindFirstChild("GoldenLabel")
+	if golden and not label then
+		local gui = Instance.new("BillboardGui")
+		gui.Name = "GoldenLabel"
+		gui.Size = UDim2.fromScale(8, 1.6)
+		gui.StudsOffset = Vector3.new(0, 4, 0)
+		gui.AlwaysOnTop = true
+		gui.MaxDistance = 250
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.TextScaled = true
+		text.Font = Enum.Font.FredokaOne
+		text.TextColor3 = GOLD
+		text.TextStrokeTransparency = 0.2
+		text.Text = "✨ GOLDEN EGG"
+		text.Parent = gui
+		gui.Parent = nest.egg
+	elseif not golden and label then
+		label:Destroy()
+	end
+	nest.prompt.ObjectText = (if golden then "✨ Golden " else "") .. string.gsub(nest.prompt.ObjectText, "^✨ Golden ", "")
 end
 
 -- Ends a carry: the egg goes into the thief's bag (`kept`) or back to its nest
@@ -123,13 +157,18 @@ local function finish(player: Player, kept: boolean)
 	local data = DataService.get(player)
 	if kept and data then
 		local key = tostring(biome.tier)
-		data.eggs[key] = (data.eggs[key] or 0) + 1
+		if carry.golden then
+			data.golden[key] = (data.golden[key] or 0) + 1
+		else
+			data.eggs[key] = (data.eggs[key] or 0) + 1
+		end
 		data.stats.stolen += 1
 		DailyService.add(player, "wild")
-		IslandService.notify(player, ("You got away with a %s! 🥚 Put it in an incubator"):format(if egg then egg.name else "egg"), "success")
+		IslandService.notify(player, ("You got away with a %s%s! 🥚 Put it in an incubator"):format(if carry.golden then "✨ Golden " else "", if egg then egg.name else "egg"), "success")
 		IslandService.push(player)
 	else
 		setFull(carry.nest, true)
+		setGolden(carry.nest, carry.golden)
 	end
 	applySpeed(player)
 end
@@ -143,12 +182,15 @@ local function steal(player: Player, nest: Nest)
 	if (root.Position - nest.egg.Position).Magnitude > 14 then
 		return
 	end
+	local golden = nest.golden
 	setFull(nest, false)
+	setGolden(nest, false)
 	local part = Instance.new("Part")
 	part.Name = "CarriedEgg"
 	part.Shape = Enum.PartType.Ball
 	part.Size = Vector3.new(2.6, 2.6, 2.6)
-	part.Color = nest.egg.Color
+	part.Color = if golden then GOLD else nest.color
+	part.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
 	part.Anchored = true
 	part.CanCollide = false
 	part.CanQuery = false
@@ -158,7 +200,22 @@ local function steal(player: Player, nest: Nest)
 	mesh.Parent = part
 	part.Position = root.Position + Vector3.new(0, 5, 0)
 	part.Parent = workspace
-	carrying[player] = { nest = nest, part = part, safe = false }
+	part:SetAttribute("Carrier", player.UserId)
+	part:AddTag("WildCarry")
+	if not PEACEFUL then
+		-- Others can steal it on the way back
+		local rob = Instance.new("ProximityPrompt")
+		rob.ActionText = "Steal"
+		rob.ObjectText = (if golden then "✨ Golden " else "") .. (Hatch.egg(WildConfig.BIOMES[nest.biome].tier) or { name = "Egg" }).name
+		rob.HoldDuration = 0.5
+		rob.MaxActivationDistance = WildConfig.ROB_RANGE
+		rob.RequiresLineOfSight = false
+		rob.Parent = part
+		rob.Triggered:Connect(function(robber)
+			WildService.rob(robber, part)
+		end)
+	end
+	carrying[player] = { nest = nest, part = part, safe = false, golden = golden, guardUntil = os.clock() + WildConfig.ROB_GUARD }
 	player:SetAttribute("WildEgg", true) -- (RaidService and HeistService won't let them carry another)
 	applySpeed(player)
 	local biome = WildConfig.BIOMES[nest.biome]
@@ -182,6 +239,47 @@ local function steal(player: Player, nest: Nest)
 	end
 end
 
+-- Another player takes a Wild egg from the one carrying it (their guardian, if still after it, now chases
+-- the robber)
+function WildService.rob(robber: Player, part: BasePart)
+	local victim: Player? = nil
+	for player, carry in carrying do
+		if carry.part == part then
+			victim = player
+		end
+	end
+	local carry = if victim then carrying[victim] else nil
+	local root, victimRoot = rootOf(robber), if victim then rootOf(victim) else nil
+	local robberData = DataService.get(robber)
+	if not victim or not carry or victim == robber or not root or not victimRoot or not robberData or busy(robber) then
+		return
+	end
+	if os.clock() < carry.guardUntil or (root.Position - victimRoot.Position).Magnitude > WildConfig.ROB_RANGE + 4 then
+		return
+	end
+	local victimData = DataService.get(victim)
+	if victimData and os.time() - victimData.firstPlayed < RaidConfig.NEW_PLAYER_SAFE then
+		IslandService.notify(robber, ("%s is new here: leave their egg be"):format(victim.DisplayName), "error")
+		return
+	end
+	carrying[victim] = nil
+	victim:SetAttribute("WildEgg", nil)
+	applySpeed(victim)
+	carry.safe = Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= carry.nest.biome
+	carry.guardUntil = os.clock() + WildConfig.ROB_GUARD
+	carrying[robber] = carry
+	robber:SetAttribute("WildEgg", true)
+	part:SetAttribute("Carrier", robber.UserId)
+	applySpeed(robber)
+	for _, guardian in guardians do
+		if guardian.chasing == victim then
+			guardian.chasing = robber
+		end
+	end
+	IslandService.notify(robber, "🥚 You stole it! Run to the gate!", "success")
+	IslandService.notify(victim, ("😱 %s stole your egg! Get it back!"):format(robber.DisplayName), "error")
+end
+
 -- Every nest gets its egg back (not the ones being carried)
 local function refill()
 	local carried: { [Nest]: boolean } = {}
@@ -191,10 +289,30 @@ local function refill()
 	for _, nest in nests do
 		if not carried[nest] then
 			setFull(nest, true)
+			setGolden(nest, false)
+		end
+	end
+	-- Some biomes get a golden nest
+	local goldenIn = {}
+	for i, biome in WildConfig.BIOMES do
+		if rng:NextNumber() < WildConfig.GOLDEN_CHANCE then
+			local free = {}
+			for _, nest in nests do
+				if nest.biome == i and not carried[nest] then
+					table.insert(free, nest)
+				end
+			end
+			if #free > 0 then
+				setGolden(free[rng:NextInteger(1, #free)], true)
+				table.insert(goldenIn, biome.name)
+			end
 		end
 	end
 	for _, player in Players:GetPlayers() do
 		IslandService.notify(player, "🌿 The Wild's nests are full of eggs again!", "info")
+		if #goldenIn > 0 then
+			IslandService.notify(player, ("✨ Golden Eggs in: %s!"):format(table.concat(goldenIn, ", ")), "rare")
+		end
 	end
 end
 
@@ -302,6 +420,9 @@ local function tick(frame: number)
 		local speed = biome.guardian
 		local thief = guardian.chasing
 		local carry = if thief then carrying[thief] else nil
+		if carry and carry.golden then
+			speed *= WildConfig.GOLDEN_GUARDIAN
+		end
 		local root = if thief and carry and not carry.safe then rootOf(thief) else nil
 		if thief and root and os.clock() < guardian.wakeAt then
 			continue -- (waking up: the thief's head start)
@@ -410,7 +531,7 @@ function WildService.init()
 			local biome, index = egg:GetAttribute("Biome"), egg:GetAttribute("Nest")
 			local prompt = egg:FindFirstChildOfClass("ProximityPrompt")
 			if egg:IsA("BasePart") and type(biome) == "number" and type(index) == "number" and prompt then
-				local nest: Nest = { egg = egg, prompt = prompt, full = true, biome = biome, index = index }
+				local nest: Nest = { egg = egg, prompt = prompt, full = true, golden = false, color = egg.Color, biome = biome, index = index }
 				table.insert(nests, nest)
 				prompt.Triggered:Connect(function(player)
 					steal(player, nest)
@@ -419,6 +540,7 @@ function WildService.init()
 		end
 	end
 	spawnGuardians()
+	refill() -- (the first golden nests)
 	Net.event("Travel").OnServerEvent:Connect(travel)
 	game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt, player)
 		local index = prompt:GetAttribute("Treadmill")

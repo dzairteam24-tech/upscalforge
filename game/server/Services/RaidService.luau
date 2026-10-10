@@ -106,7 +106,7 @@ local function finish(thief: Player, stolen: boolean)
 			local placed = false
 			for slot = 1, thiefData.incubators do
 				if not thiefData.incubating[tostring(slot)] then
-					thiefData.incubating[tostring(slot)] = { tier = egg.tier, start = egg.start, h = home, hn = homeName }
+					thiefData.incubating[tostring(slot)] = { tier = egg.tier, start = egg.start, m = egg.m, h = home, hn = homeName }
 					placed = true
 					break
 				end

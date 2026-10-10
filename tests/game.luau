@@ -87,6 +87,15 @@ test("hatching: the chances come out about right, and the weather sets the least
 	end
 end)
 
+test("a Golden Egg and the weather: the better least mutation wins", function()
+	eq(Hatch.atLeast(nil, nil), nil)
+	eq(Hatch.atLeast("Golden", nil), "Golden")
+	eq(Hatch.atLeast(nil, "Lava"), "Lava")
+	eq(Hatch.atLeast("Golden", "Lava"), "Lava")
+	eq(Hatch.atLeast("Neon", "Golden"), "Neon")
+	assert(Mutations.byId[WildConfig.GOLDEN_MUTATION], "a real mutation")
+end)
+
 test("later eggs incubate longer: a minute for the first, under an hour for the Legendary", function()
 	eq(Hatch.seconds(1), IslandConfig.BASE_INCUBATE)
 	for tier = 2, 11 do

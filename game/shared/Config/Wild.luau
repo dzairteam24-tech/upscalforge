@@ -31,6 +31,14 @@ return {
 	GUARDIANS = 1, -- predators in each biome
 	CATCH_RANGE = 4, -- a guardian this close catches the player
 	WAKE = 1.5, -- seconds after an egg is taken before its guardian starts the chase
+	-- Golden nests: when the nests fill up again, each biome may get one, with a Golden Egg (what hatches from it
+	-- is Golden or better). Its guardian chases harder.
+	GOLDEN_CHANCE = 0.3, -- for each biome, at each refill
+	GOLDEN_MUTATION = "Golden",
+	GOLDEN_GUARDIAN = 1.15, -- times the guardian's speed, chasing a Golden Egg
+	-- Players can steal a Wild egg from each other on the way back (not in a Peaceful private server)
+	ROB_RANGE = 10,
+	ROB_GUARD = 4, -- seconds a new carrier can't be robbed
 	RESET = 300, -- every nest gets its egg back this often
 	CARRY = 0.9, -- a player carrying an egg runs this much of their speed
 	START_SPEED = 24,

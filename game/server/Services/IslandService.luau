@@ -17,6 +17,7 @@ local IslandConfig = require(Shared.Config.Island)
 local Mutations = require(Shared.Config.Mutations)
 local RaidConfig = require(Shared.Config.Raid)
 local SnapConfig = require(Shared.Config.Snap)
+local WildConfig = require(Shared.Config.Wild)
 local Earn = require(Shared.Logic.Earn)
 local Food = require(Shared.Logic.Food)
 local Format = require(Shared.Logic.Format)
@@ -152,6 +153,7 @@ local function render(index: number, player: Player?, data: Data?)
 		pad:SetAttribute("Open", if data then slot <= data.incubators else false)
 		pad:SetAttribute("Price", if data and slot == data.incubators + 1 then Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS) or 0 else 0)
 		pad:SetAttribute("Tier", if egg then egg.tier else 0)
+		pad:SetAttribute("Golden", egg ~= nil and egg.m ~= nil)
 		local marks = if player then IslandService.carried[player] else nil
 		pad:SetAttribute("Carried", marks ~= nil and marks[slot] == true)
 		pad:SetAttribute("Start", if egg then egg.start else 0)
@@ -330,7 +332,7 @@ local function useIncubator(player: Player, slot: any)
 			local weather = Weather.at(done)
 			local species, mutation = Hatch.roll(egg.tier, function()
 				return rng:NextNumber()
-			end, weather.mutation)
+			end, Hatch.atLeast(weather.mutation, egg.m))
 			local id = IslandService.addCreature(player, data, species, mutation, egg.h, egg.hn)
 			if not id then
 				return
@@ -347,22 +349,31 @@ local function useIncubator(player: Player, slot: any)
 				end
 			end
 		else
-			-- Put in the best egg the player holds
-			local tier = 0
-			for key2, count in data.eggs do
-				local t = tonumber(key2)
-				if t and count > 0 and t > tier then
-					tier = t
+			-- Put in the best egg the player holds: a Golden one first
+			local function best(eggs: { [string]: number }): number
+				local tier = 0
+				for key2, count in eggs do
+					local t = tonumber(key2)
+					if t and count > 0 and t > tier then
+						tier = t
+					end
 				end
+				return tier
 			end
+			local golden = best(data.golden)
+			local tier = if golden > 0 then golden else best(data.eggs)
 			if tier == 0 then
 				IslandService.notify(player, "You have no eggs: buy some at the Egg Shop in town", "error")
 				return
 			end
-			data.eggs[tostring(tier)] -= 1
-			data.incubating[key] = { tier = tier, start = os.time() }
+			if golden > 0 then
+				data.golden[tostring(tier)] -= 1
+			else
+				data.eggs[tostring(tier)] -= 1
+			end
+			data.incubating[key] = { tier = tier, start = os.time(), m = if golden > 0 then WildConfig.GOLDEN_MUTATION else nil }
 			local egg2 = Hatch.egg(tier)
-			IslandService.notify(player, ("%s incubating: %s"):format(if egg2 then egg2.name else "Egg", Format.time(Hatch.seconds(tier))), "success")
+			IslandService.notify(player, ("%s%s incubating: %s"):format(if golden > 0 then "✨ Golden " else "", if egg2 then egg2.name else "Egg", Format.time(Hatch.seconds(tier))), "success")
 		end
 	end
 	IslandService.render(player)

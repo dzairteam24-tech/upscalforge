@@ -53,9 +53,11 @@ local function step(): (BasePart?, string)
 	if slot then
 		return myNest(slot), if data.stats.hatched == 0 then "🐣 Your first egg!" else "🥚 Hatch it here"
 	end
-	for _, count in data.eggs do
-		if count > 0 then
-			return myNest(1), "＋ Put your egg here"
+	for _, held in { data.eggs, data.golden or {} } do
+		for _, count in held do
+			if count > 0 then
+				return myNest(1), "＋ Put your egg here"
+			end
 		end
 	end
 	return eggShop(), "🥚 Buy an egg here"

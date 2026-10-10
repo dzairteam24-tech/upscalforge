@@ -50,4 +50,15 @@ function Hatch.roll(tier: number, random: () -> number, atLeast: string?): (stri
 	return creature, mutation
 end
 
+-- The better of two least mutations (the weather's, a Golden Egg's), either of which may be nil
+function Hatch.atLeast(a: string?, b: string?): string?
+	if not a or not Mutations.byId[a] then
+		return b
+	end
+	if not b or not Mutations.byId[b] then
+		return a
+	end
+	return if Mutations.byId[a].order >= Mutations.byId[b].order then a else b
+end
+
 return Hatch

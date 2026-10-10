@@ -50,8 +50,12 @@ function BagWindow.mount(gui: ScreenGui)
 		-- Eggs
 		local eggsText = {}
 		for tier = 11, 1, -1 do
+			local golden = data.golden and data.golden[tostring(tier)] or 0
 			local count = data.eggs[tostring(tier)] or 0
 			local egg = Hatch.egg(tier)
+			if golden > 0 and egg then
+				table.insert(eggsText, ("✨ Golden %s ×%d"):format(egg.name, golden))
+			end
 			if count > 0 and egg then
 				table.insert(eggsText, ("%s ×%d"):format(egg.name, count))
 			end

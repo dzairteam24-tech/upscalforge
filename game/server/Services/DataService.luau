@@ -20,10 +20,11 @@ export type Data = {
 	coins: number,
 	gems: number,
 	eggs: { [string]: number }, -- egg tier -> how many the player holds
+	golden: { [string]: number }, -- egg tier -> how many Golden Eggs (from the Wild's golden nests) they hold
 	creatures: { [string]: Creature }, -- creature id -> species and mutation
 	placed: { string }, -- the creatures living on the island (they earn)
 	incubators: number,
-	incubating: { [string]: { tier: number, start: number, h: number?, hn: string? } }, -- incubator slot -> its egg and os.time() it went in (h, hn: a stolen egg's home)
+	incubating: { [string]: { tier: number, start: number, m: string?, h: number?, hn: string? } }, -- incubator slot -> its egg and os.time() it went in (m: a Golden Egg's least mutation; h, hn: a stolen egg's home)
 	pens: number,
 	shop: { window: number, bought: { [string]: number } }, -- eggs bought in the current restock window
 	nextId: number,
@@ -80,6 +81,7 @@ local function template(): Data
 		coins = IslandConfig.START_COINS,
 		gems = 0,
 		eggs = {},
+		golden = {},
 		creatures = {},
 		placed = {},
 		incubators = IslandConfig.INCUBATORS,

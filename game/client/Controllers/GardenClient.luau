@@ -88,7 +88,9 @@ local function updatePad(pad: BasePart)
 	local egg = Hatch.egg(tier)
 	pad_.egg.Parent = if egg then pad else nil
 	if egg then
-		pad_.egg.Color = egg.color
+		local golden = pad:GetAttribute("Golden") == true
+		pad_.egg.Color = if golden then Color3.fromRGB(255, 205, 70) else egg.color
+		pad_.egg.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
 		pad_.egg.CFrame = CFrame.new(pad.Position + Vector3.new(0, EGG_SIZE * 0.6 + math.sin(os.clock() * 2 + pad.Position.X) * 0.08, 0)) * CFrame.Angles(0, os.clock() * 0.6, 0)
 	end
 	local action = ""
@@ -476,6 +478,13 @@ function GardenClient.init()
 			for _, gate in CollectionService:GetTagged("Gate") do
 				if gate:IsA("BasePart") then
 					updateGate(gate)
+				end
+			end
+			-- Nobody sees a Steal prompt on the Wild egg they're carrying themselves
+			for _, carried in CollectionService:GetTagged("WildCarry") do
+				local prompt = carried:FindFirstChildOfClass("ProximityPrompt")
+				if prompt then
+					prompt.Enabled = carried:GetAttribute("Carrier") ~= LOCAL.UserId
 				end
 			end
 			for _, egg in CollectionService:GetTagged("HeistEgg") do
