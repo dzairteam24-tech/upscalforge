@@ -406,6 +406,7 @@ local function buildGarden(world: Instance, index: number)
 	-- (flat on the ground, so anyone walks straight onto it: no step to climb)
 	part(model, { Name = "TreadmillBase", Size = Vector3.new(11, 0.4, 5.4), CFrame = mill * CFrame.new(0, 0.1, 0), Color = rgb(70, 74, 86) })
 	local belt = part(model, { Name = "Treadmill", Size = Vector3.new(10, 0.2, 4), CFrame = mill * CFrame.new(0, 0.4, 0), Color = rgb(40, 42, 50), Material = Enum.Material.Rubber })
+	belt:AddTag("TreadmillBelt") -- (TreadmillClient moves slats along it)
 	belt:SetAttribute("Island", index)
 	for _, s in { -1, 1 } do
 		part(model, { Name = "TreadmillRail", Size = Vector3.new(10, 0.3, 0.3), CFrame = mill * CFrame.new(0, 3.6, s * 2.5), Color = rgb(200, 205, 215), Material = Enum.Material.Metal, CanCollide = false })
