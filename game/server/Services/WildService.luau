@@ -2,7 +2,7 @@
 -- The Wild (Config/Wild, Logic/Wild, built by WorldService): the guardians sleep by their nests. A player steals
 -- an egg; a moment later that biome's guardian wakes and comes after them, inside its biome only (out of it
 -- they're safe). If it catches them they drop the egg right there and are sent back to the gate: the egg waits
--- a minute for whoever picks it up (then goes back to its nest). Through the gate, the egg goes into their bag. The nests fill up again every few minutes, some biomes with a golden nest (a Golden Egg,
+-- a minute for whoever picks it up (then goes back to its nest). Once they carry it into their own garden (all the way there, others can knock it loose), the egg goes into their bag. The nests fill up again every few minutes, some biomes with a golden nest (a Golden Egg,
 -- chased harder). On the way back, other players can knock the egg out of the carrier's hands with their bat
 -- (GearService). Also: speed, trained on the treadmill in each
 -- garden (and upgraded at its console), and the HUD's Home and Wild buttons.
@@ -186,7 +186,7 @@ local function finish(player: Player, kept: boolean)
 		end
 		data.stats.stolen += 1
 		DailyService.add(player, "wild")
-		IslandService.notify(player, ("You got away with a %s%s! 🥚 Put it in an incubator"):format(if carry.golden then "✨ Golden " else "", if egg then egg.name else "egg"), "success")
+		IslandService.notify(player, ("Home with a %s%s! 🥚 Take it from your inventory and set it down"):format(if carry.golden then "✨ Golden " else "", if egg then egg.name else "egg"), "success")
 		IslandService.push(player)
 	else
 		setFull(carry.nest, true)
@@ -458,12 +458,14 @@ local function tick(frame: number)
 			drop(player, root.Position)
 			continue
 		end
-		if Layout.pastGate(root.Position) then
+		-- Home: into their garden (until then, through the town too, anyone's bat can knock it loose)
+		local home = IslandService.islandOf(player)
+		if home and Layout.gardenAt(root.Position) == home then
 			finish(player, true)
 		elseif not carry.safe and Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= carry.nest.biome then
 			carry.safe = true
 			applySpeed(player)
-			IslandService.notify(player, "😮‍💨 You got away! Take the egg back through the gate", "success")
+			IslandService.notify(player, "😮‍💨 You got away! Now carry it home to your garden, and watch out for bats", "success")
 		end
 	end
 	-- Dropped eggs nobody came for go back to their nest

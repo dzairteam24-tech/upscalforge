@@ -282,56 +282,19 @@ local function buildGarden(world: Instance, index: number)
 	local pathLength = pathEnd + half
 	part(model, { Name = "Path", Size = Vector3.new(Layout.PATH_WIDTH, 0.3, pathLength), CFrame = at(0, 0.85, -half + pathLength / 2), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
 
-	-- The hatchery: a wooden deck across the front, the nests either side of the path, straw on the deck (the
-	-- first one ringed in gold), and a warm lamp each side of the path
+	-- The eggs: the player sets them down anywhere on their garden's grass, like in Steal an Egg (IslandService
+	-- makes an invisible pad for each: GardenClient draws the egg and its timer there)
 	local hc = at(hatchery.center.X, 0, hatchery.center.Z)
-	part(model, { Name = "Deck", Size = hatchery.size + Vector3.new(0, 0.6, 0), CFrame = hc * CFrame.new(0, 0.5, 0), Color = WOOD, Material = Enum.Material.WoodPlanks })
-	for _, side in { -1, 1 } do
-		local post = hc * CFrame.new(side * 4.4, 0, hatchery.size.Z / 2 - 1)
-		part(model, { Name = "LampPost", Size = Vector3.new(0.8, 6, 0.8), CFrame = post * CFrame.new(0, 3.8, 0), Color = WOOD_DARK })
-		local lamp = part(model, { Name = "Lamp", Shape = Enum.PartType.Ball, Size = Vector3.one * 2, CFrame = post * CFrame.new(0, 7.2, 0), Color = rgb(255, 170, 80), Material = Enum.Material.Neon, CanCollide = false })
-		local warmth = Instance.new("PointLight")
-		warmth.Color = rgb(255, 180, 100)
-		warmth.Range = 14
-		warmth.Brightness = 1.2
-		warmth.Parent = lamp
-	end
 	local hatchSign = part(model, { Name = "HatcherySign", Size = Vector3.one, CFrame = hc * CFrame.new(0, 7, hatchery.size.Z / 2), Transparency = 1, CanCollide = false, CanQuery = false })
-	label(hatchSign, "🥚 Hatchery", 10, 2, Vector3.zero)
+	label(hatchSign, "🥚 Set your eggs down anywhere", 14, 2, Vector3.zero)
 	local nest = Layout.NEST_SIZE
-	for slot = 1, IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES do
-		local spot = Layout.incubator(index, slot)
-		local first = slot == 1 -- (golden: where the starter egg goes)
-		local base = CFrame.new(spot)
-		part(model, { Name = "NestRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.7, nest + 0.6, nest + 0.6), CFrame = base * CFrame.new(0, 1.05, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = if first then GOLD else WOOD_DARK, CanCollide = false })
-		local pad = part(model, {
-			Name = "Incubator",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.6, nest - 1, nest - 1),
-			CFrame = base * CFrame.new(0, 1.1, 0) * CFrame.Angles(0, 0, math.rad(90)),
-			Color = STRAW,
-			Material = Enum.Material.Fabric,
-			CanCollide = false,
-		})
-		pad:SetAttribute("Island", index)
-		pad:SetAttribute("Slot", slot)
-		pad:AddTag("Incubator")
-		local prompt = Instance.new("ProximityPrompt")
-		prompt.ActionText = "Use"
-		prompt.ObjectText = "Nest"
-		prompt.MaxActivationDistance = 9
-		prompt.RequiresLineOfSight = false
-		prompt.Enabled = false -- GardenClient turns on the owner's
-		prompt:SetAttribute("Island", index)
-		prompt:SetAttribute("Slot", slot)
-		prompt.Parent = pad
-	end
+	-- (the eggs set down on the grass: IslandService puts each one's pad in here)
+	local eggs = Instance.new("Folder")
+	eggs.Name = "Eggs"
+	eggs.Parent = model
 
-	-- The pasture: a meadow behind a low hedge (open where the path comes in) round a pond, where the creatures roam
+	-- The pasture: a meadow behind a low hedge (open where the path comes in), where the creatures roam
 	part(model, { Name = "Pasture", Size = pasture.size + Vector3.new(0, 0.3, 0), CFrame = at(pasture.center.X, 0.45, pasture.center.Z), Color = rgb(108, 186, 92), Material = Enum.Material.Grass, CanCollide = false })
-	local pond = Layout.POND
-	part(model, { Name = "Pond", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, pond.radius * 2, pond.radius * 2), CFrame = at(pond.center.X, 0.7, pond.center.Z) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(100, 180, 235), Material = Enum.Material.Glass, Transparency = 0.2, CanCollide = false })
-	part(model, { Name = "PondEdge", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.25, pond.radius * 2 + 1.4, pond.radius * 2 + 1.4), CFrame = at(pond.center.X, 0.66, pond.center.Z) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(206, 196, 184), Material = Enum.Material.Slate, CanCollide = false })
 	local function hedge(cf: CFrame, length: number, parent: Instance?)
 		part(parent or model, { Name = "Hedge", Size = Vector3.new(length, 1.6, 1.2), CFrame = cf * CFrame.new(0, 0.8, 0), Color = rgb(80, 150, 70), Material = Enum.Material.Grass, CanCollide = false })
 	end

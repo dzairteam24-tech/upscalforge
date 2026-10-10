@@ -22,7 +22,7 @@ export type Data = {
 	placed: { string }, -- the creatures living on the island (they earn)
 	incubators: number, -- nests on the ground
 	machines: number, -- incubators at the back of the garden (Config/Island MACHINE_PRICES)
-	incubating: { [string]: { tier: number, start: number, m: string? } }, -- incubator slot -> its egg and os.time() it went in (m: a Golden Egg's least mutation)
+	incubating: { [string]: { tier: number, start: number, m: string?, x: number?, z: number? } }, -- slot -> its egg and os.time() it went in (m: a Golden Egg's least mutation; x, z: where it was set down in the garden, for one on the grass)
 	pens: number,
 	shop: { window: number, bought: { [string]: number } }, -- eggs bought in the current restock window
 	nextId: number,

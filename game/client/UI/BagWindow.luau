@@ -60,11 +60,29 @@ function BagWindow.mount(gui: ScreenGui)
 		end
 		local eggs = row(1, 54)
 		Theme.text(eggs, {
-			Text = if #eggsText > 0 then "🥚 " .. table.concat(eggsText, "  ·  ") .. "\nWalk to an incubator in your garden to put one in" else "🥚 No eggs: buy some at the Egg Shop in town",
+			Text = if #eggsText > 0 then "🥚 " .. table.concat(eggsText, "  ·  ") .. "\nTake one from your inventory (hotbar) and click in your garden" else "🥚 No eggs: buy some at the Egg Shop in town",
 			Size = UDim2.new(1, -16, 1, -8),
 			Position = UDim2.fromOffset(8, 4),
 			TextXAlignment = Enum.TextXAlignment.Left,
 		})
+		-- Room for eggs on the grass
+		local down = 0
+		for key in data.incubating do
+			local slot = tonumber(key)
+			if slot and slot <= IslandConfig.MACHINE_SLOT then
+				down += 1
+			end
+		end
+		local eggRoom = row(1, 48)
+		Theme.text(eggRoom, { Text = ("🥚 Eggs in your garden: %d / %d"):format(down, data.incubators), Size = UDim2.new(0.6, -8, 1, -12), Position = UDim2.fromOffset(10, 6), TextXAlignment = Enum.TextXAlignment.Left })
+		local roomPrice = Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS)
+		if roomPrice then
+			local more = Theme.button(eggRoom, ("+1 egg · 🪙 %s"):format(Format.abbrev(roomPrice)), Theme.gold, function()
+				Net.event("BuyIncubator"):FireServer()
+			end)
+			more.Size = UDim2.new(0.38, 0, 1, -12)
+			more.Position = UDim2.new(0.6, 0, 0, 6)
+		end
 		-- Room on the island
 		local room = row(2, 48)
 		Theme.text(room, { Text = ("🌷 In your garden: %d / %d"):format(#data.placed, data.pens), Size = UDim2.new(0.6, -8, 1, -12), Position = UDim2.fromOffset(10, 6), TextXAlignment = Enum.TextXAlignment.Left })

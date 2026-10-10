@@ -44,10 +44,80 @@ function IslandService.notify(player: Player, text: string, kind: string?)
 	Net.event("Notify"):FireClient(player, text, kind or "info")
 end
 
+-- The eggs the player holds, in their inventory (hotbar): a tool for each kind, an egg in the hand; using it sets
+-- one down in their garden (setEgg)
+local setEggFrom: (Player, number, boolean) -> ()
+local function eggTools(player: Player, data: Data)
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not backpack then
+		return
+	end
+	local have: { [string]: Tool } = {}
+	local holders: { Instance } = { backpack }
+	if player.Character then
+		table.insert(holders, player.Character)
+	end
+	for _, holder in holders do
+		for _, tool in holder:GetChildren() do
+			local kind = tool:GetAttribute("EggKind")
+			if tool:IsA("Tool") and type(kind) == "string" then
+				have[kind] = tool
+			end
+		end
+	end
+	for _, golden in { true, false } do
+		local held = if golden then data.golden else data.eggs
+		for tier = 1, 11 do
+			local kind = (if golden then "g" else "") .. tier
+			local count = held[tostring(tier)] or 0
+			local tool = have[kind]
+			have[kind] = nil
+			local egg = Hatch.egg(tier)
+			if count <= 0 or not egg then
+				if tool then
+					tool:Destroy()
+				end
+				continue
+			end
+			if not tool then
+				local created = Instance.new("Tool")
+				created:SetAttribute("EggKind", kind)
+				created.CanBeDropped = false
+				created.Grip = CFrame.new(0, -0.2, 0)
+				local handle = Instance.new("Part")
+				handle.Name = "Handle"
+				handle.Shape = Enum.PartType.Ball
+				handle.Size = Vector3.new(1.6, 1.6, 1.6)
+				handle.Color = if golden then Color3.fromRGB(255, 205, 70) else egg.color
+				handle.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
+				handle.CanCollide = false
+				handle.Massless = true
+				local mesh = Instance.new("SpecialMesh")
+				mesh.MeshType = Enum.MeshType.Sphere
+				mesh.Scale = Vector3.new(1, 1.3, 1)
+				mesh.Parent = handle
+				handle.Parent = created
+				created.Activated:Connect(function()
+					setEggFrom(player, tier, golden)
+				end)
+				created.Parent = backpack
+				tool = created
+			end
+			local t = tool :: Tool
+			t.Name = ("%s%s ×%d"):format(if golden then "✨ " else "", egg.name, count)
+			t.ToolTip = "Click to set it down in your garden"
+		end
+	end
+	for _, leftover in have do
+		leftover:Destroy()
+	end
+end
+
 -- Sends the player their data (the client shows it; the server's copy is the truth)
 function IslandService.push(player: Player)
 	local data = DataService.get(player)
 	if data then
+		eggTools(player, data)
 		Net.event("Data"):FireClient(player, data, islandOf[player])
 		player:SetAttribute("Coins", data.coins)
 		player:SetAttribute("FedUntil", data.fedUntil)
@@ -133,6 +203,19 @@ local function creaturesKey(data: Data?): string
 	return table.concat(keys, ",")
 end
 
+local drawnEggs: { [number]: string } = {}
+local function eggsOnGround(data: Data?): string
+	if not data then
+		return ""
+	end
+	local keys = {}
+	for key, egg in data.incubating do
+		table.insert(keys, ("%s:%d:%d"):format(key, egg.tier, egg.start))
+	end
+	table.sort(keys)
+	return table.concat(keys, ",")
+end
+
 local function render(index: number, player: Player?, data: Data?)
 	local island = WorldService.island(index)
 	if not island then
@@ -174,9 +257,44 @@ local function render(index: number, player: Player?, data: Data?)
 	if text and text:IsA("TextLabel") then
 		text.Text = if player then ("🥚 %s's Nest"):format(player.DisplayName) else "Free garden"
 	end
-	for _, pad in island:GetChildren() do
+	-- The eggs set down on the grass: a pad for each (rebuilt only when they change)
+	local eggsFolder = island:FindFirstChild("Eggs")
+	local eggsKey = eggsOnGround(data)
+	if eggsFolder and drawnEggs[index] ~= eggsKey then
+		drawnEggs[index] = eggsKey
+		eggsFolder:ClearAllChildren()
+		if data then
+			for key, egg in data.incubating do
+				local slot = tonumber(key)
+				if slot and not Hatch.isMachine(slot) then
+					local pad = Instance.new("Part")
+					pad.Name = "Incubator"
+					pad.Anchored = true
+					pad.CanCollide = false
+					pad.CanTouch = false
+					pad.Transparency = 1
+					pad.Size = Vector3.new(Layout.NEST_SIZE - 1, 0.2, Layout.NEST_SIZE - 1)
+					pad.CFrame = Layout.garden(index) * CFrame.new(egg.x or Layout.START_SPOT.X, 0.45, egg.z or Layout.START_SPOT.Z)
+					pad:SetAttribute("Island", index)
+					pad:SetAttribute("Slot", slot)
+					local prompt = Instance.new("ProximityPrompt")
+					prompt.ActionText = "Check"
+					prompt.ObjectText = "Egg"
+					prompt.MaxActivationDistance = 9
+					prompt.RequiresLineOfSight = false
+					prompt.Enabled = false -- GardenClient turns on the owner's
+					prompt:SetAttribute("Island", index)
+					prompt:SetAttribute("Slot", slot)
+					prompt.Parent = pad
+					pad.Parent = eggsFolder
+					pad:AddTag("Incubator")
+				end
+			end
+		end
+	end
+	for _, pad in island:GetDescendants() do
 		local slot = pad:GetAttribute("Slot")
-		if type(slot) ~= "number" then
+		if type(slot) ~= "number" or not pad:IsA("BasePart") then
 			continue
 		end
 		local egg = if data then data.incubating[tostring(slot)] else nil
@@ -187,8 +305,8 @@ local function render(index: number, player: Player?, data: Data?)
 			pad:SetAttribute("Open", if data then k <= data.machines else false)
 			pad:SetAttribute("Price", if data and k == data.machines + 1 then IslandConfig.MACHINE_PRICES[k] or 0 else 0)
 		else
-			pad:SetAttribute("Open", if data then slot <= data.incubators else false)
-			pad:SetAttribute("Price", if data and slot == data.incubators + 1 then Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS) or 0 else 0)
+			pad:SetAttribute("Open", true)
+			pad:SetAttribute("Price", 0)
 		end
 		pad:SetAttribute("Tier", if egg then egg.tier else 0)
 		pad:SetAttribute("Golden", egg ~= nil and egg.m ~= nil)
@@ -261,13 +379,13 @@ local function assign(player: Player, data: Data)
 			break
 		end
 	end
-	-- A new player's first egg is already in their golden nest, and hatches fast
+	-- A new player's first egg is already set down in their garden, and hatches fast
 	if not data.starter then
 		data.starter = true
 		if data.nextId == 1 and not data.incubating["1"] then
-			data.incubating["1"] = { tier = 1, start = os.time() - (Hatch.seconds(1) - IslandConfig.STARTER_HATCH) }
+			data.incubating["1"] = { tier = 1, start = os.time() - (Hatch.seconds(1) - IslandConfig.STARTER_HATCH), x = Layout.START_SPOT.X, z = Layout.START_SPOT.Z }
 			IslandService.render(player)
-			task.delay(3, IslandService.notify, player, "🥚 Your first egg is hatching in your golden nest!", "success")
+			task.delay(3, IslandService.notify, player, "🥚 Your first egg is hatching in your garden!", "success")
 		end
 	end
 	IslandService.push(player)
@@ -311,7 +429,7 @@ local function nearPad(player: Player, slot: number): boolean
 	if not island or not root then
 		return false
 	end
-	for _, pad in island:GetChildren() do
+	for _, pad in island:GetDescendants() do
 		if pad:IsA("BasePart") and pad:GetAttribute("Slot") == slot then
 			return (root.Position - pad.Position).Magnitude <= REACH
 		end
@@ -327,6 +445,109 @@ local function throttle(player: Player): boolean
 	end
 	busy[player] = now
 	return true
+end
+
+-- Takes the best egg the player holds (a Golden one first): its tier, and the least mutation it hatches; nil
+-- when they have none
+local function takeEgg(data: Data): (number?, string?)
+	local function best(eggs: { [string]: number }): number
+		local tier = 0
+		for key, count in eggs do
+			local t = tonumber(key)
+			if t and count > 0 and t > tier then
+				tier = t
+			end
+		end
+		return tier
+	end
+	local golden = best(data.golden)
+	if golden > 0 then
+		data.golden[tostring(golden)] -= 1
+		return golden, WildConfig.GOLDEN_MUTATION
+	end
+	local tier = best(data.eggs)
+	if tier == 0 then
+		return nil, nil
+	end
+	data.eggs[tostring(tier)] -= 1
+	return tier, nil
+end
+
+-- How many eggs the player has set down on the grass
+local function eggsDown(data: Data): number
+	local count = 0
+	for key in data.incubating do
+		local slot = tonumber(key)
+		if slot and not Hatch.isMachine(slot) then
+			count += 1
+		end
+	end
+	return count
+end
+
+-- Sets an egg the player holds (the one in their hand: its tool) down on the grass just in front of them, like
+-- in Steal an Egg
+local function setEgg(player: Player, tier: number, golden: boolean)
+	local data = DataService.get(player)
+	local index = islandOf[player]
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not data or not index or not root or not throttle(player) then
+		return
+	end
+	local frame = Layout.garden(index)
+	local inside = frame:PointToObjectSpace((root.CFrame * CFrame.new(0, 0, -2.5)).Position) -- (just in front of them)
+	if not Layout.eggSpot(Vector3.new(inside.X, 0, inside.Z), data.pasture) then
+		IslandService.notify(player, "Set your eggs down on your own garden's grass", "error")
+		return
+	end
+	if eggsDown(data) >= data.incubators then
+		IslandService.notify(player, ("Your garden holds %d eggs: get room for more in your Bag"):format(data.incubators), "error")
+		return
+	end
+	for _, egg in data.incubating do
+		if egg.x and egg.z and (Vector3.new(egg.x, 0, egg.z) - Vector3.new(inside.X, 0, inside.Z)).Magnitude < Layout.NEST_SIZE then
+			IslandService.notify(player, "Too close to another egg", "error")
+			return
+		end
+	end
+	local slot = 1
+	while data.incubating[tostring(slot)] do
+		slot += 1
+	end
+	local held = if golden then data.golden else data.eggs
+	if (held[tostring(tier)] or 0) <= 0 then
+		return
+	end
+	held[tostring(tier)] -= 1
+	local least = if golden then WildConfig.GOLDEN_MUTATION else nil
+	data.incubating[tostring(slot)] = { tier = tier, start = os.time(), m = least, x = inside.X, z = inside.Z }
+	local egg = Hatch.egg(tier)
+	IslandService.notify(player, ("%s%s set down: %s"):format(if least then "✨ Golden " else "", if egg then egg.name else "Egg", Format.time(Hatch.seconds(tier))), "success")
+	IslandService.render(player)
+	IslandService.push(player)
+end
+
+setEggFrom = setEgg
+
+-- Room for one more egg on the grass
+local function buyEggRoom(player: Player)
+	local data = DataService.get(player)
+	if not data or not throttle(player) then
+		return
+	end
+	local price = Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS)
+	if not price then
+		IslandService.notify(player, "Your garden holds as many eggs as it can", "error")
+		return
+	end
+	if data.coins < price then
+		IslandService.notify(player, ("You need 🪙 %s"):format(Format.abbrev(price)), "error")
+		return
+	end
+	data.coins -= price
+	data.incubators += 1
+	IslandService.notify(player, ("Room for %d eggs in your garden! 🥚"):format(data.incubators), "success")
+	IslandService.push(player)
 end
 
 local function useIncubator(player: Player, slot: any)
@@ -354,20 +575,8 @@ local function useIncubator(player: Player, slot: any)
 		data.coins -= price
 		data.machines += 1
 		IslandService.notify(player, ("New incubator! Eggs hatch ×%d faster in it ⚡"):format(IslandConfig.MACHINE_SPEED), "success")
-	elseif not machine and slot > data.incubators then
-		-- Buy the next incubator
-		local price = Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS)
-		if slot ~= data.incubators + 1 or not price then
-			IslandService.notify(player, "Unlock the incubators in order", "error")
-			return
-		end
-		if data.coins < price then
-			IslandService.notify(player, ("You need 🪙 %s"):format(Format.abbrev(price)), "error")
-			return
-		end
-		data.coins -= price
-		data.incubators += 1
-		IslandService.notify(player, "New incubator! 🥚", "success")
+	elseif not machine and not data.incubating[key] then
+		return -- (eggs go down on the grass with the Egg tool)
 	else
 		local egg = data.incubating[key]
 		if egg then
@@ -394,31 +603,15 @@ local function useIncubator(player: Player, slot: any)
 				end
 			end
 		else
-			-- Put in the best egg the player holds: a Golden one first
-			local function best(eggs: { [string]: number }): number
-				local tier = 0
-				for key2, count in eggs do
-					local t = tonumber(key2)
-					if t and count > 0 and t > tier then
-						tier = t
-					end
-				end
-				return tier
-			end
-			local golden = best(data.golden)
-			local tier = if golden > 0 then golden else best(data.eggs)
-			if tier == 0 then
+			-- Put the best egg the player holds into the incubator
+			local tier, least = takeEgg(data)
+			if not tier then
 				IslandService.notify(player, "You have no eggs: buy some at the Egg Shop in town", "error")
 				return
 			end
-			if golden > 0 then
-				data.golden[tostring(tier)] -= 1
-			else
-				data.eggs[tostring(tier)] -= 1
-			end
-			data.incubating[key] = { tier = tier, start = os.time(), m = if golden > 0 then WildConfig.GOLDEN_MUTATION else nil }
+			data.incubating[key] = { tier = tier, start = os.time(), m = least }
 			local egg2 = Hatch.egg(tier)
-			IslandService.notify(player, ("%s%s incubating: %s"):format(if golden > 0 then "✨ Golden " else "", if egg2 then egg2.name else "Egg", Format.time(Hatch.secondsIn(tier, slot))), "success")
+			IslandService.notify(player, ("%s%s incubating: %s"):format(if least then "✨ Golden " else "", if egg2 then egg2.name else "Egg", Format.time(Hatch.secondsIn(tier, slot))), "success")
 		end
 	end
 	IslandService.render(player)
@@ -616,6 +809,14 @@ function IslandService.init()
 	Net.event("BuyPen").OnServerEvent:Connect(buyPen)
 	Net.event("BuyStorage").OnServerEvent:Connect(buyStorage)
 	Net.event("BuyPasture").OnServerEvent:Connect(buyPasture)
+	Net.event("BuyIncubator").OnServerEvent:Connect(buyEggRoom)
+	-- (a respawn empties the backpack: the egg tools come back)
+	Players.PlayerAdded:Connect(function(player)
+		player.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			IslandService.push(player)
+		end)
+	end)
 	Net.event("Feed").OnServerEvent:Connect(feed)
 	-- Earning: every second, each island's creatures bring in their coins
 	task.spawn(function()

@@ -71,7 +71,6 @@ Layout.PASTURE = {
 	center = Vector3.new(0, 0, (PASTURE_FRONT + PASTURE_BACK) / 2),
 	size = Vector3.new(Layout.GARDEN_SIZE - 8, 0, PASTURE_BACK - PASTURE_FRONT),
 }
-Layout.POND = { center = Layout.PASTURE.center, radius = 6.5 }
 Layout.NEST_SIZE = 6 -- a nest's width (an egg in it is drawn to fit, whatever its tier)
 Layout.PATH_WIDTH = 6
 Layout.TROUGH = Vector3.new(-12, 0, PASTURE_FRONT + 5) -- in the pasture, beside where the path comes in
@@ -87,7 +86,6 @@ end
 
 -- What the creatures walk round (a spot in the garden's space and how far from it to keep)
 Layout.OBSTACLES = {
-	{ center = Layout.POND.center, radius = Layout.POND.radius + 2 },
 	{ center = Layout.TROUGH, radius = 4 },
 	{ center = Layout.BARN, radius = 7 },
 }
@@ -113,6 +111,16 @@ for column = 0, 3 do
 		end
 	end
 end
+-- Where a new player's free first egg is set down (in front, beside the path)
+Layout.START_SPOT = NESTS[1]
+
+-- Whether an egg can be set down at this spot in a garden (its own space): on its grass, the pasture grown to
+-- `level`, clear of the trough, the barn and the incubators
+function Layout.eggSpot(inside: Vector3, level: number): boolean
+	local back = HALF + Layout.pastureGrowth(level) - 3
+	return math.abs(inside.X) <= HALF - 3 and inside.Z >= -HALF + 3 and inside.Z <= back and not Layout.blocked(inside)
+end
+
 function Layout.incubator(index: number, slot: number): Vector3
 	if slot > IslandConfig.MACHINE_SLOT then
 		return Layout.garden(index):PointToWorldSpace(Layout.MACHINES[slot - IslandConfig.MACHINE_SLOT])
@@ -138,11 +146,11 @@ function Layout.pasture(index: number, level: number?): (CFrame, Vector3)
 	return Layout.garden(index) * CFrame.new(center), size
 end
 
--- Where a creature living in the garden starts: in a ring round the pond (it wanders from there)
+-- Where a creature living in the garden starts: in a ring round the pasture's middle (it wanders from there)
 function Layout.pen(index: number, slot: number): Vector3
 	local count = IslandConfig.PENS + #IslandConfig.PEN_PRICES
 	local angle = (slot - 1) * 2 * math.pi / count
-	local inside = Layout.POND.center + Vector3.new(math.sin(angle) * Layout.PASTURE.size.X * 0.32, 0, -math.cos(angle) * Layout.PASTURE.size.Z * 0.3)
+	local inside = Layout.PASTURE.center + Vector3.new(math.sin(angle) * Layout.PASTURE.size.X * 0.32, 0, -math.cos(angle) * Layout.PASTURE.size.Z * 0.3)
 	return Layout.garden(index):PointToWorldSpace(inside)
 end
 

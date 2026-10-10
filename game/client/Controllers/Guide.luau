@@ -1,6 +1,7 @@
 --!strict
 -- A new player's first steps: a glowing line from them to what to do next, until they've hatched a few
--- creatures. First their golden nest (the free egg there, IslandService), then the Egg Shop for more eggs.
+-- creatures. First their free egg (already set down in their garden, IslandService), then the Egg Shop for more
+-- eggs, then their garden to set the eggs down.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -20,6 +21,15 @@ local function myNest(slot: number): BasePart?
 		end
 	end
 	return nil
+end
+
+-- The middle of the player's garden's front (its sign: an invisible part over the grass)
+local function myGarden(): BasePart?
+	local index = LOCAL:GetAttribute("Island")
+	local world = workspace:FindFirstChild("World")
+	local island = world and type(index) == "number" and world:FindFirstChild("Island_" .. index)
+	local sign = island and island:FindFirstChild("HatcherySign")
+	return if sign and sign:IsA("BasePart") then sign else nil
 end
 
 local shop: BasePart? = nil
@@ -56,7 +66,7 @@ local function step(): (BasePart?, string)
 	for _, held in { data.eggs, data.golden or {} } do
 		for _, count in held do
 			if count > 0 then
-				return myNest(1), "＋ Put your egg here"
+				return myGarden(), "🥚 Take your egg from the hotbar and click here"
 			end
 		end
 	end
