@@ -24,6 +24,7 @@ export type Data = {
 	nextId: number,
 	lastSeen: number,
 	stats: { hatched: number, earned: number },
+	firstPlayed: number, -- os.time() of their first visit (a new player's garden can't be robbed at first)
 }
 
 local DataService = {}
@@ -65,6 +66,7 @@ local function template(): Data
 		nextId = 1,
 		lastSeen = 0,
 		stats = { hatched = 0, earned = 0 },
+		firstPlayed = 0,
 	}
 end
 
@@ -95,6 +97,9 @@ local function load(player: Player)
 		elseif not ok then
 			warn("[Data] Couldn't load", player.Name, saved)
 		end
+	end
+	if data.firstPlayed == 0 then
+		data.firstPlayed = os.time()
 	end
 	if player.Parent then
 		loaded[player] = data

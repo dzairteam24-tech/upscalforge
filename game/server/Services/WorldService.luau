@@ -1,6 +1,7 @@
 --!strict
--- Builds the world (Logic/Layout): the round town plaza with its fountain and six shops, and the players'
--- islands round it, each with its bridge, incubators and owner's sign. Everything is simple parts, so it works
+-- Builds the world (Logic/Layout): the round town plaza with its fountain and six shops, and the street north of
+-- it with the players' gardens in two rows facing each other, each fenced, with its laser gate, incubators and
+-- owner's sign. Everything is simple parts, so it works
 -- before the 3D art loads; once the town model (Config/Art TOWN_ASSET_ID) is in, each shop is drawn with its
 -- building from art/models/Town.glb.
 
@@ -8,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local IslandConfig = require(Shared.Config.Island)
+local RaidConfig = require(Shared.Config.Raid)
 local TownLooks = require(Shared.Config.TownLooks)
 local Layout = require(Shared.Logic.Layout)
 
@@ -19,7 +21,6 @@ end
 
 local GRASS = rgb(123, 201, 111)
 local PAVING = rgb(236, 222, 196)
-local WOOD = rgb(160, 118, 76)
 
 local function part(parent: Instance, props: { [string]: any }): Part
 	local p = Instance.new("Part")
@@ -222,30 +223,42 @@ end
 ---------------------------------------------------------------------------------------------------------------
 -- The islands
 
-local function buildIsland(world: Instance, index: number)
-	local frame = Layout.island(index)
+local LASER = rgb(255, 70, 90)
+
+local function buildGarden(world: Instance, index: number)
+	local frame = Layout.garden(index)
 	local model = Instance.new("Model")
 	model.Name = "Island_" .. index
 	model:SetAttribute("Island", index)
-	local size = Layout.ISLAND_SIZE
-	part(model, { Name = "Ground", Size = Vector3.new(size, 4, size), CFrame = frame * CFrame.new(0, -2, 0), Color = GRASS, Material = Enum.Material.Grass })
-	-- Rocky underside, for a floating island
-	part(model, { Name = "Rock", Size = Vector3.new(size - 8, 8, size - 8), CFrame = frame * CFrame.new(0, -8, 0), Color = rgb(150, 140, 130), Material = Enum.Material.Rock })
-	part(model, { Name = "Rock", Size = Vector3.new(size - 24, 8, size - 24), CFrame = frame * CFrame.new(0, -15, 0), Color = rgb(130, 122, 116), Material = Enum.Material.Rock })
-	-- The bridge to the plaza
-	local islandEdge = (frame * CFrame.new(0, 0, -size / 2)).Position
-	local townEdge = Layout.CENTER + (islandEdge - Layout.CENTER).Unit * (Layout.TOWN_RADIUS - 2)
-	local length = (islandEdge - townEdge).Magnitude
-	part(model, {
-		Name = "Bridge",
-		Size = Vector3.new(Layout.BRIDGE_WIDTH, 2, length),
-		CFrame = Layout.facing((islandEdge + townEdge) / 2, islandEdge) * CFrame.new(0, -1, 0),
-		Color = WOOD,
-		Material = Enum.Material.WoodPlanks,
+	local size = Layout.GARDEN_SIZE
+	local half = size / 2
+	part(model, { Name = "Ground", Size = Vector3.new(size, 0.4, size), CFrame = frame * CFrame.new(0, 0.2, 0), Color = GRASS, Material = Enum.Material.Grass })
+	-- The fence: the back and both sides, and the front either side of the gate
+	local h = Layout.FENCE_HEIGHT
+	local function fence(at: CFrame, length: number)
+		part(model, { Name = "Fence", Size = Vector3.new(length, h, 1.2), CFrame = at * CFrame.new(0, h / 2, 0), Color = rgb(250, 240, 222) })
+		part(model, { Name = "FenceCap", Size = Vector3.new(length + 0.4, 0.8, 1.8), CFrame = at * CFrame.new(0, h + 0.4, 0), Color = rgb(255, 205, 90), CanCollide = false })
+	end
+	fence(frame * CFrame.new(0, 0, half), size)
+	for _, side in { -1, 1 } do
+		fence(frame * CFrame.new(side * half, 0, 0) * CFrame.Angles(0, math.rad(90), 0), size)
+		local piece = (size - Layout.GATE_WIDTH) / 2
+		fence(frame * CFrame.new(side * (Layout.GATE_WIDTH / 2 + piece / 2), 0, -half), piece)
+	end
+	-- The laser gate: shut for everyone but the owner, open for all at Raid Time (RaidService, GardenClient)
+	local gate = part(model, {
+		Name = "Gate",
+		Size = Vector3.new(Layout.GATE_WIDTH, h, 0.6),
+		CFrame = Layout.gate(index) * CFrame.new(0, h / 2, 0),
+		Color = LASER,
+		Material = Enum.Material.Neon,
+		Transparency = 0.45,
 	})
-	-- The owner's sign at the back
-	local board = part(model, { Name = "OwnerSign", Size = Vector3.one, CFrame = frame * CFrame.new(0, 12, size / 2 - 6), Transparency = 1, CanCollide = false, CanQuery = false })
-	label(board, "Free island", 16, 3, Vector3.zero)
+	gate:SetAttribute("Island", index)
+	gate:AddTag("Gate")
+	-- The owner's sign over the gate
+	local board = part(model, { Name = "OwnerSign", Size = Vector3.one, CFrame = Layout.gate(index) * CFrame.new(0, h + 5, 0), Transparency = 1, CanCollide = false, CanQuery = false })
+	label(board, "Free garden", 16, 3, Vector3.zero)
 	-- The incubators
 	for slot = 1, IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES do
 		local at = Layout.incubator(index, slot)
@@ -254,17 +267,17 @@ local function buildIsland(world: Instance, index: number)
 			Shape = Enum.PartType.Cylinder,
 			Size = Vector3.new(1.2, 5.5, 5.5),
 			CFrame = CFrame.new(at + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-			Color = rgb(250, 244, 232),
+			Color = if slot == RaidConfig.SAFE_SLOT then rgb(255, 225, 140) else rgb(250, 244, 232),
 		})
 		pad:SetAttribute("Island", index)
 		pad:SetAttribute("Slot", slot)
 		pad:AddTag("Incubator")
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Use"
-		prompt.ObjectText = "Incubator"
+		prompt.ObjectText = if slot == RaidConfig.SAFE_SLOT then "Safe incubator" else "Incubator"
 		prompt.MaxActivationDistance = 8
 		prompt.RequiresLineOfSight = false
-		prompt.Enabled = false -- IslandClient turns on the owner's
+		prompt.Enabled = false -- GardenClient turns on the owner's (and a thief's, at Raid Time)
 		prompt:SetAttribute("Island", index)
 		prompt:SetAttribute("Slot", slot)
 		prompt.Parent = pad
@@ -273,6 +286,35 @@ local function buildIsland(world: Instance, index: number)
 	creatures.Name = "Creatures"
 	creatures.Parent = model
 	model.Parent = world
+end
+
+-- The ground under the plaza, the street and the gardens, the street's paving, and invisible walls round it all
+local function buildStreet(world: Instance)
+	local start, length = Layout.street()
+	local width = Layout.STREET_WIDTH + 2 * Layout.GARDEN_SIZE + 24
+	local south = Layout.CENTER.Z + Layout.TOWN_RADIUS + 8
+	local north = start.Z - length - 4
+	local middle = (south + north) / 2
+	part(world, {
+		Name = "Ground",
+		Size = Vector3.new(width, 4, south - north),
+		Position = Vector3.new(start.X, -2.1, middle),
+		Color = rgb(150, 205, 120),
+		Material = Enum.Material.Grass,
+	})
+	part(world, {
+		Name = "Street",
+		Size = Vector3.new(Layout.STREET_WIDTH, 0.3, length),
+		Position = start + Vector3.new(0, 0.15, -length / 2),
+		Color = PAVING,
+		Material = Enum.Material.Pavement,
+	})
+	for _, z in { south, north } do
+		part(world, { Name = "Border", Size = Vector3.new(width, 14, 1), Position = Vector3.new(start.X, 7, z), Transparency = 1 })
+	end
+	for _, side in { -1, 1 } do
+		part(world, { Name = "Border", Size = Vector3.new(1, 14, south - north), Position = Vector3.new(start.X + side * width / 2, 7, middle), Transparency = 1 })
+	end
 end
 
 function WorldService.island(index: number): Instance?
@@ -289,8 +331,9 @@ function WorldService.build(): Folder
 	local world = Instance.new("Folder")
 	world.Name = "World"
 	buildTown(world)
+	buildStreet(world)
 	for index = 1, IslandConfig.ISLANDS do
-		buildIsland(world, index)
+		buildGarden(world, index)
 	end
 	world.Parent = workspace
 	return world

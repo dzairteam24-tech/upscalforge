@@ -122,12 +122,12 @@ local function startRound(start: number)
 			IslandService.notify(victim, ("%s stole your Heist Egg!"):format(player.DisplayName), "error")
 			IslandService.notify(player, "You stole the Heist Egg! Run home! 🏃", "success")
 		else
-			IslandService.notify(player, "You've got the Heist Egg! Carry it home to your island!", "success")
+			IslandService.notify(player, "You've got the Heist Egg! Carry it home to your garden!", "success")
 		end
 	end)
 	part.Parent = workspace
 	egg, prompt = part, p
-	everyone("🥚 EGG HEIST! A Heist Egg dropped in the plaza: carry it home to your island!", "rare")
+	everyone("🥚 EGG HEIST! A Heist Egg dropped in the plaza: carry it home to your garden!", "rare")
 end
 
 -- The schedule, once a second: the warning, the start and the end
@@ -171,7 +171,7 @@ local function follow()
 	part.Position = root.Position + Vector3.new(0, 5.5, 0)
 	local home = IslandService.islandOf(holder)
 	if home then
-		local center = Layout.island(home).Position
+		local center = Layout.garden(home).Position
 		if (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(center.X, 0, center.Z)).Magnitude <= HeistConfig.HOME_RANGE then
 			endRound(holder)
 		end

@@ -55,14 +55,14 @@ function BagWindow.mount(gui: ScreenGui)
 		end
 		local eggs = row(1, 54)
 		Theme.text(eggs, {
-			Text = if #eggsText > 0 then "🥚 " .. table.concat(eggsText, "  ·  ") .. "\nWalk to an incubator on your island to put one in" else "🥚 No eggs: buy some at the Egg Shop in town",
+			Text = if #eggsText > 0 then "🥚 " .. table.concat(eggsText, "  ·  ") .. "\nWalk to an incubator in your garden to put one in" else "🥚 No eggs: buy some at the Egg Shop in town",
 			Size = UDim2.new(1, -16, 1, -8),
 			Position = UDim2.fromOffset(8, 4),
 			TextXAlignment = Enum.TextXAlignment.Left,
 		})
 		-- Room on the island
 		local room = row(2, 48)
-		Theme.text(room, { Text = ("🏝️ On your island: %d / %d"):format(#data.placed, data.pens), Size = UDim2.new(0.6, -8, 1, -12), Position = UDim2.fromOffset(10, 6), TextXAlignment = Enum.TextXAlignment.Left })
+		Theme.text(room, { Text = ("🌷 In your garden: %d / %d"):format(#data.placed, data.pens), Size = UDim2.new(0.6, -8, 1, -12), Position = UDim2.fromOffset(10, 6), TextXAlignment = Enum.TextXAlignment.Left })
 		local price = Earn.nextPrice(IslandConfig.PEN_PRICES, data.pens, IslandConfig.PENS)
 		if price then
 			local more = Theme.button(room, ("+1 room · 🪙 %s"):format(Format.abbrev(price)), Theme.gold, function()
@@ -101,7 +101,7 @@ function BagWindow.mount(gui: ScreenGui)
 				TextColor3 = if species and RARITY_ORDER[species.rarity] >= 4 then Color3.fromRGB(190, 120, 255) else Theme.soft,
 				TextXAlignment = Enum.TextXAlignment.Left,
 			})
-			local toggle = Theme.button(frame, if entry.placed then "Take back" else "To island", if entry.placed then Theme.blue else Theme.green, function()
+			local toggle = Theme.button(frame, if entry.placed then "Take back" else "To garden", if entry.placed then Theme.blue else Theme.green, function()
 				Net.event(if entry.placed then "TakeCreature" else "PlaceCreature"):FireServer(entry.id)
 			end)
 			toggle.Size = UDim2.new(0.26, 0, 0, 40)

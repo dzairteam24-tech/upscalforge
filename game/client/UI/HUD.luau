@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Mutations = require(Shared.Config.Mutations)
 local Format = require(Shared.Logic.Format)
+local Raid = require(Shared.Logic.Raid)
 local Weather = require(Shared.Logic.Weather)
 
 local Store = require(script.Parent.Parent.Store)
@@ -48,8 +49,24 @@ function HUD.mount(gui: ScreenGui)
 	local stroke = banner:FindFirstChildOfClass("UIStroke") :: UIStroke
 	banner.Parent = gui
 
+	-- Raid Time
+	local raid = Instance.new("Frame")
+	raid.Name = "Raid"
+	raid.AnchorPoint = Vector2.new(0.5, 0)
+	raid.Position = UDim2.new(0.5, 0, 0, 42)
+	raid.Size = UDim2.fromOffset(240, 28)
+	raid.BackgroundColor3 = Color3.fromRGB(40, 36, 54)
+	raid.BackgroundTransparency = 0.2
+	Theme.round(raid, 10)
+	local raidText = Theme.text(raid, { Size = UDim2.new(1, -12, 1, -6), Position = UDim2.fromOffset(6, 3), TextColor3 = Color3.new(1, 1, 1) })
+	raid.Parent = gui
+
 	task.spawn(function()
 		while true do
+			local isOpen, changes = Raid.at(math.floor(workspace:GetServerTimeNow()))
+			local untilChange = Format.time(math.max(0, changes - math.floor(workspace:GetServerTimeNow())))
+			raidText.Text = if isOpen then ("🚨 RAID TIME! Gates open · %s"):format(untilChange) else ("🔒 Gates open in %s"):format(untilChange)
+			raid.BackgroundColor3 = if isOpen then Color3.fromRGB(220, 60, 80) else Color3.fromRGB(40, 36, 54)
 			coins.Text = "🪙 " .. Format.abbrev(Store.coins())
 			rate.Text = ("+%s / second"):format(Format.abbrev(Store.rate()))
 			local now = workspace:GetServerTimeNow()

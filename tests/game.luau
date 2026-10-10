@@ -17,6 +17,8 @@ local Hatch = R(Shared.Logic.Hatch)
 local Heist = R(Shared.Logic.Heist)
 local Stock = R(Shared.Logic.Stock)
 local Weather = R(Shared.Logic.Weather)
+local Raid = R(Shared.Logic.Raid)
+local RaidConfig = R(Shared.Config.Raid)
 
 local passed, failed = 0, 0
 local function test(name: string, fn: () -> ())
@@ -142,6 +144,15 @@ test("Heist: rounds only on weekends, on the clock", function()
 	assert(not Heist.round(saturday + HeistConfig.ROUND + 1), "over after ROUND seconds")
 	assert(not Heist.round(saturday - 86400 + 30), "none on Friday")
 	eq(Heist.nextRound(saturday - 3600), saturday)
+end)
+
+test("Raid Time: the gates open on the clock for OPEN seconds every EVERY", function()
+	local t = 1000 * RaidConfig.EVERY
+	local isOpen, changes = Raid.at(t)
+	assert(isOpen and changes == t + RaidConfig.OPEN, "open at the start of a window")
+	isOpen, changes = Raid.at(t + RaidConfig.OPEN)
+	assert(not isOpen and changes == t + RaidConfig.EVERY, "shut after OPEN seconds until the next window")
+	assert(RaidConfig.OPEN < RaidConfig.EVERY / 4, "open only a small part of the time")
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))

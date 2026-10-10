@@ -35,7 +35,7 @@ function Notify.mount(gui: ScreenGui)
 	local holder = Instance.new("Frame")
 	holder.Name = "Notifications"
 	holder.AnchorPoint = Vector2.new(0.5, 0)
-	holder.Position = UDim2.new(0.5, 0, 0, 46)
+	holder.Position = UDim2.new(0.5, 0, 0, 76)
 	holder.Size = UDim2.fromOffset(420, 200)
 	holder.BackgroundTransparency = 1
 	local layout = Instance.new("UIListLayout")

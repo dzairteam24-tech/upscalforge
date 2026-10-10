@@ -38,40 +38,54 @@ local IslandConfig = Loader.require(Shared.Config.Island)
 local PetModel = Loader.require(Shared.PetModel)
 
 local world = WorldService.build()
-local islands, pads, shops = 0, 0, 0
+local gardens, pads, shops, gates = 0, 0, 0, 0
 for _, child in world:GetChildren() do
 	if string.find(child.Name, "^Island_") then
-		islands += 1
+		gardens += 1
 	end
 end
 for _, d in world:GetDescendants() do
 	if d:IsA("BasePart") and d:HasTag("Incubator") then
 		pads += 1
 	end
+	if d:IsA("BasePart") and d:HasTag("Gate") then
+		gates += 1
+	end
 	if d:IsA("ProximityPrompt") and d:GetAttribute("OpenUI") then
 		shops += 1
 	end
 end
 local maxPads = IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES
-print(("islands=%d incubators=%d shops=%d"):format(islands, pads, shops))
-assert(islands == IslandConfig.ISLANDS, "one island per player")
-assert(pads == IslandConfig.ISLANDS * maxPads, "every incubator on every island")
+print(("gardens=%d gates=%d incubators=%d shops=%d"):format(gardens, gates, pads, shops))
+assert(gardens == IslandConfig.ISLANDS, "one garden per player")
+assert(gates == IslandConfig.ISLANDS, "a gate per garden")
+assert(pads == IslandConfig.ISLANDS * maxPads, "every incubator in every garden")
 assert(shops == 6, "six shops")
 
--- Every incubator and pen spot lies on its island; the islands don't overlap the town or each other
+-- Every incubator and pen spot lies in its garden; the gardens face each other across the street, clear of
+-- it, of the plaza and of each other; each gate opens onto the street
 for index = 1, IslandConfig.ISLANDS do
 	for slot = 1, maxPads do
-		assert(Layout.islandAt(Layout.incubator(index, slot)) == index, ("incubator %d on island %d"):format(slot, index))
+		assert(Layout.gardenAt(Layout.incubator(index, slot)) == index, ("incubator %d in garden %d"):format(slot, index))
 	end
 	for slot = 1, IslandConfig.PENS + #IslandConfig.PEN_PRICES do
-		assert(Layout.islandAt(Layout.pen(index, slot)) == index, ("pen %d on island %d"):format(slot, index))
+		assert(Layout.gardenAt(Layout.pen(index, slot)) == index, ("pen %d in garden %d"):format(slot, index))
 	end
-	local center = Layout.island(index).Position
-	assert((center - Layout.CENTER).Magnitude - Layout.ISLAND_SIZE * 0.71 > Layout.TOWN_RADIUS, "clear of the town")
-	local nextCenter = Layout.island(index % IslandConfig.ISLANDS + 1).Position
-	assert((center - nextCenter).Magnitude > Layout.ISLAND_SIZE * 1.42, "clear of the next island")
+	local center = Layout.garden(index).Position
+	assert(math.abs(center.X) - Layout.GARDEN_SIZE / 2 >= Layout.STREET_WIDTH / 2, "clear of the street")
+	assert(center.Z + Layout.GARDEN_SIZE / 2 < Layout.CENTER.Z - Layout.TOWN_RADIUS + 6, "north of the plaza")
+	local gate = Layout.gate(index).Position
+	assert(math.abs(math.abs(gate.X) - Layout.STREET_WIDTH / 2) < 0.01, "the gate is on the street")
+	if index % 2 == 1 then
+		local across = Layout.garden(index + 1).Position
+		assert(math.abs(across.Z - center.Z) < 0.01 and across.X > 0 and center.X < 0, "facing its neighbour across the street")
+	end
+	for other = index + 1, IslandConfig.ISLANDS do
+		local d = Layout.garden(other).Position - center
+		assert(math.max(math.abs(d.X), math.abs(d.Z)) >= Layout.GARDEN_SIZE, "gardens don't overlap")
+	end
 end
-assert(Layout.islandAt(Layout.CENTER) == nil, "the town is no island")
+assert(Layout.gardenAt(Layout.CENTER) == nil, "the plaza is no garden")
 
 -- A creature drawn without the 3D models
 local built = PetModel.build({ s = "Kitty", v = "Golden", z = "Normal" })

@@ -29,6 +29,8 @@ local IslandService = {}
 local REACH = 14 -- how close to an incubator a player has to stand to use it
 
 local owners: { [number]: Player } = {}
+-- Incubators whose egg a thief is carrying off right now (RaidService): owner -> slot -> true
+IslandService.carried = {} :: { [Player]: { [number]: boolean } }
 local islandOf: { [Player]: number } = {}
 local rng = Random.new()
 
@@ -47,6 +49,11 @@ end
 
 function IslandService.islandOf(player: Player): number?
 	return islandOf[player]
+end
+
+-- Who has a garden, or nil when it's free
+function IslandService.ownerOf(index: number): Player?
+	return owners[index]
 end
 
 -- The furthest egg tier a player has had: their "level" for prizes
@@ -93,7 +100,7 @@ local function render(index: number, player: Player?, data: Data?)
 	local sign = island:FindFirstChild("OwnerSign")
 	local text = sign and sign:FindFirstChild("Text", true)
 	if text and text:IsA("TextLabel") then
-		text.Text = if player then ("🥚 %s's Nest"):format(player.DisplayName) else "Free island"
+		text.Text = if player then ("🥚 %s's Nest"):format(player.DisplayName) else "Free garden"
 	end
 	for _, pad in island:GetChildren() do
 		local slot = pad:GetAttribute("Slot")
@@ -105,6 +112,8 @@ local function render(index: number, player: Player?, data: Data?)
 		pad:SetAttribute("Open", if data then slot <= data.incubators else false)
 		pad:SetAttribute("Price", if data and slot == data.incubators + 1 then Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS) or 0 else 0)
 		pad:SetAttribute("Tier", if egg then egg.tier else 0)
+		local marks = if player then IslandService.carried[player] else nil
+		pad:SetAttribute("Carried", marks ~= nil and marks[slot] == true)
 		pad:SetAttribute("Start", if egg then egg.start else 0)
 		pad:SetAttribute("Duration", if egg then Hatch.seconds(egg.tier) else 0)
 	end
@@ -120,7 +129,7 @@ local function render(index: number, player: Player?, data: Data?)
 				end
 				local at = Layout.pen(index, slot)
 				local built = PetModel.build({ s = creature.s, v = creature.m, z = "Normal" })
-				local facing = Layout.facing(at, at + Layout.island(index).LookVector)
+				local facing = Layout.facing(at, at + Layout.garden(index).LookVector)
 				PetModel.place(built, facing * CFrame.new(0, built.height / 2, 0))
 				for _, p in built.parts do
 					p.Anchored = true
@@ -173,7 +182,7 @@ local function assign(player: Player, data: Data)
 		local root = character:WaitForChild("HumanoidRootPart", 10) :: BasePart?
 		local index = islandOf[player]
 		if root and index then
-			local frame = Layout.island(index)
+			local frame = Layout.garden(index)
 			root.CFrame = frame * CFrame.new(0, 4, -10) * CFrame.Angles(0, math.pi, 0)
 		end
 	end)
@@ -242,6 +251,10 @@ local function useIncubator(player: Player, slot: any)
 		IslandService.notify(player, "New incubator! 🥚", "success")
 	else
 		local egg = data.incubating[key]
+		if egg and IslandService.carried[player] and IslandService.carried[player][slot] then
+			IslandService.notify(player, "A thief is running off with that egg! Catch them!", "error")
+			return
+		end
 		if egg then
 			local done = egg.start + Hatch.seconds(egg.tier)
 			local now = os.time()
@@ -293,7 +306,7 @@ local function place(player: Player, id: any)
 		return
 	end
 	if #data.placed >= data.pens then
-		IslandService.notify(player, "No room on your island: take a creature back or buy more room", "error")
+		IslandService.notify(player, "No room in your garden: take a creature back or buy more room", "error")
 		return
 	end
 	table.insert(data.placed, id)
@@ -322,7 +335,7 @@ local function buyPen(player: Player)
 	end
 	local price = Earn.nextPrice(IslandConfig.PEN_PRICES, data.pens, IslandConfig.PENS)
 	if not price then
-		IslandService.notify(player, "Your island is as big as it gets", "error")
+		IslandService.notify(player, "Your garden is as big as it gets", "error")
 		return
 	end
 	if data.coins < price then

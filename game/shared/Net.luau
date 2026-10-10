@@ -11,6 +11,7 @@ local EVENTS = {
 	"PlaceCreature", -- (id)
 	"TakeCreature", -- (id)
 	"UseIncubator", -- (slot)
+	"StealEgg", -- (garden, slot), at Raid Time
 	"BuyIncubator",
 	"BuyPen",
 	-- server -> client

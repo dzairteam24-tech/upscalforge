@@ -1,6 +1,7 @@
 --!strict
--- The islands on this screen: the eggs in the incubators with their timers, the owner's incubator prompts,
--- what each creature earns over its head, the Heist Egg's timer, and what the prompts in the world open.
+-- The gardens on this screen: the eggs in the incubators with their timers, the owner's incubator prompts (and
+-- a thief's, at Raid Time), the laser gates (always open for their owner), what each creature earns over its
+-- head, the Heist Egg's timer, and what the prompts in the world open.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -8,7 +9,9 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local RaidConfig = require(Shared.Config.Raid)
 local Format = require(Shared.Logic.Format)
+local Raid = require(Shared.Logic.Raid)
 local Hatch = require(Shared.Logic.Hatch)
 local Weather = require(Shared.Logic.Weather)
 local Net = require(Shared.Net)
@@ -16,7 +19,7 @@ local Net = require(Shared.Net)
 local Notify = require(script.Parent.Parent.UI.Notify)
 local Windows = require(script.Parent.Parent.UI.Windows)
 
-local IslandClient = {}
+local GardenClient = {}
 
 local LOCAL = Players.LocalPlayer
 
@@ -81,7 +84,14 @@ local function updatePad(pad: BasePart)
 	end
 	local action = ""
 	local text = ""
-	if owner == 0 then
+	local raid = Raid.at(math.floor(now()))
+	local carried = pad:GetAttribute("Carried") == true
+	if carried then
+		pad_.egg.Parent = nil
+	end
+	if carried then
+		text = if mine then "🚨 Stolen! Catch them!" else "🏃 Being stolen"
+	elseif owner == 0 then
 		text = ""
 	elseif not open then
 		text = if price > 0 then "🔒 " .. Format.abbrev(price) else ""
@@ -100,12 +110,28 @@ local function updatePad(pad: BasePart)
 			action = "Check"
 		end
 	end
+	-- At Raid Time, someone else's egg can be stolen (not from the safe incubator)
+	local stealable = raid and not mine and owner ~= 0 and egg ~= nil and not carried and number(pad, "Slot") ~= RaidConfig.SAFE_SLOT
+	if stealable then
+		action = "Steal"
+	end
 	pad_.text.Text = text
 	local prompt = pad:FindFirstChildOfClass("ProximityPrompt")
 	if prompt then
-		prompt.Enabled = mine and action ~= ""
+		prompt.Enabled = (mine and action ~= "" and not carried) or stealable
 		prompt.ActionText = action
+		prompt.HoldDuration = if stealable then 1 else 0
 	end
+end
+
+-- A garden's laser gate: always open for its owner (on this screen only: the server keeps it shut for the
+-- others until Raid Time)
+local function updateGate(gate: BasePart)
+	local index = number(gate, "Island")
+	local mine = index ~= 0 and index == LOCAL:GetAttribute("Island")
+	local isOpen = gate:GetAttribute("Open") == true
+	gate.CanCollide = not (isOpen or mine)
+	gate.Transparency = if isOpen then 0.9 elseif mine then 0.75 else 0.45
 end
 
 -- What each creature on an island earns, over its head
@@ -156,7 +182,7 @@ local function updateHeist(egg: BasePart)
 	end
 end
 
-function IslandClient.init()
+function GardenClient.init()
 	ProximityPromptService.PromptTriggered:Connect(function(prompt)
 		local ui = prompt:GetAttribute("OpenUI")
 		if type(ui) == "string" then
@@ -166,8 +192,13 @@ function IslandClient.init()
 			return
 		end
 		local slot = prompt:GetAttribute("Slot")
+		local garden = prompt:GetAttribute("Island")
 		if type(slot) == "number" then
-			Net.event("UseIncubator"):FireServer(slot)
+			if prompt.ActionText == "Steal" then
+				Net.event("StealEgg"):FireServer(garden, slot)
+			else
+				Net.event("UseIncubator"):FireServer(slot)
+			end
 		end
 	end)
 	Net.event("Hatched").OnClientEvent:Connect(function(_id, species, mutation)
@@ -191,6 +222,11 @@ function IslandClient.init()
 					updatePad(pad)
 				end
 			end
+			for _, gate in CollectionService:GetTagged("Gate") do
+				if gate:IsA("BasePart") then
+					updateGate(gate)
+				end
+			end
 			for _, egg in CollectionService:GetTagged("HeistEgg") do
 				if egg:IsA("BasePart") then
 					updateHeist(egg)
@@ -201,4 +237,4 @@ function IslandClient.init()
 	end)
 end
 
-return IslandClient
+return GardenClient

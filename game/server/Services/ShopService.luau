@@ -40,7 +40,7 @@ local function buyEgg(player: Player, tier: any)
 	data.coins -= egg.price
 	data.shop.bought[key] = (data.shop.bought[key] or 0) + 1
 	data.eggs[key] = (data.eggs[key] or 0) + 1
-	IslandService.notify(player, ("Bought a %s! Put it in an incubator on your island"):format(egg.name), "success")
+	IslandService.notify(player, ("Bought a %s! Put it in an incubator in your garden"):format(egg.name), "success")
 	IslandService.push(player)
 end
 

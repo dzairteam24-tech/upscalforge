@@ -79,7 +79,7 @@ end
 
 -- The spots round an island (its frame's space): along the back edge and down both sides
 local function spots(): { Vector3 }
-	local half = Layout.ISLAND_SIZE / 2 - 4
+	local half = Layout.GARDEN_SIZE / 2 - 4
 	local list = {}
 	for i = 0, 2 do
 		table.insert(list, Vector3.new((i - 1) * 18, 0, half))
@@ -113,7 +113,7 @@ function PropService.decorate()
 		local rng = Random.new(index * 131)
 		local folder = Instance.new("Model")
 		folder.Name = "Props"
-		local frame = Layout.island(index)
+		local frame = Layout.garden(index)
 		for i, spot in spots() do
 			if i > SPOTS then
 				break
