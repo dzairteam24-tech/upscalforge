@@ -68,12 +68,10 @@ end
 
 -- Inside a garden (its frame's space, front -Z toward the gate): the gate opens onto the hatchery, a wooden
 -- deck across the front with the nests either side of a short path, so the owner guards them from the gate. The
--- path leads on into the pasture, which fills the rest of the garden round a pond; the nest house stands in a
--- back corner behind it.
+-- path leads on into the pasture, which fills the rest of the garden, back to the fence, round a pond.
 Layout.HATCHERY = { center = Vector3.new(0, 0, -20), size = Vector3.new(50, 0, 16) }
-Layout.PASTURE = { center = Vector3.new(0, 0, 5.5), size = Vector3.new(54, 0, 29) }
-Layout.POND = { center = Vector3.new(0, 0, 5.5), radius = 4.5 }
-Layout.HOUSE = Vector3.new(17, 0, 25)
+Layout.PASTURE = { center = Vector3.new(0, 0, 9.5), size = Vector3.new(54, 0, 37) }
+Layout.POND = { center = Vector3.new(0, 0, 9.5), radius = 5 }
 Layout.PATH_WIDTH = 6
 
 -- A nest's spot (an incubator): two by two on each side of the path, the first ones (the safe one first) beside
@@ -95,7 +93,7 @@ end
 function Layout.pen(index: number, slot: number): Vector3
 	local count = IslandConfig.PENS + #IslandConfig.PEN_PRICES
 	local angle = (slot - 1) * 2 * math.pi / count
-	local inside = Layout.POND.center + Vector3.new(math.sin(angle) * 17, 0, -math.cos(angle) * 9)
+	local inside = Layout.POND.center + Vector3.new(math.sin(angle) * 17, 0, -math.cos(angle) * 11)
 	return Layout.garden(index):PointToWorldSpace(inside)
 end
 

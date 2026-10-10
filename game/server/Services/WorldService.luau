@@ -348,12 +348,8 @@ local function buildGarden(world: Instance, index: number)
 	local pastureSign = part(model, { Name = "PastureSign", Size = Vector3.one, CFrame = at(px, 5, pz - hz + 1), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(pastureSign, "🌷 Pasture", 10, 2, Vector3.zero)
 
-	-- The nest house in a back corner, behind the pasture, with its owner's name
-	local house = Layout.HOUSE
-	part(model, { Name = "House", Size = Vector3.new(10, 6, 6), CFrame = at(house.X, 3.4, house.Z), Color = rgb(250, 238, 214) })
-	part(model, { Name = "HouseRoof", Size = Vector3.new(11.5, 1.6, 7.5), CFrame = at(house.X, 7.2, house.Z), Color = GOLD })
-	part(model, { Name = "HouseDoor", Size = Vector3.new(2.4, 3.8, 0.3), CFrame = at(house.X, 2.3, house.Z - 3.05), Color = WOOD_DARK })
-	local board = part(model, { Name = "OwnerSign", Size = Vector3.one, CFrame = at(house.X, 11.5, house.Z), Transparency = 1, CanCollide = false, CanQuery = false })
+	-- The owner's name over the gate
+	local board = part(model, { Name = "OwnerSign", Size = Vector3.one, CFrame = Layout.gate(index) * CFrame.new(0, Layout.FENCE_HEIGHT + 2, 0), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(board, "Free garden", 16, 3, Vector3.zero)
 
 	local creatures = Instance.new("Model")

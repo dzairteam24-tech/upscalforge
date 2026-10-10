@@ -87,8 +87,8 @@ for index = 1, IslandConfig.ISLANDS do
 	end
 	local hatchery, pasture = Layout.HATCHERY, Layout.PASTURE
 	assert(hatchery.center.Z + hatchery.size.Z / 2 <= pasture.center.Z - pasture.size.Z / 2, "the hatchery before the pasture")
-	assert(pasture.size.X * pasture.size.Z >= 1400, "a roomy pasture")
-	assert(Layout.HOUSE.Z - 3 >= pasture.center.Z + pasture.size.Z / 2, "the house behind the pasture")
+	assert(pasture.size.X * pasture.size.Z >= 1900, "a roomy pasture")
+	assert(pasture.center.Z + pasture.size.Z / 2 >= Layout.GARDEN_SIZE / 2 - 3, "the pasture reaches the back fence")
 	for slot = 1, IslandConfig.PENS + #IslandConfig.PEN_PRICES do
 		assert(inside(Layout.pen(index, slot), Layout.PASTURE), ("creature %d in the pasture"):format(slot))
 		local p = frame:PointToObjectSpace(Layout.pen(index, slot)) - Layout.POND.center
