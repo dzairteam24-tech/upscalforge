@@ -1,13 +1,15 @@
 --!strict
--- Where everything is. The town is a small round plaza with the six shops round a fountain. From it a street
--- runs north with the players' gardens in two rows facing each other across it, so everyone sees their
--- neighbours. Each garden is fenced, with a laser gate onto the street (Config/Raid).
+-- Where everything is: one street, walked from south to north. Players arrive in a small square with a fountain;
+-- the street leaves it northward past the six shops, three each side facing each other (the Egg Shop first,
+-- nearest the square), then past the players' gardens, also in two rows facing each other, so everyone sees
+-- their neighbours. Each garden is fenced, with a laser gate onto the street (Config/Raid).
 
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 
 local Layout = {
-	TOWN_RADIUS = 64,
-	SHOP_RADIUS = 42, -- the shops' middles
+	SQUARE_RADIUS = 26, -- the square where players arrive
+	SHOP_DEPTH = 26, -- a shop's lot, from the street back
+	SHOP_SPACING = 30, -- between two shops' middles along the street
 	GARDEN_SIZE = 60,
 	GARDEN_GAP = 10, -- between two gardens in a row
 	STREET_WIDTH = 26,
@@ -26,18 +28,26 @@ function Layout.facing(at: Vector3, target: Vector3): CFrame
 	return CFrame.new(at) * CFrame.Angles(0, math.atan2(-d.X, -d.Z), 0)
 end
 
--- A shop's spot (1..6) round the fountain, facing it. (The street leaves the plaza between shops 6 and 1.)
-function Layout.shop(index: number): CFrame
-	local angle = math.rad((index - 0.5) * 360 / SHOPS)
-	local at = Layout.CENTER + Vector3.new(math.sin(angle), 0, -math.cos(angle)) * Layout.SHOP_RADIUS
-	return Layout.facing(at, Layout.CENTER)
+-- Where the street starts (the square's north edge) and how long it is (past the shops and the gardens)
+function Layout.street(): (Vector3, number)
+	local start = Layout.CENTER + Vector3.new(0, 0, -Layout.SQUARE_RADIUS + 4)
+	local length = Layout.shopsLength() + ROWS * (Layout.GARDEN_SIZE + Layout.GARDEN_GAP) + 10
+	return start, length
 end
 
--- Where the street starts (the plaza's north edge) and how long it is
-function Layout.street(): (Vector3, number)
-	local start = Layout.CENTER + Vector3.new(0, 0, -Layout.TOWN_RADIUS + 6)
-	local length = ROWS * (Layout.GARDEN_SIZE + Layout.GARDEN_GAP) + 10
-	return start, length
+-- How much of the street the shops take
+function Layout.shopsLength(): number
+	return math.ceil(SHOPS / 2) * Layout.SHOP_SPACING + 6
+end
+
+-- A shop's spot (1..6) beside the street, facing it: odd ones west, even ones east, from the square northward
+function Layout.shop(index: number): CFrame
+	local start = Layout.CENTER + Vector3.new(0, 0, -Layout.SQUARE_RADIUS + 4)
+	local side = if index % 2 == 1 then -1 else 1
+	local row = (index - 1) // 2
+	local z = start.Z - 6 - Layout.SHOP_SPACING / 2 - row * Layout.SHOP_SPACING
+	local at = Vector3.new(start.X + side * (Layout.STREET_WIDTH / 2 + Layout.SHOP_DEPTH / 2), 0, z)
+	return Layout.facing(at, Vector3.new(start.X, 0, z))
 end
 
 -- A garden's middle, its front (-Z) facing the street. Odd ones west of the street, even ones east, from the
@@ -46,7 +56,7 @@ function Layout.garden(index: number): CFrame
 	local side = if index % 2 == 1 then -1 else 1
 	local row = (index - 1) // 2
 	local start = Layout.street()
-	local z = start.Z - Layout.GARDEN_GAP - Layout.GARDEN_SIZE / 2 - row * (Layout.GARDEN_SIZE + Layout.GARDEN_GAP)
+	local z = start.Z - Layout.shopsLength() - Layout.GARDEN_GAP - Layout.GARDEN_SIZE / 2 - row * (Layout.GARDEN_SIZE + Layout.GARDEN_GAP)
 	local at = Vector3.new(start.X + side * (Layout.STREET_WIDTH / 2 + Layout.GARDEN_SIZE / 2), 0, z)
 	return Layout.facing(at, Vector3.new(start.X, 0, z))
 end

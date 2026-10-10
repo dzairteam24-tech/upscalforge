@@ -73,7 +73,10 @@ for index = 1, IslandConfig.ISLANDS do
 	end
 	local center = Layout.garden(index).Position
 	assert(math.abs(center.X) - Layout.GARDEN_SIZE / 2 >= Layout.STREET_WIDTH / 2, "clear of the street")
-	assert(center.Z + Layout.GARDEN_SIZE / 2 < Layout.CENTER.Z - Layout.TOWN_RADIUS + 6, "north of the plaza")
+	for shop = 1, 6 do
+		local s = Layout.shop(shop).Position
+		assert(center.Z + Layout.GARDEN_SIZE / 2 < s.Z - Layout.SHOP_SPACING / 2, "north of the shops")
+	end
 	local gate = Layout.gate(index).Position
 	assert(math.abs(math.abs(gate.X) - Layout.STREET_WIDTH / 2) < 0.01, "the gate is on the street")
 	if index % 2 == 1 then
@@ -85,7 +88,15 @@ for index = 1, IslandConfig.ISLANDS do
 		assert(math.max(math.abs(d.X), math.abs(d.Z)) >= Layout.GARDEN_SIZE, "gardens don't overlap")
 	end
 end
-assert(Layout.gardenAt(Layout.CENTER) == nil, "the plaza is no garden")
+assert(Layout.gardenAt(Layout.CENTER) == nil, "the square is no garden")
+-- The shops: three each side of the street, facing each other, the Egg Shop first (nearest the square)
+for shop = 1, 6 do
+	local at = Layout.shop(shop).Position
+	assert(math.abs(at.X) - Layout.SHOP_DEPTH / 2 >= Layout.STREET_WIDTH / 2 - 0.01, "beside the street")
+	assert(at.Z < Layout.CENTER.Z - Layout.SQUARE_RADIUS + 4, "north of the square")
+	assert(Layout.gardenAt(at) == nil, "not in a garden")
+end
+assert(Layout.shop(1).Position.Z > Layout.shop(6).Position.Z, "the Egg Shop is nearest the square")
 
 -- A creature drawn without the 3D models
 local built = PetModel.build({ s = "Kitty", v = "Golden", z = "Normal" })

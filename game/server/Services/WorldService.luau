@@ -1,7 +1,7 @@
 --!strict
--- Builds the world (Logic/Layout): the round town plaza with its fountain and six shops, and the street north of
--- it with the players' gardens in two rows facing each other, each fenced, with its laser gate, incubators and
--- owner's sign. Everything is simple parts, so it works
+-- Builds the world (Logic/Layout): the square with its fountain where players arrive, and the street north of it,
+-- past the six shops and then the players' gardens, each in two rows facing each other across the street; each
+-- garden fenced, with its laser gate, incubators and owner's sign. Everything is simple parts, so it works
 -- before the 3D art loads; once the town model (Config/Art TOWN_ASSET_ID) is in, each shop is drawn with its
 -- building from art/models/Town.glb.
 
@@ -69,7 +69,7 @@ end
 ---------------------------------------------------------------------------------------------------------------
 -- The town
 
--- The six shops, in order round the fountain (Layout.shop), and the art building each is drawn with
+-- The six shops, in order along the street from the square (Layout.shop), and the art building each is drawn with
 local SHOPS = {
 	{ name = "Egg Shop", art = "Shop", ui = "Shop", color = rgb(110, 200, 140) },
 	{ name = "Trading", art = "Trade", ui = "Soon", color = rgb(90, 150, 240) },
@@ -113,14 +113,13 @@ end
 local function buildTown(world: Instance)
 	local town = Instance.new("Model")
 	town.Name = "Town"
-	disc(town, "Ground", Layout.CENTER + Vector3.new(0, -2, 0), Layout.TOWN_RADIUS, 4, GRASS, Enum.Material.Grass)
-	disc(town, "Plaza", Layout.CENTER + Vector3.new(0, 0.1, 0), Layout.SHOP_RADIUS - 12, 0.3, PAVING, Enum.Material.Pavement)
-	-- The fountain
-	disc(town, "Fountain", Layout.CENTER + Vector3.new(0, 0.8, 0), 9, 1.6, rgb(240, 240, 250), Enum.Material.Marble)
-	local water = disc(town, "Water", Layout.CENTER + Vector3.new(0, 1.2, 0), 8, 1.2, rgb(90, 180, 240), Enum.Material.Glass)
+	-- The square where players arrive, with the fountain
+	disc(town, "Plaza", Layout.CENTER + Vector3.new(0, 0.1, 0), Layout.SQUARE_RADIUS, 0.3, PAVING, Enum.Material.Pavement)
+	disc(town, "Fountain", Layout.CENTER + Vector3.new(0, 0.8, 0), 7, 1.6, rgb(240, 240, 250), Enum.Material.Marble)
+	local water = disc(town, "Water", Layout.CENTER + Vector3.new(0, 1.2, 0), 6.2, 1.2, rgb(90, 180, 240), Enum.Material.Glass)
 	water.Transparency = 0.2
-	disc(town, "Fountain", Layout.CENTER + Vector3.new(0, 3, 0), 2, 4, rgb(240, 240, 250), Enum.Material.Marble)
-	local sign = part(town, { Name = "Sign", Size = Vector3.one, Position = Layout.CENTER + Vector3.new(0, 20, 0), Transparency = 1, CanCollide = false, CanQuery = false })
+	disc(town, "Fountain", Layout.CENTER + Vector3.new(0, 3, 0), 1.6, 4, rgb(240, 240, 250), Enum.Material.Marble)
+	local sign = part(town, { Name = "Sign", Size = Vector3.one, Position = Layout.CENTER + Vector3.new(0, 18, 0), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(sign, "🥚 Cubeling Nest", 22, 4, Vector3.zero)
 	for index = 1, #SHOPS do
 		buildShop(town, index)
@@ -288,11 +287,11 @@ local function buildGarden(world: Instance, index: number)
 	model.Parent = world
 end
 
--- The ground under the plaza, the street and the gardens, the street's paving, and invisible walls round it all
+-- The ground under the square, the street, the shops and the gardens, the street's paving, and invisible walls round it all
 local function buildStreet(world: Instance)
 	local start, length = Layout.street()
-	local width = Layout.STREET_WIDTH + 2 * Layout.GARDEN_SIZE + 24
-	local south = Layout.CENTER.Z + Layout.TOWN_RADIUS + 8
+	local width = Layout.STREET_WIDTH + 2 * math.max(Layout.GARDEN_SIZE, Layout.SHOP_DEPTH) + 24
+	local south = Layout.CENTER.Z + Layout.SQUARE_RADIUS + 6
 	local north = start.Z - length - 4
 	local middle = (south + north) / 2
 	part(world, {
