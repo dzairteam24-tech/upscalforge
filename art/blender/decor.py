@@ -43,7 +43,7 @@ SHEETS = {
 }
 TEXTURE = 1024
 
-# The zones each sheet's props decorate (Config/World1), and the props picked less often there (big ones)
+# The zones each sheet's props decorate (the zones in game/shared/Config/Wild.luau), and the props picked less often there (big ones)
 ZONES = {"meadow": (1, 2), "forest": (3,), "beach": (4,), "cave": (5,), "desert": (6,), "snow": (7,), "volcano": (8,), "ice": (9,), "pixel": (10,), "town": ()}
 EXTRA_ZONES = {"Tree": (3,), "Flowers": (2,), "Bush": (2,), "Tulip": (2,), "BigFlower": (2,), "Beehive": (2,)}
 ONLY_ZONES = {"Tulip": (2,), "BigFlower": (2,), "Beehive": (2,), "Fence": (1,), "MossRock": (1,)}

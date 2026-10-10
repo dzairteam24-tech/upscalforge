@@ -3,7 +3,7 @@
 Every creature is the same rounded cube; what changes is the color and the parts on top:
 ears / head piece, eye style, nose, mouth, features, legs and tail (see the parts library in cubelings.py).
 Colors here are the source for the 3D models and game/shared/Config/CreatureLooks.luau. The `color` of each
-species in game/shared/Config/World1.luau (UI and block fallback) is close but kept by hand, so it can differ.
+species in game/shared/Config/Creatures.luau (UI and block fallback) is close but kept by hand, so it can differ.
 """
 
 

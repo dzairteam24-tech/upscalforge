@@ -97,7 +97,7 @@ function requireNode(target: any): any
 	return require(target)
 end
 
--- Returns the node for a folder that Rojo maps to an Instance, e.g. Loader.root("roblox/shared", "Shared").
+-- Returns the node for a folder that Rojo maps to an Instance, e.g. Loader.root("game/shared", "Shared").
 function Loader.root(path: string, name: string): any
 	scan(path)
 	local parent = { Name = "ReplicatedStorage" }

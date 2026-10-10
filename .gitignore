@@ -15,6 +15,3 @@ art/renders/_*.png
 *-3d.html
 *_3D.html
 
-# Store art scratch renders
-art/store/_render/
-art/store/_*.png
