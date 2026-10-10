@@ -9,7 +9,7 @@ z = 0 with its middle at x = y = 0. It has no front: the game turns each one at 
     PROP=Tree python art/blender/props.py      renders OUT/Tree.png (3/4, front, side, top)
     python art/blender/props.py sheet          renders OUT/PropsSheet.png: every prop, by zone
     python art/blender/props.py roblox         writes art/models/Props.glb (one mesh per prop and color role,
-                                               named Prop<Name>__<role>) and roblox/shared/Config/PropLooks.luau
+                                               named Prop<Name>__<role>) and game/shared/Config/PropLooks.luau
 
 Needs Python with bpy (Blender 4.2+) and pillow.
 """
@@ -212,7 +212,7 @@ def export_roblox(all_designs):
         lines.append("\t\tglow = {" + "".join(f" {r} = true," for r in getattr(d, "GLOW", ())) + " },")
         lines.append("\t},")
     lines += ["}", "", "return looks", ""]
-    path = os.path.join(REPO, "roblox", "shared", "Config", "PropLooks.luau")
+    path = os.path.join(REPO, "game", "shared", "Config", "PropLooks.luau")
     open(path, "w").write("\n".join(lines))
     print("wrote", path)
 

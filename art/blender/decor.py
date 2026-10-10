@@ -9,7 +9,7 @@ building.py exports them (parts Building<Shop>__<role>, flat colors).
 
     python art/blender/decor.py            writes art/models/Decor.glb (the zones' props) and renders OUT/Decor.png
     python art/blender/decor.py town       writes art/models/Town.glb (buildings and town decor) and OUT/Town.png
-    python art/blender/decor.py looks      writes roblox/shared/Config/PropLooks.luau and TownLooks.luau
+    python art/blender/decor.py looks      writes game/shared/Config/PropLooks.luau and TownLooks.luau
 """
 
 import math
@@ -309,7 +309,7 @@ def render(objs):
 
 
 def write_looks():
-    """Writes roblox/shared/Config/PropLooks.luau (every prop's size in studs, its zones and weight) and
+    """Writes game/shared/Config/PropLooks.luau (every prop's size in studs, its zones and weight) and
     TownLooks.luau (the buildings' part colors), which the game reads to place the imported models."""
     pieces = props(list(SHEETS))
     sheet_of = {name: sheet for sheet, names in SHEETS.items() for entry in names if entry for name in [entry[0]]}
@@ -334,7 +334,7 @@ def write_looks():
             f"\t{{ name = \"{name}\", size = Vector3.new({size[0]:.2f}, {size[1]:.2f}, {size[2]:.2f}), zones = {{ {', '.join(map(str, zones))} }}, weight = {RARE.get(name, 1)} }},"
         )
     lines += ["}", "", "return looks", ""]
-    config = os.path.join(ROOT, "..", "roblox", "shared", "Config")
+    config = os.path.join(ROOT, "..", "game", "shared", "Config")
     open(os.path.join(config, "PropLooks.luau"), "w").write("\n".join(lines))
 
     def srgb(c):

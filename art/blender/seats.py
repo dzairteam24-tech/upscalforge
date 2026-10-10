@@ -11,7 +11,7 @@ its middle: the game finds the seat's front from it (Studio's importer may turn 
                                                     the game's own solver (needs LUNE: the lune binary)
     python art/blender/seats.py roblox              writes art/models/Seats.glb (one mesh per seat and color
                                                     role: Cloud__body, Cloud__eye, ...) for Studio's Import
-                                                    3D, and roblox/shared/Config/SeatLooks.luau (what the game
+                                                    3D, and game/shared/Config/SeatLooks.luau (what the game
                                                     needs to know about each seat)
     python art/blender/seats.py sheet               renders OUT/SeatsSheet.png: every seat, in zone order
 
@@ -293,7 +293,7 @@ def export_roblox(all_designs):
         lines.append(f"\t\tlight = {rgb(light)},")
         lines.append("\t},")
     lines += ["}", "", "return looks", ""]
-    path = os.path.join(REPO, "roblox", "shared", "Config", "SeatLooks.luau")
+    path = os.path.join(REPO, "game", "shared", "Config", "SeatLooks.luau")
     open(path, "w").write("\n".join(lines))
     print("wrote", path)
 

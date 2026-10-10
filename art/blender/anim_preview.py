@@ -1,4 +1,4 @@
-"""A short GIF of the creatures' moves, the same ones the game plays (roblox/client/Controllers/PetFollow.luau):
+"""A short GIF of the creatures' moves, the same ones the game plays (game/client/Controllers/PetFollow.luau):
 legs walking in diagonal pairs, wings flapping, tail wagging, the open "D" mouth, hopping and hovering.
 
     python art/blender/anim_preview.py        -> art/renders/moves.gif

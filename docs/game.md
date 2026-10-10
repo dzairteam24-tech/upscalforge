@@ -1,6 +1,6 @@
 # Cubeling Nest
 
-الكود في `game/` (هو اللي يتبنى في Roblox، `default.project.json`). الكود القديم في `roblox/` ما بقاش يتبنى.
+الكود في `game/` (يتبنى في Roblox بـ `default.project.json`).
 
 ![الماب](images/game-map.png)
 

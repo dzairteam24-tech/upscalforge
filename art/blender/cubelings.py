@@ -15,7 +15,7 @@ Outputs per creature (name / zone / legendary modes):
     art/models/<Name>_palette.png / _palette.json   the palette and which part role each cell is
 
 The `roblox` mode writes art/models/Cubelings_Roblox.glb (all 50 creatures, split in parts) and
-roblox/shared/Config/CreatureLooks.luau. That is what the game imports.
+game/shared/Config/CreatureLooks.luau. That is what the game imports.
 
 Units: the body is 2 x 2 x 1.9 (Blender units = studs once imported at scale 1). Front faces -Y.
 """
@@ -1885,7 +1885,7 @@ def anim_name(obj):
 def export_roblox():
     """All 50 creatures (40 zone creatures + 10 Legendaries) in one .glb for Roblox Studio's 3D importer.
     Each creature is a group named after the species; inside, one mesh per part role ("Kitty__body",
-    "Kitty__eye"...), so the game can recolor every role for the variants. Also writes roblox/shared/Config/CreatureLooks.luau with each role's normal color."""
+    "Kitty__eye"...), so the game can recolor every role for the variants. Also writes game/shared/Config/CreatureLooks.luau with each role's normal color."""
     reset()
     order = [name for zone in ZONES for name in zone] + LEGENDARIES
     looks = {}
@@ -1910,7 +1910,7 @@ def export_roblox():
             if len(group) > 1:
                 bpy.ops.object.join()
             obj = bpy.context.active_object
-            # "Kitty__legs__legFL": role, then the moving piece it belongs to (see roblox/shared/PetModel.luau)
+            # "Kitty__legs__legFL": role, then the moving piece it belongs to (see game/shared/PetModel.luau)
             obj.name = f"{name}__{key}" + (f"__{anim}" if anim else "")
             obj.data.name = obj.name
             obj.parent = root
@@ -1936,7 +1936,7 @@ def export_roblox():
             lines.append(f"\t\t{key} = Color3.fromRGB({r}, {g}, {b}),")
         lines.append("\t},")
     lines += ["}", "", "return looks", ""]
-    config = os.path.join(os.path.dirname(ROOT), "roblox", "shared", "Config", "CreatureLooks.luau")
+    config = os.path.join(os.path.dirname(ROOT), "game", "shared", "Config", "CreatureLooks.luau")
     with open(config, "w") as f:
         f.write("\n".join(lines))
     print("wrote", config)
