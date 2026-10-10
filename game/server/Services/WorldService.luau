@@ -287,7 +287,7 @@ local function buildGarden(world: Instance, index: number)
 	local hc = at(hatchery.center.X, 0, hatchery.center.Z)
 	part(model, { Name = "Deck", Size = hatchery.size + Vector3.new(0, 0.6, 0), CFrame = hc * CFrame.new(0, 0.5, 0), Color = WOOD, Material = Enum.Material.WoodPlanks })
 	for _, side in { -1, 1 } do
-		local post = hc * CFrame.new(side * 14.5, 0, 0)
+		local post = hc * CFrame.new(side * 14.25, 0, 0)
 		part(model, { Name = "LampPost", Size = Vector3.new(0.8, 6, 0.8), CFrame = post * CFrame.new(0, 3.8, 0), Color = WOOD_DARK })
 		local lamp = part(model, { Name = "Lamp", Shape = Enum.PartType.Ball, Size = Vector3.one * 2, CFrame = post * CFrame.new(0, 7.2, 0), Color = rgb(255, 170, 80), Material = Enum.Material.Neon, CanCollide = false })
 		local warmth = Instance.new("PointLight")
@@ -298,29 +298,30 @@ local function buildGarden(world: Instance, index: number)
 	end
 	local hatchSign = part(model, { Name = "HatcherySign", Size = Vector3.one, CFrame = hc * CFrame.new(0, 7, hatchery.size.Z / 2), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(hatchSign, "🥚 Hatchery", 10, 2, Vector3.zero)
+	local nest = Layout.NEST_SIZE
 	for slot = 1, IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES do
 		local spot = Layout.incubator(index, slot)
 		local safe = slot == RaidConfig.SAFE_SLOT
 		local base = CFrame.new(spot)
-		part(model, { Name = "NestStand", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.6, 4, 4), CFrame = base * CFrame.new(0, 1.8, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(206, 196, 184), Material = Enum.Material.Slate })
-		part(model, { Name = "NestRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 4.4, 4.4), CFrame = base * CFrame.new(0, 2.7, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = if safe then GOLD else WOOD_DARK, CanCollide = false })
+		part(model, { Name = "NestStand", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.4, nest, nest), CFrame = base * CFrame.new(0, 1.5, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(206, 196, 184), Material = Enum.Material.Slate })
+		part(model, { Name = "NestRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, nest + 0.6, nest + 0.6), CFrame = base * CFrame.new(0, 2.4, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = if safe then GOLD else WOOD_DARK, CanCollide = false })
 		local pad = part(model, {
 			Name = "Incubator",
 			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.6, 3.6, 3.6),
-			CFrame = base * CFrame.new(0, 2.8, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			Size = Vector3.new(0.6, nest - 1, nest - 1),
+			CFrame = base * CFrame.new(0, 2.5, 0) * CFrame.Angles(0, 0, math.rad(90)),
 			Color = STRAW,
 			Material = Enum.Material.Fabric,
 		})
 		pad:SetAttribute("Island", index)
 		pad:SetAttribute("Slot", slot)
 		pad:AddTag("Incubator")
-		local dome = part(model, { Name = "Dome", Shape = Enum.PartType.Ball, Size = Vector3.one * 4, CFrame = base * CFrame.new(0, 3.6, 0), Color = rgb(220, 240, 255), Material = Enum.Material.Glass, Transparency = 0.7, CanCollide = false, CanQuery = false })
+		local dome = part(model, { Name = "Dome", Shape = Enum.PartType.Ball, Size = Vector3.one * (nest - 1), CFrame = base * CFrame.new(0, 3.6, 0), Color = rgb(220, 240, 255), Material = Enum.Material.Glass, Transparency = 0.7, CanCollide = false, CanQuery = false })
 		dome:SetAttribute("Slot", slot)
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Use"
 		prompt.ObjectText = if safe then "Safe nest" else "Nest"
-		prompt.MaxActivationDistance = 7
+		prompt.MaxActivationDistance = 9
 		prompt.RequiresLineOfSight = false
 		prompt.Enabled = false -- GardenClient turns on the owner's (and a thief's, at Raid Time)
 		prompt:SetAttribute("Island", index)

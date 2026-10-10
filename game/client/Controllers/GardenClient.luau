@@ -52,6 +52,7 @@ local function billboard(parent: Instance, width: number, height: number, offset
 end
 
 -- Incubators
+local EGG_SIZE = Layout.NEST_SIZE * 0.45
 type Pad = { egg: Part, text: TextLabel }
 local pads: { [BasePart]: Pad } = {}
 
@@ -61,7 +62,7 @@ local function updatePad(pad: BasePart)
 		local egg = Instance.new("Part")
 		egg.Name = "IncubatingEgg"
 		egg.Shape = Enum.PartType.Ball
-		egg.Size = Vector3.new(2.2, 2.2, 2.2)
+		egg.Size = Vector3.one * EGG_SIZE -- the same for every tier: it fits the nest
 		egg.Anchored = true
 		egg.CanCollide = false
 		egg.CanQuery = false
@@ -69,7 +70,7 @@ local function updatePad(pad: BasePart)
 		mesh.MeshType = Enum.MeshType.Sphere
 		mesh.Scale = Vector3.new(1, 1.3, 1)
 		mesh.Parent = egg
-		entry = { egg = egg, text = billboard(pad, 7, 1.6, Vector3.new(0, 4.6, 0)) }
+		entry = { egg = egg, text = billboard(pad, 7, 1.6, Vector3.new(0, 6.5, 0)) }
 		pads[pad] = entry
 	end
 	local pad_ = entry :: Pad
@@ -82,7 +83,7 @@ local function updatePad(pad: BasePart)
 	pad_.egg.Parent = if egg then pad else nil
 	if egg then
 		pad_.egg.Color = egg.color
-		pad_.egg.CFrame = CFrame.new(pad.Position + Vector3.new(0, 1.2 + math.sin(os.clock() * 2 + pad.Position.X) * 0.08, 0)) * CFrame.Angles(0, os.clock() * 0.6, 0)
+		pad_.egg.CFrame = CFrame.new(pad.Position + Vector3.new(0, EGG_SIZE * 0.6 + math.sin(os.clock() * 2 + pad.Position.X) * 0.08, 0)) * CFrame.Angles(0, os.clock() * 0.6, 0)
 	end
 	local action = ""
 	local text = ""

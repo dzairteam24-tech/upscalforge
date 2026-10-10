@@ -10,7 +10,7 @@ local Layout = {
 	SQUARE_RADIUS = 26, -- the square where players arrive
 	SHOP_DEPTH = 26, -- a shop's lot, from the street back
 	SHOP_SPACING = 30, -- between two shops' middles along the street
-	GARDEN_SIZE = 60,
+	GARDEN_SIZE = 70,
 	GARDEN_GAP = 10, -- between two gardens in a row
 	STREET_WIDTH = 26,
 	GATE_WIDTH = 16, -- the opening in a garden's front fence
@@ -69,12 +69,13 @@ end
 -- Inside a garden (its frame's space, front -Z toward the gate): the gate opens onto the hatchery, a wooden
 -- deck across the front with the nests either side of a short path, so the owner guards them from the gate. The
 -- path leads on into the pasture, which fills the rest of the garden, back to the fence, round a pond.
-Layout.HATCHERY = { center = Vector3.new(0, 0, -20), size = Vector3.new(50, 0, 16) }
-Layout.PASTURE = { center = Vector3.new(0, 0, 9.5), size = Vector3.new(54, 0, 37) }
-Layout.POND = { center = Vector3.new(0, 0, 9.5), radius = 5 }
+Layout.HATCHERY = { center = Vector3.new(0, 0, -23), size = Vector3.new(50, 0, 22) }
+Layout.PASTURE = { center = Vector3.new(0, 0, 11.5), size = Vector3.new(62, 0, 43) }
+Layout.POND = { center = Vector3.new(0, 0, 11.5), radius = 5.5 }
+Layout.NEST_SIZE = 8 -- a nest's width (an egg in it is drawn to fit, whatever its tier)
 Layout.PATH_WIDTH = 6
-Layout.TROUGH = Vector3.new(-12, 0, -4) -- in the pasture, beside where the path comes in
-Layout.BARN = Vector3.new(21, 0, 23) -- the storage barn, in the pasture's back corner
+Layout.TROUGH = Vector3.new(-12, 0, -5) -- in the pasture, beside where the path comes in
+Layout.BARN = Vector3.new(23.5, 0, 26.5) -- the storage barn, in the pasture's back corner
 
 -- What the creatures walk round (a spot in the garden's space and how far from it to keep)
 Layout.OBSTACLES = {
@@ -94,8 +95,8 @@ end
 -- A nest's spot (an incubator): two by two on each side of the path, the first ones (the safe one first) beside
 -- the path and nearest the pasture, then outward
 local NESTS = {
-	Vector3.new(-10, 0, -16), Vector3.new(10, 0, -16), Vector3.new(-10, 0, -24), Vector3.new(10, 0, -24),
-	Vector3.new(-19, 0, -16), Vector3.new(19, 0, -16), Vector3.new(-19, 0, -24), Vector3.new(19, 0, -24),
+	Vector3.new(-9, 0, -17.5), Vector3.new(9, 0, -17.5), Vector3.new(-9, 0, -28.5), Vector3.new(9, 0, -28.5),
+	Vector3.new(-19.5, 0, -17.5), Vector3.new(19.5, 0, -17.5), Vector3.new(-19.5, 0, -28.5), Vector3.new(19.5, 0, -28.5),
 }
 function Layout.incubator(index: number, slot: number): Vector3
 	return Layout.garden(index):PointToWorldSpace(NESTS[slot])
@@ -110,7 +111,7 @@ end
 function Layout.pen(index: number, slot: number): Vector3
 	local count = IslandConfig.PENS + #IslandConfig.PEN_PRICES
 	local angle = (slot - 1) * 2 * math.pi / count
-	local inside = Layout.POND.center + Vector3.new(math.sin(angle) * 17, 0, -math.cos(angle) * 11)
+	local inside = Layout.POND.center + Vector3.new(math.sin(angle) * 20, 0, -math.cos(angle) * 13)
 	return Layout.garden(index):PointToWorldSpace(inside)
 end
 
