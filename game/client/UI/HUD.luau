@@ -116,7 +116,7 @@ function HUD.mount(gui: ScreenGui)
 			local riding = Players.LocalPlayer:GetAttribute("RideSeat")
 			seat.Text = if type(riding) == "string" and riding ~= "" then "🚶 Walk" else "☁️ Seat"
 			local playerSpeed = Players.LocalPlayer:GetAttribute("Speed")
-			speed.Text = ("⚡ %.1f"):format(if type(playerSpeed) == "number" then playerSpeed else 16)
+			speed.Text = "⚡ " .. Format.abbrev(if type(playerSpeed) == "number" then math.floor(playerSpeed) else 0)
 			local fedUntil = Players.LocalPlayer:GetAttribute("FedUntil")
 			local fed = type(fedUntil) == "number" and fedUntil > workspace:GetServerTimeNow()
 			rate.Text = ("+%s / second%s"):format(Format.abbrev(Store.rate()), if fed then " · 😋 fed" else "")

@@ -7,23 +7,23 @@
 -- Further biomes have faster guardians: players train their speed on the treadmill in their garden to outrun
 -- them (the first biome's they outrun from the start). All the eggs come back every few minutes.
 
-export type Biome = { id: string, name: string, tier: number, guardian: number, color: Color3, theme: number }
+export type Biome = { id: string, name: string, tier: number, need: number, color: Color3, theme: number }
 
 local function rgb(r: number, g: number, b: number): Color3
 	return Color3.fromRGB(r, g, b)
 end
 
 local BIOMES: { Biome } = {
-	-- `tier`: its eggs (Config/Eggs); `guardian`: its guardians' speed (studs a second, a player starts at 16);
-	-- `theme`: its props (Config/PropLooks zones)
-	{ id = "Meadow", name = "Meadow", tier = 1, guardian = 21, color = rgb(132, 200, 110), theme = 1 },
-	{ id = "Flower", name = "Flower Field", tier = 2, guardian = 24, color = rgb(190, 220, 120), theme = 2 },
-	{ id = "Forest", name = "Forest", tier = 3, guardian = 29, color = rgb(84, 150, 84), theme = 3 },
-	{ id = "Beach", name = "Beach", tier = 4, guardian = 33, color = rgb(240, 222, 160), theme = 4 },
-	{ id = "Cave", name = "Cave", tier = 5, guardian = 39, color = rgb(120, 110, 140), theme = 5 },
-	{ id = "Desert", name = "Desert", tier = 6, guardian = 45, color = rgb(232, 196, 130), theme = 6 },
-	{ id = "Snow", name = "Snow", tier = 7, guardian = 52, color = rgb(230, 240, 250), theme = 7 },
-	{ id = "Volcano", name = "Volcano", tier = 8, guardian = 60, color = rgb(120, 70, 60), theme = 8 },
+	-- `tier`: its eggs (Config/Eggs); `need`: the speed (⚡) a player needs to outrun its guardian with an egg
+	-- (Logic/Wild turns it into the guardian's real pace); `theme`: its props (Config/PropLooks zones)
+	{ id = "Meadow", name = "Meadow", tier = 1, need = 0, color = rgb(132, 200, 110), theme = 1 },
+	{ id = "Flower", name = "Flower Field", tier = 2, need = 200, color = rgb(190, 220, 120), theme = 2 },
+	{ id = "Forest", name = "Forest", tier = 3, need = 1000, color = rgb(84, 150, 84), theme = 3 },
+	{ id = "Beach", name = "Beach", tier = 4, need = 5000, color = rgb(240, 222, 160), theme = 4 },
+	{ id = "Cave", name = "Cave", tier = 5, need = 25000, color = rgb(120, 110, 140), theme = 5 },
+	{ id = "Desert", name = "Desert", tier = 6, need = 100000, color = rgb(232, 196, 130), theme = 6 },
+	{ id = "Snow", name = "Snow", tier = 7, need = 400000, color = rgb(230, 240, 250), theme = 7 },
+	{ id = "Volcano", name = "Volcano", tier = 8, need = 1500000, color = rgb(120, 70, 60), theme = 8 },
 }
 
 return {
@@ -43,16 +43,23 @@ return {
 	ROB_GUARD = 4, -- seconds a new carrier can't be robbed
 	RESET = 300, -- every nest gets its egg back this often
 	CARRY = 0.9, -- a player carrying an egg runs this much of their speed
+	-- Speed (⚡) is a big number that grows without end (0, 200, 5K, 1.5M...); how fast the player really walks
+	-- grows with it slowly (Logic/Wild.walk): START_SPEED studs a second at 0, WALK_PER_DOUBLING more each time
+	-- ⚡ + WALK_BASE doubles, up to WALK_MAX
 	START_SPEED = 24,
-	MAX_SPEED = 70,
+	WALK_BASE = 100,
+	WALK_PER_DOUBLING = 5,
+	WALK_MAX = 110,
 	-- Sprint (Shift, or the button on a phone): walking this many times faster while it's held
 	SPRINT = 2,
-	-- On the floating seat (MoveService) the player goes this many times their own speed, up to SEAT_MAX_SPEED.
+	-- On the floating seat (MoveService) the player goes this many times their own walk, up to SEAT_MAX_SPEED.
 	-- Not while carrying an egg: the chases stay fair.
 	SEAT_SPEED = 4,
-	SEAT_MAX_SPEED = 100,
-	-- The treadmill in front of each garden: running on it, the player gets TREADMILL_GAIN speed every
-	-- TREADMILL_EVERY seconds (up to MAX_SPEED). No coins: only running.
+	SEAT_MAX_SPEED = 120,
+	-- The treadmill in front of each garden: running on it, every TREADMILL_EVERY seconds the player gets
+	-- TREADMILL_GAIN ⚡, plus more the more their garden earns (its coins a second to the TREADMILL_POWER), like
+	-- Steal an Egg: better creatures, faster training. No coins spent: only running.
 	TREADMILL_GAIN = 2,
+	TREADMILL_POWER = 0.7,
 	TREADMILL_EVERY = 5,
 }

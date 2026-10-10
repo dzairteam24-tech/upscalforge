@@ -23,6 +23,7 @@ local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
 local Raid = require(Shared.Logic.Raid)
+local Wild = require(Shared.Logic.Wild)
 local Net = require(Shared.Net)
 
 local DataService = require(script.Parent.DataService)
@@ -53,7 +54,7 @@ local function setSpeed(player: Player, speed: number?)
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		local data = DataService.get(player)
-		humanoid.WalkSpeed = speed or (if data then data.speed else WildConfig.START_SPEED) -- (back to the player's own speed)
+		humanoid.WalkSpeed = speed or (if data then Wild.walk(data.power) else WildConfig.START_SPEED) -- (back to the player's own speed)
 	end
 end
 

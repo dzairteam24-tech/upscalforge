@@ -319,17 +319,19 @@ end)
 test("the Wild: biomes get harder, the treadmill trains speed, eggs 4-8 only come from the Wild", function()
 	local previous = 0
 	for i, biome in WildConfig.BIOMES do
-		assert(biome.guardian > previous, "each biome's guardians are faster")
-		previous = biome.guardian
+		assert(Wild.guardian(biome) > previous, "each biome's guardians are faster")
+		previous = Wild.guardian(biome)
+		assert(Wild.carrying(biome.need) > Wild.guardian(biome), "with the ⚡ it needs, a player outruns it")
+		assert(Wild.guardian(biome) < WildConfig.WALK_MAX, "it can be outrun")
 		eq(biome.tier, i, "a biome per egg tier")
 		assert(Hatch.egg(biome.tier), "its eggs exist")
-		assert(Wild.outruns(Wild.needs(biome), biome) and not Wild.outruns(Wild.needs(biome) - 1, biome), "the speed it needs")
 	end
-	assert(Wild.outruns(WildConfig.START_SPEED, WildConfig.BIOMES[1]), "a new player outruns the first biome")
-	assert(Wild.needs(WildConfig.BIOMES[#WildConfig.BIOMES]) <= WildConfig.MAX_SPEED, "the last biome can be escaped")
-	assert(not Wild.outruns(WildConfig.START_SPEED, WildConfig.BIOMES[2]), "the second biome needs training")
-	eq(Wild.train(WildConfig.START_SPEED), WildConfig.START_SPEED + WildConfig.TREADMILL_GAIN, "+2 a step")
-	eq(Wild.train(WildConfig.MAX_SPEED - 1), WildConfig.MAX_SPEED, "capped")
+	assert(Wild.outruns(0, WildConfig.BIOMES[1]), "a new player outruns the first biome")
+	assert(not Wild.outruns(0, WildConfig.BIOMES[2]), "the second biome needs training")
+	eq(Wild.walk(0), WildConfig.START_SPEED, "a new player walks at the start speed")
+	assert(Wild.walk(1e6) > Wild.walk(1e3) and Wild.walk(1e12) == WildConfig.WALK_MAX, "faster with more ⚡, capped")
+	eq(Wild.gain(0), WildConfig.TREADMILL_GAIN, "+2 a step with an empty garden")
+	assert(Wild.gain(10000) > 100 * Wild.gain(0), "a rich garden trains much faster")
 	for tier = 4, 8 do
 		assert(ShopConfig.STOCK[tier] == nil, "not in the Egg Shop")
 	end

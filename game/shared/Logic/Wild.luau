@@ -1,29 +1,41 @@
 --!strict
--- Speed and the Wild (Config/Wild): what the treadmill trains, how fast a player runs with an egg, and whether
--- they can outrun a biome's guardians.
+-- Speed and the Wild (Config/Wild): speed (⚡) is a big number; this turns it into how fast the player really
+-- walks, says what a step on the treadmill gives, how fast a player runs with an egg, and whether they outrun a
+-- biome's guardian (whose pace is set from the speed its biome needs).
 
 local WildConfig = require(script.Parent.Parent.Config.Wild)
 
 local Wild = {}
 
--- Speed after one more step on the treadmill (capped)
-function Wild.train(speed: number): number
-	return math.min(WildConfig.MAX_SPEED, speed + WildConfig.TREADMILL_GAIN)
+-- How fast (studs a second) a player with this much ⚡ walks
+function Wild.walk(power: number): number
+	local doublings = math.log(1 + math.max(0, power) / WildConfig.WALK_BASE, 2)
+	return math.min(WildConfig.WALK_MAX, WildConfig.START_SPEED + WildConfig.WALK_PER_DOUBLING * doublings)
+end
+
+-- ⚡ a step on the treadmill gives, for a garden earning `rate` coins a second
+function Wild.gain(rate: number): number
+	return WildConfig.TREADMILL_GAIN + math.floor(math.max(0, rate) ^ WildConfig.TREADMILL_POWER)
 end
 
 -- How fast a player runs while carrying an egg
-function Wild.carrying(speed: number): number
-	return speed * WildConfig.CARRY
+function Wild.carrying(power: number): number
+	return Wild.walk(power) * WildConfig.CARRY
 end
 
--- Whether a player this fast outruns the biome's guardians with an egg
-function Wild.outruns(speed: number, biome: WildConfig.Biome): boolean
-	return Wild.carrying(speed) > biome.guardian
+-- How fast a biome's guardian runs: a little slower than a player with just the ⚡ it needs, carrying an egg
+function Wild.guardian(biome: WildConfig.Biome): number
+	return Wild.carrying(biome.need) - 0.5
 end
 
--- The speed a player needs to outrun a biome's guardians with an egg
+-- Whether a player with this much ⚡ outruns the biome's guardian with an egg
+function Wild.outruns(power: number, biome: WildConfig.Biome): boolean
+	return power >= biome.need
+end
+
+-- The ⚡ a player needs to outrun a biome's guardian with an egg
 function Wild.needs(biome: WildConfig.Biome): number
-	return math.ceil(biome.guardian / WildConfig.CARRY + 0.01)
+	return biome.need
 end
 
 return Wild

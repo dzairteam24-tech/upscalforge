@@ -75,11 +75,12 @@ local function applySpeed(player: Player)
 	local riding = type(seat) == "string" and seat ~= "" and free
 	local sprinting = player:GetAttribute("Sprinting") == true and free
 	local carry = carrying[player]
-	humanoid.WalkSpeed = if carry and not carry.safe then Wild.carrying(data.speed)
-		elseif riding then math.min(WildConfig.SEAT_MAX_SPEED, data.speed * WildConfig.SEAT_SPEED)
-		elseif sprinting then data.speed * WildConfig.SPRINT
-		else data.speed
-	player:SetAttribute("Speed", data.speed)
+	local walk = Wild.walk(data.power)
+	humanoid.WalkSpeed = if carry and not carry.safe then Wild.carrying(data.power)
+		elseif riding then math.max(walk, math.min(WildConfig.SEAT_MAX_SPEED, walk * WildConfig.SEAT_SPEED))
+		elseif sprinting then math.max(walk, math.min(WildConfig.SEAT_MAX_SPEED, walk * WildConfig.SPRINT))
+		else walk
+	player:SetAttribute("Speed", data.power)
 end
 WildService.applySpeed = applySpeed
 
@@ -294,10 +295,10 @@ local function steal(player: Player, nest: Nest)
 	end)
 	hold(player, { nest = nest, part = part, safe = false, golden = golden, guardUntil = os.clock() + WildConfig.ROB_GUARD })
 	local biome = WildConfig.BIOMES[nest.biome]
-	if Wild.outruns(data.speed, biome) then
+	if Wild.outruns(data.power, biome) then
 		IslandService.notify(player, ("Got it! Run out of the %s before its guardian wakes up! 🏃"):format(biome.name), "success")
 	else
-		IslandService.notify(player, ("Got it! But its guardian is faster than you (⚡ %d needed). Run!"):format(Wild.needs(biome)), "info")
+		IslandService.notify(player, ("Got it! But its guardian is faster than you (⚡ %s needed). Run!"):format(Format.abbrev(Wild.needs(biome))), "info")
 	end
 	wake(nest.biome, player, root.Position)
 end
@@ -442,7 +443,7 @@ local function spawnGuardians()
 			text.Font = Enum.Font.FredokaOne
 			text.TextColor3 = Color3.fromRGB(255, 120, 110)
 			text.TextStrokeTransparency = 0.3
-			local label = ("%s · ⚡ %d needed"):format(biome.name, Wild.needs(biome))
+			local label = ("%s · ⚡ %s needed"):format(biome.name, Format.abbrev(Wild.needs(biome)))
 			text.Text = "💤 " .. label
 			text.Parent = gui
 			gui.Parent = tag
@@ -496,7 +497,7 @@ local function tick(frame: number)
 	for _, guardian in guardians do
 		local biome = WildConfig.BIOMES[guardian.biome]
 		local target: Vector3
-		local speed = biome.guardian
+		local speed = Wild.guardian(biome)
 		local thief = guardian.chasing
 		local carry = if thief then carrying[thief] else nil
 		if carry and carry.golden then
@@ -559,16 +560,18 @@ local function train()
 			continue
 		end
 		local inside = Layout.garden(index):PointToObjectSpace(root.Position) - Layout.TREADMILL
-		if math.abs(inside.X) <= 5 and math.abs(inside.Z) <= 2.5 and inside.Y < 8 and data.speed < WildConfig.MAX_SPEED then
+		if math.abs(inside.X) <= 5 and math.abs(inside.Z) <= 2.5 and inside.Y < 8 then
 			running[player] = (running[player] or 0) + 1
 			if running[player] < WildConfig.TREADMILL_EVERY then
 				continue
 			end
 			running[player] = 0
-			local before = data.speed
-			data.speed = Wild.train(data.speed)
+			-- (more the more the garden earns, fed or not)
+			local rate = player:GetAttribute("Rate")
+			local gain = Wild.gain(if type(rate) == "number" then rate else 0)
+			data.power += gain
 			applySpeed(player)
-			Net.event("SpeedUp"):FireClient(player, data.speed - before)
+			Net.event("SpeedUp"):FireClient(player, gain)
 		end
 	end
 end
@@ -617,8 +620,7 @@ function WildService.init()
 	refill() -- (the first golden nests)
 	Net.event("Travel").OnServerEvent:Connect(travel)
 	DataService.onLoaded(function(player, data)
-		data.speed = math.max(data.speed, WildConfig.START_SPEED) -- (saves from when players started slower)
-		player:SetAttribute("Speed", data.speed)
+		player:SetAttribute("Speed", data.power)
 		applySpeed(player)
 	end)
 	local function onCharacter(player: Player)

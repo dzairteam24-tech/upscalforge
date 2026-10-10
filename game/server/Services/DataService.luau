@@ -30,7 +30,7 @@ export type Data = {
 	nextId: number,
 	lastSeen: number,
 	stats: { hatched: number, earned: number, stolen: number },
-	speed: number, -- how fast the player runs (Config/Wild), trained on the treadmill
+	power: number, -- the player's speed (⚡, a big number: Logic/Wild.walk), trained on the treadmill
 	firstPlayed: number, -- os.time() of their first visit (a new player's garden can't be robbed at first)
 	food: { [string]: number }, -- food id -> how many the player holds (in their trough)
 	fedUntil: number, -- os.time() the creatures are fed until (Config/Food)
@@ -90,7 +90,7 @@ local function template(): Data
 		nextId = 1,
 		lastSeen = 0,
 		stats = { hatched = 0, earned = 0, stolen = 0 },
-		speed = WildConfig.START_SPEED,
+		power = 0,
 		firstPlayed = 0,
 		food = {},
 		fedUntil = 0,

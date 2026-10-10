@@ -426,7 +426,7 @@ function GardenClient.init()
 		local text = billboard(head, 4, 1.4, Vector3.new(0, 2.5, 0))
 		local gui = text.Parent :: BillboardGui
 		gui.AlwaysOnTop = true
-		text.Text = ("+%d ⚡"):format(gain)
+		text.Text = "+" .. Format.abbrev(gain) .. " ⚡"
 		text.TextColor3 = Color3.fromRGB(90, 220, 255)
 		task.spawn(function()
 			for i = 1, 20 do
