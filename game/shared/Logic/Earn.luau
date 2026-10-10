@@ -4,10 +4,11 @@
 local Creatures = require(script.Parent.Parent.Config.Creatures)
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 local Mutations = require(script.Parent.Parent.Config.Mutations)
+local RaidConfig = require(script.Parent.Parent.Config.Raid)
 
 local Earn = {}
 
-export type Owned = { s: string, m: string }
+export type Owned = { s: string, m: string, h: number?, hn: string? } -- h, hn: a Homesick creature's home and its name (Config/Raid HOME_SHARE)
 
 -- Coins a second one creature earns
 function Earn.rate(creature: Owned): number
@@ -16,16 +17,35 @@ function Earn.rate(creature: Owned): number
 	return if species then species.earn * mutation.mult else 0
 end
 
--- Coins a second the creatures living on an island earn together
+-- What its owner keeps of that: a Homesick creature sends a share home
+function Earn.kept(creature: Owned): number
+	local rate = Earn.rate(creature)
+	return if creature.h then rate * (1 - RaidConfig.HOME_SHARE) else rate
+end
+
+-- Coins a second the creatures living on an island earn their owner together
 function Earn.islandRate(creatures: { [string]: Owned }, placed: { string }): number
 	local total = 0
 	for _, id in placed do
 		local creature = creatures[id]
 		if creature then
-			total += Earn.rate(creature)
+			total += Earn.kept(creature)
 		end
 	end
 	return total
+end
+
+-- Coins a second the Homesick creatures on an island send to each of their homes (user id -> coins)
+function Earn.homeShares(creatures: { [string]: Owned }, placed: { string }): { [number]: number }
+	local shares = {}
+	for _, id in placed do
+		local creature = creatures[id]
+		local home = creature and creature.h
+		if creature and home then
+			shares[home] = (shares[home] or 0) + Earn.rate(creature) * RaidConfig.HOME_SHARE
+		end
+	end
+	return shares
 end
 
 -- Coins for the time an island's owner was away (up to OFFLINE_HOURS)

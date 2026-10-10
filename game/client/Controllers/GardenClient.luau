@@ -1,7 +1,8 @@
 --!strict
 -- The gardens on this screen: the eggs in the nests with their timers, the owner's nest prompts (and a
 -- thief's, at Raid Time), the laser gates (always open for their owner), the creatures roaming the pastures
--- with their coins popping, the Heist Egg's timer, and what the prompts in the world open.
+-- with their coins popping (and chasing intruders at Raid Time), the Heist Egg's timer, and what the prompts in
+-- the world open.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -222,18 +223,56 @@ local function addRoamer(model: Instance)
 	end)
 end
 
+-- At Raid Time, who's in each garden that isn't theirs: garden -> their positions
+local CHASE_SPEED = 10
+local function intruders(): { [number]: { Vector3 } }
+	local found = {}
+	if not Raid.at(math.floor(now())) then
+		return found
+	end
+	for _, player in Players:GetPlayers() do
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local index = root and Layout.gardenAt(root.Position)
+		if root and index and player:GetAttribute("Island") ~= index then
+			found[index] = found[index] or {}
+			table.insert(found[index], root.Position)
+		end
+	end
+	return found
+end
+
+local function nearest(from: Vector3, spots: { Vector3 }): Vector3
+	local best, distance = spots[1], math.huge
+	for _, spot in spots do
+		local d = (spot - from).Magnitude
+		if d < distance then
+			best, distance = spot, d
+		end
+	end
+	return best
+end
+
 local function roam(dt: number)
 	local clock = os.clock()
+	local chased = intruders()
 	for model, r in roamers do
+		local spots = chased[number(model, "Island")]
+		local chasing = spots ~= nil
+		if spots then
+			r.target = nearest(r.at, spots)
+			r.rest = 0
+		end
 		local flat = Vector3.new(r.target.X, r.y, r.target.Z) - r.at
 		local walking = false
-		if r.rest > 0 then
+		if chasing and flat.Magnitude < 2.5 then
+			walking = true -- (caught up: hopping at them)
+		elseif r.rest > 0 then
 			r.rest -= dt
 		elseif flat.Magnitude < 0.5 then
 			r.rest = 1 + math.random() * 3
 			r.target = pastureSpot(number(model, "Island"))
 		else
-			r.at += flat.Unit * math.min(flat.Magnitude, 4 * dt)
+			r.at += flat.Unit * math.min(flat.Magnitude, (if chasing then CHASE_SPEED else 4) * dt)
 			walking = true
 		end
 		local hop = if walking then math.abs(math.sin(clock * 9 + r.phase)) * 0.5 else 0
@@ -307,6 +346,26 @@ function GardenClient.init()
 				Net.event("UseIncubator"):FireServer(slot)
 			end
 		end
+	end)
+	Net.event("Bump").OnClientEvent:Connect(function(position: Vector3, mutation: string)
+		local spot = Instance.new("Part")
+		spot.Anchored, spot.CanCollide, spot.CanQuery, spot.Transparency = true, false, false, 1
+		spot.Size = Vector3.one
+		spot.Position = position
+		spot.Parent = workspace
+		local text = billboard(spot, 6, 2, Vector3.new(0, 4, 0))
+		local gui = text.Parent :: BillboardGui
+		gui.AlwaysOnTop = true
+		text.Text = if mutation == "Lava" then "🔥 BURN!" elseif mutation == "Crystal" then "💎 SLIP!" else "💥 BONK!"
+		text.TextColor3 = if mutation == "Lava" then Color3.fromRGB(255, 120, 50) elseif mutation == "Crystal" then Color3.fromRGB(120, 200, 245) else Color3.fromRGB(255, 225, 90)
+		task.spawn(function()
+			for i = 1, 16 do
+				gui.StudsOffsetWorldSpace = Vector3.new(0, 4 + i * 0.15, 0)
+				text.TextTransparency = math.max(0, (i - 8) / 8)
+				task.wait(0.04)
+			end
+			spot:Destroy()
+		end)
 	end)
 	Net.event("Hatched").OnClientEvent:Connect(function(_id, species, mutation)
 		Notify.show(("🐣 You hatched a %s%s!"):format(if mutation ~= "Normal" then mutation .. " " else "", species), if mutation ~= "Normal" then "rare" else "success")

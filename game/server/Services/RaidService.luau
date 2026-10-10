@@ -4,7 +4,10 @@
 -- one of their incubators: never the safe one, never from a new player, and never a hatched creature. The thief
 -- walks slowly with it; the owner gets it back by catching them; if the thief isn't home before the gates shut
 -- (or leaves, or falls), the egg goes back. Brought home, the egg keeps its incubation time in the thief's
--- garden.
+-- garden, and remembers where it came from: what hatches is Homesick (IslandService).
+--
+-- The garden's creatures guard it (Logic/Raid.guards): while a thief carries an egg inside, they may bump into
+-- them and make them stumble. Lava ones burn longer, Crystal ones knock them aside, Neon ones make them glow.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -23,7 +26,7 @@ local IslandService = require(script.Parent.IslandService)
 
 local RaidService = {}
 
-type Carry = { owner: Player, slot: number, tier: number, start: number, part: Part }
+type Carry = { owner: Player, slot: number, tier: number, start: number, part: Part, stunnedUntil: number, glow: Highlight? }
 local carrying: { [Player]: Carry } = {}
 local open = false
 local warned = -1
@@ -70,6 +73,9 @@ local function finish(thief: Player, stolen: boolean)
 	end
 	carrying[thief] = nil
 	carry.part:Destroy()
+	if carry.glow then
+		carry.glow:Destroy()
+	end
 	setSpeed(thief, nil)
 	local marks = IslandService.carried[carry.owner]
 	if marks then
@@ -82,11 +88,17 @@ local function finish(thief: Player, stolen: boolean)
 		local egg = ownerData.incubating[key]
 		if egg and egg.start == carry.start and egg.tier == carry.tier then
 			ownerData.incubating[key] = nil
-			-- Into a free incubator of the thief's, keeping its time; or into their bag
+			-- Into a free incubator of the thief's, keeping its time and remembering its home (unless it just got
+			-- back there); or into their bag
+			local home: number? = carry.owner.UserId
+			local homeName: string? = carry.owner.DisplayName
+			if egg.h == thief.UserId then
+				home, homeName = nil, nil
+			end
 			local placed = false
 			for slot = 1, thiefData.incubators do
 				if not thiefData.incubating[tostring(slot)] then
-					thiefData.incubating[tostring(slot)] = { tier = egg.tier, start = egg.start }
+					thiefData.incubating[tostring(slot)] = { tier = egg.tier, start = egg.start, h = home, hn = homeName }
 					placed = true
 					break
 				end
@@ -106,8 +118,22 @@ local function finish(thief: Player, stolen: boolean)
 	IslandService.render(carry.owner)
 end
 
+local function freeIncubator(data: DataService.Data): boolean
+	for slot = 1, data.incubators do
+		if not data.incubating[tostring(slot)] then
+			return true
+		end
+	end
+	return false
+end
+
 local function steal(thief: Player, index: any, slot: any)
 	if not open or type(index) ~= "number" or type(slot) ~= "number" or carrying[thief] or thief:GetAttribute("WildEgg") then
+		return
+	end
+	local thiefData = DataService.get(thief)
+	if not thiefData or not freeIncubator(thiefData) then
+		IslandService.notify(thief, "You need a free incubator at home to steal an egg", "error")
 		return
 	end
 	local owner = IslandService.ownerOf(index)
@@ -150,7 +176,7 @@ local function steal(thief: Player, index: any, slot: any)
 	part.Parent = workspace
 	marks[slot] = true
 	IslandService.carried[owner] = marks
-	carrying[thief] = { owner = owner, slot = slot, tier = egg.tier, start = egg.start, part = part }
+	carrying[thief] = { owner = owner, slot = slot, tier = egg.tier, start = egg.start, part = part, stunnedUntil = 0 }
 	setSpeed(thief, RaidConfig.THIEF_SPEED)
 	IslandService.render(owner)
 	IslandService.notify(thief, "Got it! Run home before the gates shut! 🏃", "success")
@@ -226,6 +252,44 @@ local function follow()
 	end
 end
 
+-- Once a second: the creatures of the garden a thief is in (carrying its egg) may bump into them
+local rng = Random.new()
+local function guard()
+	local now = os.clock()
+	for thief, carry in carrying do
+		local root = rootOf(thief)
+		local index = IslandService.islandOf(carry.owner)
+		local ownerData = DataService.get(carry.owner)
+		if not root or not index or not ownerData or Layout.gardenAt(root.Position) ~= index then
+			continue
+		end
+		local guards = Raid.guards(ownerData.creatures, ownerData.placed)
+		if guards.neon and not carry.glow and thief.Character then
+			local glow = Instance.new("Highlight")
+			glow.FillColor = Color3.fromRGB(43, 230, 150)
+			glow.OutlineColor = Color3.fromRGB(43, 230, 150)
+			glow.Parent = thief.Character
+			carry.glow = glow
+		end
+		if now < carry.stunnedUntil or rng:NextNumber() >= Raid.bumpChance(guards.power) then
+			continue
+		end
+		local stun = if guards.lava then RaidConfig.LAVA_STUN else RaidConfig.STUN
+		carry.stunnedUntil = now + stun
+		setSpeed(thief, RaidConfig.STUN_SPEED)
+		if guards.crystal then
+			local side = root.CFrame.RightVector * (if rng:NextNumber() < 0.5 then -1 else 1)
+			root.AssemblyLinearVelocity += side * RaidConfig.CRYSTAL_PUSH + Vector3.new(0, 15, 0)
+		end
+		Net.event("Bump"):FireAllClients(root.Position, if guards.lava then "Lava" elseif guards.crystal then "Crystal" else "Normal")
+		task.delay(stun, function()
+			if carrying[thief] == carry then
+				setSpeed(thief, RaidConfig.THIEF_SPEED)
+			end
+		end)
+	end
+end
+
 -- The schedule, once a second: the warning, the gates opening and shutting
 local function schedule()
 	local now = os.time()
@@ -272,6 +336,7 @@ function RaidService.init()
 	task.spawn(function()
 		while true do
 			schedule()
+			guard()
 			task.wait(1)
 		end
 	end)

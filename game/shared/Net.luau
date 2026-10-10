@@ -20,10 +20,12 @@ local EVENTS = {
 	"StealFood", -- (garden), at Raid Time
 	"Travel", -- ("home" or "wild")
 	"UpgradeTreadmill",
+	"SendHome", -- (id): a Homesick creature goes back where its egg was stolen from
 	-- server -> client
 	"Data", -- (snapshot)
 	"Notify", -- (text, kind)
 	"Hatched", -- (creature id, species, mutation)
+	"Bump", -- (position, mutation): a garden's creatures bumped into a thief
 }
 
 local FOLDER = "Remotes"
