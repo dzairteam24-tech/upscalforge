@@ -34,6 +34,11 @@ return {
 	CARRY = 0.9, -- a player carrying an egg runs this much of their speed
 	START_SPEED = 16,
 	MAX_SPEED = 70,
+	-- Sprint (Shift, or the button on a phone): faster for a while, then the player has to catch their breath.
+	-- Not while carrying an egg: the chases stay fair.
+	SPRINT = 1.5, -- times the player's speed
+	STAMINA = 5, -- seconds of sprint when full...
+	STAMINA_REFILL = 6, -- ...and seconds to fill up again from empty
 	-- The treadmill in each garden: walking on it trains speed, `gains` a second per level (less the faster the
 	-- player already is), the next level costing `prices`
 	TREADMILL_GAINS = { 0.05, 0.1, 0.2, 0.35, 0.6 },

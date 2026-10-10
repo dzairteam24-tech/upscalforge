@@ -37,6 +37,8 @@ export type Data = {
 	storage: number, -- the barn's level (Config/Island STORAGE)
 	starter: boolean, -- whether they got their free first egg (IslandService)
 	daily: { day: number, progress: { [string]: number }, claimed: boolean }, -- today's tasks (Logic/Daily)
+	seat: string, -- the floating seat they ride ("": none), one of `seats`
+	seats: { [string]: boolean }, -- the floating seats they own (Config/SeatLooks)
 }
 
 local DataService = {}
@@ -95,6 +97,8 @@ local function template(): Data
 		storage = 1,
 		starter = false,
 		daily = { day = -1, progress = {}, claimed = false },
+		seat = "Cloud",
+		seats = { Cloud = true },
 	}
 end
 

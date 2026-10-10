@@ -58,6 +58,17 @@ function HUD.mount(gui: ScreenGui)
 	end)
 	daily.Size = UDim2.fromOffset(110, 48)
 	daily.Position = UDim2.new(0, 12, 0, 198)
+	-- On or off the floating seat (MoveService)
+	local seat = Theme.button(gui, "", Theme.blue, function()
+		local data = Store.data
+		local riding = Players.LocalPlayer:GetAttribute("RideSeat")
+		local on = type(riding) == "string" and riding ~= ""
+		local owned = if data then data.seats else {}
+		local first = if owned.Cloud then "Cloud" else next(owned)
+		Net.event("Seat"):FireServer(if on then "" else (if data and data.seat ~= "" then data.seat else first) or "")
+	end)
+	seat.Size = UDim2.fromOffset(110, 48)
+	seat.Position = UDim2.new(0, 132, 0, 198)
 	local speed = Theme.text(gui, { Size = UDim2.fromOffset(110, 48), Position = UDim2.new(0, 132, 0, 142), TextColor3 = Color3.new(1, 1, 1) })
 	speed.TextStrokeTransparency = 0.3
 
@@ -102,6 +113,8 @@ function HUD.mount(gui: ScreenGui)
 			local ready = Daily.done(today) and not today.claimed
 			daily.Text = if ready then "🎁 Daily!" else "📋 Daily"
 			daily.BackgroundColor3 = if ready then Theme.gold else Theme.blue
+			local riding = Players.LocalPlayer:GetAttribute("RideSeat")
+			seat.Text = if type(riding) == "string" and riding ~= "" then "🚶 Walk" else "☁️ Seat"
 			local playerSpeed = Players.LocalPlayer:GetAttribute("Speed")
 			speed.Text = ("⚡ %.1f"):format(if type(playerSpeed) == "number" then playerSpeed else 16)
 			local fedUntil = Players.LocalPlayer:GetAttribute("FedUntil")
