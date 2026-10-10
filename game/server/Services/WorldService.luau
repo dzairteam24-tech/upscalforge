@@ -282,8 +282,8 @@ local function buildGarden(world: Instance, index: number)
 	local pathLength = pathEnd + half
 	part(model, { Name = "Path", Size = Vector3.new(Layout.PATH_WIDTH, 0.3, pathLength), CFrame = at(0, 0.85, -half + pathLength / 2), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
 
-	-- The hatchery: a wooden deck across the front, the nests either side of the path, each on a stone stand under
-	-- a glass dome (the first one ringed in gold), and a warm lamp each side of the path
+	-- The hatchery: a wooden deck across the front, the nests either side of the path, straw on the deck (the
+	-- first one ringed in gold), and a warm lamp each side of the path
 	local hc = at(hatchery.center.X, 0, hatchery.center.Z)
 	part(model, { Name = "Deck", Size = hatchery.size + Vector3.new(0, 0.6, 0), CFrame = hc * CFrame.new(0, 0.5, 0), Color = WOOD, Material = Enum.Material.WoodPlanks })
 	for _, side in { -1, 1 } do
@@ -303,21 +303,19 @@ local function buildGarden(world: Instance, index: number)
 		local spot = Layout.incubator(index, slot)
 		local first = slot == 1 -- (golden: where the starter egg goes)
 		local base = CFrame.new(spot)
-		part(model, { Name = "NestStand", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.4, nest, nest), CFrame = base * CFrame.new(0, 1.5, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(206, 196, 184), Material = Enum.Material.Slate })
-		part(model, { Name = "NestRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, nest + 0.6, nest + 0.6), CFrame = base * CFrame.new(0, 2.4, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = if first then GOLD else WOOD_DARK, CanCollide = false })
+		part(model, { Name = "NestRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.7, nest + 0.6, nest + 0.6), CFrame = base * CFrame.new(0, 1.05, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = if first then GOLD else WOOD_DARK, CanCollide = false })
 		local pad = part(model, {
 			Name = "Incubator",
 			Shape = Enum.PartType.Cylinder,
 			Size = Vector3.new(0.6, nest - 1, nest - 1),
-			CFrame = base * CFrame.new(0, 2.5, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			CFrame = base * CFrame.new(0, 1.1, 0) * CFrame.Angles(0, 0, math.rad(90)),
 			Color = STRAW,
 			Material = Enum.Material.Fabric,
+			CanCollide = false,
 		})
 		pad:SetAttribute("Island", index)
 		pad:SetAttribute("Slot", slot)
 		pad:AddTag("Incubator")
-		local dome = part(model, { Name = "Dome", Shape = Enum.PartType.Ball, Size = Vector3.one * (nest - 1), CFrame = base * CFrame.new(0, 3.6, 0), Color = rgb(220, 240, 255), Material = Enum.Material.Glass, Transparency = 0.7, CanCollide = false, CanQuery = false })
-		dome:SetAttribute("Slot", slot)
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Use"
 		prompt.ObjectText = "Nest"
@@ -429,6 +427,37 @@ local function buildGarden(world: Instance, index: number)
 	upgrade.Parent = console
 	console:AddTag("TreadmillConsole")
 	console:SetAttribute("Island", index)
+
+	-- The incubators along the back of the pasture: machines (bought one by one) where an egg hatches twice as
+	-- fast as in a nest: a metal base, a glowing ring and a glass dome
+	for k, spot in Layout.MACHINES do
+		local slot = IslandConfig.MACHINE_SLOT + k
+		local base = at(spot.X, 0, spot.Z)
+		part(model, { Name = "MachineBase", Size = Vector3.new(7, 2, 7), CFrame = base * CFrame.new(0, 1, 0), Color = rgb(150, 160, 178), Material = Enum.Material.Metal })
+		part(model, { Name = "MachineRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 6.4, 6.4), CFrame = base * CFrame.new(0, 2.1, 0) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(90, 220, 255), Material = Enum.Material.Neon, CanCollide = false })
+		local pad = part(model, {
+			Name = "Incubator",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.5, nest - 1, nest - 1),
+			CFrame = base * CFrame.new(0, 2.3, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = rgb(235, 240, 250),
+			Material = Enum.Material.SmoothPlastic,
+		})
+		pad:SetAttribute("Island", index)
+		pad:SetAttribute("Slot", slot)
+		pad:SetAttribute("Machine", true)
+		pad:AddTag("Incubator")
+		part(model, { Name = "Dome", Shape = Enum.PartType.Ball, Size = Vector3.one * (nest + 0.5), CFrame = base * CFrame.new(0, 3.4, 0), Color = rgb(200, 235, 255), Material = Enum.Material.Glass, Transparency = 0.75, CanCollide = false, CanQuery = false })
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "Use"
+		prompt.ObjectText = ("Incubator ⚡×%d"):format(IslandConfig.MACHINE_SPEED)
+		prompt.MaxActivationDistance = 10
+		prompt.RequiresLineOfSight = false
+		prompt.Enabled = false -- GardenClient turns on the owner's
+		prompt:SetAttribute("Island", index)
+		prompt:SetAttribute("Slot", slot)
+		prompt.Parent = pad
+	end
 
 	-- The storage barn in the pasture's back corner: where the creatures not in the pasture are kept
 	local barn = at(Layout.BARN.X, 0, Layout.BARN.Z) * CFrame.Angles(0, math.rad(45), 0) -- (its door toward the pasture)

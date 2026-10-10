@@ -96,6 +96,18 @@ test("a Golden Egg and the weather: the better least mutation wins", function()
 	assert(Mutations.byId[WildConfig.GOLDEN_MUTATION], "a real mutation")
 end)
 
+test("an incubator hatches twice as fast as a nest on the ground", function()
+	local machine = IslandConfig.MACHINE_SLOT + 1
+	assert(Hatch.isMachine(machine) and not Hatch.isMachine(16), "incubators past the nests")
+	for tier = 1, 11 do
+		eq(Hatch.secondsIn(tier, 1), Hatch.seconds(tier), "a nest: as usual")
+		eq(Hatch.secondsIn(tier, machine), math.floor(Hatch.seconds(tier) / IslandConfig.MACHINE_SPEED), "an incubator: faster")
+	end
+	for k = 2, #IslandConfig.MACHINE_PRICES do
+		assert(IslandConfig.MACHINE_PRICES[k] > IslandConfig.MACHINE_PRICES[k - 1], "each incubator costs more")
+	end
+end)
+
 test("later eggs incubate longer: a minute for the first, under an hour for the Legendary", function()
 	eq(Hatch.seconds(1), IslandConfig.BASE_INCUBATE)
 	for tier = 2, 11 do

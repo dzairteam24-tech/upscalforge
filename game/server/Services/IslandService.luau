@@ -181,12 +181,19 @@ local function render(index: number, player: Player?, data: Data?)
 		end
 		local egg = if data then data.incubating[tostring(slot)] else nil
 		pad:SetAttribute("Owner", if player then player.UserId else 0)
-		pad:SetAttribute("Open", if data then slot <= data.incubators else false)
-		pad:SetAttribute("Price", if data and slot == data.incubators + 1 then Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS) or 0 else 0)
+		if Hatch.isMachine(slot) then
+			-- An incubator at the back: bought one by one
+			local k = slot - IslandConfig.MACHINE_SLOT
+			pad:SetAttribute("Open", if data then k <= data.machines else false)
+			pad:SetAttribute("Price", if data and k == data.machines + 1 then IslandConfig.MACHINE_PRICES[k] or 0 else 0)
+		else
+			pad:SetAttribute("Open", if data then slot <= data.incubators else false)
+			pad:SetAttribute("Price", if data and slot == data.incubators + 1 then Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS) or 0 else 0)
+		end
 		pad:SetAttribute("Tier", if egg then egg.tier else 0)
 		pad:SetAttribute("Golden", egg ~= nil and egg.m ~= nil)
 		pad:SetAttribute("Start", if egg then egg.start else 0)
-		pad:SetAttribute("Duration", if egg then Hatch.seconds(egg.tier) else 0)
+		pad:SetAttribute("Duration", if egg then Hatch.secondsIn(egg.tier, slot) else 0)
 	end
 	-- The creatures living there
 	drawnLevel[index] = level
@@ -331,7 +338,23 @@ local function useIncubator(player: Player, slot: any)
 		return
 	end
 	local key = tostring(slot)
-	if slot > data.incubators then
+	local machine = Hatch.isMachine(slot)
+	if machine and slot - IslandConfig.MACHINE_SLOT > data.machines then
+		-- Buy the next incubator
+		local k = slot - IslandConfig.MACHINE_SLOT
+		local price = IslandConfig.MACHINE_PRICES[k]
+		if k ~= data.machines + 1 or not price then
+			IslandService.notify(player, "Unlock the incubators in order", "error")
+			return
+		end
+		if data.coins < price then
+			IslandService.notify(player, ("You need 🪙 %s"):format(Format.abbrev(price)), "error")
+			return
+		end
+		data.coins -= price
+		data.machines += 1
+		IslandService.notify(player, ("New incubator! Eggs hatch ×%d faster in it ⚡"):format(IslandConfig.MACHINE_SPEED), "success")
+	elseif not machine and slot > data.incubators then
 		-- Buy the next incubator
 		local price = Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS)
 		if slot ~= data.incubators + 1 or not price then
@@ -348,7 +371,7 @@ local function useIncubator(player: Player, slot: any)
 	else
 		local egg = data.incubating[key]
 		if egg then
-			local done = egg.start + Hatch.seconds(egg.tier)
+			local done = egg.start + Hatch.secondsIn(egg.tier, slot)
 			local now = os.time()
 			if now < done then
 				IslandService.notify(player, ("Still incubating: %s left"):format(Format.time(done - now)))
@@ -395,7 +418,7 @@ local function useIncubator(player: Player, slot: any)
 			end
 			data.incubating[key] = { tier = tier, start = os.time(), m = if golden > 0 then WildConfig.GOLDEN_MUTATION else nil }
 			local egg2 = Hatch.egg(tier)
-			IslandService.notify(player, ("%s%s incubating: %s"):format(if golden > 0 then "✨ Golden " else "", if egg2 then egg2.name else "Egg", Format.time(Hatch.seconds(tier))), "success")
+			IslandService.notify(player, ("%s%s incubating: %s"):format(if golden > 0 then "✨ Golden " else "", if egg2 then egg2.name else "Egg", Format.time(Hatch.secondsIn(tier, slot))), "success")
 		end
 	end
 	IslandService.render(player)

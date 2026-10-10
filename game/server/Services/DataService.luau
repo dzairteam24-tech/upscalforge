@@ -20,7 +20,8 @@ export type Data = {
 	golden: { [string]: number }, -- egg tier -> how many Golden Eggs (from the Wild's golden nests) they hold
 	creatures: { [string]: Creature }, -- creature id -> species and mutation
 	placed: { string }, -- the creatures living on the island (they earn)
-	incubators: number,
+	incubators: number, -- nests on the ground
+	machines: number, -- incubators at the back of the garden (Config/Island MACHINE_PRICES)
 	incubating: { [string]: { tier: number, start: number, m: string? } }, -- incubator slot -> its egg and os.time() it went in (m: a Golden Egg's least mutation)
 	pens: number,
 	shop: { window: number, bought: { [string]: number } }, -- eggs bought in the current restock window
@@ -76,6 +77,7 @@ local function template(): Data
 		creatures = {},
 		placed = {},
 		incubators = IslandConfig.INCUBATORS,
+		machines = 0,
 		incubating = {},
 		pens = IslandConfig.PENS,
 		shop = { window = -1, bought = {} },

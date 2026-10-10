@@ -9,6 +9,11 @@ return {
 	INCUBATOR_PRICES = { -- ...and the 4th, 5th... (up to 16) cost this
 		1000, 5000, 15000, 50000, 150000, 500000, 1500000, 5000000, 15000000, 50000000, 150000000, 500000000, 1500000000,
 	},
+	-- The incubators at the back of the garden: machines bought one by one, an egg in one hatches MACHINE_SPEED
+	-- times faster than in a nest on the ground
+	MACHINE_PRICES = { 25000, 250000, 2500000, 25000000 },
+	MACHINE_SPEED = 2,
+	MACHINE_SLOT = 100, -- (their slots are 101, 102...: the nests' are 1 to 16)
 	PENS = 4, -- creatures living on the island at once...
 	PEN_PRICES = { 1000, 5000, 25000, 100000, 500000, 2500000, 10000000, 50000000 }, -- ...and more cost this
 	BASE_INCUBATE = 60, -- seconds a tier 1 egg incubates (later tiers longer, Logic/Hatch)

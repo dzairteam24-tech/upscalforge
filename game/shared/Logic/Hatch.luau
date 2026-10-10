@@ -17,9 +17,21 @@ function Hatch.egg(tier: number): Eggs.Egg?
 	return byTier[tier]
 end
 
--- Seconds an egg incubates: 1 minute for tier 1, about 30 minutes for tier 10, an hour for the Legendary
+-- Seconds an egg incubates in a nest on the ground: 1 minute for tier 1, about 30 minutes for tier 10, an hour
+-- for the Legendary
 function Hatch.seconds(tier: number): number
 	return math.floor(IslandConfig.BASE_INCUBATE * tier ^ 1.45)
+end
+
+-- Whether a slot is an incubator (a machine at the back of the garden) rather than a nest on the ground
+function Hatch.isMachine(slot: number): boolean
+	return slot > IslandConfig.MACHINE_SLOT
+end
+
+-- Seconds an egg takes in a given slot: half as long in an incubator
+function Hatch.secondsIn(tier: number, slot: number): number
+	local seconds = Hatch.seconds(tier)
+	return if Hatch.isMachine(slot) then math.floor(seconds / IslandConfig.MACHINE_SPEED) else seconds
 end
 
 -- The creature and mutation an egg hatches into. `random` gives numbers in [0, 1); `atLeast` is the weather's

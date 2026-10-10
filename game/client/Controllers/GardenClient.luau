@@ -95,7 +95,7 @@ local function updatePad(pad: BasePart)
 		text = if price > 0 then "🔒 " .. Format.abbrev(price) else ""
 		action = if price > 0 then "Unlock" else ""
 	elseif not egg then
-		text = if mine then "＋ Egg" else ""
+		text = if mine then (if pad:GetAttribute("Machine") then "＋ Egg ⚡×2" else "＋ Egg") else ""
 		action = "Add egg"
 	else
 		local left = start + duration - now()

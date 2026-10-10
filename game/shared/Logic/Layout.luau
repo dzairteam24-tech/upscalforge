@@ -79,6 +79,11 @@ Layout.TROUGH = Vector3.new(-12, 0, PASTURE_FRONT + 5) -- in the pasture, beside
 -- road past the gardens sees its owner training
 Layout.TREADMILL = Vector3.new(Layout.GATE_WIDTH / 2 + 8, 0, -HALF - 4.5)
 Layout.BARN = Vector3.new(HALF - 11.5, 0, HALF - 8.5) -- the storage barn, in the pasture's back corner
+-- The incubators (machines), in a row along the back of the pasture, west of the barn
+Layout.MACHINES = {}
+for k = 1, #IslandConfig.MACHINE_PRICES do
+	table.insert(Layout.MACHINES, Vector3.new(-HALF + 12 + (k - 1) * 11, 0, HALF - 9))
+end
 
 -- What the creatures walk round (a spot in the garden's space and how far from it to keep)
 Layout.OBSTACLES = {
@@ -86,6 +91,9 @@ Layout.OBSTACLES = {
 	{ center = Layout.TROUGH, radius = 4 },
 	{ center = Layout.BARN, radius = 7 },
 }
+for _, spot in Layout.MACHINES do
+	table.insert(Layout.OBSTACLES, { center = spot, radius = 5 })
+end
 function Layout.blocked(inside: Vector3): boolean
 	for _, obstacle in Layout.OBSTACLES do
 		if Vector3.new(inside.X - obstacle.center.X, 0, inside.Z - obstacle.center.Z).Magnitude < obstacle.radius then
@@ -106,6 +114,9 @@ for column = 0, 3 do
 	end
 end
 function Layout.incubator(index: number, slot: number): Vector3
+	if slot > IslandConfig.MACHINE_SLOT then
+		return Layout.garden(index):PointToWorldSpace(Layout.MACHINES[slot - IslandConfig.MACHINE_SLOT])
+	end
 	return Layout.garden(index):PointToWorldSpace(NESTS[slot])
 end
 

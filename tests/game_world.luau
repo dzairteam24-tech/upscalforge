@@ -61,7 +61,7 @@ local maxPads = IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES
 print(("gardens=%d gates=%d incubators=%d shops=%d"):format(gardens, gates, pads, shops))
 assert(gardens == IslandConfig.ISLANDS, "one garden per player")
 assert(gates == IslandConfig.ISLANDS, "a gate per garden")
-assert(pads == IslandConfig.ISLANDS * maxPads, "every incubator in every garden")
+assert(pads == IslandConfig.ISLANDS * (maxPads + #IslandConfig.MACHINE_PRICES), "every nest and incubator in every garden")
 assert(shops == #Layout.SHOP_ANGLES, "a shop on each spot")
 
 -- Every incubator and pen spot lies in its garden; the gardens stand on their arc south of the square, their gates
@@ -96,6 +96,12 @@ for index = 1, IslandConfig.ISLANDS do
 		local p = frame:PointToObjectSpace(Layout.pen(index, slot)) - Layout.POND.center
 		assert(Vector3.new(p.X, 0, p.Z).Magnitude > Layout.POND.radius + 2, "not in the pond")
 		assert(not Layout.blocked(frame:PointToObjectSpace(Layout.pen(index, slot))), "not in the trough or the barn")
+	end
+	for k = 1, #IslandConfig.MACHINE_PRICES do
+		local spot = Layout.incubator(index, IslandConfig.MACHINE_SLOT + k)
+		assert(inside(spot, Layout.PASTURE), ("incubator %d at the back, in the pasture"):format(k))
+		local local_ = frame:PointToObjectSpace(spot)
+		assert((local_ - Layout.BARN).Magnitude > 9 and (local_ - Layout.POND.center).Magnitude > Layout.POND.radius + 5, "clear of the barn and the pond")
 	end
 	assert(inside(frame:PointToWorldSpace(Layout.TROUGH), Layout.PASTURE) and inside(frame:PointToWorldSpace(Layout.BARN), Layout.PASTURE), "the trough and the barn in the pasture")
 	assert(math.abs(Layout.TROUGH.X) - 3 >= Layout.PATH_WIDTH / 2, "the trough off the path")
