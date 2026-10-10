@@ -248,6 +248,11 @@ local function schedule()
 	end
 end
 
+-- Whether a player is running off with someone's egg
+function RaidService.isCarrying(player: Player): boolean
+	return carrying[player] ~= nil
+end
+
 function RaidService.init()
 	Net.event("StealEgg").OnServerEvent:Connect(steal)
 	Net.event("StealFood").OnServerEvent:Connect(stealFood)

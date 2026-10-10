@@ -21,6 +21,8 @@ local Raid = R(Shared.Logic.Raid)
 local RaidConfig = R(Shared.Config.Raid)
 local FoodConfig = R(Shared.Config.Food)
 local Food = R(Shared.Logic.Food)
+local HuntConfig = R(Shared.Config.Hunt)
+local Hunt = R(Shared.Logic.Hunt)
 
 local passed, failed = 0, 0
 local function test(name: string, fn: () -> ())
@@ -174,6 +176,31 @@ test("food always pays, adds up to a cap, and counts while away", function()
 	eq(Food.offlineBonus(10, 1000, 900, 5000), 0, "not fed")
 	eq(Food.offlineBonus(10, 1000, 1e9, 1000 + 100), 10 * (FoodConfig.BOOST - 1) * 100, "only while away")
 	eq(#IslandConfig.STORAGE_PRICES, #IslandConfig.STORAGE - 1, "a price per bigger barn")
+end)
+
+test("the catching game: the marker sweeps, the green catches, nets help, zones open in order", function()
+	eq(Hunt.marker(0, 1), 0, "starts at the left")
+	eq(Hunt.marker(0.5, 1), 0.5, "goes right")
+	eq(Hunt.marker(1.5, 1), 0.5, "comes back")
+	eq(Hunt.marker(-3, 1), 0, "not before it starts")
+	assert(Hunt.hit(0.5, 1, 0.5, 0.2) and not Hunt.hit(0.1, 1, 0.5, 0.2), "in the green or not")
+	local basic, gold = HuntConfig.netById.Basic, HuntConfig.netById.Gold
+	local wBasic, sCommon = Hunt.bar("Common", basic)
+	local wGold = Hunt.bar("Common", gold)
+	local wEpic, sEpic = Hunt.bar("Epic", basic)
+	assert(wGold > wBasic and wEpic < wBasic and sEpic > sCommon, "rarer is harder, nets help")
+	assert(wGold <= HuntConfig.MAX_WIDTH, "never the whole bar")
+	eq(Hunt.netPrice(basic, 5), 0, "the basic net is free")
+	assert(Hunt.netPrice(gold, 8) > Hunt.netPrice(gold, 2), "nets cost more later")
+	local previous = 0
+	for _, zone in HuntConfig.ZONES do
+		assert(zone.need > previous and Hatch.egg(zone.need), "zones open in order")
+		previous = zone.need
+		for _, tier in zone.tiers do
+			assert(Hatch.egg(tier), "a zone's creatures exist")
+		end
+	end
+	assert(Hunt.unlocked(HuntConfig.ZONES[1], 1), "the first zone is open from the start")
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))

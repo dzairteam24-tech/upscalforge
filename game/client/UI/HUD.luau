@@ -9,6 +9,7 @@ local Mutations = require(Shared.Config.Mutations)
 local Format = require(Shared.Logic.Format)
 local Raid = require(Shared.Logic.Raid)
 local Weather = require(Shared.Logic.Weather)
+local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
 local Theme = require(script.Parent.Theme)
@@ -35,6 +36,13 @@ function HUD.mount(gui: ScreenGui)
 	end)
 	bag.Size = UDim2.fromOffset(110, 48)
 	bag.Position = UDim2.new(0, 12, 0, 86)
+
+	-- Home (from the Wild, or anywhere)
+	local home = Theme.button(gui, "🏠 Home", Theme.green, function()
+		Net.event("Travel"):FireServer("home")
+	end)
+	home.Size = UDim2.fromOffset(110, 48)
+	home.Position = UDim2.new(0, 132, 0, 86)
 
 	-- The weather
 	local banner = Instance.new("Frame")

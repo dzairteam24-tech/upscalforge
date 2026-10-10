@@ -8,9 +8,11 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local HuntConfig = require(Shared.Config.Hunt)
 local IslandConfig = require(Shared.Config.Island)
 local RaidConfig = require(Shared.Config.Raid)
 local TownLooks = require(Shared.Config.TownLooks)
+local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
 
 local WorldService = {}
@@ -75,7 +77,7 @@ local SHOPS = {
 	{ name = "Trading", art = "Trade", ui = "Soon", color = rgb(90, 150, 240) },
 	{ name = "Food Shop", art = "Potion", ui = "Food", color = rgb(160, 110, 230) },
 	{ name = "Lucky Spin", art = "Spin", ui = "Soon", color = rgb(255, 150, 80) },
-	{ name = "Trips", art = "Trips", ui = "Soon", color = rgb(80, 190, 220) },
+	{ name = "Trips", art = "Trips", ui = "Trips", color = rgb(80, 190, 220) },
 	{ name = "Arcade", art = "Arcade", ui = "Soon", color = rgb(240, 110, 170) },
 }
 WorldService.SHOPS = SHOPS
@@ -421,6 +423,49 @@ local function buildStreet(world: Instance)
 	end
 end
 
+-- The Wild (Config/Hunt, Layout.WILD): a floating meadow far south of the square, cut by two paths into four
+-- zones round the hub where players arrive; on the hub, the way home. Each zone has its sign (and what opens it).
+local function buildWild(world: Instance)
+	local wild = Instance.new("Model")
+	wild.Name = "Wild"
+	local layout = Layout.WILD
+	local center = layout.center
+	local span = 2 * layout.offset + layout.zone + 12
+	part(wild, { Name = "WildGround", Size = Vector3.new(span, 4, span), Position = center + Vector3.new(0, -2.1, 0), Color = rgb(150, 205, 120), Material = Enum.Material.Grass })
+	for i, zone in HuntConfig.ZONES do
+		local middle = Layout.wildZone(i)
+		part(wild, { Name = "ZoneGround", Size = Vector3.new(layout.zone, 0.3, layout.zone), Position = middle + Vector3.new(0, 0.15, 0), Color = zone.color, Material = Enum.Material.Grass })
+		local toward = (center - middle).Unit
+		local sign = part(wild, { Name = "ZoneSign", Size = Vector3.new(0.8, 5, 0.8), Position = middle + toward * (layout.zone / 2 - 6) + Vector3.new(0, 2.5, 0), Color = rgb(140, 96, 58) })
+		local egg = Hatch.egg(zone.need)
+		local need = if zone.need > 1 and egg then ("\n🔒 Hatch a %s creature first"):format(egg.name) else ""
+		label(sign, ("🌿 %s%s"):format(zone.name, need), 16, 4, Vector3.new(0, 5, 0))
+	end
+	for _, along in { Vector3.new(1, 0, 0), Vector3.new(0, 0, 1) } do
+		local across = Vector3.new(along.Z, 0, along.X)
+		part(wild, { Name = "WildPath", Size = along * span + across * 8 + Vector3.new(0, 0.32, 0), Position = center + Vector3.new(0, 0.16, 0), Color = PAVING, Material = Enum.Material.Pavement })
+	end
+	disc(wild, "Hub", center + Vector3.new(0, 0.2, 0), layout.hub, 0.4, rgb(250, 238, 214), Enum.Material.Slate)
+	local portal = part(wild, { Name = "HomePortal", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, 6, 6), CFrame = CFrame.new(center + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(120, 200, 255), Material = Enum.Material.Neon, CanCollide = false })
+	label(portal, "🏠 Home", 8, 2, Vector3.new(0, 5, 0))
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Go home"
+	prompt.ObjectText = "Portal"
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt:SetAttribute("Travel", "home")
+	prompt.Parent = portal
+	-- Invisible walls round it all
+	for _, side in { -1, 1 } do
+		part(wild, { Name = "Border", Size = Vector3.new(span, 14, 1), Position = center + Vector3.new(0, 7, side * span / 2), Transparency = 1 })
+		part(wild, { Name = "Border", Size = Vector3.new(1, 14, span), Position = center + Vector3.new(side * span / 2, 7, 0), Transparency = 1 })
+	end
+	local creatures = Instance.new("Folder")
+	creatures.Name = "WildCreatures"
+	creatures.Parent = wild
+	wild.Parent = world
+end
+
 function WorldService.island(index: number): Instance?
 	local world = workspace:FindFirstChild("World")
 	return world and world:FindFirstChild("Island_" .. index)
@@ -439,6 +484,7 @@ function WorldService.build(): Folder
 	for index = 1, IslandConfig.ISLANDS do
 		buildGarden(world, index)
 	end
+	buildWild(world)
 	world.Parent = workspace
 	return world
 end

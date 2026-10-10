@@ -129,3 +129,14 @@ local built = PetModel.build({ s = "Kitty", v = "Golden", z = "Normal" })
 assert(#built.parts > 0 and built.height > 0, "a creature is drawn")
 
 print("world test passed")
+
+-- The Wild: four zones round the hub, far from the town and the gardens
+for i = 1, 4 do
+	local middle = Layout.wildZone(i)
+	assert(Layout.wildZoneAt(middle) == i, "a zone is where it says")
+	assert(Layout.gardenAt(middle) == nil, "the wild isn't in a garden")
+	assert(middle.Z - Layout.WILD.zone / 2 > Layout.CENTER.Z + Layout.SQUARE_RADIUS + 40, "south of the square")
+end
+assert(Layout.wildZoneAt(Layout.WILD.center) == nil, "the hub isn't in a zone")
+assert(world:FindFirstChild("Wild") and world.Wild:FindFirstChild("WildCreatures"), "the wild is built")
+print("wild test passed")

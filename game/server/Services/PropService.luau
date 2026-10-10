@@ -5,6 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local HuntConfig = require(Shared.Config.Hunt)
 local IslandConfig = require(Shared.Config.Island)
 local PropLooks = require(Shared.Config.PropLooks)
 local Layout = require(Shared.Logic.Layout)
@@ -86,8 +87,41 @@ local function spots(): { Vector3 }
 	}
 end
 
+-- The Wild's zones (Config/Hunt): props of each zone's world scattered over it
+local WILD_PROPS = 12
+local function decorateWild(sources: { [string]: BasePart })
+	local world = workspace:FindFirstChild("World")
+	local wild = world and world:FindFirstChild("Wild")
+	if not wild or wild:FindFirstChild("Props") then
+		return
+	end
+	local folder = Instance.new("Model")
+	folder.Name = "Props"
+	for i, zone in HuntConfig.ZONES do
+		local kit: { Entry } = {}
+		for _, look in PropLooks do
+			local source = sources[look.name]
+			if source and table.find(look.zones, zone.theme) then
+				table.insert(kit, { look = look, source = source })
+			end
+		end
+		if #kit == 0 then
+			continue
+		end
+		local rng = Random.new(i * 977)
+		local half = Layout.WILD.zone / 2 - 4
+		for _ = 1, WILD_PROPS do
+			local at = Layout.wildZone(i) + Vector3.new(rng:NextNumber(-half, half), 0, rng:NextNumber(-half, half))
+			local yaw = CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+			spawnFrom(pick(kit, rng), CFrame.new(at) * yaw, rng:NextNumber(0.5, 0.8)).Parent = folder
+		end
+	end
+	folder.Parent = wild
+end
+
 function PropService.decorate()
 	local sources = findSources()
+	decorateWild(sources)
 	for index = 1, IslandConfig.ISLANDS do
 		local island = WorldService.island(index)
 		if not island or island:FindFirstChild("Props") then

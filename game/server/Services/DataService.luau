@@ -23,7 +23,8 @@ export type Data = {
 	shop: { window: number, bought: { [string]: number } }, -- eggs bought in the current restock window
 	nextId: number,
 	lastSeen: number,
-	stats: { hatched: number, earned: number },
+	stats: { hatched: number, earned: number, caught: number },
+	nets: { [string]: number }, -- net id -> how many the player holds (the basic net is free)
 	firstPlayed: number, -- os.time() of their first visit (a new player's garden can't be robbed at first)
 	food: { [string]: number }, -- food id -> how many the player holds (in their trough)
 	fedUntil: number, -- os.time() the creatures are fed until (Config/Food)
@@ -68,7 +69,8 @@ local function template(): Data
 		shop = { window = -1, bought = {} },
 		nextId = 1,
 		lastSeen = 0,
-		stats = { hatched = 0, earned = 0 },
+		stats = { hatched = 0, earned = 0, caught = 0 },
+		nets = {},
 		firstPlayed = 0,
 		food = {},
 		fedUntil = 0,

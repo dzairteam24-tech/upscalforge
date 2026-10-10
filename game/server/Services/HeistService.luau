@@ -40,6 +40,11 @@ local function rootOf(player: Player): BasePart?
 	return character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 end
 
+-- Whether a player is carrying the Heist Egg
+function HeistService.isCarrier(player: Player): boolean
+	return carrier == player
+end
+
 local function setCarrier(player: Player?)
 	carrier = player
 	guardUntil = os.clock() + HeistConfig.STEAL_GUARD

@@ -215,12 +215,20 @@ local function assign(player: Player, data: Data)
 	task.spawn(function()
 		local character = player.Character or player.CharacterAdded:Wait()
 		local root = character:WaitForChild("HumanoidRootPart", 10) :: BasePart?
-		local index = islandOf[player]
-		if root and index then
-			local frame = Layout.garden(index)
-			root.CFrame = frame * CFrame.new(0, 4, -10) * CFrame.Angles(0, math.pi, 0)
+		if root then
+			IslandService.sendHome(player)
 		end
 	end)
+end
+
+-- Puts a player just inside their garden's gate
+function IslandService.sendHome(player: Player)
+	local index = islandOf[player]
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if root and index then
+		root.CFrame = Layout.home(index) * CFrame.new(0, 4, 0)
+		root.AssemblyLinearVelocity = Vector3.zero
+	end
 end
 
 local function release(player: Player)

@@ -124,6 +124,33 @@ function Layout.pen(index: number, slot: number): Vector3
 	return Layout.garden(index):PointToWorldSpace(inside)
 end
 
+-- Where a player comes home to: just inside their garden's gate, facing in
+function Layout.home(index: number): CFrame
+	return Layout.garden(index) * CFrame.new(0, 0, -HALF + 4) * CFrame.Angles(0, math.pi, 0)
+end
+
+-- The Wild (Config/Hunt), far south of the square: four zones in a square round a small hub where players
+-- arrive, with the way home
+Layout.WILD = { center = Vector3.new(0, 0, 340), zone = 64, offset = 38, hub = 7 }
+
+-- A wild zone's middle (1..4)
+function Layout.wildZone(i: number): Vector3
+	local x = if i % 2 == 1 then -1 else 1
+	local z = if i <= 2 then -1 else 1
+	return Layout.WILD.center + Vector3.new(x, 0, z) * Layout.WILD.offset
+end
+
+-- Which wild zone a position is in, if any
+function Layout.wildZoneAt(position: Vector3): number?
+	for i = 1, 4 do
+		local d = position - Layout.wildZone(i)
+		if math.abs(d.X) <= Layout.WILD.zone / 2 and math.abs(d.Z) <= Layout.WILD.zone / 2 then
+			return i
+		end
+	end
+	return nil
+end
+
 -- Which garden a position is in, if any
 function Layout.gardenAt(position: Vector3): number?
 	for index = 1, IslandConfig.ISLANDS do
