@@ -2,7 +2,8 @@
 -- The treadmills: their belts move (slats sliding along them, drawn on this screen only), and on their own
 -- treadmill the player runs by themselves: their character turns to face along it and plays its run, staying
 -- where it is, for as long as they don't steer themselves; steering walks them off. WildService counts the
--- seconds they spend on it.
+-- seconds they spend on it. Nobody else can step onto someone's treadmill: on each screen, the others' carry an
+-- invisible block.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -39,8 +40,8 @@ local function steering(): Vector3
 	return Vector3.zero
 end
 
--- Each belt's slats
-type Belt = { belt: BasePart, slats: { Part }, offset: number }
+-- Each belt's slats, and the block keeping this player off it when it isn't theirs
+type Belt = { belt: BasePart, slats: { Part }, offset: number, block: Part? }
 local belts: { [BasePart]: Belt } = {}
 
 local function addBelt(instance: Instance)
@@ -63,12 +64,35 @@ local function addBelt(instance: Instance)
 		slat.Parent = belt
 		table.insert(slats, slat)
 	end
-	belts[belt] = { belt = belt, slats = slats, offset = 0 }
+	belts[belt] = { belt = belt, slats = slats, offset = 0, block = nil }
 	belt.AncestryChanged:Connect(function()
 		if not belt.Parent then
 			belts[belt] = nil
 		end
 	end)
+end
+
+-- Blocks every treadmill but the player's own (their garden can change when they join or rejoin)
+local function block()
+	local mine = LOCAL:GetAttribute("Island")
+	for belt, entry in belts do
+		local theirs = belt:GetAttribute("Island") == mine
+		if theirs and entry.block then
+			entry.block:Destroy()
+			entry.block = nil
+		elseif not theirs and not entry.block then
+			local wall = Instance.new("Part")
+			wall.Name = "NotYours"
+			wall.Anchored = true
+			wall.Transparency = 1
+			wall.CanQuery = false
+			wall.CanTouch = false
+			wall.Size = Vector3.new(belt.Size.X + 1, 7, belt.Size.Z + 1)
+			wall.CFrame = belt.CFrame * CFrame.new(0, 3.5, 0)
+			wall.Parent = belt
+			entry.block = wall
+		end
+	end
 end
 
 -- The slats slide back along the belt (away from the console), as a real belt under a runner
@@ -153,7 +177,12 @@ function TreadmillClient.init()
 	for _, belt in CollectionService:GetTagged("TreadmillBelt") do
 		addBelt(belt)
 	end
-	CollectionService:GetInstanceAddedSignal("TreadmillBelt"):Connect(addBelt)
+	CollectionService:GetInstanceAddedSignal("TreadmillBelt"):Connect(function(belt)
+		addBelt(belt)
+		block()
+	end)
+	block()
+	LOCAL:GetAttributeChangedSignal("Island"):Connect(block)
 	RunService.RenderStepped:Connect(moveBelts)
 	-- (after the controls have set the character's movement for this frame)
 	RunService:BindToRenderStep("Treadmill", Enum.RenderPriority.Character.Value + 1, step)

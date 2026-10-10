@@ -491,7 +491,7 @@ local function buildGrounds(world: Instance)
 	local north = -Layout.WILD_GATE_DISTANCE
 	local growth = IslandConfig.PASTURE_GROWTH
 	local south = Layout.GARDEN_RADIUS + Layout.GARDEN_SIZE / 2 + growth[#growth] + 30
-	local half = Layout.GARDEN_RADIUS + 60
+	local half = Layout.GARDEN_RADIUS + 100
 	local middle = (north + south) / 2
 	part(world, {
 		Name = "Ground",
