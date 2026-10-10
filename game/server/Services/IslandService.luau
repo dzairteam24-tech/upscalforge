@@ -137,6 +137,8 @@ local function render(index: number, player: Player?, data: Data?)
 					p.CanQuery = false
 				end
 				built.model:SetAttribute("Earn", Earn.rate(creature))
+				built.model:SetAttribute("Island", index)
+				built.model:SetAttribute("Height", built.height)
 				built.model:SetAttribute("Mutation", creature.m)
 				built.model:AddTag("IslandCreature")
 				built.model.Parent = folder

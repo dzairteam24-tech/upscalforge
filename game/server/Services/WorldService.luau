@@ -224,63 +224,127 @@ end
 
 local LASER = rgb(255, 70, 90)
 
+local WOOD = rgb(176, 124, 78)
+local WOOD_DARK = rgb(140, 96, 58)
+local STRAW = rgb(236, 202, 120)
+local GOLD = rgb(255, 196, 64)
+
 local function buildGarden(world: Instance, index: number)
 	local frame = Layout.garden(index)
+	local function at(x: number, y: number, z: number): CFrame
+		return frame * CFrame.new(x, y, z)
+	end
 	local model = Instance.new("Model")
 	model.Name = "Island_" .. index
 	model:SetAttribute("Island", index)
 	local size = Layout.GARDEN_SIZE
 	local half = size / 2
-	part(model, { Name = "Ground", Size = Vector3.new(size, 0.4, size), CFrame = frame * CFrame.new(0, 0.2, 0), Color = GRASS, Material = Enum.Material.Grass })
-	-- The fence: the back and both sides, and the front either side of the gate
-	local h = Layout.FENCE_HEIGHT
-	local function fence(at: CFrame, length: number)
-		part(model, { Name = "Fence", Size = Vector3.new(length, h, 1.2), CFrame = at * CFrame.new(0, h / 2, 0), Color = rgb(250, 240, 222) })
-		part(model, { Name = "FenceCap", Size = Vector3.new(length + 0.4, 0.8, 1.8), CFrame = at * CFrame.new(0, h + 0.4, 0), Color = rgb(255, 205, 90), CanCollide = false })
+	part(model, { Name = "Ground", Size = Vector3.new(size, 0.4, size), CFrame = at(0, 0.2, 0), Color = GRASS, Material = Enum.Material.Grass })
+
+	-- A low picket fence all round (open at the gate), with an invisible wall behind it nobody can jump
+	local function fence(cf: CFrame, length: number)
+		for _, y in { 1.2, 2.6 } do
+			part(model, { Name = "Rail", Size = Vector3.new(length, 0.35, 0.3), CFrame = cf * CFrame.new(0, y, 0), Color = WOOD, CanCollide = false })
+		end
+		local posts = math.max(1, math.floor(length / 2.2))
+		for i = 0, posts do
+			local x = -length / 2 + i * length / posts
+			part(model, { Name = "Picket", Size = Vector3.new(0.5, 3.4, 0.4), CFrame = cf * CFrame.new(x, 1.7, 0), Color = rgb(250, 240, 222), CanCollide = false })
+		end
+		part(model, { Name = "Wall", Size = Vector3.new(length, Layout.FENCE_HEIGHT, 0.6), CFrame = cf * CFrame.new(0, Layout.FENCE_HEIGHT / 2, 0), Transparency = 1 })
 	end
-	fence(frame * CFrame.new(0, 0, half), size)
+	fence(at(0, 0, half), size)
 	for _, side in { -1, 1 } do
-		fence(frame * CFrame.new(side * half, 0, 0) * CFrame.Angles(0, math.rad(90), 0), size)
+		fence(at(side * half, 0, 0) * CFrame.Angles(0, math.rad(90), 0), size)
 		local piece = (size - Layout.GATE_WIDTH) / 2
-		fence(frame * CFrame.new(side * (Layout.GATE_WIDTH / 2 + piece / 2), 0, -half), piece)
+		fence(at(side * (Layout.GATE_WIDTH / 2 + piece / 2), 0, -half), piece)
 	end
-	-- The laser gate: shut for everyone but the owner, open for all at Raid Time (RaidService, GardenClient)
+
+	-- The laser gate between two posts: shut for everyone but the owner, open for all at Raid Time
+	for _, side in { -1, 1 } do
+		part(model, { Name = "GatePost", Size = Vector3.new(1.4, 7, 1.4), CFrame = at(side * (Layout.GATE_WIDTH / 2 + 0.2), 3.5, -half), Color = WOOD_DARK })
+		part(model, { Name = "GateLight", Shape = Enum.PartType.Ball, Size = Vector3.one * 1.4, CFrame = at(side * (Layout.GATE_WIDTH / 2 + 0.2), 7.4, -half), Color = LASER, Material = Enum.Material.Neon, CanCollide = false })
+	end
 	local gate = part(model, {
 		Name = "Gate",
-		Size = Vector3.new(Layout.GATE_WIDTH, h, 0.6),
-		CFrame = Layout.gate(index) * CFrame.new(0, h / 2, 0),
+		Size = Vector3.new(Layout.GATE_WIDTH, Layout.FENCE_HEIGHT, 0.4),
+		CFrame = Layout.gate(index) * CFrame.new(0, Layout.FENCE_HEIGHT / 2, 0),
 		Color = LASER,
 		Material = Enum.Material.Neon,
 		Transparency = 0.45,
 	})
 	gate:SetAttribute("Island", index)
 	gate:AddTag("Gate")
-	-- The owner's sign over the gate
-	local board = part(model, { Name = "OwnerSign", Size = Vector3.one, CFrame = Layout.gate(index) * CFrame.new(0, h + 5, 0), Transparency = 1, CanCollide = false, CanQuery = false })
+
+	-- The path from the gate up the middle to the nest house
+	local pathLength = half + Layout.HOUSE.Z - 4
+	part(model, { Name = "Path", Size = Vector3.new(Layout.PATH_WIDTH, 0.3, pathLength), CFrame = at(0, 0.45, -half + pathLength / 2), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
+
+	-- The nest house at the back, with its owner's name
+	local house = Layout.HOUSE
+	part(model, { Name = "House", Size = Vector3.new(10, 6, 6), CFrame = at(house.X, 3.4, house.Z), Color = rgb(250, 238, 214) })
+	part(model, { Name = "HouseRoof", Size = Vector3.new(11.5, 1.6, 7.5), CFrame = at(house.X, 7.2, house.Z), Color = GOLD })
+	part(model, { Name = "HouseDoor", Size = Vector3.new(2.4, 3.8, 0.3), CFrame = at(house.X, 2.3, house.Z - 3.05), Color = WOOD_DARK })
+	local board = part(model, { Name = "OwnerSign", Size = Vector3.one, CFrame = at(house.X, 11.5, house.Z), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(board, "Free garden", 16, 3, Vector3.zero)
-	-- The incubators
+
+	-- The hatchery: a wooden deck with the nests, two by two
+	local hatchery = Layout.HATCHERY
+	part(model, { Name = "Deck", Size = hatchery.size + Vector3.new(0, 0.6, 0), CFrame = at(hatchery.center.X, 0.5, hatchery.center.Z), Color = WOOD, Material = Enum.Material.WoodPlanks })
+	local deckSign = part(model, { Name = "DeckSign", Size = Vector3.one, CFrame = at(hatchery.center.X, 5, hatchery.center.Z - hatchery.size.Z / 2 + 1), Transparency = 1, CanCollide = false, CanQuery = false })
+	label(deckSign, "🥚 Hatchery", 10, 2, Vector3.zero)
 	for slot = 1, IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES do
-		local at = Layout.incubator(index, slot)
+		local spot = Layout.incubator(index, slot)
+		local safe = slot == RaidConfig.SAFE_SLOT
+		-- The straw nest in a ring (gold for the safe one)
+		part(model, {
+			Name = "NestRing",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.8, 5.2, 5.2),
+			CFrame = CFrame.new(spot + Vector3.new(0, 1.1, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = if safe then GOLD else WOOD_DARK,
+			CanCollide = false,
+		})
 		local pad = part(model, {
 			Name = "Incubator",
 			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(1.2, 5.5, 5.5),
-			CFrame = CFrame.new(at + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-			Color = if slot == RaidConfig.SAFE_SLOT then rgb(255, 225, 140) else rgb(250, 244, 232),
+			Size = Vector3.new(1, 4.4, 4.4),
+			CFrame = CFrame.new(spot + Vector3.new(0, 1.2, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = STRAW,
+			Material = Enum.Material.Fabric,
 		})
 		pad:SetAttribute("Island", index)
 		pad:SetAttribute("Slot", slot)
 		pad:AddTag("Incubator")
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Use"
-		prompt.ObjectText = if slot == RaidConfig.SAFE_SLOT then "Safe incubator" else "Incubator"
-		prompt.MaxActivationDistance = 8
+		prompt.ObjectText = if safe then "Safe nest" else "Nest"
+		prompt.MaxActivationDistance = 7
 		prompt.RequiresLineOfSight = false
 		prompt.Enabled = false -- GardenClient turns on the owner's (and a thief's, at Raid Time)
 		prompt:SetAttribute("Island", index)
 		prompt:SetAttribute("Slot", slot)
 		prompt.Parent = pad
 	end
+
+	-- The pasture: a meadow behind a low hedge (open toward the path) where the creatures roam
+	local pasture = Layout.PASTURE
+	part(model, { Name = "Pasture", Size = pasture.size + Vector3.new(0, 0.3, 0), CFrame = at(pasture.center.X, 0.45, pasture.center.Z), Color = rgb(108, 186, 92), Material = Enum.Material.Grass, CanCollide = false })
+	local function hedge(cf: CFrame, length: number)
+		part(model, { Name = "Hedge", Size = Vector3.new(length, 1.6, 1.2), CFrame = cf * CFrame.new(0, 0.8, 0), Color = rgb(80, 150, 70), Material = Enum.Material.Grass, CanCollide = false })
+	end
+	local px, pz = pasture.center.X, pasture.center.Z
+	local hx, hz = pasture.size.X / 2, pasture.size.Z / 2
+	hedge(at(px, 0, pz + hz), pasture.size.X)
+	hedge(at(px, 0, pz - hz), pasture.size.X)
+	hedge(at(px - hx, 0, pz) * CFrame.Angles(0, math.rad(90), 0), pasture.size.Z)
+	-- (the side along the path, with an opening in the middle)
+	for _, s in { -1, 1 } do
+		hedge(at(px + hx, 0, pz + s * (hz / 2 + 2)) * CFrame.Angles(0, math.rad(90), 0), hz - 4)
+	end
+	local pastureSign = part(model, { Name = "PastureSign", Size = Vector3.one, CFrame = at(px, 5, pz - hz + 1), Transparency = 1, CanCollide = false, CanQuery = false })
+	label(pastureSign, "🌷 Pasture", 10, 2, Vector3.zero)
+
 	local creatures = Instance.new("Model")
 	creatures.Name = "Creatures"
 	creatures.Parent = model

@@ -1,18 +1,20 @@
 --!strict
--- The gardens on this screen: the eggs in the incubators with their timers, the owner's incubator prompts (and
--- a thief's, at Raid Time), the laser gates (always open for their owner), what each creature earns over its
--- head, the Heist Egg's timer, and what the prompts in the world open.
+-- The gardens on this screen: the eggs in the nests with their timers, the owner's nest prompts (and a
+-- thief's, at Raid Time), the laser gates (always open for their owner), the creatures roaming the pastures
+-- with their coins popping, the Heist Egg's timer, and what the prompts in the world open.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local RaidConfig = require(Shared.Config.Raid)
 local Format = require(Shared.Logic.Format)
 local Raid = require(Shared.Logic.Raid)
 local Hatch = require(Shared.Logic.Hatch)
+local Layout = require(Shared.Logic.Layout)
 local Weather = require(Shared.Logic.Weather)
 local Net = require(Shared.Net)
 
@@ -134,25 +136,90 @@ local function updateGate(gate: BasePart)
 	gate.Transparency = if isOpen then 0.9 elseif mine then 0.75 else 0.45
 end
 
--- What each creature on an island earns, over its head
-local creatureTags: { [Instance]: boolean } = {}
-local function tagCreature(model: Instance)
-	if creatureTags[model] or not model:IsA("Model") then
+-- The creatures roam their garden's pasture: each walks to a random spot, rests a moment, and walks on, hopping
+-- as it goes; every few seconds the coins it earned pop over its head. (Moved on this screen only.)
+local COIN_EVERY = 3
+type Roamer = { model: Model, base: CFrame, y: number, at: Vector3, target: Vector3, rest: number, phase: number, nextCoin: number }
+local roamers: { [Model]: Roamer } = {}
+
+local function pastureSpot(index: number): Vector3
+	local center, size = Layout.pasture(index)
+	local x = (math.random() - 0.5) * (size.X - 3)
+	local z = (math.random() - 0.5) * (size.Z - 3)
+	return center:PointToWorldSpace(Vector3.new(x, 0, z))
+end
+
+local function coinPop(model: Model, amount: number)
+	local head = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+	if not head then
 		return
 	end
-	creatureTags[model] = true
-	local earn = number(model, "Earn")
-	local head = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
-	if head then
-		local text = billboard(head, 5, 1.1, Vector3.new(0, 3.2, 0))
-		text.Text = "🪙 " .. Format.abbrev(earn) .. "/s"
-		text.TextColor3 = Color3.fromRGB(255, 225, 120)
+	local text = billboard(head, 4, 1, Vector3.new(0, number(model, "Height") + 1, 0))
+	local gui = text.Parent :: BillboardGui
+	text.Text = "+" .. Format.abbrev(amount)
+	text.TextColor3 = Color3.fromRGB(255, 215, 80)
+	task.spawn(function()
+		for i = 1, 20 do
+			gui.StudsOffsetWorldSpace = Vector3.new(0, number(model, "Height") + 1 + i * 0.1, 0)
+			text.TextTransparency = math.max(0, (i - 12) / 8)
+			text.TextStrokeTransparency = math.max(0.3, (i - 12) / 8)
+			task.wait(0.05)
+		end
+		gui:Destroy()
+	end)
+end
+
+local function addRoamer(model: Instance)
+	if not model:IsA("Model") or roamers[model] then
+		return
 	end
+	local index = number(model, "Island")
+	if index == 0 then
+		return
+	end
+	local pivot = model:GetPivot()
+	roamers[model] = {
+		model = model,
+		base = pivot.Rotation,
+		y = pivot.Position.Y,
+		at = pivot.Position,
+		target = pastureSpot(index),
+		rest = math.random() * 2,
+		phase = math.random() * 10,
+		nextCoin = os.clock() + math.random() * COIN_EVERY,
+	}
 	model.AncestryChanged:Connect(function()
 		if not model.Parent then
-			creatureTags[model] = nil
+			roamers[model] = nil
 		end
 	end)
+end
+
+local function roam(dt: number)
+	local clock = os.clock()
+	for model, r in roamers do
+		local flat = Vector3.new(r.target.X, r.y, r.target.Z) - r.at
+		local walking = false
+		if r.rest > 0 then
+			r.rest -= dt
+		elseif flat.Magnitude < 0.5 then
+			r.rest = 1 + math.random() * 3
+			r.target = pastureSpot(number(model, "Island"))
+		else
+			r.at += flat.Unit * math.min(flat.Magnitude, 4 * dt)
+			walking = true
+		end
+		local hop = if walking then math.abs(math.sin(clock * 9 + r.phase)) * 0.5 else 0
+		local facing = if flat.Magnitude > 0.1 then CFrame.Angles(0, math.atan2(-flat.X, -flat.Z), 0) else r.base
+		if walking then
+			r.base = facing
+		end
+		model:PivotTo(CFrame.new(r.at + Vector3.new(0, hop, 0)) * r.base)
+		if clock >= r.nextCoin then
+			r.nextCoin = clock + COIN_EVERY
+			coinPop(model, number(model, "Earn") * COIN_EVERY)
+		end
+	end
 end
 
 -- The Heist Egg's timer, and no "Steal" prompt for the one carrying it
@@ -212,9 +279,10 @@ function GardenClient.init()
 		end
 	end)
 	for _, model in CollectionService:GetTagged("IslandCreature") do
-		tagCreature(model)
+		addRoamer(model)
 	end
-	CollectionService:GetInstanceAddedSignal("IslandCreature"):Connect(tagCreature)
+	CollectionService:GetInstanceAddedSignal("IslandCreature"):Connect(addRoamer)
+	RunService.RenderStepped:Connect(roam)
 	task.spawn(function()
 		while true do
 			for _, pad in CollectionService:GetTagged("Incubator") do

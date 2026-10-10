@@ -71,6 +71,18 @@ for index = 1, IslandConfig.ISLANDS do
 	for slot = 1, IslandConfig.PENS + #IslandConfig.PEN_PRICES do
 		assert(Layout.gardenAt(Layout.pen(index, slot)) == index, ("pen %d in garden %d"):format(slot, index))
 	end
+	-- Nests on the hatchery deck, creatures in the pasture, both off the path
+	local frame = Layout.garden(index)
+	local function inside(point, area)
+		local p = frame:PointToObjectSpace(point) - area.center
+		return math.abs(p.X) <= area.size.X / 2 - 1 and math.abs(p.Z) <= area.size.Z / 2 - 1
+	end
+	for slot = 1, maxPads do
+		assert(inside(Layout.incubator(index, slot), Layout.HATCHERY), ("nest %d on the deck"):format(slot))
+	end
+	for slot = 1, IslandConfig.PENS + #IslandConfig.PEN_PRICES do
+		assert(inside(Layout.pen(index, slot), Layout.PASTURE), ("creature %d in the pasture"):format(slot))
+	end
 	local center = Layout.garden(index).Position
 	assert(math.abs(center.X) - Layout.GARDEN_SIZE / 2 >= Layout.STREET_WIDTH / 2, "clear of the street")
 	for shop = 1, 6 do

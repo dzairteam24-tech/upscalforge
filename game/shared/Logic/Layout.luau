@@ -10,11 +10,11 @@ local Layout = {
 	SQUARE_RADIUS = 26, -- the square where players arrive
 	SHOP_DEPTH = 26, -- a shop's lot, from the street back
 	SHOP_SPACING = 30, -- between two shops' middles along the street
-	GARDEN_SIZE = 60,
+	GARDEN_SIZE = 48,
 	GARDEN_GAP = 10, -- between two gardens in a row
 	STREET_WIDTH = 26,
 	GATE_WIDTH = 16, -- the opening in a garden's front fence
-	FENCE_HEIGHT = 10, -- (too tall to jump)
+	FENCE_HEIGHT = 10, -- the invisible wall behind the low picket fence (too tall to jump)
 	CENTER = Vector3.new(0, 0, 0),
 }
 
@@ -66,18 +66,34 @@ function Layout.gate(index: number): CFrame
 	return Layout.garden(index) * CFrame.new(0, 0, -Layout.GARDEN_SIZE / 2)
 end
 
--- An incubator's spot in a garden: a row along the back, away from the gate
+-- Inside a garden (its frame's space, front -Z toward the gate): the path runs from the gate up the middle to
+-- the nest house at the back; the hatchery deck with the nests is on one side, the pasture where the
+-- creatures roam on the other.
+Layout.HATCHERY = { center = Vector3.new(13, 0, 6), size = Vector3.new(16, 0, 28) }
+Layout.PASTURE = { center = Vector3.new(-13, 0, 2), size = Vector3.new(16, 0, 34) }
+Layout.HOUSE = Vector3.new(0, 0, 19)
+Layout.PATH_WIDTH = 6
+
+-- A nest's spot (an incubator) in a garden: two by two on the hatchery deck, the first (the safe one) nearest
+-- the house
 function Layout.incubator(index: number, slot: number): Vector3
-	local count = IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES
-	local across = (slot - (count + 1) / 2) * 6.5
-	return (Layout.garden(index) * CFrame.new(across, 0, Layout.GARDEN_SIZE / 2 - 9)).Position
+	local column = (slot - 1) % 2
+	local row = (slot - 1) // 2
+	local inside = Layout.HATCHERY.center + Vector3.new(if column == 0 then 3.5 else -3.5, 0, 10.5 - row * 6.5)
+	return Layout.garden(index):PointToWorldSpace(inside)
 end
 
--- Where a creature living in the garden stands (rows of four between the gate and the incubators)
+-- The pasture's middle and size in the world (the creatures roam inside it)
+function Layout.pasture(index: number): (CFrame, Vector3)
+	return Layout.garden(index) * CFrame.new(Layout.PASTURE.center), Layout.PASTURE.size
+end
+
+-- Where a creature living in the garden starts (spread over the pasture; it wanders from there)
 function Layout.pen(index: number, slot: number): Vector3
-	local column = (slot - 1) % 4
-	local row = (slot - 1) // 4
-	return (Layout.garden(index) * CFrame.new((column - 1.5) * 11, 0, -12 + row * 10)).Position
+	local column = (slot - 1) % 3
+	local row = (slot - 1) // 3
+	local inside = Layout.PASTURE.center + Vector3.new((column - 1) * 4.5, 0, 13 - row * 8.5)
+	return Layout.garden(index):PointToWorldSpace(inside)
 end
 
 -- Which garden a position is in, if any

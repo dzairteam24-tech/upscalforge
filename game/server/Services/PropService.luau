@@ -1,7 +1,6 @@
 --!strict
--- Decor (art/models/Decor.glb, Config/PropLooks): each island is framed by the props of one of the worlds the
--- creatures come from (meadow, forest, beach...), along its back and sides, clear of the incubators and the
--- creatures. The props model is loaded by ArtService (Config/Art PROPS_ASSET_ID); without it, no decor.
+-- Decor (art/models/Decor.glb, Config/PropLooks): each garden has, in its corners, props of one of the worlds the
+-- creatures come from (meadow, forest, beach...). The props model is loaded by ArtService (Config/Art PROPS_ASSET_ID); without it, no decor.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -16,7 +15,7 @@ local PropService = {}
 
 -- Each island's world (the "zones" in PropLooks: 1 meadow, 3 forest, 4 beach, 6 desert, 7 snow, 9 ice)
 local THEMES = { 1, 3, 4, 6, 7, 9, 8, 10 }
-local SPOTS = 9 -- props round each island
+local SPOTS = 4 -- props in each garden
 
 type Entry = { look: PropLooks.Look, source: BasePart }
 
@@ -77,19 +76,15 @@ local function pick(kit: { Entry }, rng: Random): Entry
 	return kit[#kit]
 end
 
--- The spots round an island (its frame's space): along the back edge and down both sides
+-- The spots in a garden (its frame's space): its four corners, clear of the hatchery, the pasture and the house
 local function spots(): { Vector3 }
-	local half = Layout.GARDEN_SIZE / 2 - 4
-	local list = {}
-	for i = 0, 2 do
-		table.insert(list, Vector3.new((i - 1) * 18, 0, half))
-	end
-	for _, side in { -1, 1 } do
-		for i = 0, 2 do
-			table.insert(list, Vector3.new(side * half, 0, half - 6 - i * 15))
-		end
-	end
-	return list
+	local corner = Layout.GARDEN_SIZE / 2 - 2.5
+	return {
+		Vector3.new(corner, 0, corner),
+		Vector3.new(-corner, 0, corner),
+		Vector3.new(corner, 0, -corner),
+		Vector3.new(-corner, 0, -corner),
+	}
 end
 
 function PropService.decorate()
@@ -119,7 +114,7 @@ function PropService.decorate()
 				break
 			end
 			local yaw = CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
-			local prop = spawnFrom(pick(kit, rng), CFrame.new(frame:PointToWorldSpace(spot)) * yaw, rng:NextNumber(0.55, 0.8))
+			local prop = spawnFrom(pick(kit, rng), CFrame.new(frame:PointToWorldSpace(spot)) * yaw, rng:NextNumber(0.4, 0.55))
 			prop.Parent = folder
 		end
 		folder.Parent = island
