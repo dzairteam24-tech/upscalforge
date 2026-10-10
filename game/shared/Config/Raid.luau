@@ -10,7 +10,7 @@ return {
 	SAFE_SLOT = 1, -- this incubator can never be robbed
 	NEW_PLAYER_SAFE = 15 * 60, -- a new player's garden can't be robbed for this long after they first play
 	CATCH_RANGE = 7, -- the owner gets their egg back by touching the thief this close
-	THIEF_SPEED = 11, -- a thief carrying an egg walks this fast (normal is 16)
+	THIEF_SPEED = 11, -- a thief carrying an egg walks this fast (normal is Config/Wild START_SPEED)
 	STEAL_RANGE = 9, -- how close to an incubator a thief must stand
 
 	-- The creatures in a garden guard it (Logic/Raid.guards): each second a thief carrying an egg is inside, they

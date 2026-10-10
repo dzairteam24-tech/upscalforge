@@ -32,7 +32,7 @@ return {
 	SEE_RANGE = 40, -- a guardian chases a thief it's this close to (or one from its own biome)
 	RESET = 300, -- every nest gets its egg back this often
 	CARRY = 0.9, -- a player carrying an egg runs this much of their speed
-	START_SPEED = 16,
+	START_SPEED = 24,
 	MAX_SPEED = 70,
 	-- Sprint (Shift, or the button on a phone): walking this many times faster while it's held
 	SPRINT = 2,

@@ -18,6 +18,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local RaidConfig = require(Shared.Config.Raid)
+local WildConfig = require(Shared.Config.Wild)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
@@ -52,7 +53,7 @@ local function setSpeed(player: Player, speed: number?)
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		local data = DataService.get(player)
-		humanoid.WalkSpeed = speed or (if data then data.speed else 16) -- (back to the player's own speed)
+		humanoid.WalkSpeed = speed or (if data then data.speed else WildConfig.START_SPEED) -- (back to the player's own speed)
 	end
 end
 

@@ -425,6 +425,7 @@ function WildService.init()
 		end
 	end)
 	DataService.onLoaded(function(player, data)
+		data.speed = math.max(data.speed, WildConfig.START_SPEED) -- (saves from when players started slower)
 		player:SetAttribute("Speed", data.speed)
 		player:SetAttribute("Treadmill", data.treadmill)
 		applySpeed(player)
