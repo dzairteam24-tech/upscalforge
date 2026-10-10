@@ -403,8 +403,9 @@ local function buildGarden(world: Instance, index: number)
 
 	-- The treadmill, outside in front of the garden: running on it trains the owner's speed (WildService)
 	local mill = at(Layout.TREADMILL.X, 0, Layout.TREADMILL.Z)
-	part(model, { Name = "TreadmillBase", Size = Vector3.new(11, 0.8, 5.4), CFrame = mill * CFrame.new(0, 0.8, 0), Color = rgb(70, 74, 86) })
-	local belt = part(model, { Name = "Treadmill", Size = Vector3.new(10, 0.3, 4), CFrame = mill * CFrame.new(0, 1.35, 0), Color = rgb(40, 42, 50), Material = Enum.Material.Rubber })
+	-- (flat on the ground, so anyone walks straight onto it: no step to climb)
+	part(model, { Name = "TreadmillBase", Size = Vector3.new(11, 0.4, 5.4), CFrame = mill * CFrame.new(0, 0.1, 0), Color = rgb(70, 74, 86) })
+	local belt = part(model, { Name = "Treadmill", Size = Vector3.new(10, 0.2, 4), CFrame = mill * CFrame.new(0, 0.4, 0), Color = rgb(40, 42, 50), Material = Enum.Material.Rubber })
 	belt:SetAttribute("Island", index)
 	for _, s in { -1, 1 } do
 		part(model, { Name = "TreadmillRail", Size = Vector3.new(10, 0.3, 0.3), CFrame = mill * CFrame.new(0, 3.6, s * 2.5), Color = rgb(200, 205, 215), Material = Enum.Material.Metal, CanCollide = false })
