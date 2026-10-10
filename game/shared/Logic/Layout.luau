@@ -80,14 +80,15 @@ Layout.POND = { center = Layout.PASTURE.center, radius = 6.5 }
 Layout.NEST_SIZE = 6 -- a nest's width (an egg in it is drawn to fit, whatever its tier)
 Layout.PATH_WIDTH = 6
 Layout.TROUGH = Vector3.new(-12, 0, PASTURE_FRONT + 5) -- in the pasture, beside where the path comes in
-Layout.TREADMILL = Vector3.new(16, 0, PASTURE_FRONT + 5) -- on the other side of the path (it runs along X)
+-- The treadmill: outside, in front of the garden beside its gate, along the fence (it runs along X), where the
+-- street sees its owner training
+Layout.TREADMILL = Vector3.new(Layout.GATE_WIDTH / 2 + 8, 0, -HALF - 4.5)
 Layout.BARN = Vector3.new(HALF - 11.5, 0, HALF - 8.5) -- the storage barn, in the pasture's back corner
 
 -- What the creatures walk round (a spot in the garden's space and how far from it to keep)
 Layout.OBSTACLES = {
 	{ center = Layout.POND.center, radius = Layout.POND.radius + 2 },
 	{ center = Layout.TROUGH, radius = 4 },
-	{ center = Layout.TREADMILL, radius = 7.5 },
 	{ center = Layout.BARN, radius = 7 },
 }
 function Layout.blocked(inside: Vector3): boolean

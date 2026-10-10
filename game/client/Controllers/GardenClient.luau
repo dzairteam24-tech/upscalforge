@@ -417,6 +417,26 @@ function GardenClient.init()
 			end
 		end
 	end)
+	-- "+2 ⚡" over the player at each step on the treadmill
+	Net.event("SpeedUp").OnClientEvent:Connect(function(gain: number)
+		local head = LOCAL.Character and LOCAL.Character:FindFirstChild("Head") :: BasePart?
+		if not head then
+			return
+		end
+		local text = billboard(head, 4, 1.4, Vector3.new(0, 2.5, 0))
+		local gui = text.Parent :: BillboardGui
+		gui.AlwaysOnTop = true
+		text.Text = ("+%d ⚡"):format(gain)
+		text.TextColor3 = Color3.fromRGB(90, 220, 255)
+		task.spawn(function()
+			for i = 1, 20 do
+				gui.StudsOffsetWorldSpace = Vector3.new(0, 2.5 + i * 0.12, 0)
+				text.TextTransparency = math.max(0, (i - 10) / 10)
+				task.wait(0.05)
+			end
+			gui:Destroy()
+		end)
+	end)
 	Net.event("Bump").OnClientEvent:Connect(function(position: Vector3, mutation: string)
 		local spot = Instance.new("Part")
 		spot.Anchored, spot.CanCollide, spot.CanQuery, spot.Transparency = true, false, false, 1

@@ -19,7 +19,6 @@ local EVENTS = {
 	"Feed",
 	"StealFood", -- (garden), at Raid Time
 	"Travel", -- ("home" or "wild")
-	"UpgradeTreadmill",
 	"SendHome", -- (id): a Homesick creature goes back where its egg was stolen from
 	"Snap", -- (id): it and matching creatures snap into one (Config/Snap)
 	"ClaimDaily", -- the egg for doing all of today's tasks
@@ -29,6 +28,7 @@ local EVENTS = {
 	"Data", -- (snapshot)
 	"Notify", -- (text, kind)
 	"Hatched", -- (creature id, species, mutation), or (id, full name, "Snap") for a snapped one
+	"SpeedUp", -- (gain): a step on the treadmill
 	"Bump", -- (position, mutation): a garden's creatures bumped into a thief
 }
 

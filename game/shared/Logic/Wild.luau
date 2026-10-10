@@ -6,15 +6,9 @@ local WildConfig = require(script.Parent.Parent.Config.Wild)
 
 local Wild = {}
 
--- Speed a second the treadmill trains at `level`: a little less the faster the player already is
-function Wild.trainRate(level: number, speed: number): number
-	local gain = WildConfig.TREADMILL_GAINS[math.clamp(level, 1, #WildConfig.TREADMILL_GAINS)]
-	return gain / (1 + math.max(0, speed - WildConfig.START_SPEED) / 12)
-end
-
--- Speed after training `seconds` (capped)
-function Wild.train(speed: number, level: number, seconds: number): number
-	return math.min(WildConfig.MAX_SPEED, speed + Wild.trainRate(level, speed) * seconds)
+-- Speed after one more step on the treadmill (capped)
+function Wild.train(speed: number): number
+	return math.min(WildConfig.MAX_SPEED, speed + WildConfig.TREADMILL_GAIN)
 end
 
 -- How fast a player runs while carrying an egg

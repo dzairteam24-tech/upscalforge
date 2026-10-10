@@ -546,29 +546,9 @@ end
 ---------------------------------------------------------------------------------------------------------------
 -- Speed and the treadmill
 
-local function upgradeTreadmill(player: Player, index: number)
-	local data = DataService.get(player)
-	if not data or IslandService.islandOf(player) ~= index then
-		IslandService.notify(player, "That's not your treadmill", "error")
-		return
-	end
-	local price = WildConfig.TREADMILL_PRICES[data.treadmill]
-	if not price then
-		IslandService.notify(player, "Your treadmill is as good as it gets", "error")
-		return
-	end
-	if data.coins < price then
-		IslandService.notify(player, ("You need 🪙 %s"):format(Format.abbrev(price)), "error")
-		return
-	end
-	data.coins -= price
-	data.treadmill += 1
-	player:SetAttribute("Treadmill", data.treadmill)
-	IslandService.notify(player, ("Treadmill level %d! You train faster 🏃"):format(data.treadmill), "success")
-	IslandService.push(player)
-end
-
--- Once a second: whoever is walking on their own treadmill gets faster
+-- Once a second: whoever is running on their own treadmill counts a second; every TREADMILL_EVERY of them they
+-- get TREADMILL_GAIN faster
+local running: { [Player]: number } = {}
 local function train()
 	for _, player in Players:GetPlayers() do
 		local data = DataService.get(player)
@@ -579,9 +559,16 @@ local function train()
 			continue
 		end
 		local inside = Layout.garden(index):PointToObjectSpace(root.Position) - Layout.TREADMILL
-		if math.abs(inside.X) <= 5 and math.abs(inside.Z) <= 2.5 and inside.Y < 8 then
-			data.speed = Wild.train(data.speed, data.treadmill, 1)
+		if math.abs(inside.X) <= 5 and math.abs(inside.Z) <= 2.5 and inside.Y < 8 and data.speed < WildConfig.MAX_SPEED then
+			running[player] = (running[player] or 0) + 1
+			if running[player] < WildConfig.TREADMILL_EVERY then
+				continue
+			end
+			running[player] = 0
+			local before = data.speed
+			data.speed = Wild.train(data.speed)
 			applySpeed(player)
+			Net.event("SpeedUp"):FireClient(player, data.speed - before)
 		end
 	end
 end
@@ -629,16 +616,9 @@ function WildService.init()
 	spawnGuardians()
 	refill() -- (the first golden nests)
 	Net.event("Travel").OnServerEvent:Connect(travel)
-	game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt, player)
-		local index = prompt:GetAttribute("Treadmill")
-		if type(index) == "number" then
-			upgradeTreadmill(player, index)
-		end
-	end)
 	DataService.onLoaded(function(player, data)
 		data.speed = math.max(data.speed, WildConfig.START_SPEED) -- (saves from when players started slower)
 		player:SetAttribute("Speed", data.speed)
-		player:SetAttribute("Treadmill", data.treadmill)
 		applySpeed(player)
 	end)
 	local function onCharacter(player: Player)
@@ -652,6 +632,7 @@ function WildService.init()
 	end
 	Players.PlayerAdded:Connect(onCharacter)
 	Players.PlayerRemoving:Connect(function(player)
+		running[player] = nil
 		finish(player, false)
 	end)
 	RunService.Heartbeat:Connect(tick)

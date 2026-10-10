@@ -367,7 +367,7 @@ local function buildGarden(world: Instance, index: number)
 	feed:SetAttribute("Trough", index)
 	feed.Parent = hay
 
-	-- The treadmill: walking on it trains the owner's speed (WildService); its console upgrades it
+	-- The treadmill, outside in front of the garden: running on it trains the owner's speed (WildService)
 	local mill = at(Layout.TREADMILL.X, 0, Layout.TREADMILL.Z)
 	part(model, { Name = "TreadmillBase", Size = Vector3.new(11, 0.8, 5.4), CFrame = mill * CFrame.new(0, 0.8, 0), Color = rgb(70, 74, 86) })
 	local belt = part(model, { Name = "Treadmill", Size = Vector3.new(10, 0.3, 4), CFrame = mill * CFrame.new(0, 1.35, 0), Color = rgb(40, 42, 50), Material = Enum.Material.Rubber })
@@ -378,14 +378,7 @@ local function buildGarden(world: Instance, index: number)
 		part(model, { Name = "TreadmillEnd", Size = Vector3.new(0.4, 6, 5.4), CFrame = mill * CFrame.new(s * 5.2, 4, 0), Transparency = 1 })
 	end
 	local console = part(model, { Name = "TreadmillConsole", Size = Vector3.new(1, 3.6, 3), CFrame = mill * CFrame.new(-6.2, 2.4, 0), Color = rgb(200, 205, 215), Material = Enum.Material.Metal })
-	label(console, "🏃 Treadmill: walk on it to get faster", 16, 2.2, Vector3.new(0, 4.2, 0))
-	local upgrade = Instance.new("ProximityPrompt")
-	upgrade.ActionText = "Upgrade"
-	upgrade.ObjectText = "Treadmill"
-	upgrade.MaxActivationDistance = 8
-	upgrade.RequiresLineOfSight = false
-	upgrade:SetAttribute("Treadmill", index)
-	upgrade.Parent = console
+	label(console, ("🏃 Run on it: +%d ⚡"):format(WildConfig.TREADMILL_GAIN), 16, 2.2, Vector3.new(0, 4.2, 0))
 
 	-- The storage barn in the pasture's back corner: where the creatures not in the pasture are kept
 	local barn = at(Layout.BARN.X, 0, Layout.BARN.Z) * CFrame.Angles(0, math.rad(45), 0) -- (its door toward the pasture)

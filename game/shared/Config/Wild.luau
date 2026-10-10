@@ -51,8 +51,8 @@ return {
 	-- Not while carrying an egg: the chases stay fair.
 	SEAT_SPEED = 4,
 	SEAT_MAX_SPEED = 100,
-	-- The treadmill in each garden: walking on it trains speed, `gains` a second per level (less the faster the
-	-- player already is), the next level costing `prices`
-	TREADMILL_GAINS = { 0.05, 0.1, 0.2, 0.35, 0.6 },
-	TREADMILL_PRICES = { 2500, 25000, 250000, 2500000 },
+	-- The treadmill in front of each garden: running on it, the player gets TREADMILL_GAIN speed every
+	-- TREADMILL_EVERY seconds (up to MAX_SPEED). No coins: only running.
+	TREADMILL_GAIN = 2,
+	TREADMILL_EVERY = 5,
 }
