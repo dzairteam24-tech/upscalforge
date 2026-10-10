@@ -1,9 +1,9 @@
 --!strict
--- Hunting in the Wild (Config/Hunt, Logic/Hunt): wild creatures roam the four zones; a player walks up to one
--- and starts the catching game. The server picks where the green is and when the marker starts, and checks the
--- click itself. Caught, the creature goes into the player's storage; missed, it runs off. Wild eggs lie in the
--- grass, and now and then a shiny appears, announced to everyone. Players come and go from the Trips shop and
--- the portal on the hub (or the HUD's Home button).
+-- Hunting (Config/Hunt, Logic/Hunt): wild creatures come out of the den at the far end of the street, one every
+-- few seconds, and walk down the carpet past the gardens to the burrow by the shops. A player walks up to one and
+-- starts the catching game; the server picks where the green is and when the marker starts, and checks the
+-- click itself. Caught, the creature goes to the player's garden (or storage); missed, it runs off. Now and then
+-- a shiny comes out, announced to everyone.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -36,13 +36,12 @@ type Wild = {
 	rarity: string,
 	shiny: boolean,
 	position: Vector3,
-	target: Vector3,
-	rest: number,
+	sway: number, -- its side of the carpet
+	progress: number, -- studs walked from the den
 	built: PetModel.Built?,
 	hitbox: Part,
 	catcher: Player?,
 	game: { start: number, speed: number, center: number, width: number, net: string }?,
-	leaves: number?, -- (a shiny) os.clock() it goes
 }
 
 local wilds: { [string]: Wild } = {}
@@ -52,8 +51,7 @@ local lastTry: { [Player]: number } = {}
 
 local function folder(): Instance?
 	local world = workspace:FindFirstChild("World")
-	local wild = world and world:FindFirstChild("Wild")
-	return wild and wild:FindFirstChild("WildCreatures")
+	return world and world:FindFirstChild("WildCreatures")
 end
 
 local function rootOf(player: Player): BasePart?
@@ -61,11 +59,10 @@ local function rootOf(player: Player): BasePart?
 	return character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 end
 
--- A random spot in a zone, clear of its edges
-local function spotIn(zone: number): Vector3
-	local half = Layout.WILD.zone / 2 - 5
-	return Layout.wildZone(zone) + Vector3.new(rng:NextNumber(-half, half), 0, rng:NextNumber(-half, half))
-end
+local DEN, BURROW = Layout.carpet()
+local LENGTH = (BURROW - DEN).Magnitude
+local DOWN = (BURROW - DEN).Unit
+local ACROSS = Vector3.new(-DOWN.Z, 0, DOWN.X)
 
 local function zoneOf(wild: Wild): HuntConfig.Zone
 	return HuntConfig.ZONES[wild.zone]
@@ -100,7 +97,7 @@ end
 
 local function place(wild: Wild)
 	local built = wild.built
-	local facing = if (wild.target - wild.position).Magnitude > 0.1 then Layout.facing(wild.position, wild.target) else CFrame.new(wild.position)
+	local facing = Layout.facing(wild.position, wild.position + DOWN)
 	if built then
 		PetModel.place(built, facing * CFrame.new(0, built.height / 2, 0))
 	end
@@ -152,7 +149,6 @@ local function spawn(zone: number, shiny: boolean)
 	text.Text = (if shiny then "✨ " else "") .. (if creature then creature.rarity else "")
 	text.Parent = tag
 	tag.Parent = hitbox
-	local at = spotIn(zone)
 	local wild: Wild = {
 		id = id,
 		zone = zone,
@@ -160,14 +156,13 @@ local function spawn(zone: number, shiny: boolean)
 		mutation = mutation,
 		rarity = if creature then creature.rarity else "Common",
 		shiny = shiny,
-		position = at,
-		target = at,
-		rest = 0,
+		position = DEN,
+		sway = rng:NextNumber(-1, 1) * (Layout.CARPET_WIDTH / 2 - 1),
+		progress = 0,
 		built = nil,
 		hitbox = hitbox,
 		catcher = nil,
 		game = nil,
-		leaves = if shiny then os.clock() + HuntConfig.SHINY_STAYS else nil,
 	}
 	wilds[id] = wild
 	prompt.Triggered:Connect(function(player)
@@ -178,55 +173,59 @@ local function spawn(zone: number, shiny: boolean)
 	place(wild)
 	if shiny then
 		for _, player in Players:GetPlayers() do
-			IslandService.notify(player, ("✨ A shiny %s %s appeared in the Wild (%s)! Catch it first!"):format(mutation, species, info.name), "rare")
+			IslandService.notify(player, ("✨ A shiny %s %s is walking down the street! Catch it first!"):format(mutation, species), "rare")
 		end
 	end
 end
 
--- Takes a wild creature away; another comes in its zone a while later (not for a shiny)
+-- Takes a wild creature away
 local function remove(wild: Wild)
 	wilds[wild.id] = nil
 	if wild.built then
 		wild.built.model:Destroy()
 	end
 	wild.hitbox:Destroy()
-	if not wild.shiny then
-		task.delay(HuntConfig.RESPAWN, spawn, wild.zone, false)
-	end
 end
 
--- Ten times a second: the wild creatures wander their zone (they stop while someone's catching them)
+-- Ten times a second: the wild creatures walk down the carpet (they stop while someone's catching them) and go
+-- into the burrow at its end
 local STEP = 0.1
 local pending = 0
-local function wander(frame: number)
+local function walk(frame: number)
 	pending += frame
 	if pending < STEP then
 		return
 	end
 	local dt = pending
 	pending = 0
-	local now = os.clock()
 	for _, wild in wilds do
-		if wild.leaves and now > wild.leaves and not wild.catcher then
-			remove(wild)
-			continue
-		end
 		if wild.catcher then
 			continue
 		end
-		local offset = wild.target - wild.position
-		if offset.Magnitude < 0.5 then
-			wild.rest -= dt
-			if wild.rest <= 0 then
-				wild.target = spotIn(wild.zone)
-				wild.rest = rng:NextNumber(1, 4)
-			end
+		wild.progress += HuntConfig.WALK_SPEED * (if wild.shiny then 1.4 else 1) * dt
+		if wild.progress >= LENGTH then
+			remove(wild)
 			continue
 		end
-		local speed = HuntConfig.WALK_SPEED * (if wild.shiny then 1.5 else 1)
-		wild.position += offset.Unit * math.min(offset.Magnitude, speed * dt)
+		wild.position = DEN + DOWN * wild.progress + ACROSS * wild.sway
 		place(wild)
 	end
+end
+
+-- Which kind of creature comes out next (Config/Hunt weights)
+local function pickZone(): number
+	local total = 0
+	for _, zone in HuntConfig.ZONES do
+		total += zone.weight
+	end
+	local roll = rng:NextNumber(0, total)
+	for i, zone in HuntConfig.ZONES do
+		roll -= zone.weight
+		if roll <= 0 then
+			return i
+		end
+	end
+	return 1
 end
 
 ---------------------------------------------------------------------------------------------------------------
@@ -265,7 +264,7 @@ function HuntService.start(player: Player, id: string)
 	local zone = zoneOf(wild)
 	if not Hunt.unlocked(zone, best) then
 		local egg = Hatch.egg(zone.need)
-		IslandService.notify(player, ("Hatch a %s creature to hunt in the %s"):format(if egg then egg.name else "better", zone.name), "error")
+		IslandService.notify(player, ("Hatch a %s creature to catch %s creatures"):format(if egg then egg.name else "better", zone.name), "error")
 		return
 	end
 	if (root.Position - wild.position).Magnitude > HuntConfig.CATCH_RANGE + 4 then
@@ -340,77 +339,18 @@ local function try(player: Player, id: any, clickAt: any)
 end
 
 ---------------------------------------------------------------------------------------------------------------
--- Wild eggs
+-- Going home, and nets
 
-local function placeEgg(zone: number)
-	local parent = folder()
-	if not parent then
-		return
-	end
-	local info = HuntConfig.ZONES[zone]
-	local tier = info.tiers[rng:NextInteger(1, #info.tiers)]
-	local egg = Hatch.egg(tier)
-	local part = Instance.new("Part")
-	part.Name = "WildEgg"
-	part.Shape = Enum.PartType.Ball
-	part.Size = Vector3.new(2.4, 2.4, 2.4)
-	part.Color = if egg then egg.color else Color3.new(1, 1, 1)
-	part.Anchored = true
-	part.CanCollide = false
-	part.Position = spotIn(zone) + Vector3.new(0, 1.4, 0)
-	local mesh = Instance.new("SpecialMesh")
-	mesh.MeshType = Enum.MeshType.Sphere
-	mesh.Scale = Vector3.new(1, 1.3, 1)
-	mesh.Parent = part
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Pick up"
-	prompt.ObjectText = if egg then egg.name else "Egg"
-	prompt.MaxActivationDistance = 8
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = part
-	local taken = false
-	prompt.Triggered:Connect(function(player)
-		local data = DataService.get(player)
-		local best = bestTier(player)
-		if taken or not data or not best then
-			return
-		end
-		if not Hunt.unlocked(info, best) then
-			local need = Hatch.egg(info.need)
-			IslandService.notify(player, ("Hatch a %s creature to hunt in the %s"):format(if need then need.name else "better", info.name), "error")
-			return
-		end
-		taken = true
-		part:Destroy()
-		local key = tostring(tier)
-		data.eggs[key] = (data.eggs[key] or 0) + 1
-		IslandService.notify(player, ("Found a %s! 🥚 Put it in an incubator at home"):format(if egg then egg.name else "egg"), "success")
-		IslandService.push(player)
-		task.delay(HuntConfig.EGG_RESPAWN, placeEgg, zone)
-	end)
-	part.Parent = parent
-end
-
----------------------------------------------------------------------------------------------------------------
--- Going there and back, and nets
-
+-- Home (the HUD's button): not while carrying an egg off
 local function travel(player: Player, where: any)
-	local root = rootOf(player)
-	if not root then
+	if where ~= "home" then
 		return
 	end
 	if RaidService.isCarrying(player) or HeistService.isCarrier(player) then
 		IslandService.notify(player, "Not while you're carrying an egg: run!", "error")
 		return
 	end
-	if where == "wild" then
-		local center = Layout.WILD.center
-		root.CFrame = CFrame.new(center + Vector3.new(rng:NextNumber(-3, 3), 4, Layout.WILD.hub - 2))
-		root.AssemblyLinearVelocity = Vector3.zero
-		IslandService.notify(player, "🌿 Welcome to the Wild! Walk up to a creature to catch it", "info")
-	elseif where == "home" then
-		IslandService.sendHome(player)
-	end
+	IslandService.sendHome(player)
 end
 
 local function buyNet(player: Player, id: any)
@@ -442,13 +382,6 @@ function HuntService.init()
 	Net.event("CatchTry").OnServerEvent:Connect(try)
 	Net.event("Travel").OnServerEvent:Connect(travel)
 	Net.event("BuyNet").OnServerEvent:Connect(buyNet)
-	-- The portal on the hub (and anything else with a Travel attribute)
-	game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt, player)
-		local where = prompt:GetAttribute("Travel")
-		if type(where) == "string" then
-			travel(player, where)
-		end
-	end)
 	Players.PlayerRemoving:Connect(function(player)
 		lastTry[player] = nil
 		for _, wild in wilds do
@@ -457,19 +390,23 @@ function HuntService.init()
 			end
 		end
 	end)
-	for zone = 1, #HuntConfig.ZONES do
-		for _ = 1, HuntConfig.PER_ZONE do
-			spawn(zone, false)
+	RunService.Heartbeat:Connect(walk)
+	task.spawn(function()
+		while true do
+			local out = 0
+			for _ in wilds do
+				out += 1
+			end
+			if out < HuntConfig.MAX_OUT then
+				spawn(pickZone(), false)
+			end
+			task.wait(HuntConfig.SPAWN_EVERY)
 		end
-		for _ = 1, HuntConfig.EGGS_PER_ZONE do
-			placeEgg(zone)
-		end
-	end
-	RunService.Heartbeat:Connect(wander)
+	end)
 	task.spawn(function()
 		while true do
 			task.wait(HuntConfig.SHINY_EVERY)
-			spawn(rng:NextInteger(1, #HuntConfig.ZONES), true)
+			spawn(pickZone(), true)
 		end
 	end)
 end

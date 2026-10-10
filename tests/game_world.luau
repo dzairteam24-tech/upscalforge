@@ -130,13 +130,15 @@ assert(#built.parts > 0 and built.height > 0, "a creature is drawn")
 
 print("world test passed")
 
--- The Wild: four zones round the hub, far from the town and the gardens
-for i = 1, 4 do
-	local middle = Layout.wildZone(i)
-	assert(Layout.wildZoneAt(middle) == i, "a zone is where it says")
-	assert(Layout.gardenAt(middle) == nil, "the wild isn't in a garden")
-	assert(middle.Z - Layout.WILD.zone / 2 > Layout.CENTER.Z + Layout.SQUARE_RADIUS + 40, "south of the square")
+-- The carpet: down the middle of the street, from the far end past every garden to the shops
+local den, burrow = Layout.carpet()
+assert(math.abs(den.X) < 0.01 and math.abs(burrow.X) < 0.01, "down the middle")
+for index = 1, IslandConfig.ISLANDS do
+	local z = Layout.garden(index).Position.Z
+	assert(z < burrow.Z and z > den.Z, "past every garden")
 end
-assert(Layout.wildZoneAt(Layout.WILD.center) == nil, "the hub isn't in a zone")
-assert(world:FindFirstChild("Wild") and world.Wild:FindFirstChild("WildCreatures"), "the wild is built")
-print("wild test passed")
+for shop = 1, 6 do
+	assert(Layout.shop(shop).Position.Z > burrow.Z, "the shops are past the burrow")
+end
+assert(world:FindFirstChild("Carpet") and world:FindFirstChild("WildCreatures"), "the carpet is built")
+print("carpet test passed")

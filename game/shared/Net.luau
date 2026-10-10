@@ -18,7 +18,7 @@ local EVENTS = {
 	"BuyFood", -- (food id)
 	"Feed",
 	"StealFood", -- (garden), at Raid Time
-	"Travel", -- ("wild" or "home")
+	"Travel", -- ("home")
 	"BuyNet", -- (net id)
 	"CatchTry", -- (wild id, server time of the click)
 	-- server -> client

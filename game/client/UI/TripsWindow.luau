@@ -1,5 +1,6 @@
 --!strict
--- The Trips shop's window: the way to the Wild, its zones (and what opens each), and nets for catching.
+-- The Net Shop's window: which wild creatures the player can catch on the carpet (and what opens the others),
+-- and nets for catching them.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -30,7 +31,7 @@ local function bestTier(data: { [string]: any }): number
 end
 
 function TripsWindow.mount(gui: ScreenGui)
-	local window, content = Theme.window(gui, "🧭 Trips", Vector2.new(520, 560))
+	local window, content = Theme.window(gui, "🥅 Net Shop", Vector2.new(520, 560))
 
 	local function row(order: number, height: number): Frame
 		local frame = Instance.new("Frame")
@@ -53,19 +54,19 @@ function TripsWindow.mount(gui: ScreenGui)
 			return
 		end
 		local best = bestTier(data)
-		local go = row(1, 64)
-		local button = Theme.button(go, "🌿 Go to the Wild", Theme.green, function()
-			Net.event("Travel"):FireServer("wild")
-			Windows.toggle("Trips")
-		end)
-		button.Size = UDim2.new(1, -20, 1, -16)
-		button.Position = UDim2.fromOffset(10, 8)
+		local how = row(1, 48)
+		Theme.text(how, {
+			Text = "🌿 Wild creatures walk down the red carpet in the street: walk up and catch one!",
+			Size = UDim2.new(1, -20, 1, -8),
+			Position = UDim2.fromOffset(10, 4),
+			TextColor3 = Theme.soft,
+		})
 		for i, zone in HuntConfig.ZONES do
 			local frame = row(1 + i, 40)
 			local egg = Hatch.egg(zone.need)
 			local open = Hunt.unlocked(zone, best)
 			Theme.text(frame, {
-				Text = if open then ("✅ %s"):format(zone.name) else ("🔒 %s · hatch a %s creature"):format(zone.name, if egg then egg.name else ""),
+				Text = if open then ("✅ %s creatures"):format(zone.name) else ("🔒 %s creatures · hatch a %s creature"):format(zone.name, if egg then egg.name else ""),
 				Size = UDim2.new(1, -20, 1, -8),
 				Position = UDim2.fromOffset(10, 4),
 				TextColor3 = if open then Theme.ink else Theme.soft,

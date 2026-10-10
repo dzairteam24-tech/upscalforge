@@ -37,7 +37,7 @@ function HUD.mount(gui: ScreenGui)
 	bag.Size = UDim2.fromOffset(110, 48)
 	bag.Position = UDim2.new(0, 12, 0, 86)
 
-	-- Home (from the Wild, or anywhere)
+	-- Home: back to the garden from anywhere
 	local home = Theme.button(gui, "🏠 Home", Theme.green, function()
 		Net.event("Travel"):FireServer("home")
 	end)
