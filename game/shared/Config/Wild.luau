@@ -1,8 +1,9 @@
 --!strict
 -- The Wild (past the laser gate at the far end of the street): eight biomes one after another, each further
--- out than the last, with nests of its own eggs guarded by its predators. A player grabs an egg; a moment later
--- one of that biome's guardians comes after them, and only inside its biome: out of it, they're safe, and walk
--- the egg back through the gate. Caught, the egg goes back to its nest and they're sent back to the gate.
+-- out than the last, with nests of its own eggs guarded by its predators, asleep. A player grabs an egg; a
+-- moment later that biome's guardian wakes and comes after them, and only inside its biome: out of it, they're
+-- safe, and walk the egg back through the gate. Caught, they drop the egg there and are sent back to the gate:
+-- they can come back for it (if nobody else takes it first).
 -- Further biomes have faster guardians: players train their speed on the treadmill in their garden to outrun
 -- them (the first biome's they outrun from the start). All the eggs come back every few minutes.
 
@@ -36,6 +37,7 @@ return {
 	GOLDEN_CHANCE = 0.3, -- for each biome, at each refill
 	GOLDEN_MUTATION = "Golden",
 	GOLDEN_GUARDIAN = 1.15, -- times the guardian's speed, chasing a Golden Egg
+	DROP_TIME = 60, -- a thief caught by a guardian drops the egg there: it waits this long, then goes home
 	-- Players can steal a Wild egg from each other on the way back (not in a Peaceful private server)
 	ROB_RANGE = 10,
 	ROB_GUARD = 4, -- seconds a new carrier can't be robbed

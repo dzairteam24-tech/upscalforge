@@ -1,8 +1,8 @@
 --!strict
--- The Wild (Config/Wild, Logic/Wild, built by WorldService): a player steals an egg from a nest; a moment later
--- the nearest of that biome's guardians comes after them, inside its biome only (out of it they're safe). If it
--- catches them the egg goes back to its nest and they're sent back to the gate. Through the gate, the egg goes
--- into their bag. The nests fill up again every few minutes, some biomes with a golden nest (a Golden Egg,
+-- The Wild (Config/Wild, Logic/Wild, built by WorldService): the guardians sleep by their nests. A player steals
+-- an egg; a moment later that biome's guardian wakes and comes after them, inside its biome only (out of it
+-- they're safe). If it catches them they drop the egg right there and are sent back to the gate: the egg waits
+-- a minute for whoever picks it up (then goes back to its nest). Through the gate, the egg goes into their bag. The nests fill up again every few minutes, some biomes with a golden nest (a Golden Egg,
 -- chased harder). On the way back, other players can steal the egg from the one carrying it. Also: speed, trained on the treadmill in each
 -- garden (and upgraded at its console), and the HUD's Home and Wild buttons.
 
@@ -30,6 +30,7 @@ local WildService = {}
 
 type Nest = { egg: BasePart, prompt: ProximityPrompt, full: boolean, golden: boolean, color: Color3, biome: number, index: number }
 type Carry = { nest: Nest, part: Part, safe: boolean, golden: boolean, guardUntil: number }
+type Drop = { nest: Nest, part: Part, golden: boolean, expires: number }
 type Guardian = {
 	biome: number,
 	home: Vector3,
@@ -37,6 +38,8 @@ type Guardian = {
 	wander: Vector3,
 	rest: number,
 	chasing: Player?,
+	text: TextLabel,
+	label: string,
 	wakeAt: number, -- (os.clock(): when the chase starts)
 	built: PetModel.Built?,
 	tag: Part,
@@ -45,6 +48,7 @@ type Guardian = {
 local nests: { Nest } = {}
 local carrying: { [Player]: Carry } = {}
 local guardians: { Guardian } = {}
+local drops: { [BasePart]: Drop } = {} -- eggs lying where their thief was caught
 local rng = Random.new()
 
 local function rootOf(player: Player): BasePart?
@@ -173,6 +177,77 @@ local function finish(player: Player, kept: boolean)
 	applySpeed(player)
 end
 
+-- The player now carries this egg
+local function hold(player: Player, held: Carry)
+	carrying[player] = held
+	player:SetAttribute("WildEgg", true) -- (RaidService and HeistService won't let them carry another)
+	held.part:SetAttribute("Carrier", player.UserId)
+	local prompt = held.part:FindFirstChildOfClass("ProximityPrompt")
+	if prompt then
+		prompt.ActionText = "Steal"
+		prompt.Enabled = not PEACEFUL -- (no stealing from each other in a Peaceful server)
+	end
+	applySpeed(player)
+end
+
+-- The nearest free guardian of a biome wakes up and, a moment later, comes after the player
+local function wake(biome: number, player: Player, from: Vector3)
+	local best: Guardian? = nil
+	for _, guardian in guardians do
+		if guardian.biome == biome and not guardian.chasing then
+			if not best or (guardian.position - from).Magnitude < (best.position - from).Magnitude then
+				best = guardian
+			end
+		end
+	end
+	if best then
+		best.chasing = player
+		best.wakeAt = os.clock() + WildConfig.WAKE
+	end
+end
+
+-- A caught thief drops the egg where they are; it waits there for a while
+local function drop(player: Player, at: Vector3)
+	local held = carrying[player]
+	if not held then
+		return
+	end
+	carrying[player] = nil
+	player:SetAttribute("WildEgg", nil)
+	for _, guardian in guardians do
+		if guardian.chasing == player then
+			guardian.chasing = nil
+		end
+	end
+	applySpeed(player)
+	held.part.Position = Vector3.new(at.X, 1.8, at.Z)
+	held.part:SetAttribute("Carrier", 0)
+	local prompt = held.part:FindFirstChildOfClass("ProximityPrompt")
+	if prompt then
+		prompt.ActionText = "Grab"
+		prompt.Enabled = true
+	end
+	drops[held.part] = { nest = held.nest, part = held.part, golden = held.golden, expires = os.clock() + WildConfig.DROP_TIME }
+end
+
+-- Someone picks up a dropped egg: its guardian (if they're still in its biome) wakes again
+function WildService.pickUp(player: Player, part: BasePart)
+	local dropped = drops[part]
+	local root = rootOf(player)
+	if not dropped or not root or busy(player) or (root.Position - part.Position).Magnitude > WildConfig.ROB_RANGE + 4 then
+		return
+	end
+	drops[part] = nil
+	local safe = Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= dropped.nest.biome
+	hold(player, { nest = dropped.nest, part = dropped.part, safe = safe, golden = dropped.golden, guardUntil = os.clock() + WildConfig.ROB_GUARD })
+	if not safe then
+		wake(dropped.nest.biome, player, root.Position)
+		IslandService.notify(player, "🥚 Got it back! Run before the guardian wakes up!", "success")
+	else
+		IslandService.notify(player, "🥚 Got it! Take it through the gate", "success")
+	end
+end
+
 local function steal(player: Player, nest: Nest)
 	local root = rootOf(player)
 	local data = DataService.get(player)
@@ -200,43 +275,30 @@ local function steal(player: Player, nest: Nest)
 	mesh.Parent = part
 	part.Position = root.Position + Vector3.new(0, 5, 0)
 	part.Parent = workspace
-	part:SetAttribute("Carrier", player.UserId)
 	part:AddTag("WildCarry")
-	if not PEACEFUL then
-		-- Others can steal it on the way back
-		local rob = Instance.new("ProximityPrompt")
-		rob.ActionText = "Steal"
-		rob.ObjectText = (if golden then "✨ Golden " else "") .. (Hatch.egg(WildConfig.BIOMES[nest.biome].tier) or { name = "Egg" }).name
-		rob.HoldDuration = 0.5
-		rob.MaxActivationDistance = WildConfig.ROB_RANGE
-		rob.RequiresLineOfSight = false
-		rob.Parent = part
-		rob.Triggered:Connect(function(robber)
-			WildService.rob(robber, part)
-		end)
-	end
-	carrying[player] = { nest = nest, part = part, safe = false, golden = golden, guardUntil = os.clock() + WildConfig.ROB_GUARD }
-	player:SetAttribute("WildEgg", true) -- (RaidService and HeistService won't let them carry another)
-	applySpeed(player)
+	-- Others can steal it on the way back, or grab it where it's dropped
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Steal"
+	prompt.ObjectText = (if golden then "✨ Golden " else "") .. (Hatch.egg(WildConfig.BIOMES[nest.biome].tier) or { name = "Egg" }).name
+	prompt.HoldDuration = 0.5
+	prompt.MaxActivationDistance = WildConfig.ROB_RANGE
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = part
+	prompt.Triggered:Connect(function(taker)
+		if drops[part] then
+			WildService.pickUp(taker, part)
+		else
+			WildService.rob(taker, part)
+		end
+	end)
+	hold(player, { nest = nest, part = part, safe = false, golden = golden, guardUntil = os.clock() + WildConfig.ROB_GUARD })
 	local biome = WildConfig.BIOMES[nest.biome]
 	if Wild.outruns(data.speed, biome) then
 		IslandService.notify(player, ("Got it! Run out of the %s before its guardian wakes up! 🏃"):format(biome.name), "success")
 	else
 		IslandService.notify(player, ("Got it! But its guardian is faster than you (⚡ %d needed). Run!"):format(Wild.needs(biome)), "info")
 	end
-	-- The nearest free guardian of the biome comes after them
-	local best: Guardian? = nil
-	for _, guardian in guardians do
-		if guardian.biome == nest.biome and not guardian.chasing then
-			if not best or (guardian.position - root.Position).Magnitude < (best.position - root.Position).Magnitude then
-				best = guardian
-			end
-		end
-	end
-	if best then
-		best.chasing = player
-		best.wakeAt = os.clock() + WildConfig.WAKE
-	end
+	wake(nest.biome, player, root.Position)
 end
 
 -- Another player takes a Wild egg from the one carrying it (their guardian, if still after it, now chases
@@ -267,10 +329,7 @@ function WildService.rob(robber: Player, part: BasePart)
 	applySpeed(victim)
 	carry.safe = Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= carry.nest.biome
 	carry.guardUntil = os.clock() + WildConfig.ROB_GUARD
-	carrying[robber] = carry
-	robber:SetAttribute("WildEgg", true)
-	part:SetAttribute("Carrier", robber.UserId)
-	applySpeed(robber)
+	hold(robber, carry)
 	for _, guardian in guardians do
 		if guardian.chasing == victim then
 			guardian.chasing = robber
@@ -285,6 +344,9 @@ local function refill()
 	local carried: { [Nest]: boolean } = {}
 	for _, carry in carrying do
 		carried[carry.nest] = true
+	end
+	for _, dropped in drops do
+		carried[dropped.nest] = true
 	end
 	for _, nest in nests do
 		if not carried[nest] then
@@ -376,11 +438,12 @@ local function spawnGuardians()
 			text.Font = Enum.Font.FredokaOne
 			text.TextColor3 = Color3.fromRGB(255, 120, 110)
 			text.TextStrokeTransparency = 0.3
-			text.Text = ("🐾 %s · ⚡ %d needed"):format(biome.name, Wild.needs(biome))
+			local label = ("%s · ⚡ %d needed"):format(biome.name, Wild.needs(biome))
+			text.Text = "💤 " .. label
 			text.Parent = gui
 			gui.Parent = tag
 			tag.Parent = folder
-			local guardian: Guardian = { biome = i, home = home, position = home, wander = home, rest = 0, chasing = nil, wakeAt = 0, built = nil, tag = tag }
+			local guardian: Guardian = { biome = i, home = home, position = home, wander = home, rest = 0, chasing = nil, text = text, label = label, wakeAt = 0, built = nil, tag = tag }
 			table.insert(guardians, guardian)
 			draw(guardian)
 		end
@@ -401,8 +464,11 @@ local function tick(frame: number)
 	for player, carry in carrying do
 		local root = rootOf(player)
 		local humanoid = humanoidOf(player)
-		if not player.Parent or not root or not humanoid or humanoid.Health <= 0 then
+		if not player.Parent or not root or not humanoid then
 			finish(player, false)
+			continue
+		elseif humanoid.Health <= 0 then
+			drop(player, root.Position)
 			continue
 		end
 		carry.part.Position = root.Position + Vector3.new(0, 5, 0)
@@ -412,6 +478,15 @@ local function tick(frame: number)
 			carry.safe = true
 			applySpeed(player)
 			IslandService.notify(player, "😮‍💨 You got away! Take the egg back through the gate", "success")
+		end
+	end
+	-- Dropped eggs nobody came for go back to their nest
+	for part, dropped in drops do
+		if os.clock() >= dropped.expires then
+			drops[part] = nil
+			part:Destroy()
+			setFull(dropped.nest, true)
+			setGolden(dropped.nest, dropped.golden)
 		end
 	end
 	for _, guardian in guardians do
@@ -425,28 +500,27 @@ local function tick(frame: number)
 		end
 		local root = if thief and carry and not carry.safe then rootOf(thief) else nil
 		if thief and root and os.clock() < guardian.wakeAt then
+			guardian.text.Text = "❗ " .. guardian.label
 			continue -- (waking up: the thief's head start)
 		elseif thief and root then
+			guardian.text.Text = "😡 " .. guardian.label
 			target = Vector3.new(root.Position.X, 0, root.Position.Z)
 			if (target - guardian.position).Magnitude <= WildConfig.CATCH_RANGE then
-				IslandService.notify(thief, "🐾 A guardian caught you! The egg went back to its nest", "error")
-				finish(thief, false)
+				IslandService.notify(thief, "🐾 The guardian caught you! You dropped the egg: go back for it before someone else takes it", "error")
+				drop(thief, root.Position)
 				root.CFrame = gateSpot()
 				root.AssemblyLinearVelocity = Vector3.zero
 				continue
 			end
 		else
+			-- Back home to sleep
 			guardian.chasing = nil
-			speed = 6
-			if (guardian.wander - guardian.position).Magnitude < 0.5 then
-				guardian.rest -= dt
-				if guardian.rest <= 0 then
-					guardian.wander = guardian.home + Vector3.new(rng:NextNumber(-25, 25), 0, rng:NextNumber(-35, 35))
-					guardian.rest = rng:NextNumber(1, 4)
-				end
+			speed = 8
+			target = guardian.home
+			if (guardian.home - guardian.position).Magnitude < 0.5 then
+				guardian.text.Text = "💤 " .. guardian.label
 				continue
 			end
-			target = guardian.wander
 		end
 		local offset = target - guardian.position
 		if offset.Magnitude > 0.05 then

@@ -484,7 +484,9 @@ function GardenClient.init()
 			for _, carried in CollectionService:GetTagged("WildCarry") do
 				local prompt = carried:FindFirstChildOfClass("ProximityPrompt")
 				if prompt then
-					prompt.Enabled = carried:GetAttribute("Carrier") ~= LOCAL.UserId
+					local carrier = carried:GetAttribute("Carrier")
+					-- (dropped: anyone can grab it; carried: stolen from, but not in a Peaceful server)
+					prompt.Enabled = carrier ~= LOCAL.UserId and (carrier == 0 or workspace:GetAttribute("Peaceful") ~= true)
 				end
 			end
 			for _, egg in CollectionService:GetTagged("HeistEgg") do
