@@ -22,6 +22,7 @@ local EVENTS = {
 	"UpgradeTreadmill",
 	"SendHome", -- (id): a Homesick creature goes back where its egg was stolen from
 	"Snap", -- (id): it and matching creatures snap into one (Config/Snap)
+	"ClaimDaily", -- the egg for doing all of today's tasks
 	-- server -> client
 	"Data", -- (snapshot)
 	"Notify", -- (text, kind)

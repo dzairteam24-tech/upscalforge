@@ -15,6 +15,7 @@ local Hatch = require(Shared.Logic.Hatch)
 local Stock = require(Shared.Logic.Stock)
 local Net = require(Shared.Net)
 
+local DailyService = require(script.Parent.DailyService)
 local DataService = require(script.Parent.DataService)
 local IslandService = require(script.Parent.IslandService)
 
@@ -46,6 +47,7 @@ local function buyEgg(player: Player, tier: any)
 	data.coins -= egg.price
 	data.shop.bought[key] = (data.shop.bought[key] or 0) + 1
 	data.eggs[key] = (data.eggs[key] or 0) + 1
+	DailyService.add(player, "buy")
 	IslandService.notify(player, ("Bought a %s! Put it in an incubator in your garden"):format(egg.name), "success")
 	IslandService.push(player)
 end

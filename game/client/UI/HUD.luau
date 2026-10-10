@@ -1,5 +1,5 @@
 --!strict
--- The always-on screen: coins and what the island earns a second, the weather, and the bag button.
+-- The always-on screen: coins and what the island earns a second, the weather, and the bag and daily buttons.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Mutations = require(Shared.Config.Mutations)
 local Format = require(Shared.Logic.Format)
+local Daily = require(Shared.Logic.Daily)
 local Raid = require(Shared.Logic.Raid)
 local Weather = require(Shared.Logic.Weather)
 local Net = require(Shared.Net)
@@ -14,6 +15,7 @@ local Net = require(Shared.Net)
 local Store = require(script.Parent.Parent.Store)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
+local DailyWindow = require(script.Parent.DailyWindow)
 
 local HUD = {}
 
@@ -50,6 +52,12 @@ function HUD.mount(gui: ScreenGui)
 	end)
 	wild.Size = UDim2.fromOffset(110, 48)
 	wild.Position = UDim2.new(0, 12, 0, 142)
+	-- Today's tasks: gold when the egg is ready to claim
+	local daily = Theme.button(gui, "📋 Daily", Theme.blue, function()
+		Windows.toggle("Daily")
+	end)
+	daily.Size = UDim2.fromOffset(110, 48)
+	daily.Position = UDim2.new(0, 12, 0, 198)
 	local speed = Theme.text(gui, { Size = UDim2.fromOffset(110, 48), Position = UDim2.new(0, 132, 0, 142), TextColor3 = Color3.new(1, 1, 1) })
 	speed.TextStrokeTransparency = 0.3
 
@@ -90,6 +98,10 @@ function HUD.mount(gui: ScreenGui)
 				else ("🔒 Gates open in %s"):format(untilChange)
 			raid.BackgroundColor3 = if isOpen then Color3.fromRGB(220, 60, 80) else Color3.fromRGB(40, 36, 54)
 			coins.Text = "🪙 " .. Format.abbrev(Store.coins())
+			local today = DailyWindow.state()
+			local ready = Daily.done(today) and not today.claimed
+			daily.Text = if ready then "🎁 Daily!" else "📋 Daily"
+			daily.BackgroundColor3 = if ready then Theme.gold else Theme.blue
 			local playerSpeed = Players.LocalPlayer:GetAttribute("Speed")
 			speed.Text = ("⚡ %.1f"):format(if type(playerSpeed) == "number" then playerSpeed else 16)
 			local fedUntil = Players.LocalPlayer:GetAttribute("FedUntil")

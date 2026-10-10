@@ -28,6 +28,8 @@ local MotherConfig = R(Shared.Config.Mother)
 local Mother = R(Shared.Logic.Mother)
 local SnapConfig = R(Shared.Config.Snap)
 local Snap = R(Shared.Logic.Snap)
+local DailyConfig = R(Shared.Config.Daily)
+local Daily = R(Shared.Logic.Daily)
 
 local passed, failed = 0, 0
 local function test(name: string, fn: () -> ())
@@ -194,6 +196,37 @@ test("Cube Snap: four matching make a Mega, four Megas a Rainbow, and they earn 
 	eq(Raid.guards({ a = mega }, { "a" }).power, Mutations.byId.Golden.order * SnapConfig.byId.Mega.guard)
 	eq(Snap.name(mega), "Mega Golden Cubby")
 	eq(Snap.name({ s = "Cubby", m = "Normal" }), "Cubby")
+end)
+
+test("daily tasks: three different ones a day, they change, a new day starts fresh", function()
+	local seen = {}
+	for day = 0, 60 do
+		local tasks = Daily.tasks(day)
+		eq(#tasks, DailyConfig.PER_DAY)
+		for i, id in tasks do
+			assert(DailyConfig.byId[id], "a real task")
+			for j = i + 1, #tasks do
+				assert(tasks[j] ~= id, "different tasks")
+			end
+			seen[id] = true
+		end
+		local again = Daily.tasks(day)
+		eq(table.concat(again, ","), table.concat(tasks, ","), "the same everywhere")
+	end
+	for _, task in DailyConfig.LIST do
+		assert(seen[task.id], task.id .. " comes up")
+	end
+	local state = { day = 5, progress = {}, claimed = false }
+	eq(Daily.done(state), false)
+	for _, id in Daily.tasks(5) do
+		state.progress[id] = DailyConfig.byId[id].goal
+	end
+	eq(Daily.done(state), true)
+	state.claimed = true
+	Daily.today(state, 6)
+	eq(state.claimed, false, "a new day")
+	eq(next(state.progress), nil, "fresh progress")
+	eq(Daily.day(86400 * 3 + 5), 3)
 end)
 
 test("an egg pays itself back: a tier's average creature earns its price in under 10 minutes", function()

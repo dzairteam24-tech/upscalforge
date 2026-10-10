@@ -17,6 +17,7 @@ local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
 local Mother = require(Shared.Logic.Mother)
 
+local DailyService = require(script.Parent.DailyService)
 local DataService = require(script.Parent.DataService)
 local IslandService = require(script.Parent.IslandService)
 
@@ -77,6 +78,7 @@ local function feed(player: Player)
 	end
 	points += gave
 	fed[player] = (fed[player] or 0) + gave
+	DailyService.add(player, "mother")
 	current:SetAttribute("Points", points)
 	IslandService.notify(player, ("%s +%d! You gave %d · Legendary chance %d%%"):format(what, gave, fed[player], math.floor(Mother.legendaryChance(fed[player]) * 100)), "success")
 	IslandService.render(player)

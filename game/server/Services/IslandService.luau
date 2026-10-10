@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Creatures = require(Shared.Config.Creatures)
+local DailyConfig = require(Shared.Config.Daily)
 local FoodConfig = require(Shared.Config.Food)
 local IslandConfig = require(Shared.Config.Island)
 local Mutations = require(Shared.Config.Mutations)
@@ -26,6 +27,7 @@ local Weather = require(Shared.Logic.Weather)
 local PetModel = require(Shared.PetModel)
 local Net = require(Shared.Net)
 
+local DailyService = require(script.Parent.DailyService)
 local DataService = require(script.Parent.DataService)
 local WorldService = require(script.Parent.WorldService)
 
@@ -334,6 +336,7 @@ local function useIncubator(player: Player, slot: any)
 				return
 			end
 			data.incubating[key] = nil
+			DailyService.add(player, "hatch")
 			Net.event("Hatched"):FireClient(player, id, species, mutation)
 			if egg.h then
 				task.delay(2, IslandService.notify, player, ("🏠 Your %s is Homesick: it misses %s and sends them %d%% of its coins. Send it home from your Bag for a reward!"):format(species, egg.hn or "its home", RaidConfig.HOME_SHARE * 100), "info")
@@ -437,6 +440,7 @@ local function feed(player: Player)
 	end
 	data.food[food.id] -= 1
 	data.fedUntil = Food.feed(data.fedUntil, now, food)
+	DailyService.add(player, "feed")
 	IslandService.notify(player, ("%s Yum! Your creatures earn ×%d for %s"):format(food.icon, FoodConfig.BOOST, Format.time(data.fedUntil - now)), "success")
 	IslandService.render(player)
 	IslandService.push(player)
@@ -498,6 +502,24 @@ local function snap(player: Player, id: any)
 	IslandService.push(player)
 end
 
+-- The daily tasks' reward: eggs of the best tier the player has hatched
+local function claimDaily(player: Player)
+	local data = DataService.get(player)
+	if not data or not throttle(player) then
+		return
+	end
+	if not DailyService.claim(player) then
+		IslandService.notify(player, "Finish today's tasks first", "error")
+		return
+	end
+	local tier = IslandService.bestTier(data)
+	local key = tostring(tier)
+	data.eggs[key] = (data.eggs[key] or 0) + DailyConfig.REWARD_EGGS
+	local egg = Hatch.egg(tier)
+	IslandService.notify(player, ("🎁 Daily reward: a %s! Come back tomorrow for more"):format(if egg then egg.name else "egg"), "rare")
+	IslandService.push(player)
+end
+
 -- A gift came (DataService.gift): coins from Homesick creatures far away, or a creature back home
 local function gifted(player: Player, coins: number, creatures: { DataService.Creature })
 	for _, creature in creatures do
@@ -535,6 +557,7 @@ function IslandService.init()
 	DataService.onGift(gifted)
 	Net.event("SendHome").OnServerEvent:Connect(sendHome)
 	Net.event("Snap").OnServerEvent:Connect(snap)
+	Net.event("ClaimDaily").OnServerEvent:Connect(claimDaily)
 	Players.PlayerRemoving:Connect(function(player)
 		release(player)
 		busy[player] = nil

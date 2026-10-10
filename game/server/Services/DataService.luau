@@ -36,6 +36,7 @@ export type Data = {
 	fedUntil: number, -- os.time() the creatures are fed until (Config/Food)
 	storage: number, -- the barn's level (Config/Island STORAGE)
 	starter: boolean, -- whether they got their free first egg (IslandService)
+	daily: { day: number, progress: { [string]: number }, claimed: boolean }, -- today's tasks (Logic/Daily)
 }
 
 local DataService = {}
@@ -93,6 +94,7 @@ local function template(): Data
 		fedUntil = 0,
 		storage = 1,
 		starter = false,
+		daily = { day = -1, progress = {}, claimed = false },
 	}
 end
 

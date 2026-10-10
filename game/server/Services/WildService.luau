@@ -18,6 +18,7 @@ local Wild = require(Shared.Logic.Wild)
 local PetModel = require(Shared.PetModel)
 local Net = require(Shared.Net)
 
+local DailyService = require(script.Parent.DailyService)
 local DataService = require(script.Parent.DataService)
 local HeistService = require(script.Parent.HeistService)
 local IslandService = require(script.Parent.IslandService)
@@ -102,6 +103,7 @@ local function finish(player: Player, kept: boolean)
 		local key = tostring(biome.tier)
 		data.eggs[key] = (data.eggs[key] or 0) + 1
 		data.stats.stolen += 1
+		DailyService.add(player, "wild")
 		IslandService.notify(player, ("You got away with a %s! 🥚 Put it in an incubator"):format(if egg then egg.name else "egg"), "success")
 		IslandService.push(player)
 	else
