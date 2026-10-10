@@ -547,7 +547,7 @@ local function upgradeTreadmill(player: Player, index: number)
 	IslandService.push(player)
 end
 
--- Once a second: whoever is running on their own treadmill counts a second; every TREADMILL_EVERY of them they
+-- Once a second: whoever is on their own treadmill counts a second; every TREADMILL_EVERY of them they
 -- get TREADMILL_GAIN faster
 local running: { [Player]: number } = {}
 local function train()
@@ -556,7 +556,8 @@ local function train()
 		local index = IslandService.islandOf(player)
 		local root = rootOf(player)
 		local humanoid = humanoidOf(player)
-		if not data or not index or not root or not humanoid or humanoid.MoveDirection.Magnitude < 0.3 then
+		-- (standing on it is enough: the player runs on it by themselves, TreadmillClient)
+		if not data or not index or not root or not humanoid then
 			continue
 		end
 		local inside = Layout.garden(index):PointToObjectSpace(root.Position) - Layout.TREADMILL
