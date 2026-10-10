@@ -40,6 +40,7 @@ type Guardian = {
 	chasing: Player?,
 	text: TextLabel,
 	label: string,
+	asleep: boolean, -- (lying on its side)
 	wakeAt: number, -- (os.clock(): when the chase starts)
 	built: PetModel.Built?,
 	tag: Part,
@@ -384,7 +385,10 @@ end
 local function place(guardian: Guardian, toward: Vector3)
 	local built = guardian.built
 	local facing = if (toward - guardian.position).Magnitude > 0.1 then Layout.facing(guardian.position, toward) else CFrame.new(guardian.position)
-	if built then
+	if built and guardian.asleep then
+		-- On its side: rolled over, its middle as high as half its width
+		PetModel.place(built, CFrame.new(guardian.position + Vector3.new(0, built.radius, 0)) * facing.Rotation * CFrame.Angles(0, 0, math.rad(90)))
+	elseif built then
 		PetModel.place(built, facing * CFrame.new(0, built.height / 2, 0))
 	end
 	guardian.tag.CFrame = CFrame.new(guardian.position + Vector3.new(0, 2, 0))
@@ -443,7 +447,7 @@ local function spawnGuardians()
 			text.Parent = gui
 			gui.Parent = tag
 			tag.Parent = folder
-			local guardian: Guardian = { biome = i, home = home, position = home, wander = home, rest = 0, chasing = nil, text = text, label = label, wakeAt = 0, built = nil, tag = tag }
+			local guardian: Guardian = { biome = i, home = home, position = home, wander = home, rest = 0, chasing = nil, text = text, label = label, asleep = true, wakeAt = 0, built = nil, tag = tag }
 			table.insert(guardians, guardian)
 			draw(guardian)
 		end
@@ -501,8 +505,13 @@ local function tick(frame: number)
 		local root = if thief and carry and not carry.safe then rootOf(thief) else nil
 		if thief and root and os.clock() < guardian.wakeAt then
 			guardian.text.Text = "❗ " .. guardian.label
+			if guardian.asleep then
+				guardian.asleep = false -- (gets up)
+				place(guardian, root.Position)
+			end
 			continue -- (waking up: the thief's head start)
 		elseif thief and root then
+			guardian.asleep = false
 			guardian.text.Text = "😡 " .. guardian.label
 			target = Vector3.new(root.Position.X, 0, root.Position.Z)
 			if (target - guardian.position).Magnitude <= WildConfig.CATCH_RANGE then
@@ -519,6 +528,10 @@ local function tick(frame: number)
 			target = guardian.home
 			if (guardian.home - guardian.position).Magnitude < 0.5 then
 				guardian.text.Text = "💤 " .. guardian.label
+				if not guardian.asleep then
+					guardian.asleep = true -- (lies down)
+					place(guardian, guardian.position + Vector3.new(0, 0, 1))
+				end
 				continue
 			end
 		end
