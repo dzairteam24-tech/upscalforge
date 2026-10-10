@@ -17,6 +17,7 @@ local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
 local Wild = require(Shared.Logic.Wild)
+local Carry = require(Shared.Carry)
 local PetModel = require(Shared.PetModel)
 local Net = require(Shared.Net)
 
@@ -166,6 +167,7 @@ local function finish(player: Player, kept: boolean)
 	end
 	carrying[player] = nil
 	player:SetAttribute("WildEgg", nil)
+	player:SetAttribute("Holding", nil)
 	carry.part:Destroy()
 	for _, guardian in guardians do
 		if guardian.chasing == player then
@@ -196,6 +198,7 @@ end
 -- The player now carries this egg
 local function hold(player: Player, held: Carry)
 	carrying[player] = held
+	Carry.hold(held.part, player)
 	player:SetAttribute("WildEgg", true) -- (HeistService won't let them carry another)
 	held.part:SetAttribute("Carrier", player.UserId)
 	local prompt = held.part:FindFirstChildOfClass("ProximityPrompt")
@@ -235,7 +238,7 @@ local function drop(player: Player, at: Vector3)
 		end
 	end
 	applySpeed(player)
-	held.part.Position = Vector3.new(at.X, 1.8, at.Z)
+	Carry.release(held.part, Vector3.new(at.X, 1.8, at.Z), player)
 	held.part:SetAttribute("Carrier", 0)
 	local prompt = held.part:FindFirstChildOfClass("ProximityPrompt")
 	if prompt then
@@ -287,7 +290,7 @@ local function steal(player: Player, nest: Nest)
 	mesh.MeshType = Enum.MeshType.Sphere
 	mesh.Scale = Vector3.new(1, 1.3, 1)
 	mesh.Parent = part
-	part.Position = root.Position + Vector3.new(0, 5, 0)
+	part.Position = root.Position
 	part.Parent = workspace
 	part:AddTag("WildCarry")
 	-- Anyone can grab it where it's dropped (knocked out with a bat, or caught by the guardian)
@@ -455,7 +458,6 @@ local function tick(frame: number)
 			drop(player, root.Position)
 			continue
 		end
-		carry.part.Position = root.Position + Vector3.new(0, 5, 0)
 		if Layout.pastGate(root.Position) then
 			finish(player, true)
 		elseif not carry.safe and Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= carry.nest.biome then

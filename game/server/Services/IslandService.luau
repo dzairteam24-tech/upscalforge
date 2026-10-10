@@ -114,6 +114,25 @@ end
 ---------------------------------------------------------------------------------------------------------------
 -- Drawing an island
 
+-- What each garden shows now (its pasture's level and its creatures), so a redraw only rebuilds what changed:
+-- rebuilding every creature on each coin or egg action was the heaviest thing the server did
+local drawnLevel: { [number]: number } = {}
+local drawnCreatures: { [number]: string } = {}
+
+local function creaturesKey(data: Data?): string
+	if not data then
+		return ""
+	end
+	local keys = {}
+	for _, id in data.placed do
+		local creature = data.creatures[id]
+		if creature then
+			table.insert(keys, ("%s:%s:%s:%s"):format(id, creature.s, creature.m, creature.g or ""))
+		end
+	end
+	return table.concat(keys, ",")
+end
+
 local function render(index: number, player: Player?, data: Data?)
 	local island = WorldService.island(index)
 	if not island then
@@ -123,7 +142,8 @@ local function render(index: number, player: Player?, data: Data?)
 	-- The pasture as far as the owner has grown it
 	local level = if data then data.pasture else 1
 	island:SetAttribute("Pasture", level)
-	for _, d in island:GetDescendants() do
+	local growing: { Instance } = if drawnLevel[index] == level then {} else island:GetDescendants()
+	for _, d in growing do
 		local grow = d:GetAttribute("Grow")
 		if type(grow) == "number" and d:IsA("Model") then
 			local shown = if d:GetAttribute("Only") then grow == level else grow <= level
@@ -169,8 +189,11 @@ local function render(index: number, player: Player?, data: Data?)
 		pad:SetAttribute("Duration", if egg then Hatch.seconds(egg.tier) else 0)
 	end
 	-- The creatures living there
+	drawnLevel[index] = level
 	local folder = island:FindFirstChild("Creatures")
-	if folder then
+	local key = creaturesKey(data)
+	if folder and drawnCreatures[index] ~= key then
+		drawnCreatures[index] = key
 		folder:ClearAllChildren()
 		if data then
 			for slot, id in data.placed do
@@ -596,6 +619,7 @@ end
 
 -- When the creature models arrive, the islands are drawn again with them
 function IslandService.redraw()
+	table.clear(drawnCreatures)
 	for player in islandOf do
 		IslandService.render(player)
 	end

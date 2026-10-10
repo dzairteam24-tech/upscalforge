@@ -18,6 +18,7 @@ local Guide = require(Controllers.Guide)
 local RideClient = require(Controllers.RideClient)
 local SprintClient = require(Controllers.SprintClient)
 local TreadmillClient = require(Controllers.TreadmillClient)
+local EggHands = require(Controllers.EggHands)
 
 Store.init()
 
@@ -39,3 +40,4 @@ Guide.init()
 RideClient.init()
 SprintClient.init()
 TreadmillClient.init()
+EggHands.init()

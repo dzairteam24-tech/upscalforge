@@ -14,6 +14,7 @@ local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Heist = require(Shared.Logic.Heist)
 local Layout = require(Shared.Logic.Layout)
+local Carry = require(Shared.Carry)
 
 local DataService = require(script.Parent.DataService)
 local IslandService = require(script.Parent.IslandService)
@@ -46,7 +47,13 @@ function HeistService.isCarrier(player: Player): boolean
 end
 
 local function setCarrier(player: Player?)
+	if egg and carrier then
+		Carry.release(egg, nil, carrier)
+	end
 	carrier = player
+	if egg and player then
+		Carry.hold(egg, player)
+	end
 	guardUntil = os.clock() + HeistConfig.STEAL_GUARD
 	if egg then
 		egg:SetAttribute("Carrier", if player then player.UserId else 0)
@@ -60,6 +67,9 @@ end
 local function endRound(winner: Player?)
 	if egg then
 		egg:Destroy()
+	end
+	if carrier then
+		carrier:SetAttribute("Holding", nil)
 	end
 	egg, prompt, carrier = nil, nil, nil
 	if not winner then
@@ -156,11 +166,11 @@ local function drop()
 	local part = egg
 	setCarrier(nil)
 	if part then
-		part.Position = Vector3.new(part.Position.X, 3, part.Position.Z)
+		part.CFrame = CFrame.new(part.Position.X, 3, part.Position.Z)
 	end
 end
 
--- Every frame: the egg rides above its carrier's head, and wins when it gets home
+-- Every frame: the egg rides in its carrier's hands (welded), and wins when it gets home
 local function follow()
 	local part = egg
 	local holder = carrier
@@ -173,7 +183,6 @@ local function follow()
 		drop()
 		return
 	end
-	part.Position = root.Position + Vector3.new(0, 5.5, 0)
 	local home = IslandService.islandOf(holder)
 	if home then
 		local center = Layout.garden(home).Position

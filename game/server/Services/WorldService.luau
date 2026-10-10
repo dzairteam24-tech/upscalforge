@@ -28,6 +28,7 @@ local PAVING = rgb(236, 222, 196)
 local function part(parent: Instance, props: { [string]: any }): Part
 	local p = Instance.new("Part")
 	p.Anchored = true
+	p.CanTouch = false -- (nothing in the world listens for touches: no physics work for it)
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
 	p.Material = Enum.Material.SmoothPlastic
@@ -244,10 +245,12 @@ local function buildGarden(world: Instance, index: number)
 		for _, y in { 1.2, 2.6 } do
 			part(into, { Name = "Rail", Size = Vector3.new(length, 0.35, 0.3), CFrame = cf * CFrame.new(0, y, 0), Color = WOOD, CanCollide = false })
 		end
-		local posts = math.max(1, math.floor(length / 2.2))
+		-- (a ranch fence: two rails on a post every 20 studs, not a picket every two: the pickets were most
+		-- of the world's parts)
+		local posts = math.max(1, math.ceil(length / 20))
 		for i = 0, posts do
 			local x = -length / 2 + i * length / posts
-			part(into, { Name = "Picket", Size = Vector3.new(0.5, 3.4, 0.4), CFrame = cf * CFrame.new(x, 1.7, 0), Color = rgb(250, 240, 222), CanCollide = false })
+			part(into, { Name = "Picket", Size = Vector3.new(0.9, 3.6, 0.9), CFrame = cf * CFrame.new(x, 1.7, 0), Color = rgb(250, 240, 222), CanCollide = false })
 		end
 		part(into, { Name = "Wall", Size = Vector3.new(length, Layout.FENCE_HEIGHT, 0.6), CFrame = cf * CFrame.new(0, Layout.FENCE_HEIGHT / 2, 0), Transparency = 1 })
 	end

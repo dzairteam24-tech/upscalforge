@@ -252,7 +252,10 @@ local function roam(dt: number)
 		end
 		if clock >= r.nextCoin then
 			r.nextCoin = clock + COIN_EVERY
-			coinPop(model, number(model, "Earn") * COIN_EVERY)
+			-- (coins only pop where they can be seen)
+			if (r.at - eye).Magnitude < 90 then
+				coinPop(model, number(model, "Earn") * COIN_EVERY)
+			end
 		end
 	end
 end
@@ -419,8 +422,11 @@ function GardenClient.init()
 	end)
 	task.spawn(function()
 		while true do
+			-- (the nests far from the camera wait: nobody sees their timers from there)
+			local camera = workspace.CurrentCamera
+			local eye = if camera then camera.CFrame.Position else Vector3.zero
 			for _, pad in CollectionService:GetTagged("Incubator") do
-				if pad:IsA("BasePart") then
+				if pad:IsA("BasePart") and (not pads[pad] or (pad.Position - eye).Magnitude < 150) then
 					updatePad(pad)
 				end
 			end
