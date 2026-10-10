@@ -52,6 +52,11 @@ local function billboard(parent: Instance, width: number, height: number, offset
 	return text
 end
 
+-- Whether it's Raid Time here (never in a Peaceful private server)
+local function raidOpen(): boolean
+	return workspace:GetAttribute("Peaceful") ~= true and (Raid.at(math.floor(now())))
+end
+
 -- Incubators
 local EGG_SIZE = Layout.NEST_SIZE * 0.45
 type Pad = { egg: Part, text: TextLabel }
@@ -88,7 +93,7 @@ local function updatePad(pad: BasePart)
 	end
 	local action = ""
 	local text = ""
-	local raid = Raid.at(math.floor(now()))
+	local raid = raidOpen()
 	local carried = pad:GetAttribute("Carried") == true
 	if carried then
 		pad_.egg.Parent = nil
@@ -143,7 +148,7 @@ local function updateTrough(trough: BasePart)
 	local left = number(trough, "FedUntil") - now()
 	local fed = if left > 0 then ("😋 ×2 · %s"):format(Format.time(math.ceil(left))) else "😴 Hungry"
 	;(text :: TextLabel).Text = if owner == 0 then "" elseif mine then ("%s · 🌾 %d"):format(fed, food) else fed
-	local stealable = Raid.at(math.floor(now())) and not mine and owner ~= 0 and food > 0
+	local stealable = raidOpen() and not mine and owner ~= 0 and food > 0
 	local prompt = trough:FindFirstChildOfClass("ProximityPrompt")
 	if prompt then
 		prompt.Enabled = mine or stealable
@@ -227,7 +232,7 @@ end
 local CHASE_SPEED = 10
 local function intruders(): { [number]: { Vector3 } }
 	local found = {}
-	if not Raid.at(math.floor(now())) then
+	if not raidOpen() then
 		return found
 	end
 	for _, player in Players:GetPlayers() do
@@ -252,10 +257,16 @@ local function nearest(from: Vector3, spots: { Vector3 }): Vector3
 	return best
 end
 
+local ANIMATE_RANGE = 160 -- studs from the camera: creatures further away hold still
 local function roam(dt: number)
 	local clock = os.clock()
 	local chased = intruders()
+	local camera = workspace.CurrentCamera
+	local eye = if camera then camera.CFrame.Position else Vector3.zero
 	for model, r in roamers do
+		if (r.at - eye).Magnitude > ANIMATE_RANGE then
+			continue
+		end
 		local spots = chased[number(model, "Island")]
 		local chasing = spots ~= nil
 		if spots then

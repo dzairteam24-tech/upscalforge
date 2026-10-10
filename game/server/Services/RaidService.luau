@@ -6,6 +6,9 @@
 -- (or leaves, or falls), the egg goes back. Brought home, the egg keeps its incubation time in the thief's
 -- garden, and remembers where it came from: what hatches is Homesick (IslandService).
 --
+-- Fair to the one robbed: a garden loses at most one egg a raid, and private servers are Peaceful (no Raid Time
+-- at all), so whoever doesn't want to be robbed can play in one.
+--
 -- The garden's creatures guard it (Logic/Raid.guards): while a thief carries an egg inside, they may bump into
 -- them and make them stumble. Lava ones burn longer, Crystal ones knock them aside, Neon ones make them glow.
 
@@ -30,6 +33,9 @@ type Carry = { owner: Player, slot: number, tier: number, start: number, part: P
 local carrying: { [Player]: Carry } = {}
 local open = false
 local warned = -1
+local PEACEFUL = game.PrivateServerId ~= "" and game.PrivateServerOwnerId ~= 0
+-- The raid (when its gates opened) each owner last lost an egg in
+local robbed: { [Player]: number } = {}
 
 local function everyone(text: string, kind: string)
 	for _, player in Players:GetPlayers() do
@@ -88,6 +94,7 @@ local function finish(thief: Player, stolen: boolean)
 		local egg = ownerData.incubating[key]
 		if egg and egg.start == carry.start and egg.tier == carry.tier then
 			ownerData.incubating[key] = nil
+			robbed[carry.owner] = os.time() - os.time() % RaidConfig.EVERY
 			-- Into a free incubator of the thief's, keeping its time and remembering its home (unless it just got
 			-- back there); or into their bag
 			local home: number? = carry.owner.UserId
@@ -148,6 +155,15 @@ local function steal(thief: Player, index: any, slot: any)
 	end
 	if os.time() - ownerData.firstPlayed < RaidConfig.NEW_PLAYER_SAFE then
 		IslandService.notify(thief, ("%s is new here: their garden is safe for now"):format(owner.DisplayName), "error")
+		return
+	end
+	local raidStart = os.time() - os.time() % RaidConfig.EVERY
+	local beingRobbed = false
+	for _, other in carrying do
+		beingRobbed = beingRobbed or other.owner == owner
+	end
+	if robbed[owner] == raidStart or beingRobbed then
+		IslandService.notify(thief, ("%s already lost an egg this raid: leave them be"):format(owner.DisplayName), "error")
 		return
 	end
 	local egg = ownerData.incubating[tostring(slot)]
@@ -330,9 +346,14 @@ function RaidService.init()
 		end
 		IslandService.carried[player] = nil
 		foodTaken[player] = nil
+		robbed[player] = nil
 	end)
 	RunService.Heartbeat:Connect(follow)
 	setGates(false)
+	workspace:SetAttribute("Peaceful", PEACEFUL)
+	if PEACEFUL then
+		return -- (no Raid Time in a private server)
+	end
 	task.spawn(function()
 		while true do
 			schedule()

@@ -6,7 +6,7 @@
 return {
 	EVERY = 10 * 60, -- the gates open this often...
 	OPEN = 60, -- ...for this long
-	WARNING = 15, -- everyone is told this long before
+	WARNING = 30, -- everyone is told this long before
 	SAFE_SLOT = 1, -- this incubator can never be robbed
 	NEW_PLAYER_SAFE = 15 * 60, -- a new player's garden can't be robbed for this long after they first play
 	CATCH_RANGE = 7, -- the owner gets their egg back by touching the thief this close

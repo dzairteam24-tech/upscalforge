@@ -83,7 +83,11 @@ function HUD.mount(gui: ScreenGui)
 		while true do
 			local isOpen, changes = Raid.at(math.floor(workspace:GetServerTimeNow()))
 			local untilChange = Format.time(math.max(0, changes - math.floor(workspace:GetServerTimeNow())))
-			raidText.Text = if isOpen then ("🚨 RAID TIME! Gates open · %s"):format(untilChange) else ("🔒 Gates open in %s"):format(untilChange)
+			local peaceful = workspace:GetAttribute("Peaceful") == true
+			isOpen = isOpen and not peaceful
+			raidText.Text = if peaceful then "🕊️ Peaceful server: no Raid Time"
+				elseif isOpen then ("🚨 RAID TIME! Gates open · %s"):format(untilChange)
+				else ("🔒 Gates open in %s"):format(untilChange)
 			raid.BackgroundColor3 = if isOpen then Color3.fromRGB(220, 60, 80) else Color3.fromRGB(40, 36, 54)
 			coins.Text = "🪙 " .. Format.abbrev(Store.coins())
 			local playerSpeed = Players.LocalPlayer:GetAttribute("Speed")

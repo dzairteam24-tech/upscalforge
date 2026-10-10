@@ -1,10 +1,12 @@
 --!strict
--- The Egg Shop's window: each egg with its price and what's left in stock (Logic/Stock), and when it restocks.
+-- The Egg Shop's window: each egg with its price, what's left in stock (Logic/Stock) and what can hatch from it
+-- with each chance, and when it restocks.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Eggs = require(Shared.Config.Eggs)
+local Mutations = require(Shared.Config.Mutations)
 local ShopConfig = require(Shared.Config.Shop)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
@@ -20,11 +22,28 @@ local ShopWindow = {}
 function ShopWindow.mount(gui: ScreenGui)
 	local window, content = Theme.window(gui, "🥚 Egg Shop", Vector2.new(520, 560))
 	local restock = Theme.text(content, { Size = UDim2.new(1, 0, 0, 24), TextColor3 = Theme.soft, LayoutOrder = 0 })
+	-- The chances, out in the open
+	local function percent(chance: number): string
+		local value = chance * 100
+		return if value >= 1 then ("%d%%"):format(math.floor(value + 0.5)) else ("%s%%"):format(tostring(math.floor(value * 100 + 0.5) / 100))
+	end
+	local mutationOdds = {}
+	for _, mutation in Mutations.list do
+		if mutation.chance > 0 then
+			table.insert(mutationOdds, ("%s %s"):format(mutation.id, percent(mutation.chance)))
+		end
+	end
+	Theme.text(content, {
+		Text = "✨ Any egg can hatch: " .. table.concat(mutationOdds, " · "),
+		Size = UDim2.new(1, 0, 0, 20),
+		TextColor3 = Theme.soft,
+		LayoutOrder = 0,
+	})
 	type Row = { stock: TextLabel, buy: TextButton, tier: number, price: number }
 	local rows: { Row } = {}
 	for _, egg in Eggs do
 		local row = Instance.new("Frame")
-		row.Size = UDim2.new(1, -8, 0, 64)
+		row.Size = UDim2.new(1, -8, 0, if #egg.creatures > 4 then 104 else 86)
 		row.BackgroundColor3 = Theme.card
 		row.LayoutOrder = egg.tier
 		Theme.round(row, 12)
@@ -42,6 +61,18 @@ function ShopWindow.mount(gui: ScreenGui)
 			TextColor3 = Theme.soft,
 			TextXAlignment = Enum.TextXAlignment.Left,
 		})
+		local odds = {}
+		for i, creature in egg.creatures do
+			table.insert(odds, ("%s %s"):format(creature, percent(egg.chances[i])))
+		end
+		local oddsText = Theme.text(row, {
+			Text = table.concat(odds, " · "),
+			Size = UDim2.new(1, -20, 0, if #egg.creatures > 4 then 40 else 20),
+			Position = UDim2.fromOffset(10, 60),
+			TextColor3 = Theme.soft,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		})
+		oddsText.TextWrapped = true
 		local stock = Theme.text(row, { Size = UDim2.new(0.22, 0, 0, 26), Position = UDim2.new(0.5, 0, 0, 19) })
 		local buy = Theme.button(row, "Buy", Theme.green, function()
 			Net.event("BuyEgg"):FireServer(egg.tier)

@@ -1,7 +1,9 @@
 --!strict
 -- The Egg Shop in town: eggs in stock (Logic/Stock, the same in every server, restocked every few minutes)
--- to buy with coins, and creatures to sell back for coins.
+-- to buy with coins, and creatures to sell back for coins. When a restock brings a rare egg, the whole server
+-- hears about it.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -17,6 +19,8 @@ local DataService = require(script.Parent.DataService)
 local IslandService = require(script.Parent.IslandService)
 
 local ShopService = {}
+
+local RARE_TIER = 9 -- eggs from this tier up are announced when they come in stock
 
 local function buyEgg(player: Player, tier: any)
 	local data = DataService.get(player)
@@ -90,6 +94,26 @@ function ShopService.init()
 	Net.event("BuyFood").OnServerEvent:Connect(buyFood)
 	Net.event("BuyEgg").OnServerEvent:Connect(buyEgg)
 	Net.event("SellCreature").OnServerEvent:Connect(sell)
+	-- Rare eggs in the new stock, told to everyone
+	task.spawn(function()
+		local seen = Stock.window(os.time())
+		while true do
+			task.wait(1)
+			local window = Stock.window(os.time())
+			if window ~= seen then
+				seen = window
+				for tier = 11, RARE_TIER, -1 do
+					local count = Stock.count(window, tier)
+					local egg = Hatch.egg(tier)
+					if count > 0 and egg then
+						for _, player in Players:GetPlayers() do
+							IslandService.notify(player, ("🌟 %s IN STOCK at the Egg Shop! (%d)"):format(string.upper(egg.name), count), "rare")
+						end
+					end
+				end
+			end
+		end
+	end)
 end
 
 return ShopService
