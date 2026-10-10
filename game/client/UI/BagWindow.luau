@@ -13,6 +13,7 @@ local Mutations = require(Shared.Config.Mutations)
 local Earn = require(Shared.Logic.Earn)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
+local Snap = require(Shared.Logic.Snap)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
@@ -100,6 +101,21 @@ function BagWindow.mount(gui: ScreenGui)
 			end
 			return a.rate > b.rate
 		end)
+		-- Snaps ready: one row for each kind that has enough
+		local offered = {}
+		for _, entry in list do
+			local group, made = Snap.find(data.creatures, data.placed, entry.id)
+			local kind = if made then (made.g or "") .. Snap.name(entry.creature) else nil
+			if group and made and kind and not offered[kind] then
+				offered[kind] = true
+				local frame = row(4, 48)
+				local snapButton = Theme.button(frame, ("🧊 Snap %d %s → %s (🪙 %s/s)"):format(#group, Snap.name(entry.creature), Snap.name(made), Format.abbrev(Earn.rate(made))), Theme.gold, function()
+					Net.event("Snap"):FireServer(entry.id)
+				end)
+				snapButton.Size = UDim2.new(1, -12, 1, -12)
+				snapButton.Position = UDim2.fromOffset(6, 6)
+			end
+		end
 		for i, entry in list do
 			local species = Creatures.byId[entry.creature.s]
 			local mutation = Mutations.byId[entry.creature.m] or Mutations.byId.Normal
@@ -110,7 +126,7 @@ function BagWindow.mount(gui: ScreenGui)
 			mark.BackgroundColor3 = mutation.color
 			Theme.round(mark, 4)
 			mark.Parent = frame
-			local name = (if entry.creature.m ~= "Normal" then entry.creature.m .. " " else "") .. entry.creature.s
+			local name = Snap.name(entry.creature)
 			Theme.text(frame, { Text = name, Size = UDim2.new(0.42, -24, 0, 26), Position = UDim2.fromOffset(24, 4), TextXAlignment = Enum.TextXAlignment.Left })
 			Theme.text(frame, {
 				Text = if entry.creature.h

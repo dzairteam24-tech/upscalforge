@@ -5,16 +5,19 @@ local Creatures = require(script.Parent.Parent.Config.Creatures)
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 local Mutations = require(script.Parent.Parent.Config.Mutations)
 local RaidConfig = require(script.Parent.Parent.Config.Raid)
+local SnapConfig = require(script.Parent.Parent.Config.Snap)
 
 local Earn = {}
 
-export type Owned = { s: string, m: string, h: number?, hn: string? } -- h, hn: a Homesick creature's home and its name (Config/Raid HOME_SHARE)
+-- g: a snapped creature's grade (Config/Snap); h, hn: a Homesick creature's home and its name (Config/Raid HOME_SHARE)
+export type Owned = { s: string, m: string, g: string?, h: number?, hn: string? }
 
 -- Coins a second one creature earns
 function Earn.rate(creature: Owned): number
 	local species = Creatures.byId[creature.s]
 	local mutation = Mutations.byId[creature.m] or Mutations.byId.Normal
-	return if species then species.earn * mutation.mult else 0
+	local grade = if creature.g then SnapConfig.byId[creature.g] else nil
+	return if species then species.earn * mutation.mult * (if grade then grade.mult else 1) else 0
 end
 
 -- What its owner keeps of that: a Homesick creature sends a share home

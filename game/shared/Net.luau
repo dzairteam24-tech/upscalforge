@@ -21,10 +21,11 @@ local EVENTS = {
 	"Travel", -- ("home" or "wild")
 	"UpgradeTreadmill",
 	"SendHome", -- (id): a Homesick creature goes back where its egg was stolen from
+	"Snap", -- (id): it and matching creatures snap into one (Config/Snap)
 	-- server -> client
 	"Data", -- (snapshot)
 	"Notify", -- (text, kind)
-	"Hatched", -- (creature id, species, mutation)
+	"Hatched", -- (creature id, species, mutation), or (id, full name, "Snap") for a snapped one
 	"Bump", -- (position, mutation): a garden's creatures bumped into a thief
 }
 

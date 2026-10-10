@@ -281,6 +281,20 @@ local function roam(dt: number)
 			r.base = facing
 		end
 		model:PivotTo(CFrame.new(r.at + Vector3.new(0, hop, 0)) * r.base)
+		if model:GetAttribute("Grade") == "Rainbow" then
+			local glow = model:FindFirstChild("RainbowGlow") :: Highlight?
+			if not glow then
+				local created = Instance.new("Highlight")
+				created.Name = "RainbowGlow"
+				created.FillTransparency = 0.6
+				created.DepthMode = Enum.HighlightDepthMode.Occluded
+				created.Parent = model
+				glow = created
+			end
+			local color = Color3.fromHSV((clock * 0.25 + r.phase) % 1, 0.8, 1)
+			;(glow :: Highlight).FillColor = color
+			;(glow :: Highlight).OutlineColor = color
+		end
 		if clock >= r.nextCoin then
 			r.nextCoin = clock + COIN_EVERY
 			coinPop(model, number(model, "Earn") * COIN_EVERY)
@@ -411,6 +425,10 @@ function GardenClient.init()
 		end)
 	end)
 	Net.event("Hatched").OnClientEvent:Connect(function(_id, species, mutation)
+		if mutation == "Snap" then
+			Notify.show(("🧊 SNAP! You made a %s!"):format(species), "rare")
+			return
+		end
 		Notify.show(("🐣 You hatched a %s%s!"):format(if mutation ~= "Normal" then mutation .. " " else "", species), if mutation ~= "Normal" then "rare" else "success")
 	end)
 	CollectionService:GetInstanceRemovedSignal("Incubator"):Connect(function(pad)

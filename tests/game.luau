@@ -26,6 +26,8 @@ local Wild = R(Shared.Logic.Wild)
 local ShopConfig = R(Shared.Config.Shop)
 local MotherConfig = R(Shared.Config.Mother)
 local Mother = R(Shared.Logic.Mother)
+local SnapConfig = R(Shared.Config.Snap)
+local Snap = R(Shared.Logic.Snap)
 
 local passed, failed = 0, 0
 local function test(name: string, fn: () -> ())
@@ -150,6 +152,48 @@ test("the Mother Cube: once an hour for two minutes, never during Raid Time, hun
 	for id in MotherConfig.FOOD_POINTS do
 		assert(FoodConfig.byId[id], "a real food: " .. id)
 	end
+end)
+
+test("Cube Snap: four matching make a Mega, four Megas a Rainbow, and they earn and guard more", function()
+	local c = {
+		a = { s = "Cubby", m = "Golden" },
+		b = { s = "Cubby", m = "Golden" },
+		c = { s = "Cubby", m = "Golden" },
+		d = { s = "Cubby", m = "Normal" }, -- another mutation: no
+		e = { s = "Cubby", m = "Golden", h = 7 }, -- Homesick: no
+		f = { s = "Kitty", m = "Golden" }, -- another creature: no
+	}
+	eq(Snap.find(c, {}, "a"), nil, "only three match")
+	c.g = { s = "Cubby", m = "Golden" }
+	c.h2 = { s = "Cubby", m = "Golden" }
+	local group, made = Snap.find(c, { "b" }, "a")
+	assert(group and made, "four match")
+	eq(#group, SnapConfig.NEED)
+	eq(group[1], "a", "the chosen one first")
+	assert(not table.find(group, "b"), "the ones in the garden last")
+	eq(made.g, "Mega")
+	eq(made.m, "Golden")
+	eq(Snap.find(c, {}, "e"), nil, "a Homesick one can't snap")
+	-- Megas of any mutation make a Rainbow with the best one
+	local megas = {
+		a = { s = "Bear", m = "Normal", g = "Mega" },
+		b = { s = "Bear", m = "Lava", g = "Mega" },
+		c = { s = "Bear", m = "Golden", g = "Mega" },
+		d = { s = "Bear", m = "Normal", g = "Mega" },
+	}
+	local _, rainbow = Snap.find(megas, {}, "a")
+	assert(rainbow, "four Megas")
+	eq(rainbow.g, "Rainbow")
+	eq(rainbow.m, "Lava", "the best mutation")
+	eq(Snap.find({ a = { s = "Bear", m = "Normal", g = "Rainbow" } }, {}, "a"), nil, "Rainbow is the top")
+	-- Earnings and guarding
+	local plain = { s = "Cubby", m = "Golden" }
+	local mega = { s = "Cubby", m = "Golden", g = "Mega" }
+	eq(Earn.rate(mega), Earn.rate(plain) * SnapConfig.byId.Mega.mult)
+	assert(Earn.rate(mega) > 4 * Earn.rate(plain), "a Mega beats the four it took")
+	eq(Raid.guards({ a = mega }, { "a" }).power, Mutations.byId.Golden.order * SnapConfig.byId.Mega.guard)
+	eq(Snap.name(mega), "Mega Golden Cubby")
+	eq(Snap.name({ s = "Cubby", m = "Normal" }), "Cubby")
 end)
 
 test("an egg pays itself back: a tier's average creature earns its price in under 10 minutes", function()

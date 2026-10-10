@@ -15,11 +15,13 @@ local FoodConfig = require(Shared.Config.Food)
 local IslandConfig = require(Shared.Config.Island)
 local Mutations = require(Shared.Config.Mutations)
 local RaidConfig = require(Shared.Config.Raid)
+local SnapConfig = require(Shared.Config.Snap)
 local Earn = require(Shared.Logic.Earn)
 local Food = require(Shared.Logic.Food)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
+local Snap = require(Shared.Logic.Snap)
 local Weather = require(Shared.Logic.Weather)
 local PetModel = require(Shared.PetModel)
 local Net = require(Shared.Net)
@@ -164,7 +166,8 @@ local function render(index: number, player: Player?, data: Data?)
 					continue
 				end
 				local at = Layout.pen(index, slot)
-				local built = PetModel.build({ s = creature.s, v = creature.m, z = "Normal" })
+				local grade = if creature.g then SnapConfig.byId[creature.g] else nil
+				local built = PetModel.build({ s = creature.s, v = creature.m, z = if grade then grade.size else "Normal" })
 				local facing = Layout.facing(at, at + Layout.garden(index).LookVector)
 				PetModel.place(built, facing * CFrame.new(0, built.height / 2, 0))
 				for _, p in built.parts do
@@ -176,6 +179,7 @@ local function render(index: number, player: Player?, data: Data?)
 				built.model:SetAttribute("Island", index)
 				built.model:SetAttribute("Height", built.height)
 				built.model:SetAttribute("Mutation", creature.m)
+				built.model:SetAttribute("Grade", creature.g or "")
 				built.model:AddTag("IslandCreature")
 				built.model.Parent = folder
 			end
@@ -458,6 +462,42 @@ local function sendHome(player: Player, id: any)
 	IslandService.push(player)
 end
 
+-- Cube Snap (Config/Snap): four matching creatures become one Mega, four Megas one Rainbow
+local function snap(player: Player, id: any)
+	local data = DataService.get(player)
+	if not data or type(id) ~= "string" or not throttle(player) then
+		return
+	end
+	local group, made = Snap.find(data.creatures, data.placed, id)
+	if not group or not made then
+		IslandService.notify(player, ("You need %d matching creatures to snap"):format(SnapConfig.NEED), "error")
+		return
+	end
+	local wasPlaced = false
+	for _, other in group do
+		data.creatures[other] = nil
+		local at = table.find(data.placed, other)
+		if at then
+			table.remove(data.placed, at)
+			wasPlaced = true
+		end
+	end
+	local newId = tostring(data.nextId)
+	data.nextId += 1
+	data.creatures[newId] = { s = made.s, m = made.m, g = made.g }
+	if wasPlaced or #data.placed < data.pens then
+		table.insert(data.placed, newId)
+	end
+	Net.event("Hatched"):FireClient(player, newId, Snap.name(made), "Snap")
+	if made.g == "Rainbow" then
+		for _, other in Players:GetPlayers() do
+			IslandService.notify(other, ("🌈 %s snapped a %s!"):format(player.DisplayName, Snap.name(made)), "rare")
+		end
+	end
+	IslandService.render(player)
+	IslandService.push(player)
+end
+
 -- A gift came (DataService.gift): coins from Homesick creatures far away, or a creature back home
 local function gifted(player: Player, coins: number, creatures: { DataService.Creature })
 	for _, creature in creatures do
@@ -494,6 +534,7 @@ function IslandService.init()
 	DataService.onLoaded(assign)
 	DataService.onGift(gifted)
 	Net.event("SendHome").OnServerEvent:Connect(sendHome)
+	Net.event("Snap").OnServerEvent:Connect(snap)
 	Players.PlayerRemoving:Connect(function(player)
 		release(player)
 		busy[player] = nil

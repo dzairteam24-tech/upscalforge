@@ -3,6 +3,7 @@
 
 local RaidConfig = require(script.Parent.Parent.Config.Raid)
 local Mutations = require(script.Parent.Parent.Config.Mutations)
+local SnapConfig = require(script.Parent.Parent.Config.Snap)
 local Earn = require(script.Parent.Earn)
 
 local Raid = {}
@@ -26,7 +27,8 @@ function Raid.guards(creatures: { [string]: Earn.Owned }, placed: { string }): G
 		local creature = creatures[id]
 		if creature then
 			local mutation = Mutations.byId[creature.m] or Mutations.byId.Normal
-			guards.power += mutation.order
+			local grade = if creature.g then SnapConfig.byId[creature.g] else nil
+			guards.power += mutation.order * (if grade then grade.guard else 1)
 			guards.lava = guards.lava or creature.m == "Lava"
 			guards.crystal = guards.crystal or creature.m == "Crystal"
 			guards.neon = guards.neon or creature.m == "Neon"

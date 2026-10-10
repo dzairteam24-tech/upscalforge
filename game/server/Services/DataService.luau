@@ -14,7 +14,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local IslandConfig = require(Shared.Config.Island)
 local WildConfig = require(Shared.Config.Wild)
 
-export type Creature = { s: string, m: string, h: number?, hn: string? } -- h, hn: a Homesick creature's home and its name
+-- g: a snapped creature's grade (Config/Snap); h, hn: a Homesick creature's home and its name
+export type Creature = { s: string, m: string, g: string?, h: number?, hn: string? }
 export type Data = {
 	coins: number,
 	gems: number,

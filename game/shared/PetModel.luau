@@ -9,8 +9,8 @@ local Config = script.Parent.Config
 local CreatureLooks = require(Config.CreatureLooks)
 local Creatures = require(Config.Creatures)
 
--- How big each size draws (pet.z): only Normal hatches today; Big is for showpieces like the Heist
-local SIZES: { [string]: { scale: number } } = { Normal = { scale = 1 }, Big = { scale = 1.7 } }
+-- How big each size draws (pet.z): Normal hatches; Big and Huge are snapped creatures (Config/Snap)
+local SIZES: { [string]: { scale: number } } = { Normal = { scale = 1 }, Big = { scale = 1.7 }, Huge = { scale = 2.3 } }
 
 export type Built = {
 	model: Model,
