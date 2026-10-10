@@ -10,7 +10,7 @@ local Layout = {
 	SQUARE_RADIUS = 26, -- the square where players arrive
 	SHOP_DEPTH = 26, -- a shop's lot, from the street back
 	SHOP_SPACING = 30, -- between two shops' middles along the street
-	GARDEN_SIZE = 70,
+	GARDEN_SIZE = 80,
 	GARDEN_GAP = 10, -- between two gardens in a row
 	STREET_WIDTH = 26,
 	GATE_WIDTH = 16, -- the opening in a garden's front fence
@@ -69,13 +69,18 @@ end
 -- Inside a garden (its frame's space, front -Z toward the gate): the gate opens onto the hatchery, a wooden
 -- deck across the front with the nests either side of a short path, so the owner guards them from the gate. The
 -- path leads on into the pasture, which fills the rest of the garden, back to the fence, round a pond.
-Layout.HATCHERY = { center = Vector3.new(0, 0, -24), size = Vector3.new(66, 0, 20) }
-Layout.PASTURE = { center = Vector3.new(0, 0, 11.5), size = Vector3.new(62, 0, 43) }
-Layout.POND = { center = Vector3.new(0, 0, 11.5), radius = 5.5 }
+local HALF = Layout.GARDEN_SIZE / 2
+local PASTURE_FRONT, PASTURE_BACK = -HALF + 25, HALF - 2
+Layout.HATCHERY = { center = Vector3.new(0, 0, -HALF + 11), size = Vector3.new(66, 0, 20) }
+Layout.PASTURE = {
+	center = Vector3.new(0, 0, (PASTURE_FRONT + PASTURE_BACK) / 2),
+	size = Vector3.new(Layout.GARDEN_SIZE - 8, 0, PASTURE_BACK - PASTURE_FRONT),
+}
+Layout.POND = { center = Layout.PASTURE.center, radius = 6.5 }
 Layout.NEST_SIZE = 6 -- a nest's width (an egg in it is drawn to fit, whatever its tier)
 Layout.PATH_WIDTH = 6
-Layout.TROUGH = Vector3.new(-12, 0, -5) -- in the pasture, beside where the path comes in
-Layout.BARN = Vector3.new(23.5, 0, 26.5) -- the storage barn, in the pasture's back corner
+Layout.TROUGH = Vector3.new(-12, 0, PASTURE_FRONT + 5) -- in the pasture, beside where the path comes in
+Layout.BARN = Vector3.new(HALF - 11.5, 0, HALF - 8.5) -- the storage barn, in the pasture's back corner
 
 -- What the creatures walk round (a spot in the garden's space and how far from it to keep)
 Layout.OBSTACLES = {
@@ -96,7 +101,7 @@ end
 -- one first) beside the path, then outward
 local NESTS: { Vector3 } = {}
 for column = 0, 3 do
-	for _, z in { -19.5, -28.5 } do
+	for _, z in { -HALF + 15.5, -HALF + 6.5 } do
 		for _, side in { -1, 1 } do
 			table.insert(NESTS, Vector3.new(side * (7.5 + column * 7), 0, z))
 		end
@@ -115,7 +120,7 @@ end
 function Layout.pen(index: number, slot: number): Vector3
 	local count = IslandConfig.PENS + #IslandConfig.PEN_PRICES
 	local angle = (slot - 1) * 2 * math.pi / count
-	local inside = Layout.POND.center + Vector3.new(math.sin(angle) * 20, 0, -math.cos(angle) * 13)
+	local inside = Layout.POND.center + Vector3.new(math.sin(angle) * Layout.PASTURE.size.X * 0.32, 0, -math.cos(angle) * Layout.PASTURE.size.Z * 0.3)
 	return Layout.garden(index):PointToWorldSpace(inside)
 end
 
