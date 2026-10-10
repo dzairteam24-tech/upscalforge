@@ -35,7 +35,7 @@ return {
 	START_SPEED = 16,
 	MAX_SPEED = 70,
 	-- Sprint (Shift, or the button on a phone): walking this many times faster while it's held
-	SPRINT = 1.5,
+	SPRINT = 2,
 	-- On the floating seat (MoveService) the player goes this many times their own speed, up to SEAT_MAX_SPEED.
 	-- Not while carrying an egg: the chases stay fair.
 	SEAT_SPEED = 4,
