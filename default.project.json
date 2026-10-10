@@ -1,15 +1,15 @@
 {
-  "name": "Cubelings",
+  "name": "CubelingNest",
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
       "Shared": {
-        "$path": "roblox/shared"
+        "$path": "game/shared"
       }
     },
     "ServerScriptService": {
       "Server": {
-        "$path": "roblox/server"
+        "$path": "game/server"
       }
     },
     "StarterPlayer": {
@@ -18,7 +18,7 @@
       },
       "StarterPlayerScripts": {
         "Client": {
-          "$path": "roblox/client"
+          "$path": "game/client"
         }
       }
     },
@@ -49,276 +49,8 @@
       }
     },
     "Workspace": {
-      "AdBoards": {
-        "$className": "Folder",
-        "AdBoardWest": {
-          "$className": "Part",
-          "$properties": {
-            "Anchored": true,
-            "Size": [
-              1,
-              9,
-              16
-            ],
-            "Color": [
-              0.12,
-              0.14,
-              0.2
-            ],
-            "CFrame": {
-              "CFrame": {
-                "position": [
-                  -192,
-                  10,
-                  360
-                ],
-                "orientation": [
-                  [
-                    1,
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1,
-                    0
-                  ],
-                  [
-                    0,
-                    0,
-                    1
-                  ]
-                ]
-              }
-            }
-          },
-          "AdGui": {
-            "$className": "AdGui",
-            "$properties": {
-              "Face": "Right",
-              "AdShape": "HorizontalRectangle",
-              "EnableVideoAds": true
-            }
-          }
-        },
-        "AdBoardEast": {
-          "$className": "Part",
-          "$properties": {
-            "Anchored": true,
-            "Size": [
-              1,
-              9,
-              16
-            ],
-            "Color": [
-              0.12,
-              0.14,
-              0.2
-            ],
-            "CFrame": {
-              "CFrame": {
-                "position": [
-                  192,
-                  10,
-                  320
-                ],
-                "orientation": [
-                  [
-                    1,
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1,
-                    0
-                  ],
-                  [
-                    0,
-                    0,
-                    1
-                  ]
-                ]
-              }
-            }
-          },
-          "AdGui": {
-            "$className": "AdGui",
-            "$properties": {
-              "Face": "Left",
-              "AdShape": "HorizontalRectangle",
-              "EnableVideoAds": true
-            }
-          }
-        },
-        "PostWestA": {
-          "$className": "Part",
-          "$properties": {
-            "Anchored": true,
-            "Size": [
-              1,
-              6,
-              1
-            ],
-            "Color": [
-              0.24,
-              0.25,
-              0.31
-            ],
-            "CFrame": {
-              "CFrame": {
-                "position": [
-                  -192,
-                  3,
-                  354
-                ],
-                "orientation": [
-                  [
-                    1,
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1,
-                    0
-                  ],
-                  [
-                    0,
-                    0,
-                    1
-                  ]
-                ]
-              }
-            }
-          }
-        },
-        "PostWestB": {
-          "$className": "Part",
-          "$properties": {
-            "Anchored": true,
-            "Size": [
-              1,
-              6,
-              1
-            ],
-            "Color": [
-              0.24,
-              0.25,
-              0.31
-            ],
-            "CFrame": {
-              "CFrame": {
-                "position": [
-                  -192,
-                  3,
-                  366
-                ],
-                "orientation": [
-                  [
-                    1,
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1,
-                    0
-                  ],
-                  [
-                    0,
-                    0,
-                    1
-                  ]
-                ]
-              }
-            }
-          }
-        },
-        "PostEastA": {
-          "$className": "Part",
-          "$properties": {
-            "Anchored": true,
-            "Size": [
-              1,
-              6,
-              1
-            ],
-            "Color": [
-              0.24,
-              0.25,
-              0.31
-            ],
-            "CFrame": {
-              "CFrame": {
-                "position": [
-                  192,
-                  3,
-                  314
-                ],
-                "orientation": [
-                  [
-                    1,
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1,
-                    0
-                  ],
-                  [
-                    0,
-                    0,
-                    1
-                  ]
-                ]
-              }
-            }
-          }
-        },
-        "PostEastB": {
-          "$className": "Part",
-          "$properties": {
-            "Anchored": true,
-            "Size": [
-              1,
-              6,
-              1
-            ],
-            "Color": [
-              0.24,
-              0.25,
-              0.31
-            ],
-            "CFrame": {
-              "CFrame": {
-                "position": [
-                  192,
-                  3,
-                  326
-                ],
-                "orientation": [
-                  [
-                    1,
-                    0,
-                    0
-                  ],
-                  [
-                    0,
-                    1,
-                    0
-                  ],
-                  [
-                    0,
-                    0,
-                    1
-                  ]
-                ]
-              }
-            }
-          }
-        }
+      "$properties": {
+        "FallenPartsDestroyHeight": -200
       }
     }
   }
