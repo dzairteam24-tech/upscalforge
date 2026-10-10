@@ -31,6 +31,7 @@ export type Data = {
 	food: { [string]: number }, -- food id -> how many the player holds (in their trough)
 	fedUntil: number, -- os.time() the creatures are fed until (Config/Food)
 	storage: number, -- the barn's level (Config/Island STORAGE)
+	starter: boolean, -- whether they got their free first egg (IslandService)
 }
 
 local DataService = {}
@@ -62,7 +63,7 @@ local function template(): Data
 	return {
 		coins = IslandConfig.START_COINS,
 		gems = 0,
-		eggs = { ["1"] = 1 },
+		eggs = {},
 		creatures = {},
 		placed = {},
 		incubators = IslandConfig.INCUBATORS,
@@ -78,6 +79,7 @@ local function template(): Data
 		food = {},
 		fedUntil = 0,
 		storage = 1,
+		starter = false,
 	}
 end
 

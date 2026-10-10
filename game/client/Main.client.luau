@@ -12,6 +12,7 @@ local HUD = require(UI.HUD)
 local Notify = require(UI.Notify)
 local ShopWindow = require(UI.ShopWindow)
 local GardenClient = require(Controllers.GardenClient)
+local Guide = require(Controllers.Guide)
 
 Store.init()
 
@@ -27,3 +28,4 @@ BagWindow.mount(gui)
 FoodWindow.mount(gui)
 Notify.mount(gui)
 GardenClient.init()
+Guide.init()

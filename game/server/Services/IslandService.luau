@@ -210,6 +210,15 @@ local function assign(player: Player, data: Data)
 			break
 		end
 	end
+	-- A new player's first egg is already in their golden nest, and hatches fast
+	if not data.starter then
+		data.starter = true
+		if data.nextId == 1 and not data.incubating["1"] then
+			data.incubating["1"] = { tier = 1, start = os.time() - (Hatch.seconds(1) - IslandConfig.STARTER_HATCH) }
+			IslandService.render(player)
+			task.delay(3, IslandService.notify, player, "🥚 Your first egg is hatching in your golden nest!", "success")
+		end
+	end
 	IslandService.push(player)
 	-- Start on the island
 	task.spawn(function()
