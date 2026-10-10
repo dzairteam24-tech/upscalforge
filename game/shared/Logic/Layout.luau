@@ -109,9 +109,22 @@ function Layout.incubator(index: number, slot: number): Vector3
 	return Layout.garden(index):PointToWorldSpace(NESTS[slot])
 end
 
--- The pasture's middle and size in the world (the creatures roam inside it)
-function Layout.pasture(index: number): (CFrame, Vector3)
-	return Layout.garden(index) * CFrame.new(Layout.PASTURE.center), Layout.PASTURE.size
+-- How far past the garden's back fence the pasture reaches at a level (it grows away from the square)
+function Layout.pastureGrowth(level: number): number
+	local growth = IslandConfig.PASTURE_GROWTH
+	return growth[math.clamp(level, 1, #growth)]
+end
+
+-- The pasture's middle (in the garden's space) and size at a level
+function Layout.pastureArea(level: number): (Vector3, Vector3)
+	local extra = Layout.pastureGrowth(level)
+	return Layout.PASTURE.center + Vector3.new(0, 0, extra / 2), Layout.PASTURE.size + Vector3.new(0, 0, extra)
+end
+
+-- The pasture's middle and size in the world (the creatures roam inside it), at a level (1 if not given)
+function Layout.pasture(index: number, level: number?): (CFrame, Vector3)
+	local center, size = Layout.pastureArea(level or 1)
+	return Layout.garden(index) * CFrame.new(center), size
 end
 
 -- Where a creature living in the garden starts: in a ring round the pond (it wanders from there)

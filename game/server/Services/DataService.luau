@@ -35,6 +35,7 @@ export type Data = {
 	food: { [string]: number }, -- food id -> how many the player holds (in their trough)
 	fedUntil: number, -- os.time() the creatures are fed until (Config/Food)
 	storage: number, -- the barn's level (Config/Island STORAGE)
+	pasture: number, -- how far the pasture has grown (Config/Island PASTURE_GROWTH)
 	starter: boolean, -- whether they got their free first egg (IslandService)
 	daily: { day: number, progress: { [string]: number }, claimed: boolean }, -- today's tasks (Logic/Daily)
 	seat: string, -- the floating seat they ride ("": none), one of `seats`
@@ -89,6 +90,7 @@ local function template(): Data
 		food = {},
 		fedUntil = 0,
 		storage = 1,
+		pasture = 1,
 		starter = false,
 		daily = { day = -1, progress = {}, claimed = false },
 		seat = "",

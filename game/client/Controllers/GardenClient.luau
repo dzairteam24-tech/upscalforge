@@ -152,11 +152,15 @@ type Roamer = { model: Model, base: CFrame, y: number, at: Vector3, target: Vect
 local roamers: { [Model]: Roamer } = {}
 
 local function pastureSpot(index: number): Vector3
-	local center, size = Layout.pasture(index)
+	local world = workspace:FindFirstChild("World")
+	local island = world and world:FindFirstChild("Island_" .. index)
+	local level = if island then island:GetAttribute("Pasture") else nil
+	local inside = Layout.pastureArea(if type(level) == "number" then level else 1)
+	local center, size = Layout.pasture(index, if type(level) == "number" then level else 1)
 	local spot = Vector3.zero
 	repeat -- (not in the pond, the trough or the barn)
 		spot = Vector3.new((math.random() - 0.5) * (size.X - 3), 0, (math.random() - 0.5) * (size.Z - 3))
-	until not Layout.blocked(spot + Layout.PASTURE.center)
+	until not Layout.blocked(spot + inside)
 	return center:PointToWorldSpace(spot)
 end
 

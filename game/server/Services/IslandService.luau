@@ -120,6 +120,22 @@ local function render(index: number, player: Player?, data: Data?)
 		return
 	end
 	island:SetAttribute("Owner", if player then player.UserId else 0)
+	-- The pasture as far as the owner has grown it
+	local level = if data then data.pasture else 1
+	island:SetAttribute("Pasture", level)
+	for _, d in island:GetDescendants() do
+		local grow = d:GetAttribute("Grow")
+		if type(grow) == "number" and d:IsA("Model") then
+			local shown = if d:GetAttribute("Only") then grow == level else grow <= level
+			for _, p in d:GetDescendants() do
+				if p:IsA("BasePart") then
+					local look = p:GetAttribute("Look")
+					p.Transparency = if shown and type(look) == "number" then look else 1
+					p.CanCollide = shown and p:GetAttribute("Solid") == true
+				end
+			end
+		end
+	end
 	-- The trough shows how much food the owner holds and how long the creatures are fed
 	local trough = island:FindFirstChild("Trough")
 	if trough then
@@ -391,6 +407,28 @@ local function take(player: Player, id: any)
 	IslandService.push(player)
 end
 
+-- A bigger pasture (it grows away from the square: Layout.pastureArea)
+local function buyPasture(player: Player)
+	local data = DataService.get(player)
+	if not data or not throttle(player) then
+		return
+	end
+	local price = IslandConfig.PASTURE_PRICES[data.pasture]
+	if not price then
+		IslandService.notify(player, "Your pasture is as big as it gets", "error")
+		return
+	end
+	if data.coins < price then
+		IslandService.notify(player, ("You need 🪙 %s"):format(Format.abbrev(price)), "error")
+		return
+	end
+	data.coins -= price
+	data.pasture += 1
+	IslandService.notify(player, "Your pasture grew! 🌳", "success")
+	IslandService.render(player)
+	IslandService.push(player)
+end
+
 local function buyStorage(player: Player)
 	local data = DataService.get(player)
 	if not data or not throttle(player) then
@@ -515,6 +553,10 @@ local function buyPen(player: Player)
 end
 
 function IslandService.init()
+	-- Every garden drawn empty to start (its pasture at the first level)
+	for index = 1, IslandConfig.ISLANDS do
+		render(index, nil, nil)
+	end
 	DataService.onLoaded(assign)
 	Net.event("Snap").OnServerEvent:Connect(snap)
 	Net.event("ClaimDaily").OnServerEvent:Connect(claimDaily)
@@ -527,6 +569,7 @@ function IslandService.init()
 	Net.event("TakeCreature").OnServerEvent:Connect(take)
 	Net.event("BuyPen").OnServerEvent:Connect(buyPen)
 	Net.event("BuyStorage").OnServerEvent:Connect(buyStorage)
+	Net.event("BuyPasture").OnServerEvent:Connect(buyPasture)
 	Net.event("Feed").OnServerEvent:Connect(feed)
 	-- Earning: every second, each island's creatures bring in their coins
 	task.spawn(function()

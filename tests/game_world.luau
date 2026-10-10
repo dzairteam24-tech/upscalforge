@@ -104,8 +104,9 @@ for index = 1, IslandConfig.ISLANDS do
 	assert(center.Z > Layout.CENTER.Z + Layout.SQUARE_RADIUS, "south of the square")
 	assert((gate - Layout.CENTER).Magnitude < (center - Layout.CENTER).Magnitude - Layout.GARDEN_SIZE / 2 + 0.01, "its gate toward the square")
 	assert((gate - Layout.CENTER).Magnitude > Layout.GARDEN_ROAD_RADIUS + Layout.ROAD_WIDTH_TOWN / 2, "past the arc road")
-	-- (its corners and its treadmill in nobody else's garden)
-	local spots = { frame:PointToWorldSpace(Layout.TREADMILL) }
+	-- (its corners, its treadmill and its pasture grown all the way in nobody else's garden)
+	local grown = Layout.pastureGrowth(#IslandConfig.PASTURE_GROWTH)
+	local spots = { frame:PointToWorldSpace(Layout.TREADMILL), frame:PointToWorldSpace(Vector3.new(-40, 0, 40 + grown)), frame:PointToWorldSpace(Vector3.new(40, 0, 40 + grown)) }
 	for _, corner in { Vector3.new(-1, 0, -1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, 1), Vector3.new(1, 0, 1) } do
 		table.insert(spots, frame:PointToWorldSpace(corner * (Layout.GARDEN_SIZE / 2 - 0.5)))
 	end

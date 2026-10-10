@@ -239,18 +239,18 @@ local function buildGarden(world: Instance, index: number)
 	part(model, { Name = "Ground", Size = Vector3.new(size, 0.4, size), CFrame = at(0, 0.2, 0), Color = GRASS, Material = Enum.Material.Grass })
 
 	-- A low picket fence all round (open at the gate), with an invisible wall behind it nobody can jump
-	local function fence(cf: CFrame, length: number)
+	local function fence(cf: CFrame, length: number, parent: Instance?)
+		local into = parent or model
 		for _, y in { 1.2, 2.6 } do
-			part(model, { Name = "Rail", Size = Vector3.new(length, 0.35, 0.3), CFrame = cf * CFrame.new(0, y, 0), Color = WOOD, CanCollide = false })
+			part(into, { Name = "Rail", Size = Vector3.new(length, 0.35, 0.3), CFrame = cf * CFrame.new(0, y, 0), Color = WOOD, CanCollide = false })
 		end
 		local posts = math.max(1, math.floor(length / 2.2))
 		for i = 0, posts do
 			local x = -length / 2 + i * length / posts
-			part(model, { Name = "Picket", Size = Vector3.new(0.5, 3.4, 0.4), CFrame = cf * CFrame.new(x, 1.7, 0), Color = rgb(250, 240, 222), CanCollide = false })
+			part(into, { Name = "Picket", Size = Vector3.new(0.5, 3.4, 0.4), CFrame = cf * CFrame.new(x, 1.7, 0), Color = rgb(250, 240, 222), CanCollide = false })
 		end
-		part(model, { Name = "Wall", Size = Vector3.new(length, Layout.FENCE_HEIGHT, 0.6), CFrame = cf * CFrame.new(0, Layout.FENCE_HEIGHT / 2, 0), Transparency = 1 })
+		part(into, { Name = "Wall", Size = Vector3.new(length, Layout.FENCE_HEIGHT, 0.6), CFrame = cf * CFrame.new(0, Layout.FENCE_HEIGHT / 2, 0), Transparency = 1 })
 	end
-	fence(at(0, 0, half), size)
 	for _, side in { -1, 1 } do
 		fence(at(side * half, 0, 0) * CFrame.Angles(0, math.rad(90), 0), size)
 		local piece = (size - Layout.GATE_WIDTH) / 2
@@ -331,12 +331,52 @@ local function buildGarden(world: Instance, index: number)
 	local pond = Layout.POND
 	part(model, { Name = "Pond", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, pond.radius * 2, pond.radius * 2), CFrame = at(pond.center.X, 0.7, pond.center.Z) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(100, 180, 235), Material = Enum.Material.Glass, Transparency = 0.2, CanCollide = false })
 	part(model, { Name = "PondEdge", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.25, pond.radius * 2 + 1.4, pond.radius * 2 + 1.4), CFrame = at(pond.center.X, 0.66, pond.center.Z) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(206, 196, 184), Material = Enum.Material.Slate, CanCollide = false })
-	local function hedge(cf: CFrame, length: number)
-		part(model, { Name = "Hedge", Size = Vector3.new(length, 1.6, 1.2), CFrame = cf * CFrame.new(0, 0.8, 0), Color = rgb(80, 150, 70), Material = Enum.Material.Grass, CanCollide = false })
+	local function hedge(cf: CFrame, length: number, parent: Instance?)
+		part(parent or model, { Name = "Hedge", Size = Vector3.new(length, 1.6, 1.2), CFrame = cf * CFrame.new(0, 0.8, 0), Color = rgb(80, 150, 70), Material = Enum.Material.Grass, CanCollide = false })
 	end
 	local px, pz = pasture.center.X, pasture.center.Z
 	local hx, hz = pasture.size.X / 2, pasture.size.Z / 2
-	hedge(at(px, 0, pz + hz), pasture.size.X)
+	-- The garden grows backward (away from the square) with the pasture's level (IslandConfig.PASTURE_GROWTH):
+	-- each level's stretch of ground and fence, and the back fence and hedge where that level ends.
+	-- IslandService shows the owner's (parts marked Grow = level; Only = shown at that level alone).
+	local function stage(name: string, level: number, only: boolean): Model
+		local m = Instance.new("Model")
+		m.Name = name
+		m:SetAttribute("Grow", level)
+		m:SetAttribute("Only", only)
+		m.Parent = model
+		return m
+	end
+	for level, extra in IslandConfig.PASTURE_GROWTH do
+		local back = stage("Back" .. level, level, true)
+		fence(at(0, 0, half + extra), size, back)
+		hedge(at(px, 0, pz + hz + extra), pasture.size.X, back)
+		local before = IslandConfig.PASTURE_GROWTH[level - 1]
+		if before then
+			local grow = stage("Grow" .. level, level, false)
+			local length, middle = extra - before, half + (before + extra) / 2
+			part(grow, { Name = "Ground", Size = Vector3.new(size, 0.4, length), CFrame = at(0, 0.2, middle), Color = GRASS, Material = Enum.Material.Grass })
+			part(grow, { Name = "Pasture", Size = Vector3.new(pasture.size.X, 0.3, length + 0.1), CFrame = at(px, 0.45, middle), Color = rgb(108, 186, 92), Material = Enum.Material.Grass, CanCollide = false })
+			for _, side in { -1, 1 } do
+				fence(at(side * half, 0, middle) * CFrame.Angles(0, math.rad(90), 0), length, grow)
+				hedge(at(px + side * hx, 0, middle) * CFrame.Angles(0, math.rad(90), 0), length, grow)
+			end
+		end
+		-- (how each part looks when shown)
+		local stages: { Instance } = { back }
+		local grown = model:FindFirstChild("Grow" .. level)
+		if grown then
+			table.insert(stages, grown)
+		end
+		for _, m in stages do
+			for _, d in m:GetDescendants() do
+				if d:IsA("BasePart") then
+					d:SetAttribute("Look", d.Transparency)
+					d:SetAttribute("Solid", d.CanCollide)
+				end
+			end
+		end
+	end
 	for _, s in { -1, 1 } do
 		hedge(at(px + s * hx, 0, pz) * CFrame.Angles(0, math.rad(90), 0), pasture.size.Z)
 		-- (the front, toward the hatchery, open where the path comes in)
@@ -444,7 +484,8 @@ end
 local function buildGrounds(world: Instance)
 	local w = Layout.ROAD_WIDTH_TOWN
 	local north = -Layout.WILD_GATE_DISTANCE
-	local south = Layout.GARDEN_RADIUS + Layout.GARDEN_SIZE * 0.75 + 10
+	local growth = IslandConfig.PASTURE_GROWTH
+	local south = Layout.GARDEN_RADIUS + Layout.GARDEN_SIZE / 2 + growth[#growth] + 30
 	local half = Layout.GARDEN_RADIUS + 60
 	local middle = (north + south) / 2
 	part(world, {

@@ -17,4 +17,6 @@ return {
 	SELL_SECONDS = 120, -- selling a creature pays this many seconds of its earnings
 	STORAGE = { 60, 100, 150 }, -- creatures a player can keep (placed or not), as their barn grows...
 	STORAGE_PRICES = { 50000, 2500000 }, -- ...for this much
+	PASTURE_GROWTH = { 0, 20, 40, 60 }, -- studs the pasture reaches back past the garden's back fence, as it grows...
+	PASTURE_PRICES = { 10000, 200000, 4000000 }, -- ...for this much
 }

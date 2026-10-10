@@ -14,6 +14,7 @@ local EVENTS = {
 	"BuyIncubator",
 	"BuyPen",
 	"BuyStorage",
+	"BuyPasture",
 	"BuyFood", -- (food id)
 	"Feed",
 	"Travel", -- ("home" or "wild")

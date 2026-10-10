@@ -92,6 +92,18 @@ function BagWindow.mount(gui: ScreenGui)
 			bigger.Size = UDim2.new(0.38, 0, 1, -12)
 			bigger.Position = UDim2.new(0.6, 0, 0, 6)
 		end
+		-- The pasture, growing back
+		local growLevel = math.clamp(data.pasture or 1, 1, #IslandConfig.PASTURE_GROWTH)
+		local grow = row(3, 48)
+		Theme.text(grow, { Text = ("🌳 Pasture: %d / %d"):format(growLevel, #IslandConfig.PASTURE_GROWTH), Size = UDim2.new(0.6, -8, 1, -12), Position = UDim2.fromOffset(10, 6), TextXAlignment = Enum.TextXAlignment.Left })
+		local growPrice = IslandConfig.PASTURE_PRICES[growLevel]
+		if growPrice then
+			local bigger = Theme.button(grow, ("Bigger · 🪙 %s"):format(Format.abbrev(growPrice)), Theme.gold, function()
+				Net.event("BuyPasture"):FireServer()
+			end)
+			bigger.Size = UDim2.new(0.38, 0, 1, -12)
+			bigger.Position = UDim2.new(0.6, 0, 0, 6)
+		end
 		-- Creatures, best first
 		local list = {}
 		for id, creature in data.creatures do
