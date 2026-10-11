@@ -108,12 +108,13 @@ test("an incubator hatches twice as fast as a nest on the ground", function()
 	end
 end)
 
-test("later eggs incubate longer: a minute for the first, under an hour for the Legendary", function()
-	eq(Hatch.seconds(1), IslandConfig.BASE_INCUBATE)
+test("later eggs incubate longer: a couple of minutes for the first, hours for the Legendary", function()
+	eq(Hatch.seconds(1), 120)
 	for tier = 2, 11 do
 		assert(Hatch.seconds(tier) > Hatch.seconds(tier - 1), "tier " .. tier)
 	end
-	assert(Hatch.seconds(11) <= 3600, "Legendary under an hour: " .. Hatch.seconds(11))
+	eq(Hatch.seconds(11), 6 * 3600)
+	assert(IslandConfig.STARTER_HATCH < Hatch.seconds(1), "a new player's first egg hatches fast")
 end)
 
 test("earnings: mutations multiply, an island adds up, time away is capped", function()

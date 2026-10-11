@@ -19,7 +19,21 @@ return {
 	MACHINE_SLOT = 100, -- (their slots are 101, 102...: the nests' are 1 to 16)
 	PENS = 4, -- creatures living on the island at once...
 	PEN_PRICES = { 1000, 5000, 25000, 100000, 500000, 2500000, 10000000, 50000000 }, -- ...and more cost this
-	BASE_INCUBATE = 60, -- seconds a tier 1 egg incubates (later tiers longer, Logic/Hatch)
+	-- Seconds each egg incubates on the grass (by tier, Config/Eggs: Meadow... Legendary). In real time, even
+	-- while the player is away; an incubator (machine) halves it.
+	HATCH_SECONDS = {
+		2 * 60, -- Meadow
+		5 * 60, -- Flower
+		10 * 60, -- Forest
+		20 * 60, -- Beach
+		35 * 60, -- Cave
+		60 * 60, -- Desert
+		90 * 60, -- Snow
+		2 * 3600, -- Volcano
+		3 * 3600, -- Ice
+		4 * 3600, -- Pixel
+		6 * 3600, -- Legendary
+	},
 	STARTER_HATCH = 30, -- a new player's free first egg is already in their golden nest, hatching this fast
 	OFFLINE_HOURS = 8, -- the island earns this long while its owner is away
 	SELL_SECONDS = 120, -- selling a creature pays this many seconds of its earnings
