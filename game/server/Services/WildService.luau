@@ -188,7 +188,11 @@ local function finish(player: Player, kept: boolean)
 		DailyService.add(player, "wild")
 		IslandService.notify(player, ("Home with a %s%s! 🥚 Click to set it down on your grass"):format(if carry.golden then "✨ Golden " else "", if egg then egg.name else "egg"), "success")
 		IslandService.push(player)
-		IslandService.holdEgg(player, biome.tier, carry.golden) -- (still in their hands, now from the inventory)
+		IslandService.holdEgg(player, biome.tier, carry.golden)
+		local root = rootOf(player)
+		if root then
+			IslandService.fx("Home", root.Position - Vector3.new(0, 2, 0), if carry.golden then GOLD elseif egg then egg.color else nil)
+		end -- (still in their hands, now from the inventory)
 	else
 		setFull(carry.nest, true)
 		setGolden(carry.nest, carry.golden)
@@ -278,6 +282,7 @@ local function steal(player: Player, nest: Nest)
 	local golden = nest.golden
 	setFull(nest, false)
 	setGolden(nest, false)
+	IslandService.fx("Steal", nest.egg.Position, if golden then GOLD else nest.color)
 	local part = Instance.new("Part")
 	part.Name = "CarriedEgg"
 	part.Shape = Enum.PartType.Ball

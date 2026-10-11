@@ -2,6 +2,7 @@
 
 local Players = game:GetService("Players")
 
+local Effects = require(script.Parent:WaitForChild("Effects"))
 local Store = require(script.Parent:WaitForChild("Store"))
 local UI = script.Parent:WaitForChild("UI")
 local Controllers = script.Parent:WaitForChild("Controllers")
@@ -39,6 +40,7 @@ FoodWindow.mount(root)
 GearWindow.mount(root)
 Notify.mount(root)
 Reveal.mount(root)
+Effects.init()
 GardenClient.init()
 Guide.init()
 RideClient.init()

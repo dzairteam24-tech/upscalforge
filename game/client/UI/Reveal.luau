@@ -13,6 +13,7 @@ local SnapConfig = require(Shared.Config.Snap)
 local Earn = require(Shared.Logic.Earn)
 local Format = require(Shared.Logic.Format)
 
+local Effects = require(script.Parent.Parent.Effects)
 local Theme = require(script.Parent.Theme)
 
 local Reveal = {}
@@ -103,6 +104,8 @@ local function present(item: Item)
 	card.Parent = screen
 	screen.Parent = root
 	TweenService:Create(scale, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	Effects.sound("Hatch")
+	task.delay(0.2, Effects.sound, "Chime")
 
 	local closed = false
 	local function close()

@@ -44,6 +44,11 @@ function IslandService.notify(player: Player, text: string, kind: string?)
 	Net.event("Notify"):FireClient(player, text, kind or "info")
 end
 
+-- An effect in the world, for everyone near it (client Effects: "Hatch", "SetEgg", "Steal", "Home")
+function IslandService.fx(kind: string, at: Vector3, color: Color3?)
+	Net.event("Fx"):FireAllClients(kind, at, color)
+end
+
 -- The eggs the player holds, in their inventory (hotbar): a tool for each kind, an egg in the hand; using it sets
 -- one down in their garden (setEgg)
 local setEggFrom: (Player, number, boolean) -> ()
@@ -555,6 +560,7 @@ local function setEgg(player: Player, tier: number, golden: boolean)
 	local least = if golden then WildConfig.GOLDEN_MUTATION else nil
 	data.incubating[tostring(slot)] = { tier = tier, start = os.time(), m = least, x = inside.X, z = inside.Z }
 	local egg = Hatch.egg(tier)
+	IslandService.fx("SetEgg", frame:PointToWorldSpace(Vector3.new(inside.X, 0, inside.Z)), if least then Color3.fromRGB(255, 205, 70) elseif egg then egg.color else nil)
 	IslandService.notify(player, ("%s%s set down: %s"):format(if least then "✨ Golden " else "", if egg then egg.name else "Egg", Format.time(Hatch.seconds(tier))), "success")
 	IslandService.render(player)
 	IslandService.push(player)
@@ -630,6 +636,11 @@ local function useIncubator(player: Player, slot: any)
 			data.incubating[key] = nil
 			DailyService.add(player, "hatch")
 			Net.event("Hatched"):FireClient(player, id, species, mutation)
+			local index = islandOf[player]
+			if index then
+				local at = if egg.x and egg.z then Layout.garden(index):PointToWorldSpace(Vector3.new(egg.x, 0, egg.z)) else Layout.incubator(index, slot)
+				IslandService.fx("Hatch", at, if mutation ~= "Normal" then Mutations.byId[mutation].color else nil)
+			end
 			if Mutations.byId[mutation].order >= 3 or Creatures.byId[species].rarity == "Legendary" then
 				for _, other in Players:GetPlayers() do
 					IslandService.notify(other, ("✨ %s hatched a %s%s!"):format(player.DisplayName, if mutation ~= "Normal" then mutation .. " " else "", species), "rare")
@@ -777,6 +788,11 @@ local function snap(player: Player, id: any)
 		table.insert(data.placed, newId)
 	end
 	Net.event("Hatched"):FireClient(player, newId, made.s, made.m, made.g)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if root then
+		IslandService.fx("Hatch", root.Position - Vector3.new(0, 3, 0), Mutations.byId[made.m] and Mutations.byId[made.m].color)
+	end
 	if made.g == "Rainbow" then
 		for _, other in Players:GetPlayers() do
 			IslandService.notify(other, ("🌈 %s snapped a %s!"):format(player.DisplayName, Snap.name(made)), "rare")

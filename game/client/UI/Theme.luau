@@ -10,6 +10,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PetModel = require(Shared.PetModel)
 
+local Effects = require(script.Parent.Parent.Effects)
+
 local Theme = {
 	panel = Color3.fromRGB(255, 250, 240),
 	ink = Color3.fromRGB(60, 52, 70),
@@ -155,7 +157,10 @@ function Theme.button(parent: Instance, text: string, color: Color3, onClick: ()
 	limit.MaxTextSize = 30
 	limit.Parent = button
 	Theme.bounce(button)
-	button.Activated:Connect(onClick)
+	button.Activated:Connect(function()
+		Effects.sound("Click")
+		onClick()
+	end)
 	button.Parent = parent
 	return button
 end

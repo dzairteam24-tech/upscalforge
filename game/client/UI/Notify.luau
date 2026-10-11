@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Net = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Net"))
+local Effects = require(script.Parent.Parent.Effects)
 local Theme = require(script.Parent.Theme)
 
 local Notify = {}
@@ -18,6 +19,7 @@ function Notify.show(text: string, kind: string?)
 	if not holder then
 		return
 	end
+	Effects.sound(if kind == "error" then "Error" elseif kind == "rare" then "Rare" elseif kind == "success" then "Success" else "Click")
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(1, 0, 0, 40)
 	Theme.gradient(frame, COLORS[kind or "info"] or Theme.blue, 0.25, 0.1)
