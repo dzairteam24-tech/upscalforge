@@ -11,7 +11,9 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Format = require(Shared.Logic.Format)
+local Creatures = require(Shared.Config.Creatures)
 local Hatch = require(Shared.Logic.Hatch)
+local Snap = require(Shared.Logic.Snap)
 local Night = require(Shared.Logic.Night)
 local Layout = require(Shared.Logic.Layout)
 local Weather = require(Shared.Logic.Weather)
@@ -20,6 +22,7 @@ local Net = require(Shared.Net)
 
 local Notify = require(script.Parent.Parent.UI.Notify)
 local Reveal = require(script.Parent.Parent.UI.Reveal)
+local Theme = require(script.Parent.Parent.UI.Theme)
 local Store = require(script.Parent.Parent.Store)
 local Windows = require(script.Parent.Parent.UI.Windows)
 
@@ -229,7 +232,44 @@ end
 -- The creatures roam their garden's pasture: each walks to a random spot, rests a moment, and walks on, hopping
 -- as it goes; every few seconds the coins it earned pop over its head. (Moved on this screen only.)
 local COIN_EVERY = 3
-type Roamer = { model: Model, base: CFrame, y: number, at: Vector3, target: Vector3, rest: number, phase: number, nextCoin: number }
+type Roamer = { model: Model, base: CFrame, y: number, at: Vector3, target: Vector3, rest: number, phase: number, nextCoin: number, tag: BillboardGui? }
+
+-- Over each creature, as in Steal an Egg: its rarity (in its color), its name, and its coins a second
+local function nameTag(model: Model, body: BasePart): BillboardGui
+	local species = Creatures.byId[tostring(model:GetAttribute("Species"))]
+	local rarity = if species then species.rarity else "Common"
+	local mutation = model:GetAttribute("Mutation")
+	local grade = model:GetAttribute("Grade")
+	local name = Snap.name({ s = tostring(model:GetAttribute("Species")), m = if type(mutation) == "string" then mutation else "Normal", g = if type(grade) == "string" and grade ~= "" then grade else nil })
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "NameTag"
+	gui.Size = UDim2.fromOffset(140, 54)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, number(model, "Height") / 2 + 1.6, 0)
+	gui.MaxDistance = 45
+	gui.LightInfluence = 0
+	type Line = { text: string, color: Color3 }
+	local lines: { Line } = {
+		{ text = rarity, color = Theme.RARITY[rarity] or Color3.new(1, 1, 1) },
+		{ text = name, color = Color3.new(1, 1, 1) },
+		{ text = "🪙 " .. Format.abbrev(number(model, "Earn")) .. "/s", color = Color3.fromRGB(110, 255, 110) },
+	}
+	for i, line in lines do
+		local text = Instance.new("TextLabel")
+		text.BackgroundTransparency = 1
+		text.Position = UDim2.fromScale(0, (i - 1) / 3)
+		text.Size = UDim2.fromScale(1, 1 / 3)
+		text.Font = Enum.Font.LuckiestGuy
+		text.TextScaled = true
+		text.Text = line.text
+		text.TextColor3 = line.color
+		text.TextStrokeColor3 = Color3.fromRGB(28, 24, 40)
+		text.TextStrokeTransparency = 0
+		text.Parent = gui
+	end
+	gui.Adornee = body
+	gui.Parent = body
+	return gui
+end
 local roamers: { [Model]: Roamer } = {}
 
 local function pastureSpot(index: number): Vector3
@@ -302,8 +342,12 @@ local function roam(dt: number)
 	local eye = if camera then camera.CFrame.Position else Vector3.zero
 	for model, r in roamers do
 		-- (not until its body is in: moving it by its pivot before that would send its parts astray)
-		if not model.PrimaryPart or (r.at - eye).Magnitude > ANIMATE_RANGE then
+		local body = model.PrimaryPart
+		if not body or (r.at - eye).Magnitude > ANIMATE_RANGE then
 			continue
+		end
+		if not r.tag then
+			r.tag = nameTag(model, body)
 		end
 		local flat = Vector3.new(r.target.X, r.y, r.target.Z) - r.at
 		local walking = false

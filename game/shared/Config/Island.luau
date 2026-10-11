@@ -5,6 +5,8 @@
 return {
 	ISLANDS = 6, -- one per player (a server holds 6)
 	START_COINS = 150,
+	FRIEND_BOOST = 0.1, -- each friend in the same server: +10% coins...
+	FRIEND_MAX = 5, -- ...for up to this many friends
 	-- Testing in Studio only: every player starts the session with this many coins (0: off). Studio then doesn't
 	-- save, so the test coins never reach the real game's saves.
 	STUDIO_COINS = 500000000,

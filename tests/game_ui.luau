@@ -173,7 +173,7 @@ try("root", function()
 	root = Theme.root(gui)
 end)
 assert(gui.ZIndexBehavior == roblox.Enum.ZIndexBehavior.Sibling, "frames draw over their parents (a window never hides its content)")
-for _, name in { "HUD", "ShopWindow", "BagWindow", "DailyWindow", "FoodWindow", "GearWindow", "Notify", "Reveal" } do
+for _, name in { "HUD", "ShopWindow", "BagWindow", "IndexWindow", "StoreWindow", "DailyWindow", "FoodWindow", "GearWindow", "Notify", "Reveal" } do
 	try(name .. ".mount", function()
 		Loader.require(UI[name]).mount(root)
 	end)
@@ -201,8 +201,10 @@ Store.data = {
 	seat = "",
 	seats = { Cloud = true },
 	treadmill = 1,
+	index = { Cubby = true, Kitty = true, Bunny = true, Bear = true, Fox = true },
+	indexClaimed = {},
 }
-for _, name in { "Bag", "Shop", "Daily", "Food", "Gear" } do
+for _, name in { "Bag", "Shop", "Index", "Store", "Daily", "Food", "Gear" } do
 	try("open " .. name, function()
 		assert(Windows.open(name), name .. " is registered")
 	end)

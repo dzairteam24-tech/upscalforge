@@ -23,6 +23,8 @@ local EVENTS = {
 	"UpgradeBat", -- at the Gear Shop (Config/Gear)
 	"BuyTrap",
 	"ClaimDaily", -- the egg for doing all of today's tasks
+	"ClaimIndex", -- (egg tier): a complete Index page's reward
+	"BuyRobux", -- ("FastHatch", "HatchAll" or "Seat:<name>"): the Robux shop (RobuxService)
 	"Sprint", -- (on)
 	"Seat", -- (seat name, or "" to stand): the floating seat the player rides (SeatModel)
 	-- server -> client

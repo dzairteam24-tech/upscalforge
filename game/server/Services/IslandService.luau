@@ -38,6 +38,8 @@ local IslandService = {}
 local REACH = 14 -- how close to an incubator a player has to stand to use it
 
 local owners: { [number]: Player } = {}
+local fast: { [Player]: boolean } = {} -- (the Fast Hatch game pass: RobuxService)
+local friendsIn: { [Player]: number } = {} -- (friends in this server)
 local islandOf: { [Player]: number } = {}
 local rng = Random.new()
 
@@ -135,6 +137,56 @@ function IslandService.push(player: Player)
 	end
 end
 
+-- Eggs hatch twice as fast for the owner of the Fast Hatch pass (RobuxService says who)
+function IslandService.setFast(player: Player, on: boolean)
+	if on then
+		fast[player] = true
+	else
+		fast[player] = nil
+	end
+	IslandService.render(player)
+end
+
+local function hatchTime(player: Player?, tier: number, slot: number): number
+	local seconds = Hatch.secondsIn(tier, slot)
+	return if player and fast[player] then math.floor(seconds / 2) else seconds
+end
+
+-- Every egg in the player's garden ready to hatch now (the Hatch All product: RobuxService)
+function IslandService.hatchAll(player: Player): boolean
+	local data = DataService.get(player)
+	if not data then
+		return false
+	end
+	local now = os.time()
+	for key, egg in data.incubating do
+		egg.start = now - hatchTime(player, egg.tier, tonumber(key) or 1) - 1
+	end
+	IslandService.render(player)
+	IslandService.push(player)
+	return true
+end
+
+-- Friends in the same server boost each other's coins (Config/Island FRIEND_BOOST)
+local function countFriends()
+	local everyone = Players:GetPlayers()
+	for _, player in everyone do
+		local count = 0
+		for _, other in everyone do
+			if other ~= player then
+				local ok, yes = pcall(function()
+					return player:IsFriendsWith(other.UserId)
+				end)
+				if ok and yes then
+					count += 1
+				end
+			end
+		end
+		friendsIn[player] = math.min(count, IslandConfig.FRIEND_MAX)
+		player:SetAttribute("FriendBoost", math.floor(friendsIn[player] * IslandConfig.FRIEND_BOOST * 100 + 0.5))
+	end
+end
+
 function IslandService.islandOf(player: Player): number?
 	return islandOf[player]
 end
@@ -203,6 +255,10 @@ function IslandService.addCreature(player: Player, data: Data, species: string, 
 	data.nextId += 1
 	data.creatures[id] = { s = species, m = mutation }
 	data.stats.hatched += 1
+	if not data.index[species] then
+		data.index[species] = true
+		IslandService.notify(player, ("📖 New in your Index: %s!"):format(species), "success")
+	end
 	if #data.placed < data.pens then
 		table.insert(data.placed, id)
 	end
@@ -355,7 +411,7 @@ local function render(index: number, player: Player?, data: Data?)
 		pad:SetAttribute("Tier", if egg then egg.tier else 0)
 		pad:SetAttribute("Golden", egg ~= nil and egg.m ~= nil)
 		pad:SetAttribute("Start", if egg then egg.start else 0)
-		pad:SetAttribute("Duration", if egg then Hatch.secondsIn(egg.tier, slot) else 0)
+		pad:SetAttribute("Duration", if egg then hatchTime(player, egg.tier, slot) else 0)
 	end
 	-- The creatures living there
 	drawnLevel[index] = level
@@ -638,7 +694,7 @@ local function useIncubator(player: Player, slot: any)
 	else
 		local egg = data.incubating[key]
 		if egg then
-			local done = math.ceil(Night.doneAt(egg.start, Hatch.secondsIn(egg.tier, slot))) -- (nights hatch faster)
+			local done = math.ceil(Night.doneAt(egg.start, hatchTime(player, egg.tier, slot))) -- (nights hatch faster)
 			local now = os.time()
 			if now < done then
 				IslandService.notify(player, ("Still incubating: %s left"):format(Format.time(done - now)))
@@ -674,7 +730,7 @@ local function useIncubator(player: Player, slot: any)
 			end
 			data.incubating[key] = { tier = tier, start = os.time(), m = least }
 			local egg2 = Hatch.egg(tier)
-			IslandService.notify(player, ("%s%s incubating: %s"):format(if least then "✨ Golden " else "", if egg2 then egg2.name else "Egg", Format.time(Hatch.secondsIn(tier, slot))), "success")
+			IslandService.notify(player, ("%s%s incubating: %s"):format(if least then "✨ Golden " else "", if egg2 then egg2.name else "Egg", Format.time(hatchTime(player, tier, slot))), "success")
 		end
 	end
 	IslandService.render(player)
@@ -870,7 +926,14 @@ function IslandService.init()
 	Players.PlayerRemoving:Connect(function(player)
 		release(player)
 		busy[player] = nil
+		fast[player] = nil
+		friendsIn[player] = nil
+		task.defer(countFriends)
 	end)
+	Players.PlayerAdded:Connect(function()
+		task.spawn(countFriends)
+	end)
+	task.spawn(countFriends)
 	Net.event("UseIncubator").OnServerEvent:Connect(useIncubator)
 	Net.event("PlaceCreature").OnServerEvent:Connect(place)
 	Net.event("TakeCreature").OnServerEvent:Connect(take)
@@ -896,6 +959,7 @@ function IslandService.init()
 					if Food.fed(data.fedUntil, os.time()) then
 						rate *= FoodConfig.BOOST
 					end
+					rate *= 1 + (friendsIn[player] or 0) * IslandConfig.FRIEND_BOOST
 					if rate > 0 then
 						data.coins += rate
 						data.stats.earned += rate

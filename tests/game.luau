@@ -309,6 +309,21 @@ test("Night: on the clock, eggs grow SPEED times as fast through it", function()
 	assert(math.abs(Night.growth(123, long) - 12 * 3600) < 1e-6, "a long egg too")
 end)
 
+test("Index: a page is complete when all its egg's creatures are found, and its reward claimed once", function()
+	local Index = R(Shared.Logic.Index)
+	local found: { [string]: boolean } = { Cubby = true, Kitty = true, Bunny = true }
+	local got, all = Index.progress(found, 1)
+	eq(got, 3)
+	eq(all, 4)
+	assert(Index.claimable(found, {}, 1) == nil, "not before the last one")
+	found.Bear = true
+	assert(Index.claimable(found, {}, 1), "complete: claimable")
+	assert(Index.claimable(found, { ["1"] = true }, 1) == nil, "only once")
+	local total, every = Index.total(found)
+	eq(total, 4)
+	assert(every >= 40, "every creature of every egg")
+end)
+
 test("Heist: rounds only on weekends, on the clock", function()
 	local saturday = 2 * 86400 -- 3 Jan 1970
 	eq(Heist.weekday(saturday), 6)

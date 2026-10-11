@@ -1,6 +1,7 @@
 -- Client entry point: builds the screen and starts the controllers.
 
 local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
 
 local Effects = require(script.Parent:WaitForChild("Effects"))
 local Store = require(script.Parent:WaitForChild("Store"))
@@ -12,6 +13,8 @@ local DailyWindow = require(UI.DailyWindow)
 local FoodWindow = require(UI.FoodWindow)
 local GearWindow = require(UI.GearWindow)
 local HUD = require(UI.HUD)
+local StoreWindow = require(UI.StoreWindow)
+local IndexWindow = require(UI.IndexWindow)
 local Notify = require(UI.Notify)
 local Reveal = require(UI.Reveal)
 local ShopWindow = require(UI.ShopWindow)
@@ -25,6 +28,10 @@ local TreadmillClient = require(Controllers.TreadmillClient)
 local EggHands = require(Controllers.EggHands)
 
 Store.init()
+-- (the HUD has its own board of the server's players, top right, where Roblox's list would be)
+pcall(function()
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+end)
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "NestUI"
@@ -36,6 +43,8 @@ local root = Theme.root(gui) -- (scaled to the screen)
 HUD.mount(root)
 ShopWindow.mount(root)
 BagWindow.mount(root)
+IndexWindow.mount(root)
+StoreWindow.mount(root)
 DailyWindow.mount(root)
 FoodWindow.mount(root)
 GearWindow.mount(root)

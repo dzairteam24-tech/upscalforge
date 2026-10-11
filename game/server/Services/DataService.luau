@@ -42,6 +42,8 @@ export type Data = {
 	daily: { day: number, progress: { [string]: number }, claimed: boolean }, -- today's tasks (Logic/Daily)
 	seat: string, -- the floating seat they ride ("": none), one of `seats`
 	seats: { [string]: boolean }, -- the floating seats they own (Config/SeatLooks)
+	index: { [string]: boolean }, -- every species they've hatched (the Index, Logic/Index)
+	indexClaimed: { [string]: boolean }, -- the Index pages (egg tiers) whose reward they took
 }
 
 local DataService = {}
@@ -100,6 +102,8 @@ local function template(): Data
 		daily = { day = -1, progress = {}, claimed = false },
 		seat = "",
 		seats = { Cloud = true },
+		index = {},
+		indexClaimed = {},
 	}
 end
 
@@ -130,6 +134,10 @@ local function load(player: Player)
 		elseif not ok then
 			warn("[Data] Couldn't load", player.Name, saved)
 		end
+	end
+	-- (the Index starts with what they already have)
+	for _, creature in data.creatures do
+		data.index[creature.s] = true
 	end
 	if data.firstPlayed == 0 then
 		data.firstPlayed = os.time()
