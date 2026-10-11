@@ -99,6 +99,17 @@
 - **البيض:** Meadow 500، Flower 5K، Forest 50K … كل بيضة ×10 (Legendary 10T). البيضة الأولى تخلّص روحها في أقل من دقيقة، والكبار في سوايع.
 - **كلش غالي:** البلايص، الفقاسات، المرعى، المخزن، الـ Treadmill، المضارب والفخاخ (250K) كبرو بزاف.
 
+## الندرة في كل ماب
+
+| البيض | المخلوقات | الحظ |
+|---|---|---|
+| Meadow، Flower، Forest | Common، Uncommon، Rare، Epic | 60%، 30%، 9%، 1% |
+| Beach، Cave، Desert، Snow (**الوسط**) | + **Legendary** تاع المنطقة (Kraken، Spore Sage، Pharaoh Scarab، Aurora Wolf) | 58%، 30%، 9%، 2.5%، **0.5%** |
+| Volcano، Ice، Pixel (**الفوق**) | + Legendary (Inferno Drake، Frost Leviathan، Glitch) + **Mythic** (Molten Titan، Star Seraph، Void Emperor) | 57%، 30%، 9.5%، 3%، 0.4%، **0.1%** |
+
+- **Legendary Egg** (2T) تفقس واحد من الـ 10 أسطوريين.
+- الربح: Legendary ≈ ×250 تاع Common المنطقة، Mythic ≈ ×1200.
+
 ## كيما Steal an Egg (من الصور)
 
 - **📖 Index:** صفحة لكل بيضة فيها المخلوقات تاعها. اللي ما فقستوش يبان **ظل كحل و ???**. كي تكمل الصفحة تاخذ جايزة مرة وحدة بـ **CLAIM** (🪙 + ⚡، تكبر مع البيضة: Meadow 180K + 1K ⚡ (كيما تاعهم) … Legendary 200T + 5B ⚡). وتحت: **Unlocked: x/y**.

@@ -2,7 +2,7 @@
 
 - `concepts/`: الرسومات 2D (من ChatGPT)
 - `blender/cubelings.py`: سكريبت Blender يبني المخلوقات من spec، يخرج render و ملفات 3D. مخلوقات المنطقة 1 مكتوبين فيه
-- `blender/species_zoo.py`: التصاميم تاع المناطق 2 حتى 10 والأسطوريين (`ZONES`، `LEGENDARIES`)
+- `blender/species_zoo.py`: التصاميم تاع المناطق 2 حتى 10، الأسطوريين والـ Mythics (`ZONES`، `LEGENDARIES`، `MYTHICS`)
 - `renders/`: صورة لكل مخلوق (4 زوايا) باش نقارنو مع الرسومات، و `all_creatures.jpg` و `legendaries.jpg`
 - `models/`: **`Cubelings_Roblox.glb` هو اللي تستعملو اللعبة.** والباقي: `.glb` لكل مخلوق (للمعاينة) معاه palette صغيرة (`_palette.png` و `_palette.json`)
 - `viewer/`: صفحة معاينة 3D للتيليفون
@@ -16,6 +16,7 @@
 | `python art/blender/cubelings.py Kitty "Ice Fox"` | مخلوقات بالاسم: render + `.glb` + palette لكل واحد |
 | `python art/blender/cubelings.py zone 3` | الـ 4 مخلوقات تاع منطقة، و `renders/zone3_lineup.png` (الزاوية 3/4 جنب لجنب) |
 | `python art/blender/cubelings.py legendary` | الـ 10 أسطوريين، و `renders/legendaries_lineup.png` |
+| `python art/blender/cubelings.py mythic` | الـ 3 Mythics، و `renders/mythics_lineup.png` |
 | `python art/blender/cubelings.py roblox` | الملف تاع اللعبة: `models/Cubelings_Roblox.glb` و `game/shared/Config/CreatureLooks.luau` (شوف تحت) |
 | `FAST=1 python art/blender/cubelings.py ...` | الزاوية 3/4 برك (معاينة سريعة) |
 
@@ -26,7 +27,7 @@
 
 - **الحجم:** الجسم 2 × 2 × 1.9 studs، والوجه يشوف لـ -Z (القدام تاع Roblox)
 - **مخلوق وحدو** (`models/Kitty.glb`): mesh واحد و texture وحدة صغيرة (palette). بين 2.3K و 13K مثلث على حسب القطع، تقريباً 5K في المتوسط (Kitty: 4,864)
-- **`Cubelings_Roblox.glb`:** الـ 50 مخلوق (40 + 10 أسطوريين)، كل مخلوق مقسوم لقطع على حسب الدور: `Kitty__body`، `Kitty__eye`... (حوالي 500 قطعة، و ~250K مثلث في المجموع)
+- **`Cubelings_Roblox.glb`:** الـ 53 مخلوق (40 + 10 أسطوريين + 3 Mythics)، كل مخلوق مقسوم لقطع على حسب الدور: `Kitty__body`، `Kitty__eye`... (حوالي 500 قطعة، و ~250K مثلث في المجموع)
 
 ## في اللعبة
 

@@ -460,5 +460,47 @@ LEGENDARY_SPECIES = {
     },
 }
 
+# ----- Mythics: the rarest of all, 1 in 1000 in the best eggs (Volcano, Ice, Pixel). Each floats or burns with
+# more glow than a Legendary: crowns, halos, orbs and rings.
+
+MYTHIC_SPECIES = {
+    # Volcano: a crowned obsidian giant cracked with lava, spikes down its back, embers orbiting, a flaming tail
+    "Molten Titan": {
+        "colors": {"body": "#2A1E22", "belly": "#3E2A2E", "legs": "#160F12", "gold": "#FFB020", "gem": "#FF3D1A", "gem2": "#FFD23D", "glow": "#FF6A1A", "glow2": "#FFD23D", "spike": "#FF7A1A", "brow": "#120C10", "white": "#FFFFFF", **face("#FFB547", mouth="#120C10", blush=None)},
+        "ears": "crown",
+        "brows": "angry",
+        "mouth": "fangs",
+        "blush": False,
+        "eyes": 1.1,
+        "features": ["lava_cracks", "back_spikes", "orbs"],
+        "tail": "flame_tip",
+    },
+    # Ice: a star angel, white and pale blue, with glowing fairy wings, a halo, stars around it, floating
+    "Star Seraph": {
+        "colors": {"body": "#EAF4FF", "belly": "#FFFFFF", "legs": "#B8D4F0", "wing": "#E8F6FF", "glow": "#FFF27A", "glow2": "#9FE8FF", **face("#1E3A66", blush="#FFC0DA")},
+        "ears": "none",
+        "eye_style": "sparkle",
+        "eyes": 1.1,
+        "mouth": "smile",
+        "legs": "none",
+        "features": ["wings_fairy", "halo", "orbs", "aurora", "float_ring"],
+        "tail": "none",
+    },
+    # Pixel: an emperor of the void, deep purple, crowned, pixels breaking off in neon, floating on a ring
+    "Void Emperor": {
+        "colors": {"body": "#2E1446", "belly": "#4A2470", "legs": "#1A0A2A", "gold": "#F5C542", "gem": "#FF3DD5", "gem2": "#3DF0FF", "glow": "#B03DFF", "glow2": "#FF3DD5", "glow3": "#3DF0FF", "brow": "#12061C", "white": "#FFFFFF", **face("#FF3DD5", mouth="#12061C", blush=None)},
+        "ears": "crown",
+        "brows": "angry",
+        "mouth": "fangs",
+        "blush": False,
+        "eyes": 1.1,
+        "legs": "none",
+        "features": ["glitch", "orbs", "float_ring"],
+        "tail": "none",
+    },
+}
+
 LEGENDARIES = list(LEGENDARY_SPECIES)
+MYTHICS = list(MYTHIC_SPECIES)
 SPECIES.update(LEGENDARY_SPECIES)
+SPECIES.update(MYTHIC_SPECIES)

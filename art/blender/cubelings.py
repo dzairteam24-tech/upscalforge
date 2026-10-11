@@ -123,7 +123,7 @@ SPECIES = {
 }
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from species_zoo import LEGENDARIES, SPECIES as _MORE_SPECIES, ZONES  # noqa: E402
+from species_zoo import LEGENDARIES, MYTHICS, SPECIES as _MORE_SPECIES, ZONES  # noqa: E402
 
 SPECIES.update(_MORE_SPECIES)
 
@@ -1883,11 +1883,11 @@ def anim_name(obj):
 
 
 def export_roblox():
-    """All 50 creatures (40 zone creatures + 10 Legendaries) in one .glb for Roblox Studio's 3D importer.
+    """All 53 creatures (40 zone creatures, 10 Legendaries, 3 Mythics) in one .glb for Roblox Studio's 3D importer.
     Each creature is a group named after the species; inside, one mesh per part role ("Kitty__body",
     "Kitty__eye"...), so the game can recolor every role for the variants. Also writes game/shared/Config/CreatureLooks.luau with each role's normal color."""
     reset()
-    order = [name for zone in ZONES for name in zone] + LEGENDARIES
+    order = [name for zone in ZONES for name in zone] + LEGENDARIES + MYTHICS
     looks = {}
     for index, name in enumerate(order):
         materials.clear()
@@ -1951,6 +1951,9 @@ def main():
     if args[0] == "legendary":
         args = LEGENDARIES
         lineup_name = "legendaries_lineup"
+    elif args[0] == "mythic":
+        args = MYTHICS
+        lineup_name = "mythics_lineup"
     elif args[0] == "zone":
         index = int(args[1])
         args = ZONES[index - 1]
