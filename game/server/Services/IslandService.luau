@@ -540,7 +540,7 @@ local function setEgg(player: Player, tier: number, golden: boolean)
 		return
 	end
 	if eggsDown(data) >= data.incubators then
-		IslandService.notify(player, ("Your garden holds %d eggs: get room for more in your Bag"):format(data.incubators), "error")
+		IslandService.notify(player, ("Your garden hatches %d eggs at once: get +1 in 🎒 Bag → 🥚 Eggs"):format(data.incubators), "error")
 		return
 	end
 	for _, egg in data.incubating do

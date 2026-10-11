@@ -10,6 +10,5 @@ return {
 	WEEKEND_DAYS = { [0] = true, [6] = true }, -- days of the week (UTC, 0 = Sunday) with rounds
 	STEAL_RANGE = 10, -- how close to the carrier a thief must be
 	STEAL_GUARD = 4, -- seconds a new carrier can't be robbed
-	HOME_RANGE = 26, -- how close to the middle of their island the carrier must get
 	REWARD_EGGS = 2, -- the prize: eggs of the best tier the winner has hatched
 }

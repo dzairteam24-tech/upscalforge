@@ -82,8 +82,20 @@ local function endRound(winner: Player?)
 		local key = tostring(tier)
 		data.eggs[key] = (data.eggs[key] or 0) + HeistConfig.REWARD_EGGS
 		IslandService.push(winner)
+		-- (the prize in their hands, from the inventory, to set down on their grass)
+		IslandService.holdEgg(winner, tier, false)
+		local root = rootOf(winner)
+		if root then
+			IslandService.fx("Home", root.Position - Vector3.new(0, 2, 0), Color3.fromRGB(255, 200, 60))
+		end
 		local prize = Hatch.egg(tier)
-		everyone(("🥚 %s brought the Heist Egg home and won %d× %s!"):format(winner.DisplayName, HeistConfig.REWARD_EGGS, if prize then prize.name else "eggs"), "rare")
+		local name = if prize then prize.name else "Egg"
+		IslandService.notify(winner, ("🥚 Home with the Heist Egg! %d× %s in your inventory: click to set one down"):format(HeistConfig.REWARD_EGGS, name), "success")
+		for _, player in Players:GetPlayers() do
+			if player ~= winner then
+				IslandService.notify(player, ("🥚 %s brought the Heist Egg home and won %d× %s!"):format(winner.DisplayName, HeistConfig.REWARD_EGGS, name), "rare")
+			end
+		end
 	end
 end
 
@@ -183,12 +195,11 @@ local function follow()
 		drop()
 		return
 	end
+	Carry.keepHandsFree(holder)
+	-- Home as soon as they're through their own garden's gate (as with an egg from the Wild)
 	local home = IslandService.islandOf(holder)
-	if home then
-		local center = Layout.garden(home).Position
-		if (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(center.X, 0, center.Z)).Magnitude <= HeistConfig.HOME_RANGE then
-			endRound(holder)
-		end
+	if home and Layout.gardenAt(root.Position) == home then
+		endRound(holder)
 	end
 end
 

@@ -51,6 +51,23 @@ function BagWindow.mount(gui: Instance)
 		return button
 	end
 
+	-- An upgrade row (the Garden tab, and on top of the Eggs tab): an icon, what it is, how far it's grown, and a button to grow it
+	local function upgradeRow(order: number, icon: string, title: string, detail: string, price: number?, label: string, remote: string)
+		local row = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 78), LayoutOrder = order })
+		Theme.text(row, { Text = icon, Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(10, 11) })
+		Theme.bold(row, { Text = title, Size = UDim2.new(0.58, -76, 0, 30), Position = UDim2.fromOffset(74, 10), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 26 })
+		Theme.text(row, { Text = detail, Size = UDim2.new(0.58, -76, 0, 22), Position = UDim2.fromOffset(74, 44), TextColor3 = Theme.soft, TextXAlignment = Enum.TextXAlignment.Left })
+		if price then
+			local button = Theme.button(row, ("%s · 🪙 %s"):format(label, Format.abbrev(price)), if Store.coins() >= price then Theme.green else Theme.gray, function()
+				Net.event(remote):FireServer()
+			end)
+			button.Size = UDim2.new(0.4, -12, 0, 52)
+			button.Position = UDim2.new(0.6, 0, 0, 13)
+		else
+			Theme.bold(row, { Text = "MAX", Size = UDim2.new(0.4, -12, 0, 40), Position = UDim2.new(0.6, 0, 0, 19), TextColor3 = Theme.gold })
+		end
+	end
+
 	local function eggsTab(data: { [string]: any })
 		local down = 0
 		for key in data.incubating do
@@ -59,8 +76,10 @@ function BagWindow.mount(gui: Instance)
 				down += 1
 			end
 		end
-		hint(0, ("Stand on your grass and tap Set down (or take the egg from your hotbar and click) · %d / %d on the grass"):format(down, data.incubators))
-		local grid = Theme.grid(content, 1, 4, 196)
+		-- How many eggs can hatch at once, and the button for one more, right here
+		upgradeRow(0, "🥚", ("Hatching %d / %d"):format(down, data.incubators), "Eggs on your grass at once", Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS), "+1 egg", "BuyIncubator")
+		hint(1, "Stand on your grass and tap Set down (or take the egg from your hotbar and click)")
+		local grid = Theme.grid(content, 2, 4, 196)
 		local kinds = 0
 		for tier = 11, 1, -1 do
 			local egg = Hatch.egg(tier)
@@ -84,7 +103,7 @@ function BagWindow.mount(gui: Instance)
 			end
 		end
 		if kinds == 0 then
-			local empty = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 120), LayoutOrder = 2 })
+			local empty = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 120), LayoutOrder = 3 })
 			Theme.text(empty, { Text = "🥚", Size = UDim2.fromOffset(70, 70), Position = UDim2.fromOffset(16, 25) })
 			Theme.bold(empty, { Text = "No eggs yet!", Size = UDim2.new(1, -110, 0, 36), Position = UDim2.fromOffset(96, 22), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 30 })
 			Theme.text(empty, { Text = "Buy some at the Egg Shop in town, or steal one from the Wild", Size = UDim2.new(1, -110, 0, 40), Position = UDim2.fromOffset(96, 60), TextColor3 = Theme.soft, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true })
@@ -181,23 +200,6 @@ function BagWindow.mount(gui: Instance)
 			sell.AnchorPoint = Vector2.new(1, 1)
 			sell.Position = UDim2.new(1, -8, 1, -8)
 			sell.Size = UDim2.new(0.4, -4, 0, 34)
-		end
-	end
-
-	-- A row on the Garden tab: an icon, what it is, how far it's grown, and a button to grow it
-	local function upgradeRow(order: number, icon: string, title: string, detail: string, price: number?, label: string, remote: string)
-		local row = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 78), LayoutOrder = order })
-		Theme.text(row, { Text = icon, Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(10, 11) })
-		Theme.bold(row, { Text = title, Size = UDim2.new(0.58, -76, 0, 30), Position = UDim2.fromOffset(74, 10), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 26 })
-		Theme.text(row, { Text = detail, Size = UDim2.new(0.58, -76, 0, 22), Position = UDim2.fromOffset(74, 44), TextColor3 = Theme.soft, TextXAlignment = Enum.TextXAlignment.Left })
-		if price then
-			local button = Theme.button(row, ("%s · 🪙 %s"):format(label, Format.abbrev(price)), if Store.coins() >= price then Theme.green else Theme.gray, function()
-				Net.event(remote):FireServer()
-			end)
-			button.Size = UDim2.new(0.4, -12, 0, 52)
-			button.Position = UDim2.new(0.6, 0, 0, 13)
-		else
-			Theme.bold(row, { Text = "MAX", Size = UDim2.new(0.4, -12, 0, 40), Position = UDim2.new(0.6, 0, 0, 19), TextColor3 = Theme.gold })
 		end
 	end
 

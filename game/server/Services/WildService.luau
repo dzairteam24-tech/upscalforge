@@ -465,6 +465,7 @@ local function tick(frame: number)
 			drop(player, root.Position)
 			continue
 		end
+		Carry.keepHandsFree(player)
 		-- Home: into their garden (until then, through the town too, anyone's bat can knock it loose)
 		local home = IslandService.islandOf(player)
 		if home and Layout.gardenAt(root.Position) == home then

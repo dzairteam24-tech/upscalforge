@@ -1,17 +1,22 @@
 --!strict
--- Players carrying an egg (marked Holding: Shared/Carry) hold it with both arms out in front of them, on every
--- screen: their shoulders and elbows bent after the animations each frame (not while sitting on a seat).
+-- Players carrying an egg (marked Holding: Shared/Carry) hold it up over their head in both hands, on every
+-- screen: their shoulders and elbows set after the animations each frame (not while sitting on a seat), so the
+-- arms stay up while they run. R15 and R6 bodies both.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local EggHands = {}
 
-local ARMS = { -- joint -> its bend: arms forward, a little inward, elbows slightly bent
-	RightShoulder = CFrame.Angles(math.rad(80), 0, math.rad(18)),
-	LeftShoulder = CFrame.Angles(math.rad(80), 0, math.rad(-18)),
-	RightElbow = CFrame.Angles(math.rad(15), 0, 0),
-	LeftElbow = CFrame.Angles(math.rad(15), 0, 0),
+local ARMS = { -- joint -> its bend: arms straight up, a little apart, elbows bent in round the egg
+	-- R15
+	RightShoulder = CFrame.Angles(math.rad(168), 0, math.rad(-12)),
+	LeftShoulder = CFrame.Angles(math.rad(168), 0, math.rad(12)),
+	RightElbow = CFrame.Angles(math.rad(12), 0, math.rad(20)),
+	LeftElbow = CFrame.Angles(math.rad(12), 0, math.rad(-20)),
+	-- R6 (its shoulders turn round their Z axis)
+	["Right Shoulder"] = CFrame.Angles(0, 0, math.rad(165)),
+	["Left Shoulder"] = CFrame.Angles(0, 0, math.rad(-165)),
 }
 
 local jointCache: { [Model]: { [string]: Instance } } = setmetatable({}, { __mode = "k" }) :: any
@@ -27,7 +32,9 @@ local function joints(character: Model): { [string]: Instance }
 			found[d.Name] = d
 		end
 	end
-	jointCache[character] = found
+	if next(found) then -- (not before the body has its joints)
+		jointCache[character] = found
+	end
 	return found
 end
 

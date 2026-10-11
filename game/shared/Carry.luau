@@ -1,11 +1,37 @@
 --!strict
--- An egg carried in a player's hands (from the Wild or the Heist): welded in front of their chest, so it moves
--- with them on every screen without lagging behind, and the player is marked Holding (EggHands raises their arms
--- to hold it). Released, it's anchored on the ground where it fell.
+-- An egg carried by a player (from the Wild or the Heist): held up over their head in both hands, like the big
+-- stealing games do (in front of the chest it went into the body, and hid where they were running). It's welded
+-- to them, so it moves with them on every screen without lagging behind; the player is marked Holding
+-- (EggHands raises their arms to it) and can't hold a tool meanwhile (hands full: keepHandsFree). Released, it's
+-- anchored on the ground where it fell.
 
 local Carry = {}
 
-local IN_HANDS = CFrame.new(0, 0.1, -1.7) -- from the player's HumanoidRootPart
+local HEAD_TOP = 2.7 -- studs above the HumanoidRootPart's middle to just over the head
+local LIFT = 0.15 -- gap between the head and the egg
+
+-- How tall a part is drawn (a sphere mesh can stretch it)
+local function height(part: BasePart): number
+	local mesh = part:FindFirstChildOfClass("SpecialMesh")
+	return part.Size.Y * (if mesh then mesh.Scale.Y else 1)
+end
+
+-- Where the egg sits, from the root
+function Carry.offset(part: BasePart): CFrame
+	return CFrame.new(0, HEAD_TOP + LIFT + height(part) / 2, 0)
+end
+
+-- Puts away whatever tool the player holds (their hands are full)
+function Carry.keepHandsFree(player: Player)
+	local character = player.Character
+	if not character then
+		return
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid and character:FindFirstChildOfClass("Tool") then
+		humanoid:UnequipTools()
+	end
+end
 
 function Carry.hold(part: BasePart, player: Player): boolean
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -16,12 +42,14 @@ function Carry.hold(part: BasePart, player: Player): boolean
 	part.Anchored = false
 	part.Massless = true
 	part.CanCollide = false
-	part.CFrame = root.CFrame * IN_HANDS
+	part.CanQuery = false
+	part.CFrame = root.CFrame * Carry.offset(part)
 	local weld = Instance.new("WeldConstraint")
 	weld.Name = "InHands"
 	weld.Part0, weld.Part1 = root, part
 	weld.Parent = part
 	player:SetAttribute("Holding", true)
+	Carry.keepHandsFree(player)
 	return true
 end
 
@@ -32,6 +60,7 @@ function Carry.release(part: BasePart, at: Vector3?, holder: Player?)
 		weld:Destroy()
 	end
 	part.Anchored = true
+	part.CanQuery = true
 	if at then
 		part.CFrame = CFrame.new(at)
 	end
