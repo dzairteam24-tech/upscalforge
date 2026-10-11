@@ -198,6 +198,59 @@ function Layout.pastGate(position: Vector3): boolean
 	return position.Z > Layout.wildGate().Z
 end
 
+-- The town's ground (the square, the shops, the gardens; the Wild goes on north of it): how far it reaches east
+-- and west of the square, and its north and south edges
+function Layout.ground(): (number, number, number)
+	local growth = IslandConfig.PASTURE_GROWTH
+	local south = Layout.GARDEN_RADIUS + Layout.GARDEN_SIZE / 2 + growth[#growth] + 30
+	return Layout.GARDEN_RADIUS + 150, -Layout.WILD_GATE_DISTANCE, south
+end
+
+-- The town's roads: straight ones (from a to b) and arcs round the square (degrees from north), with widths
+export type Road = { a: Vector3, b: Vector3, width: number }
+export type Arc = { radius: number, from: number, to: number, width: number }
+function Layout.roads(): ({ Road }, { Arc })
+	local w = Layout.ROAD_WIDTH_TOWN
+	local around = Layout.around
+	local roads: { Road } = {}
+	local arcs: { Arc } = { { radius = Layout.RING_RADIUS, from = 0, to = 360, width = w * 0.8 } }
+	for _, angle in Layout.SHOP_ANGLES do
+		table.insert(roads, { a = around(Layout.RING_RADIUS, angle), b = around(Layout.SHOP_RADIUS - Layout.SHOP_DEPTH / 2 + 4, angle), width = w * 0.7 })
+	end
+	table.insert(roads, { a = around(Layout.SQUARE_RADIUS - 2, 0), b = Layout.wildGate(), width = w })
+	table.insert(roads, { a = around(Layout.SQUARE_RADIUS - 2, 180), b = around(Layout.GARDEN_ROAD_RADIUS, 180), width = w })
+	local last = Layout.gardenAngle(IslandConfig.ISLANDS) + Layout.GARDEN_STEP * 0.3
+	table.insert(arcs, { radius = Layout.GARDEN_ROAD_RADIUS, from = 180 - last, to = 180 + last, width = w })
+	for index = 1, IslandConfig.ISLANDS do
+		local angle = 180 - Layout.gardenAngle(index)
+		table.insert(roads, { a = around(Layout.GARDEN_ROAD_RADIUS, angle), b = Layout.gate(index).Position, width = Layout.GATE_WIDTH })
+	end
+	return roads, arcs
+end
+
+-- How far a point is from the edge of the nearest town road (negative: on it)
+function Layout.roadDistance(point: Vector3): number
+	local roads, arcs = Layout.roads()
+	local p = Vector3.new(point.X, 0, point.Z)
+	local best = math.huge
+	for _, r in roads do
+		local a, b = Vector3.new(r.a.X, 0, r.a.Z), Vector3.new(r.b.X, 0, r.b.Z)
+		local ab = b - a
+		local t = math.clamp((p - a):Dot(ab) / ab:Dot(ab), 0, 1)
+		best = math.min(best, (p - (a + ab * t)).Magnitude - r.width / 2)
+	end
+	local fromCenter = p - Vector3.new(Layout.CENTER.X, 0, Layout.CENTER.Z)
+	local degrees = math.deg(math.atan2(fromCenter.X, -fromCenter.Z)) % 360
+	for _, arc in arcs do
+		local lo, hi = arc.from % 360, arc.to % 360
+		local within = arc.to - arc.from >= 360 or (if lo <= hi then degrees >= lo and degrees <= hi else degrees >= lo or degrees <= hi)
+		if within then
+			best = math.min(best, math.abs(fromCenter.Magnitude - arc.radius) - arc.width / 2)
+		end
+	end
+	return best
+end
+
 -- Which garden a position is in, if any
 function Layout.gardenAt(position: Vector3): number?
 	for index = 1, IslandConfig.ISLANDS do

@@ -26,7 +26,8 @@
       "$properties": {
         "ClockTime": 14,
         "Brightness": 2,
-        "GlobalShadows": true
+        "GlobalShadows": true,
+        "Technology": "ShadowMap"
       },
       "Atmosphere": {
         "$className": "Atmosphere",

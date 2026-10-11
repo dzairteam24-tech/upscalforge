@@ -479,11 +479,7 @@ end
 -- Wild's gate, the road south and the arc past the gardens' gates), and invisible walls round it (open onto the
 -- Wild)
 local function buildGrounds(world: Instance)
-	local w = Layout.ROAD_WIDTH_TOWN
-	local north = -Layout.WILD_GATE_DISTANCE
-	local growth = IslandConfig.PASTURE_GROWTH
-	local south = Layout.GARDEN_RADIUS + Layout.GARDEN_SIZE / 2 + growth[#growth] + 30
-	local half = Layout.GARDEN_RADIUS + 150
+	local half, north, south = Layout.ground()
 	local middle = (north + south) / 2
 	part(world, {
 		Name = "Ground",
@@ -494,17 +490,12 @@ local function buildGrounds(world: Instance)
 	})
 	local roads = Instance.new("Model")
 	roads.Name = "Roads"
-	arc(roads, Layout.RING_RADIUS, 0, 360, w * 0.8)
-	for _, angle in Layout.SHOP_ANGLES do
-		road(roads, Layout.around(Layout.RING_RADIUS, angle), Layout.around(Layout.SHOP_RADIUS - Layout.SHOP_DEPTH / 2 + 4, angle), w * 0.7)
+	local straight, arcs = Layout.roads()
+	for _, r in straight do
+		road(roads, r.a, r.b, r.width)
 	end
-	road(roads, Layout.around(Layout.SQUARE_RADIUS - 2, 0), Layout.wildGate(), w)
-	road(roads, Layout.around(Layout.SQUARE_RADIUS - 2, 180), Layout.around(Layout.GARDEN_ROAD_RADIUS, 180), w)
-	local last = Layout.gardenAngle(IslandConfig.ISLANDS) + Layout.GARDEN_STEP * 0.3
-	arc(roads, Layout.GARDEN_ROAD_RADIUS, 180 - last, 180 + last, w)
-	for index = 1, IslandConfig.ISLANDS do
-		local angle = 180 - Layout.gardenAngle(index)
-		road(roads, Layout.around(Layout.GARDEN_ROAD_RADIUS, angle), Layout.gate(index).Position, Layout.GATE_WIDTH)
+	for _, a in arcs do
+		arc(roads, a.radius, a.from, a.to, a.width)
 	end
 	roads.Parent = world
 	-- Walls (the north one open in the middle onto the Wild)
@@ -573,6 +564,37 @@ local function buildWild(world: Instance)
 	guardians.Name = "Guardians"
 	guardians.Parent = wild
 	wild.Parent = world
+end
+
+-- The sky and the light: soft clouds, a little glow on bright things, warmer and more colorful, sun rays
+function WorldService.sky()
+	local Lighting = game:GetService("Lighting")
+	Lighting.OutdoorAmbient = rgb(150, 150, 165)
+	Lighting.Ambient = rgb(70, 70, 85)
+	Lighting.EnvironmentDiffuseScale = 1
+	Lighting.EnvironmentSpecularScale = 0.6
+	Lighting.ShadowSoftness = 0.35
+	Lighting.GeographicLatitude = 30
+	local function effect(class: string, props: { [string]: any })
+		local existing = Lighting:FindFirstChildOfClass(class)
+		local instance = existing or Instance.new(class)
+		for k, v in props do
+			(instance :: any)[k] = v
+		end
+		instance.Parent = Lighting
+	end
+	effect("Sky", { CelestialBodiesShown = true, SunAngularSize = 14, StarCount = 3000 })
+	effect("BloomEffect", { Intensity = 0.45, Size = 30, Threshold = 1.5 })
+	effect("ColorCorrectionEffect", { Saturation = 0.18, Contrast = 0.06, Brightness = 0.02, TintColor = rgb(255, 250, 242) })
+	effect("SunRaysEffect", { Intensity = 0.07, Spread = 0.7 })
+	local terrain = workspace:FindFirstChildOfClass("Terrain")
+	if terrain and not terrain:FindFirstChildOfClass("Clouds") then
+		local clouds = Instance.new("Clouds")
+		clouds.Cover = 0.55
+		clouds.Density = 0.6
+		clouds.Color = rgb(255, 255, 255)
+		clouds.Parent = terrain
+	end
 end
 
 function WorldService.island(index: number): Instance?

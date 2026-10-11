@@ -29,6 +29,24 @@ Loader.extraEnv = {
 		end,
 	},
 	workspace = workspaceInstance,
+	-- (a seeded stand-in for Roblox's Random)
+	Random = {
+		new = function(seed: number)
+			local state = seed
+			local function nextNumber(): number
+				state = (state * 1103515245 + 12345) % 2147483648
+				return state / 2147483648
+			end
+			return {
+				NextNumber = function(_self, a: number?, b: number?): number
+					return if a and b then a + (b - a) * nextNumber() else nextNumber()
+				end,
+				NextInteger = function(_self, a: number, b: number): number
+					return a + math.floor(nextNumber() * (b - a + 1))
+				end,
+			}
+		end,
+	},
 }
 
 local Vector3 = roblox.Vector3
@@ -156,3 +174,23 @@ for _, d in world.Wild:GetChildren() do
 end
 assert(wildEggs == #WildConfig.BIOMES * WildConfig.NESTS, "an egg in every nest")
 print("wild test passed")
+
+-- The map's decor: clear of the roads, the gardens and the nests, and plenty of it
+local Decor = Loader.require(Shared.Logic.Decor)
+local town, wild = Decor.town(), Decor.wild()
+assert(#town > 400 and #wild > 150, ("decor everywhere (%d in town, %d in the Wild)"):format(#town, #wild))
+for _, spot in town do
+	assert(Layout.gardenAt(spot.at) == nil, "no decor in a garden")
+	if spot.name ~= "StreetLamp" then
+		assert(Layout.roadDistance(spot.at) > 0, "no decor on a road")
+	end
+end
+for _, spot in wild do
+	assert(math.abs(spot.at.X) > Layout.ROAD_WIDTH / 2, "no decor on the Wild's road")
+	for i = 1, #WildConfig.BIOMES do
+		for k = 1, WildConfig.NESTS do
+			assert((Layout.wildNest(i, k) - spot.at).Magnitude > 10, "no decor on a nest")
+		end
+	end
+end
+print("decor test passed")
