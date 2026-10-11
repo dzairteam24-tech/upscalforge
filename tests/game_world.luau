@@ -132,18 +132,21 @@ for index = 1, IslandConfig.ISLANDS do
 	end
 end
 assert(Layout.gardenAt(Layout.CENTER) == nil, "the square is no garden")
--- The shops: a row of stalls by the square, facing it and the spawn, side by side, off every road
+-- The shops: a row of stalls by the square, facing it, the spawn and every garden, a little apart, off every road
 for shop = 1, #Layout.SHOP_SPOTS do
 	local frame = Layout.shop(shop)
 	local at = frame.Position
-	assert((at - Layout.CENTER).Magnitude < Layout.SQUARE_RADIUS + 15, "beside the square")
+	assert((at - Layout.CENTER).Magnitude < Layout.SQUARE_RADIUS + 30, "beside the square")
+	for index = 1, IslandConfig.ISLANDS do
+		assert(frame.LookVector:Dot((Layout.garden(index).Position - at).Unit) > 0.1, "every garden sees its front, none its back")
+	end
 	assert((frame * CFrame.new(0, 0, -10)).Position.Magnitude < at.Magnitude, "facing the square")
 	assert(Layout.roadDistance(at + frame.LookVector * -Layout.SHOP_DEPTH / 2) > 0, "off the roads")
 	assert(Layout.gardenAt(at) == nil, "not in a garden")
 	local toStall = at - Layout.SPAWN.Position
 	assert(Layout.SPAWN.LookVector:Dot(toStall.Unit) > 0.7, "in front of the spawn")
 	for other = shop + 1, #Layout.SHOP_SPOTS do
-		assert((Layout.shop(other).Position - at).Magnitude >= Layout.SHOP_WIDTH, "stalls side by side")
+		assert((Layout.shop(other).Position - at).Magnitude >= Layout.SHOP_WIDTH + 8, "stalls a little apart")
 	end
 end
 

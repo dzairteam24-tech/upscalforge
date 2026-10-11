@@ -73,10 +73,32 @@ end
 
 -- The shops, in the order of their stalls (Layout.shop), with their sign and colors
 local SHOPS = {
-	{ name = "Egg Shop", sign = "🥚 EGGS", ui = "Shop", color = rgb(92, 200, 120) },
-	{ name = "Food Shop", sign = "🌾 FOOD", ui = "Food", color = rgb(240, 150, 50) },
-	{ name = "Gear Shop", sign = "🏏 GEAR", ui = "Gear", color = rgb(235, 90, 120) },
+	{ name = "Egg Shop", sign = "EGGS", icon = "Egg", ui = "Shop", color = rgb(92, 200, 120) },
+	{ name = "Food Shop", sign = "FOOD", icon = "Apple", ui = "Food", color = rgb(240, 150, 50) },
+	{ name = "Gear Shop", sign = "GEAR", icon = "Bat", ui = "Gear", color = rgb(235, 90, 120) },
 }
+
+-- A shop's mark on top of its sign: a big egg, an apple, a bat (simple parts, the same for everyone)
+local function shopIcon(model: Instance, kind: string, at: CFrame, color: Color3)
+	if kind == "Egg" then
+		local egg = part(model, { Name = "Icon", Shape = Enum.PartType.Ball, Size = Vector3.one * 3, CFrame = at * CFrame.new(0, 1.9, 0), Color = rgb(250, 240, 215), CanCollide = false })
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Scale = Vector3.new(1, 1.3, 1)
+		mesh.Parent = egg
+		for i, spot in { Vector3.new(0.7, 2.4, -1.15), Vector3.new(-0.8, 1.6, -1.1), Vector3.new(0.1, 1.2, -1.4) } do
+			part(model, { Name = "IconSpot", Shape = Enum.PartType.Ball, Size = Vector3.one * (0.8 - i * 0.1), CFrame = at * CFrame.new(spot), Color = color, CanCollide = false })
+		end
+	elseif kind == "Apple" then
+		part(model, { Name = "Icon", Shape = Enum.PartType.Ball, Size = Vector3.one * 3.2, CFrame = at * CFrame.new(0, 1.7, 0), Color = rgb(225, 60, 60), CanCollide = false })
+		part(model, { Name = "IconStem", Size = Vector3.new(0.3, 0.9, 0.3), CFrame = at * CFrame.new(0, 3.6, 0), Color = rgb(110, 75, 45), CanCollide = false })
+		part(model, { Name = "IconLeaf", Size = Vector3.new(1.1, 0.15, 0.6), CFrame = at * CFrame.new(0.55, 3.7, 0) * CFrame.Angles(0, 0, math.rad(20)), Color = rgb(90, 190, 90), CanCollide = false })
+	else
+		local tilt = at * CFrame.new(0, 2, 0) * CFrame.Angles(0, 0, math.rad(-35))
+		part(model, { Name = "Icon", Shape = Enum.PartType.Cylinder, Size = Vector3.new(3.6, 0.9, 0.9), CFrame = tilt * CFrame.new(0.6, 0, 0), Color = rgb(196, 140, 84), CanCollide = false })
+		part(model, { Name = "IconGrip", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.4, 0.5, 0.5), CFrame = tilt * CFrame.new(-1.9, 0, 0), Color = color, CanCollide = false })
+	end
+end
 WorldService.SHOPS = SHOPS
 
 -- A market stall: a counter, a striped awning over it and a big sign on top, its front toward the square.
@@ -107,13 +129,18 @@ local function buildShop(town: Instance, index: number)
 			CanCollide = false,
 		})
 	end
-	-- The sign over it
-	local board = part(model, { Name = "Sign", Size = Vector3.new(width - 3, 3, 0.4), CFrame = frame * CFrame.new(0, 12.6, depth / 2), Color = shop.color, CanCollide = false })
+	-- The sign over it: a wooden board with a colored edge and the shop's name, and its mark on top
+	local signAt = frame * CFrame.new(0, 12.6, depth / 2)
+	part(model, { Name = "SignEdge", Size = Vector3.new(width - 2.4, 3.6, 0.3), CFrame = signAt * CFrame.new(0, 0, 0.2), Color = shop.color, CanCollide = false })
+	local board = part(model, { Name = "Sign", Size = Vector3.new(width - 3.2, 2.9, 0.4), CFrame = signAt, Color = rgb(150, 100, 60), Material = Enum.Material.WoodPlanks, CanCollide = false })
+	shopIcon(model, shop.icon, signAt * CFrame.new(0, 1.5, 0), shop.color)
 	local surface = Instance.new("SurfaceGui")
 	surface.Face = Enum.NormalId.Front
 	surface.PixelsPerStud = 40
 	local text = Instance.new("TextLabel")
-	text.Size = UDim2.fromScale(1, 1)
+	text.Size = UDim2.fromScale(0.9, 0.85)
+	text.AnchorPoint = Vector2.new(0.5, 0.5)
+	text.Position = UDim2.fromScale(0.5, 0.5)
 	text.BackgroundTransparency = 1
 	text.Text = shop.sign
 	text.TextScaled = true
@@ -138,17 +165,17 @@ local function buildTown(world: Instance)
 	town.Name = "Town"
 	-- The square where players arrive (no fountain: room for the Mother Cube and the Heist Egg)
 	disc(town, "Plaza", Layout.CENTER + Vector3.new(0, 0.1, 0), Layout.SQUARE_RADIUS, 0.3, PAVING, Enum.Material.Pavement)
-	-- The market: paving under the stalls on the square's west side
-	local west = Layout.SHOP_SPOTS[1].X
+	-- The market: paving under the stalls on the square's north side, joining the road to the Wild behind them
 	local lo, hi = math.huge, -math.huge
 	for _, spot in Layout.SHOP_SPOTS do
-		lo, hi = math.min(lo, spot.Z), math.max(hi, spot.Z)
+		lo, hi = math.min(lo, spot.X), math.max(hi, spot.X)
 	end
-	local floorWidth = Layout.SHOP_DEPTH + 10
+	local front = Layout.SHOP_ROW + 8 -- (z: in front of the counters)
+	local back = Layout.SHOP_ROW - Layout.SHOP_DEPTH - 10
 	part(town, {
 		Name = "Market",
-		Size = Vector3.new(floorWidth, 0.3, hi - lo + Layout.SHOP_WIDTH + 6),
-		CFrame = CFrame.new(Layout.CENTER.X + west - Layout.SHOP_DEPTH / 2 + 2, 0.12, (lo + hi) / 2),
+		Size = Vector3.new(hi - lo + Layout.SHOP_WIDTH + 8, 0.3, front - back),
+		CFrame = CFrame.new(Layout.CENTER.X + (lo + hi) / 2, 0.12, Layout.CENTER.Z + (front + back) / 2),
 		Color = PAVING,
 		Material = Enum.Material.Pavement,
 		CanCollide = false,

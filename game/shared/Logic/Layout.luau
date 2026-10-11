@@ -1,7 +1,7 @@
 --!strict
 -- Where everything is (docs/images/map-plan.png): players arrive on a round square in the middle (no fountain).
--- The shops stand in a row of market stalls on its west side, facing the spawn; a straight road runs north from
--- the square to the big gate into the Wild. South of the square, the
+-- The shops stand in a row of market stalls on its north side, facing south: the spawn and every garden see
+-- their fronts. Behind them a straight road runs north to the big gate into the Wild. South of the square, the
 -- players' gardens stand side by side on a wider arc, their laser gates (only the owner gets in) facing the
 -- square, an arc road running past all the gates.
 
@@ -22,10 +22,12 @@ local Layout = {
 	CENTER = Vector3.new(0, 0, 0),
 }
 
--- The shops' stalls: a row on the square's west edge (the roads leave north and south), side by side
-Layout.SHOP_SPOTS = { Vector3.new(-32, 0, -18), Vector3.new(-32, 0, 0), Vector3.new(-32, 0, 18) }
--- Where players appear in the square, facing the stalls
-Layout.SPAWN = CFrame.new(10, 0.2, 0) * CFrame.Angles(0, math.rad(90), 0)
+-- The shops' stalls: a row along the square's north edge, a little apart, their fronts south toward the square
+-- and the gardens (the road to the Wild starts behind them)
+Layout.SHOP_ROW = -40 -- (Z of the stalls' counters)
+Layout.SHOP_SPOTS = { Vector3.new(-26, 0, Layout.SHOP_ROW), Vector3.new(0, 0, Layout.SHOP_ROW), Vector3.new(26, 0, Layout.SHOP_ROW) }
+-- Where players appear in the square, facing the stalls (north)
+Layout.SPAWN = CFrame.new(0, 0.2, -4)
 
 -- A frame at `at` (on the ground) turned about Y so its front (-Z) faces `target` (no lookAt: the same in
 -- every runtime)
@@ -41,10 +43,10 @@ local function around(radius: number, degrees: number): Vector3
 end
 Layout.around = around
 
--- A shop's stall: its counter's middle, facing the square (east)
+-- A shop's stall: its counter's middle, facing south (the square, the gardens)
 function Layout.shop(index: number): CFrame
 	local at = Layout.SHOP_SPOTS[index]
-	return Layout.facing(at, at + Vector3.new(1, 0, 0))
+	return Layout.facing(at, at + Vector3.new(0, 0, 1))
 end
 
 -- How far round (degrees from south, west negative) a garden stands: the first in the west
@@ -216,7 +218,8 @@ function Layout.roads(): ({ Road }, { Arc })
 	local around = Layout.around
 	local roads: { Road } = {}
 	local arcs: { Arc } = {}
-	table.insert(roads, { a = around(Layout.SQUARE_RADIUS - 2, 0), b = Layout.wildGate(), width = w })
+	-- (from behind the stalls)
+	table.insert(roads, { a = Layout.CENTER + Vector3.new(0, 0, Layout.SHOP_ROW - Layout.SHOP_DEPTH - 9), b = Layout.wildGate(), width = w })
 	table.insert(roads, { a = around(Layout.SQUARE_RADIUS - 2, 180), b = around(Layout.GARDEN_ROAD_RADIUS, 180), width = w })
 	local last = Layout.gardenAngle(IslandConfig.ISLANDS) + Layout.GARDEN_STEP * 0.3
 	table.insert(arcs, { radius = Layout.GARDEN_ROAD_RADIUS, from = 180 - last, to = 180 + last, width = w })
