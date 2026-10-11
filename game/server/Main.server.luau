@@ -21,7 +21,6 @@ local WorldService = require(Services.WorldService)
 
 Net.init()
 WorldService.build()
-WorldService.sky()
 
 -- (IslandService listens for loaded data, so it starts before DataService loads anyone)
 IslandService.init()

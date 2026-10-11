@@ -1,5 +1,5 @@
 --!strict
--- The hatch reveal: the screen dims, light rays turn in the rarity's color behind the new creature turning in 3D,
+-- The hatch reveal: the screen dims, light rays turn in the rarity's color behind the new creature in 3D,
 -- with its name, rarity, mutation and what it earns. A tap (or a few seconds) closes it; hatches that come
 -- together are shown one after another.
 

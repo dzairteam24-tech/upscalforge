@@ -158,8 +158,8 @@ function Theme.button(parent: Instance, text: string, color: Color3, onClick: ()
 	limit.Parent = button
 	Theme.bounce(button)
 	button.Activated:Connect(function()
-		Effects.sound("Click")
 		onClick()
+		Effects.sound("Click")
 	end)
 	button.Parent = parent
 	return button
@@ -209,8 +209,7 @@ function Theme.grid(content: Instance, order: number, columns: number, height: n
 	return holder
 end
 
--- A 3D preview: these parts, slowly turning, in a ViewportFrame
-local spinning: { [ViewportFrame]: { model: Model, pivot: CFrame, window: GuiObject? } } = setmetatable({}, { __mode = "k" }) :: any
+-- A 3D preview: these parts in a ViewportFrame (still: nothing to redraw every frame)
 local function viewport(parent: Instance, model: Model, height: number, radius: number): ViewportFrame
 	local view = Instance.new("ViewportFrame")
 	view.BackgroundTransparency = 1
@@ -225,7 +224,6 @@ local function viewport(parent: Instance, model: Model, height: number, radius: 
 	camera.Parent = view
 	view.CurrentCamera = camera
 	view.Parent = parent
-	spinning[view] = { model = model, pivot = model:GetPivot() }
 	return view
 end
 
@@ -262,33 +260,6 @@ function Theme.eggView(parent: Instance, color: Color3, golden: boolean?): Viewp
 	model.PrimaryPart = egg
 	return viewport(parent, model, 2.6, 1)
 end
-
-task.spawn(function()
-	local angle = 0
-	while true do
-		local dt = task.wait(1 / 30)
-		angle += dt * 0.9
-		for view, entry in spinning do
-			if not view.Parent then
-				spinning[view] = nil
-				continue
-			end
-			-- (only while its window is open: the window is the frame right under Root)
-			local window = entry.window
-			if not window then
-				local at: Instance? = view
-				while at and at.Parent and at.Parent.Name ~= "Root" do
-					at = at.Parent
-				end
-				window = if at and at:IsA("GuiObject") then at else nil
-				entry.window = window
-			end
-			if window and window.Visible then
-				entry.model:PivotTo(entry.pivot * CFrame.Angles(0, math.sin(angle) * 0.6, 0))
-			end
-		end
-	end
-end)
 
 -- A strip of tabs; calls onSelect with the chosen name, and returns a function to select one
 function Theme.tabs(parent: Instance, names: { string }, color: Color3, onSelect: (string) -> ()): (string) -> ()
@@ -328,7 +299,6 @@ function Theme.window(gui: Instance, title: string, size: Vector2, color: Color3
 	window.AnchorPoint = Vector2.new(0.5, 0.5)
 	window.Position = UDim2.fromScale(0.5, 0.52)
 	window.Visible = false
-	window.ZIndex = 5
 	Theme.gradient(window, Theme.panel, 0.4, 0.06)
 	Theme.round(window, 20)
 	Theme.stroke(window, Theme.outline, 4)
@@ -387,9 +357,13 @@ end
 
 -- The frame everything goes in, scaled to the screen: laid out for about 1280x760 and scaled down on a phone
 function Theme.root(gui: ScreenGui): Frame
+	-- (each frame draws over its parent, whatever its ZIndex: a window never hides what's in it)
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	local root = Instance.new("Frame")
 	root.Name = "Root"
 	root.BackgroundTransparency = 1
+	root.AnchorPoint = Vector2.new(0.5, 0.5) -- (scaled round the screen's middle)
+	root.Position = UDim2.fromScale(0.5, 0.5)
 	local scale = Instance.new("UIScale")
 	scale.Parent = root
 	local function fit()

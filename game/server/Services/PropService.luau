@@ -7,7 +7,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local IslandConfig = require(Shared.Config.Island)
 local PropLooks = require(Shared.Config.PropLooks)
-local Decor = require(Shared.Logic.Decor)
 local Layout = require(Shared.Logic.Layout)
 
 local WorldService = require(script.Parent.WorldService)
@@ -87,82 +86,8 @@ local function spots(): { Vector3 }
 	}
 end
 
--- The map's decor (Logic/Decor): the square, the lamps, the town's grass, the forest round it and the Wild
-local TALL = 7 -- (studs: a tall prop, for the forest and the Wild's walls)
-local function decorateMap(sources: { [string]: BasePart })
-	local world = workspace:FindFirstChild("World")
-	local count = 0
-	for _ in sources do
-		count += 1
-	end
-	if not world or count == 0 then
-		return
-	end
-	-- (drawn again when more props arrive: the town's and the decor's load apart)
-	local old = world:FindFirstChild("Decor")
-	if old then
-		if (old:GetAttribute("Sources") or 0) >= count then
-			return
-		end
-		old:Destroy()
-	end
-	local byName: { [string]: Entry } = {}
-	local kits: { [string]: { Entry } } = {}
-	for _, look in PropLooks do
-		local source = sources[look.name]
-		if source then
-			byName[look.name] = { look = look, source = source }
-		end
-	end
-	local function kit(zone: number, tall: boolean): { Entry }
-		local key = zone .. (if tall then "t" else "")
-		local found = kits[key]
-		if not found then
-			local list: { Entry } = {}
-			for _, look in PropLooks do
-				local entry = byName[look.name]
-				if entry and table.find(look.zones, zone) and (not tall or look.size.Y >= TALL) then
-					table.insert(list, entry)
-				end
-			end
-			if #list == 0 and tall then
-				list = kit(zone, false)
-			end
-			kits[key] = list
-			found = list
-		end
-		return found :: { Entry }
-	end
-	local folder = Instance.new("Model")
-	folder.Name = "Decor"
-	folder:SetAttribute("Sources", count)
-	local rng = Random.new(5)
-	local placed = 0
-	for _, list in { Decor.town(), Decor.wild() } do
-		for _, spot in list do
-			local entry: Entry? = nil
-			if spot.name then
-				entry = byName[spot.name]
-			elseif spot.zone then
-				local choices = kit(spot.zone, spot.tall == true)
-				if #choices > 0 then
-					entry = pick(choices, rng)
-				end
-			end
-			if entry then
-				local prop = spawnFrom(entry, CFrame.new(spot.at) * CFrame.Angles(0, spot.yaw, 0), spot.scale)
-				prop.Parent = folder
-				placed += 1
-			end
-		end
-	end
-	folder.Parent = world
-	print(("[Props] %d decor props on the map"):format(placed))
-end
-
 function PropService.decorate()
 	local sources = findSources()
-	decorateMap(sources)
 	for index = 1, IslandConfig.ISLANDS do
 		local island = WorldService.island(index)
 		if not island or island:FindFirstChild("Props") then

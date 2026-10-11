@@ -566,37 +566,6 @@ local function buildWild(world: Instance)
 	wild.Parent = world
 end
 
--- The sky and the light: soft clouds, a little glow on bright things, warmer and more colorful, sun rays
-function WorldService.sky()
-	local Lighting = game:GetService("Lighting")
-	Lighting.OutdoorAmbient = rgb(150, 150, 165)
-	Lighting.Ambient = rgb(70, 70, 85)
-	Lighting.EnvironmentDiffuseScale = 1
-	Lighting.EnvironmentSpecularScale = 0.6
-	Lighting.ShadowSoftness = 0.35
-	Lighting.GeographicLatitude = 30
-	local function effect(class: string, props: { [string]: any })
-		local existing = Lighting:FindFirstChildOfClass(class)
-		local instance = existing or Instance.new(class)
-		for k, v in props do
-			(instance :: any)[k] = v
-		end
-		instance.Parent = Lighting
-	end
-	effect("Sky", { CelestialBodiesShown = true, SunAngularSize = 14, StarCount = 3000 })
-	effect("BloomEffect", { Intensity = 0.45, Size = 30, Threshold = 1.5 })
-	effect("ColorCorrectionEffect", { Saturation = 0.18, Contrast = 0.06, Brightness = 0.02, TintColor = rgb(255, 250, 242) })
-	effect("SunRaysEffect", { Intensity = 0.07, Spread = 0.7 })
-	local terrain = workspace:FindFirstChildOfClass("Terrain")
-	if terrain and not terrain:FindFirstChildOfClass("Clouds") then
-		local clouds = Instance.new("Clouds")
-		clouds.Cover = 0.55
-		clouds.Density = 0.6
-		clouds.Color = rgb(255, 255, 255)
-		clouds.Parent = terrain
-	end
-end
-
 function WorldService.island(index: number): Instance?
 	local world = workspace:FindFirstChild("World")
 	return world and world:FindFirstChild("Island_" .. index)

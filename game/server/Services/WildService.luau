@@ -124,44 +124,10 @@ end
 
 local GOLD = Color3.fromRGB(255, 205, 70)
 
--- A golden egg's sparkles and glow (on while it's in its nest)
-local function shine(nest: Nest)
-	local on = nest.full and nest.golden
-	local sparkle = nest.egg:FindFirstChild("GoldenSparkle") :: ParticleEmitter?
-	if on and not sparkle then
-		local created = Instance.new("ParticleEmitter")
-		created.Name = "GoldenSparkle"
-		created.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-		created.Color = ColorSequence.new(GOLD)
-		created.LightEmission = 0.8
-		created.Rate = 10
-		created.Lifetime = NumberRange.new(0.8, 1.5)
-		created.Speed = NumberRange.new(1, 3)
-		created.SpreadAngle = Vector2.new(180, 180)
-		created.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.7), NumberSequenceKeypoint.new(1, 0) })
-		created.Parent = nest.egg
-		local light = Instance.new("PointLight")
-		light.Name = "GoldenLight"
-		light.Color = GOLD
-		light.Brightness = 2
-		light.Range = 14
-		light.Parent = nest.egg
-		sparkle = created
-	end
-	if sparkle then
-		sparkle.Enabled = on
-		local light = nest.egg:FindFirstChild("GoldenLight") :: PointLight?
-		if light then
-			light.Enabled = on
-		end
-	end
-end
-
 local function setFull(nest: Nest, full: boolean)
 	nest.full = full
 	nest.egg.Transparency = if full then 0 else 1
 	nest.prompt.Enabled = full
-	shine(nest)
 end
 
 -- Makes a nest golden (or plain again): its egg shines, with a label over it
@@ -192,7 +158,6 @@ local function setGolden(nest: Nest, golden: boolean)
 		label:Destroy()
 	end
 	nest.prompt.ObjectText = (if golden then "✨ Golden " else "") .. string.gsub(nest.prompt.ObjectText, "^✨ Golden ", "")
-	shine(nest)
 end
 
 -- Ends a carry: the egg goes into the thief's bag (`kept`) or back to its nest

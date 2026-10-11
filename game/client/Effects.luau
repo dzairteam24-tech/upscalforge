@@ -12,11 +12,14 @@ local Net = require(Shared.Net)
 local Effects = {}
 
 local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
-local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
 local HEARING = 160 -- (studs: further away, nothing plays)
 
 -- Plays a sound: at a spot in the world (it fades with distance), or for the player alone
 function Effects.sound(name: string, at: Vector3?)
+	pcall(Effects.play, name, at)
+end
+
+function Effects.play(name: string, at: Vector3?)
 	local def = (Sounds :: any)[name] :: Sounds.Sound?
 	if not def then
 		return
@@ -57,7 +60,7 @@ function Effects.burst(at: Vector3, burst: Burst)
 		emitter.Enabled = false
 		emitter.Texture = burst.texture or SPARKLE
 		emitter.Color = ColorSequence.new(color)
-		emitter.LightEmission = if burst.texture == SMOKE then 0 else 0.6
+		emitter.LightEmission = 0.6
 		emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, burst.size), NumberSequenceKeypoint.new(1, 0) })
 		emitter.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.7, 0.2), NumberSequenceKeypoint.new(1, 1) })
 		emitter.Lifetime = NumberRange.new(burst.life * 0.6, burst.life)
@@ -80,38 +83,32 @@ local function near(at: Vector3): boolean
 	return camera ~= nil and (camera.CFrame.Position - at).Magnitude < HEARING
 end
 
--- What each world event looks and sounds like
+-- What each world event looks and sounds like: a sound for each, and a small burst of confetti only for the
+-- big moments (a hatch, an egg brought home), to keep the screen clear and the game light
 local KINDS: { [string]: (Vector3, Color3?) -> () } = {
 	Hatch = function(at, color)
-		local colors = table.clone(CONFETTI)
+		local colors = { CONFETTI[1], CONFETTI[2], CONFETTI[3] }
 		if color then
 			table.insert(colors, color)
-			table.insert(colors, color)
 		end
-		Effects.burst(at + Vector3.new(0, 2, 0), { count = 70, colors = colors, size = 0.7, speed = 28, life = 1.6, up = -30, spread = 60 })
-		Effects.burst(at + Vector3.new(0, 1, 0), { count = 14, colors = { Color3.fromRGB(255, 250, 235) }, texture = SMOKE, size = 3, speed = 6, life = 1, up = 2 })
+		Effects.burst(at + Vector3.new(0, 2, 0), { count = 24, colors = colors, size = 0.6, speed = 22, life = 1.2, up = -30, spread = 50 })
 		Effects.sound("Chime", at)
 	end,
-	SetEgg = function(at, color)
-		Effects.burst(at, { count = 12, colors = { Color3.fromRGB(205, 185, 150) }, texture = SMOKE, size = 2.2, speed = 8, life = 0.8, up = 1, spread = 80 })
-		Effects.burst(at + Vector3.new(0, 1, 0), { count = 10, colors = { color or Color3.new(1, 1, 1) }, size = 0.5, speed = 10, life = 0.8 })
+	SetEgg = function(at)
 		Effects.sound("SetEgg", at)
 	end,
-	Steal = function(at, color)
-		Effects.burst(at + Vector3.new(0, 2, 0), { count = 30, colors = { color or Color3.new(1, 1, 1), Color3.fromRGB(255, 240, 160) }, size = 0.6, speed = 18, life = 1, up = -20, spread = 70 })
+	Steal = function(at)
 		Effects.sound("Steal", at)
 	end,
 	Home = function(at, color)
-		Effects.burst(at + Vector3.new(0, 3, 0), { count = 60, colors = { color or CONFETTI[2], CONFETTI[1], CONFETTI[3], CONFETTI[4] }, size = 0.7, speed = 26, life = 1.6, up = -30, spread = 50 })
+		Effects.burst(at + Vector3.new(0, 3, 0), { count = 24, colors = { color or CONFETTI[2], CONFETTI[1], CONFETTI[3] }, size = 0.6, speed = 22, life = 1.2, up = -30, spread = 50 })
 		Effects.sound("Home", at)
 		task.delay(0.15, Effects.sound, "Chime", at)
 	end,
 	Hit = function(at)
-		Effects.burst(at + Vector3.new(0, 2, 0), { count = 24, colors = { Color3.fromRGB(255, 230, 90), Color3.new(1, 1, 1) }, size = 0.8, speed = 24, life = 0.5, up = 0 })
 		Effects.sound("Hit", at)
 	end,
 	Trap = function(at)
-		Effects.burst(at, { count = 20, colors = { Color3.fromRGB(90, 90, 100) }, texture = SMOKE, size = 3, speed = 10, life = 1, up = 3, spread = 70 })
 		Effects.sound("Trap", at)
 	end,
 }

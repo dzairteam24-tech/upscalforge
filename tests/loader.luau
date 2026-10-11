@@ -44,6 +44,18 @@ local function makeNode(path: string, name: string, parent: any): any
 	local node = { Name = name, Parent = parent, __path = path }
 	setmetatable(node, {
 		__index = function(self, key)
+			if key == "WaitForChild" or key == "FindFirstChild" then
+				return function(_self, name)
+					local found = entries[path].children[name]
+					if not found then
+						if key == "FindFirstChild" then
+							return nil
+						end
+						error(("%s has no child %s"):format(path, tostring(name)), 2)
+					end
+					return makeNode(found, name, self)
+				end
+			end
 			local childPath = entries[path].children[key]
 			if not childPath then
 				error(("%s has no child %s"):format(path, tostring(key)), 2)

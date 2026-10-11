@@ -1,6 +1,6 @@
 --!strict
--- The bag, in three tabs. Eggs: each kind the player holds as a card with the egg turning in 3D, to set down on
--- the grass where they stand (as its tool in the inventory does). Creatures: a card for each, its model turning,
+-- The bag, in three tabs. Eggs: each kind the player holds as a card with the egg in 3D, to set down on
+-- the grass where they stand (as its tool in the inventory does). Creatures: a card for each, its model in 3D,
 -- colored by rarity, with its mutation, what it earns, and buttons to put it in the garden or take it back and to
 -- sell it (tap twice); the snaps ready on top. Garden: room for more eggs on the grass, creatures in the garden,
 -- the storage barn and the pasture.
