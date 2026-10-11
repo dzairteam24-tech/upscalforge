@@ -21,6 +21,7 @@ local Earn = require(Shared.Logic.Earn)
 local Food = require(Shared.Logic.Food)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
+local Index = require(Shared.Logic.Index)
 local Layout = require(Shared.Logic.Layout)
 local Mutate = require(Shared.Logic.Mutate)
 local Night = require(Shared.Logic.Night)
@@ -44,6 +45,9 @@ local fast: { [Player]: boolean } = {} -- (the Fast Hatch game pass: RobuxServic
 local friendsIn: { [Player]: number } = {} -- (friends in this server)
 local islandOf: { [Player]: number } = {}
 local rng = Random.new()
+
+-- Told when a player's speed (data.power) changed here (WildService sets it: their walk follows)
+function IslandService.powerChanged(_player: Player) end
 
 function IslandService.notify(player: Player, text: string, kind: string?)
 	Net.event("Notify"):FireClient(player, text, kind or "info")
@@ -260,7 +264,11 @@ function IslandService.addCreature(player: Player, data: Data, species: string, 
 	data.stats.hatched += 1
 	if not data.index[species] then
 		data.index[species] = true
-		IslandService.notify(player, ("📖 New in your Index: %s!"):format(species), "success")
+		local reward = Index.creatureReward(species)
+		data.coins += reward.coins
+		data.power += reward.power
+		IslandService.powerChanged(player)
+		IslandService.notify(player, ("📖 New in your Index: %s! +🪙 %s +⚡ %s"):format(species, Format.abbrev(reward.coins), Format.abbrev(reward.power)), "success")
 	end
 	if #data.placed < data.pens then
 		table.insert(data.placed, id)

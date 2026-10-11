@@ -2,6 +2,7 @@
 -- The Index's pages (Config/Index): which of an egg's creatures a player has hatched, and whether its reward
 -- can be claimed.
 
+local Creatures = require(script.Parent.Parent.Config.Creatures)
 local Eggs = require(script.Parent.Parent.Config.Eggs)
 local IndexConfig = require(script.Parent.Parent.Config.Index)
 
@@ -45,6 +46,15 @@ function Index.claimable(found: { [string]: boolean }, claimed: { [string]: bool
 		return nil
 	end
 	return IndexConfig.REWARDS[tier]
+end
+
+-- What finding a creature for the first time gives (Config/Index)
+function Index.creatureReward(species: string): IndexConfig.Reward
+	local creature = Creatures.byId[species]
+	if not creature then
+		return { coins = 0, power = 0 }
+	end
+	return { coins = creature.earn * IndexConfig.CREATURE_SECONDS, power = IndexConfig.CREATURE_POWER[creature.rarity] or 0 }
 end
 
 return Index

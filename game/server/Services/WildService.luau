@@ -617,6 +617,7 @@ function WildService.redraw()
 end
 
 function WildService.init()
+	IslandService.powerChanged = applySpeed
 	local world = workspace:FindFirstChild("World")
 	local wild = world and world:FindFirstChild("Wild")
 	if wild then

@@ -121,6 +121,16 @@ function IndexWindow.mount(gui: Instance)
 				view.ImageTransparency = 0.25
 			end
 			Theme.bold(card, { Text = if has then id else "???", Size = UDim2.new(1, -8, 0.2, 0), Position = UDim2.fromOffset(4, 2), MaxText = 22 })
+			-- (what finding it gives, or that it's been given)
+			local gift = Index.creatureReward(id)
+			Theme.bold(card, {
+				Text = if has then "✓" else ("🎁 🪙%s ⚡%s"):format(Format.abbrev(gift.coins), Format.abbrev(gift.power)),
+				Size = UDim2.new(1, -8, 0.14, 0),
+				Position = UDim2.new(0, 4, 0.85, 0),
+				TextColor3 = if has then Color3.fromRGB(110, 255, 110) else Color3.fromRGB(255, 230, 120),
+				Font = Theme.font,
+				MaxText = 16,
+			})
 		end
 		-- How far, and the reward
 		local bar = Instance.new("Frame")
@@ -137,7 +147,7 @@ function IndexWindow.mount(gui: Instance)
 		bar.Parent = page
 		local reward = IndexConfig.REWARDS[tier]
 		local box = Theme.card(page, Color3.fromRGB(40, 110, 60), { Position = UDim2.new(0.66, 4, 0, 40), Size = UDim2.new(0.34, -4, 1, -40) })
-		Theme.bold(box, { Text = "Rewards:", Size = UDim2.new(1, -16, 0, 30), Position = UDim2.fromOffset(8, 8), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 24 })
+		Theme.bold(box, { Text = "Page complete:", Size = UDim2.new(1, -16, 0, 30), Position = UDim2.fromOffset(8, 8), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 24 })
 		if reward then
 			Theme.bold(box, { Text = "🪙 " .. Format.abbrev(reward.coins), Size = UDim2.new(1, -16, 0, 40), Position = UDim2.fromOffset(8, 48), TextColor3 = Color3.fromRGB(255, 225, 110), MaxText = 34 })
 			Theme.bold(box, { Text = "⚡ +" .. Format.abbrev(reward.power), Size = UDim2.new(1, -16, 0, 40), Position = UDim2.fromOffset(8, 94), TextColor3 = Color3.fromRGB(150, 210, 255), MaxText = 34 })
