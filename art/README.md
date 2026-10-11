@@ -2,6 +2,7 @@
 
 - `concepts/`: الرسومات 2D (من ChatGPT)
 - `blender/cubelings.py`: سكريبت Blender يبني المخلوقات من spec، يخرج render و ملفات 3D. مخلوقات المنطقة 1 مكتوبين فيه
+- `blender/blocky.py`: **الستايل الجديد** (كيما Steal an Egg): حيوانات حقيقية من بلوكات مع نقاط Lego. spec فيه `"style": "blocky"` و `"animal"` (dog، cat، bunny، bear…). المنطقة 1 (Dog، Cat، Bunny، Bear) راهي بيه
 - `blender/species_zoo.py`: التصاميم تاع المناطق 2 حتى 10، الأسطوريين والـ Mythics (`ZONES`، `LEGENDARIES`، `MYTHICS`)
 - `renders/`: صورة لكل مخلوق (4 زوايا) باش نقارنو مع الرسومات، و `all_creatures.jpg` و `legendaries.jpg`
 - `models/`: **`Cubelings_Roblox.glb` هو اللي تستعملو اللعبة.** والباقي: `.glb` لكل مخلوق (للمعاينة) معاه palette صغيرة (`_palette.png` و `_palette.json`)

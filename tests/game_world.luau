@@ -157,7 +157,7 @@ for shop = 1, #Layout.SHOP_SPOTS do
 end
 
 -- A creature drawn without the 3D models
-local built = PetModel.build({ s = "Kitty", v = "Golden", z = "Normal" })
+local built = PetModel.build({ s = "Cat", v = "Golden", z = "Normal" })
 assert(#built.parts > 0 and built.height > 0, "a creature is drawn")
 
 print("world test passed")
@@ -183,6 +183,12 @@ for _, d in world.Wild:GetChildren() do
 		wildEggs += 1
 	end
 end
-assert(wildEggs == #WildConfig.BIOMES * WildConfig.NESTS, "an egg in every nest")
+local openBiomes = 0
+for _, biome in WildConfig.BIOMES do
+	if biome.tier <= IslandConfig.OPEN_TIER then
+		openBiomes += 1
+	end
+end
+assert(wildEggs == openBiomes * WildConfig.NESTS, "an egg in every nest of the open biomes (the others: Coming Soon)")
 print("wild test passed")
 

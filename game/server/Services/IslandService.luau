@@ -221,7 +221,7 @@ function IslandService.bestTier(data: Data): number
 	local best = 1
 	for _, creature in data.creatures do
 		local species = Creatures.byId[creature.s]
-		if species and species.tier <= 10 and species.tier > best then
+		if species and species.tier <= 10 and species.tier > best and Hatch.open(species.tier) then
 			best = species.tier
 		end
 	end

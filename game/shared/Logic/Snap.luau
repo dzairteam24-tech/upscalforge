@@ -65,7 +65,7 @@ function Snap.find(creatures: { [string]: Creature }, placed: { string }, id: st
 	return group, { s = first.s, m = best, g = grade.id }
 end
 
--- "Mega Golden Cubby", "Rainbow Neon Bear", "Cubby"...
+-- "Mega Golden Dog", "Rainbow Neon Bear", "Dog"...
 function Snap.name(creature: Creature): string
 	local parts = {}
 	if creature.g then

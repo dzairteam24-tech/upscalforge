@@ -2,7 +2,7 @@
 -- using the returned offsets.
 --
 -- With the 3D models (ReplicatedStorage.CreatureModels, imported from art/models/Cubelings_Roblox.glb) each
--- creature is a clone of its mesh parts ("Kitty__body", "Kitty__eye"...), recolored per variant.
+-- creature is a clone of its mesh parts ("Cat__body", "Cat__eye"...), recolored per variant.
 -- Without them it falls back to the block version below, so the game always works.
 
 local Config = script.Parent.Config
@@ -74,7 +74,7 @@ local templates: { [string]: Template | false } = {}
 local indexed: { [string]: { BasePart } }? = nil
 local override: Instance? = nil -- tests point this at a fake CreatureModels folder
 
--- Finds every creature part under ReplicatedStorage.CreatureModels, grouped by species ("Kitty__body" -> Kitty).
+-- Finds every creature part under ReplicatedStorage.CreatureModels, grouped by species ("Cat__body" -> Cat).
 local function index(): { [string]: { BasePart } }?
 	if indexed then
 		return indexed

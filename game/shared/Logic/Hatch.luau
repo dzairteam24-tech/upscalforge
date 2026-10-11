@@ -17,6 +17,11 @@ function Hatch.egg(tier: number): Eggs.Egg?
 	return byTier[tier]
 end
 
+-- Whether an egg's map is open yet (Config/Island OPEN_TIER); the others are Coming Soon
+function Hatch.open(tier: number): boolean
+	return tier <= IslandConfig.OPEN_TIER
+end
+
 -- Seconds an egg incubates in a nest on the ground: 1 minute for tier 1, about 30 minutes for tier 10, an hour
 -- for the Legendary
 function Hatch.seconds(tier: number): number

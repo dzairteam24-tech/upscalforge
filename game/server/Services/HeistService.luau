@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local HeistConfig = require(Shared.Config.Heist)
+local IslandConfig = require(Shared.Config.Island)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Heist = require(Shared.Logic.Heist)
@@ -84,6 +85,9 @@ local function endRound(winner: Player?)
 	local root = rootOf(winner)
 	-- What's inside: the same luck for everyone (Config/Heist PRIZES)
 	local tier = Heist.prize(rng:NextNumber())
+	if tier and not Hatch.open(tier) then
+		tier = IslandConfig.OPEN_TIER -- (its map isn't open yet: an egg of the best open one)
+	end
 	local prize = if tier then Hatch.egg(tier) else nil
 	if not tier or not prize then
 		IslandService.notify(winner, "💨 You got it home... but the Heist Egg was empty! Better luck next round", "info")

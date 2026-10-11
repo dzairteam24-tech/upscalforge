@@ -83,6 +83,13 @@ function ShopWindow.mount(gui: Instance)
 		local data = Store.data
 		local bought = if data and data.shop.window == window_ then data.shop.bought else {}
 		for _, row in rows do
+			if not Hatch.open(row.tier) then
+				row.stock.Text = "🔒 SOON"
+				row.stock.TextColor3 = Color3.fromRGB(255, 210, 80)
+				row.buy.Text = "Coming Soon"
+				Theme.recolor(row.buy, Theme.gray)
+				continue
+			end
 			if not ShopConfig.STOCK[row.tier] then
 				row.stock.Text = "🌿 Wild only"
 				row.stock.TextColor3 = Color3.new(1, 1, 1)

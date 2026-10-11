@@ -10,6 +10,7 @@ local Creatures = require(Shared.Config.Creatures)
 local Eggs = require(Shared.Config.Eggs)
 local IndexConfig = require(Shared.Config.Index)
 local Format = require(Shared.Logic.Format)
+local Hatch = require(Shared.Logic.Hatch)
 local Index = require(Shared.Logic.Index)
 local Net = require(Shared.Net)
 
@@ -72,7 +73,8 @@ function IndexWindow.mount(gui: Instance)
 			end
 			local b = button :: TextButton
 			local ready = Index.claimable(found, claimed, egg.tier) ~= nil
-			b.Text = ("%s%s  %d/%d"):format(if ready then "🎁 " else "", string.gsub(egg.name, " Egg", ""), got, all)
+			local short = string.gsub(egg.name, " Egg", "")
+			b.Text = if Hatch.open(egg.tier) then ("%s%s  %d/%d"):format(if ready then "🎁 " else "", short, got, all) else "🔒 " .. short
 			Theme.recolor(b, if egg.tier == tier then egg.color else Theme.lighten(egg.color, 0.1):Lerp(Theme.gray, 0.55))
 		end
 		local got, all = Index.total(found)
@@ -84,6 +86,11 @@ function IndexWindow.mount(gui: Instance)
 		end
 		local egg = Eggs[tier]
 		if not egg then
+			return
+		end
+		if not Hatch.open(tier) then
+			Theme.bold(page, { Text = egg.name, Size = UDim2.new(1, 0, 0, 40), TextColor3 = egg.color, MaxText = 34 })
+			Theme.bold(page, { Text = "🔒 COMING SOON", Size = UDim2.new(1, 0, 0, 80), Position = UDim2.fromOffset(0, 140), TextColor3 = Color3.fromRGB(255, 210, 80), MaxText = 60 })
 			return
 		end
 		local pageGot, pageAll = Index.progress(found, tier)

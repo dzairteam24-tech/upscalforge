@@ -50,6 +50,9 @@ export type Data = {
 
 local DataService = {}
 
+-- Species renamed since older saves: old name -> new name
+local RENAMED: { [string]: string } = { Cubby = "Dog", Kitty = "Cat" }
+
 local STORE_NAME = "CubelingsNest_v1"
 -- (testing in Studio with test coins: nothing is saved)
 local TESTING = RunService:IsStudio() and IslandConfig.STUDIO_COINS > 0
@@ -137,6 +140,16 @@ local function load(player: Player)
 			data = saved :: any
 		elseif not ok then
 			warn("[Data] Couldn't load", player.Name, saved)
+		end
+	end
+	-- (creatures renamed since: Meadow's are real animals now)
+	for _, creature in data.creatures do
+		creature.s = RENAMED[creature.s] or creature.s
+	end
+	for old, new in RENAMED do
+		if data.index[old] then
+			data.index[old] = nil
+			data.index[new] = true
 		end
 	end
 	-- (the Index starts with what they already have)

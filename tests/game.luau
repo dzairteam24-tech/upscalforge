@@ -77,7 +77,7 @@ test("hatching: the chances come out about right, and the weather sets the least
 		end)
 		counts[creature] = (counts[creature] or 0) + 1
 	end
-	assert(counts.Cubby > 11000 and counts.Cubby < 13000, "Cubby about 60%: " .. counts.Cubby)
+	assert(counts.Dog > 11000 and counts.Dog < 13000, "Dog about 60%: " .. counts.Dog)
 	assert((counts.Bear or 0) > 100 and (counts.Bear or 0) < 320, "Bear about 1%: " .. tostring(counts.Bear))
 	for _ = 1, 200 do
 		local _, mutation = Hatch.roll(3, function()
@@ -118,10 +118,10 @@ test("later eggs incubate longer: seconds for the first, half a day for the Lege
 end)
 
 test("earnings: mutations multiply, an island adds up, time away is capped", function()
-	local cubby = { s = "Cubby", m = "Normal" }
-	local golden = { s = "Cubby", m = "Golden" }
-	eq(Earn.rate(cubby), Creatures.byId.Cubby.earn)
-	eq(Earn.rate(golden), Creatures.byId.Cubby.earn * Mutations.byId.Golden.mult)
+	local cubby = { s = "Dog", m = "Normal" }
+	local golden = { s = "Dog", m = "Golden" }
+	eq(Earn.rate(cubby), Creatures.byId.Dog.earn)
+	eq(Earn.rate(golden), Creatures.byId.Dog.earn * Mutations.byId.Golden.mult)
 	eq(Earn.islandRate({ a = cubby, b = golden, c = cubby }, { "a", "b" }), Earn.rate(cubby) + Earn.rate(golden), "only the placed ones")
 	eq(Earn.offline(10, 999999999), 10 * IslandConfig.OFFLINE_HOURS * 3600, "capped")
 	eq(Earn.offline(10, -5), 0, "never negative")
@@ -152,14 +152,14 @@ end)
 
 test("Fuse: three matching make a Mega, three Megas a Rainbow, and they earn more", function()
 	local c = {
-		a = { s = "Cubby", m = "Golden" },
-		b = { s = "Cubby", m = "Golden" },
-		d = { s = "Cubby", m = "Normal" }, -- another mutation: no
-		f = { s = "Kitty", m = "Golden" }, -- another creature: no
+		a = { s = "Dog", m = "Golden" },
+		b = { s = "Dog", m = "Golden" },
+		d = { s = "Dog", m = "Normal" }, -- another mutation: no
+		f = { s = "Cat", m = "Golden" }, -- another creature: no
 	}
 	eq(Snap.find(c, {}, "a"), nil, "only two match")
-	c.g = { s = "Cubby", m = "Golden" }
-	c.h2 = { s = "Cubby", m = "Golden" }
+	c.g = { s = "Dog", m = "Golden" }
+	c.h2 = { s = "Dog", m = "Golden" }
 	local group, made = Snap.find(c, { "b" }, "a")
 	assert(group and made, "three match")
 	eq(#group, SnapConfig.NEED)
@@ -179,12 +179,12 @@ test("Fuse: three matching make a Mega, three Megas a Rainbow, and they earn mor
 	eq(rainbow.m, "Lava", "the best mutation")
 	eq(Snap.find({ a = { s = "Bear", m = "Normal", g = "Rainbow" } }, {}, "a"), nil, "Rainbow is the top")
 	-- Earnings
-	local plain = { s = "Cubby", m = "Golden" }
-	local mega = { s = "Cubby", m = "Golden", g = "Mega" }
+	local plain = { s = "Dog", m = "Golden" }
+	local mega = { s = "Dog", m = "Golden", g = "Mega" }
 	eq(Earn.rate(mega), Earn.rate(plain) * SnapConfig.byId.Mega.mult)
 	assert(Earn.rate(mega) > SnapConfig.NEED * Earn.rate(plain), "a Mega beats the three it took")
-	eq(Snap.name(mega), "Mega Golden Cubby")
-	eq(Snap.name({ s = "Cubby", m = "Normal" }), "Cubby")
+	eq(Snap.name(mega), "Mega Golden Dog")
+	eq(Snap.name({ s = "Dog", m = "Normal" }), "Dog")
 end)
 
 test("daily tasks: three different ones a day, they change, a new day starts fresh", function()
@@ -313,7 +313,7 @@ end)
 
 test("Index: a page is complete when all its egg's creatures are found, and its reward claimed once", function()
 	local Index = R(Shared.Logic.Index)
-	local found: { [string]: boolean } = { Cubby = true, Kitty = true, Bunny = true }
+	local found: { [string]: boolean } = { Dog = true, Cat = true, Bunny = true }
 	local got, all = Index.progress(found, 1)
 	eq(got, 3)
 	eq(all, 4)

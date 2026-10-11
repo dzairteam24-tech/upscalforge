@@ -95,9 +95,15 @@
 
 ## الاقتصاد (على قياس Steal an Egg)
 
-- **المخلوقات:** الندرة تفرق بزاف كيما تاعهم: في كل بيضة Common ×1، Uncommon ×3.5، Rare ×14، Epic ×57 (Meadow: Cubby 4/s، Kitty 14/s، Bunny 56/s، Bear 230/s)، وكل منطقة ×5 على اللي قبلها (Pixel Epic 450M/s، Legendary حتى 1B/s).
+- **المخلوقات:** الندرة تفرق بزاف كيما تاعهم: في كل بيضة Common ×1، Uncommon ×3.5، Rare ×14، Epic ×57 (Meadow: Dog 4/s، Cat 14/s، Bunny 56/s، Bear 230/s)، وكل منطقة ×5 على اللي قبلها (Pixel Epic 450M/s، Legendary حتى 1B/s).
 - **البيض:** Meadow 500، Flower 5K، Forest 50K … كل بيضة ×10 (Legendary 10T). البيضة الأولى تخلّص روحها في أقل من دقيقة، والكبار في سوايع.
 - **كلش غالي:** البلايص، الفقاسات، المرعى، المخزن، الـ Treadmill، المضارب والفخاخ (250K) كبرو بزاف.
+
+## المخلوقات الجدد (ستايل Steal an Egg)
+
+- حيوانات حقيقية مصنوعة **بالبلوكات** مع نقاط Lego فوقهم (`art/blender/blocky.py`).
+- **Meadow (مفتوحة):** 🐶 **Dog** (Common)، 🐱 **Cat** (Uncommon)، 🐰 **Bunny** (Rare)، 🐻 **Bear** (Epic). الحفظات القدام يتبدلو وحدهم (Cubby → Dog، Kitty → Cat).
+- **الماب الأخرى: 🔒 Coming Soon** (`Config/Island` → `OPEN_TIER = 1`): البيض تاعهم ما يتباعش، المناطق في البرية مسكّرة بحيط مكتوب عليه COMING SOON (بلا عشوش وبلا حراس)، صفحاتهم في الـ Index مسكّرة، والجوايز (Heist، Mother Cube) تعطي بيض Meadow. كي نكملو ماب، نزيدو `OPEN_TIER` بواحد.
 
 ## الندرة في كل ماب
 

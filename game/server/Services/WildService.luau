@@ -413,6 +413,9 @@ local function spawnGuardians()
 	local world = workspace:FindFirstChild("World")
 	local folder = world and world:FindFirstChild("Wild") and (world :: any).Wild:FindFirstChild("Guardians")
 	for i, biome in WildConfig.BIOMES do
+		if not Hatch.open(biome.tier) then
+			continue -- (Coming Soon: nobody guards it yet)
+		end
 		for g = 1, WildConfig.GUARDIANS do
 			local home = Layout.biome(i) + Vector3.new(if WildConfig.GUARDIANS == 1 then 0 elseif g % 2 == 1 then -10 else 10, 0, 0)
 			local tag = Instance.new("Part")

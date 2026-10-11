@@ -337,7 +337,7 @@ SPECIES = {
 }
 
 ZONES = [
-    ["Cubby", "Kitty", "Bunny", "Bear"],
+    ["Dog", "Cat", "Bunny", "Bear"],
     ["Bee", "Ladybug", "Butterfly", "Uni"],
     ["Fox", "Owl", "Deer", "Sprout"],
     ["Crab", "Turtle", "Dolphin", "Octopus"],

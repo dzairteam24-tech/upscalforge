@@ -29,6 +29,10 @@ local function buyEgg(player: Player, tier: any)
 	if not data or not egg then
 		return
 	end
+	if not Hatch.open(egg.tier) then
+		IslandService.notify(player, "Coming soon! 🛠️", "info")
+		return
+	end
 	-- The player's buys count against the current restock only
 	local window = Stock.window(os.time())
 	if data.shop.window ~= window then
@@ -105,7 +109,7 @@ function ShopService.init()
 			if window ~= seen then
 				seen = window
 				for tier = 11, RARE_TIER, -1 do
-					local count = Stock.count(window, tier)
+					local count = if Hatch.open(tier) then Stock.count(window, tier) else 0
 					local egg = Hatch.egg(tier)
 					if count > 0 and egg then
 						for _, player in Players:GetPlayers() do

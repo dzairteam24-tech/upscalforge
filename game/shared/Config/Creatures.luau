@@ -17,8 +17,8 @@ local function rgb(r: number, g: number, b: number): Color3
 end
 
 local list: { Creature } = {
-	{ id = "Cubby", tier = 1, rarity = "Common", earn = 4, color = rgb(91, 184, 245), top = "none", face = "round" },
-	{ id = "Kitty", tier = 1, rarity = "Uncommon", earn = 14, color = rgb(245, 166, 91), top = "cat", face = "happy" },
+	{ id = "Dog", tier = 1, rarity = "Common", earn = 4, color = rgb(224, 165, 92), top = "round", face = "round" },
+	{ id = "Cat", tier = 1, rarity = "Uncommon", earn = 14, color = rgb(245, 154, 60), top = "cat", face = "happy" },
 	{ id = "Bunny", tier = 1, rarity = "Rare", earn = 56, color = rgb(240, 240, 245), top = "bunny", face = "round" },
 	{ id = "Bear", tier = 1, rarity = "Epic", earn = 230, color = rgb(168, 117, 79), top = "round", face = "round" },
 	{ id = "Bee", tier = 2, rarity = "Common", earn = 20, color = rgb(245, 210, 70), top = "antenna", face = "round" },

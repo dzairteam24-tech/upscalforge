@@ -186,7 +186,7 @@ Store.data = {
 	coins = 12345,
 	eggs = { ["1"] = 2, ["3"] = 1 },
 	golden = { ["2"] = 1 },
-	creatures = { a = { s = "Kitty", m = "Normal" }, b = { s = "Fox", m = "Golden", g = "Mega" }, c = { s = "Bee", m = "Neon" } },
+	creatures = { a = { s = "Cat", m = "Normal" }, b = { s = "Fox", m = "Golden", g = "Mega" }, c = { s = "Bee", m = "Neon" } },
 	placed = { "a" },
 	incubators = 3,
 	machines = 0,
@@ -203,7 +203,7 @@ Store.data = {
 	seat = "",
 	seats = { Cloud = true },
 	treadmill = 1,
-	index = { Cubby = true, Kitty = true, Bunny = true, Bear = true, Fox = true },
+	index = { Dog = true, Cat = true, Bunny = true, Bear = true, Fox = true },
 	indexClaimed = {},
 	trails = { Green = true },
 	trail = "Green",
@@ -244,7 +244,7 @@ fire(bagButton, "Activated")
 assert(bag.Visible, "the Bag button opens the Bag")
 -- A hatch reveal
 try("reveal", function()
-	Loader.require(UI.Reveal).show("Kitty", "Golden", nil)
+	Loader.require(UI.Reveal).show("Cat", "Golden", nil)
 end)
 task.wait(0.5)
 

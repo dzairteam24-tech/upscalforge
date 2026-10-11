@@ -88,7 +88,7 @@ local function feed(player: Player)
 		for feeder, given in fed do
 			local feederData = DataService.get(feeder)
 			if feeder.Parent and feederData then
-				local tier = if rng:NextNumber() < Mother.legendaryChance(given) then LEGENDARY else IslandService.bestTier(feederData)
+				local tier = if rng:NextNumber() < Mother.legendaryChance(given) and Hatch.open(LEGENDARY) then LEGENDARY else IslandService.bestTier(feederData)
 				local key = tostring(tier)
 				feederData.eggs[key] = (feederData.eggs[key] or 0) + 1
 				local egg = Hatch.egg(tier)

@@ -21,7 +21,7 @@ local WITH_LEGENDARY = { 0.58, 0.3, 0.09, 0.025, 0.005 } -- (a Legendary: 1 in 2
 local WITH_MYTHIC = { 0.57, 0.3, 0.095, 0.03, 0.004, 0.001 } -- (a Mythic: 1 in 1000)
 
 local list: { Egg } = {
-	{ tier = 1, name = "Meadow Egg", color = rgb(123, 201, 111), price = 500, creatures = { "Cubby", "Kitty", "Bunny", "Bear" }, chances = COMMON_TO_EPIC },
+	{ tier = 1, name = "Meadow Egg", color = rgb(123, 201, 111), price = 500, creatures = { "Dog", "Cat", "Bunny", "Bear" }, chances = COMMON_TO_EPIC },
 	{ tier = 2, name = "Flower Egg", color = rgb(243, 166, 200), price = 5000, creatures = { "Bee", "Ladybug", "Butterfly", "Uni" }, chances = COMMON_TO_EPIC },
 	{ tier = 3, name = "Forest Egg", color = rgb(78, 154, 91), price = 50000, creatures = { "Fox", "Owl", "Deer", "Sprout" }, chances = COMMON_TO_EPIC },
 	{ tier = 4, name = "Beach Egg", color = rgb(242, 213, 138), price = 500000, creatures = { "Crab", "Turtle", "Dolphin", "Octopus", "Kraken" }, chances = WITH_LEGENDARY },

@@ -41,84 +41,26 @@ def hex_color(value: str):
 # Species specs. Positions are relative to the body: x right, z up from the body center, front face at y = -1.
 
 SPECIES = {
-    # Zone 1 starter: a plain blue cube with a curl of hair, big eyes and a small smile
-    "Cubby": {
-        "colors": {
-            "body": "#5BB8F5",
-            "belly": "#D9F1FF",
-            "legs": "#3C8ACB",
-            "tuft": "#3C8ACB",
-            "eye": "#16263A",
-            "shine": "#FFFFFF",
-            "mouth": "#16263A",
-            "blush": "#FF9EB5",
-        },
-        "ears": "none",
-        "tuft": True,
-        "eyes": 1.12,
-        "nose": None,
-        "mouth": "smile",
-        "tail": "none",
+    # Zone 1 (Meadow), in Steal an Egg's style: real animals built from blocks with Lego studs (blocky.py)
+    "Dog": {
+        "style": "blocky",
+        "animal": "dog",
+        "colors": {"body": "#E0A55C", "belly": "#FFE3B8", "legs": "#C98B45", "ear": "#8A5528", "nose": "#2A1A12", "mouth": "#2A1A12", "eye": "#1A1410", "shine": "#FFFFFF"},
     },
-    "Kitty": {
-        "colors": {
-            "body": "#F5A65B",
-            "belly": "#FFE2C2",
-            "ear_inner": "#FF9EB5",
-            "legs": "#A0622D",
-            "eye": "#2B1610",
-            "shine": "#FFFFFF",
-            "nose": "#FF9EB5",
-            "mouth": "#5A2A14",
-            "blush": "#FF9E9E",
-        },
-        "ears": "cat",
-        "nose": "triangle",
-        "mouth": "cat",
-        "tail": "stub",
+    "Cat": {
+        "style": "blocky",
+        "animal": "cat",
+        "colors": {"body": "#F59A3C", "belly": "#FFF2E0", "legs": "#E08530", "stripe": "#B85F1E", "ear_inner": "#FFB3C6", "nose": "#FF8FAB", "eye": "#1E2A14", "shine": "#FFFFFF"},
     },
-    # Long ears, buck teeth, a pompom tail
     "Bunny": {
-        "colors": {
-            "body": "#F4F3F8",
-            "belly": "#FFE6EE",
-            "ear_inner": "#FFB3C6",
-            "legs": "#DCDAE6",
-            "eye": "#2A1E28",
-            "shine": "#FFFFFF",
-            "nose": "#FF8FAB",
-            "mouth": "#6B4A55",
-            "teeth": "#FFFFFF",
-            "blush": "#FFB3C6",
-            "tail": "#FFFFFF",
-        },
-        "ears": "bunny",
-        "nose": "oval",
-        "mouth": "cat",
-        "teeth": True,
-        "tail": "puff",
+        "style": "blocky",
+        "animal": "bunny",
+        "colors": {"body": "#F7F6FB", "belly": "#FFFFFF", "legs": "#E4E2EE", "ear_inner": "#FFB3C6", "nose": "#FF7FA0", "tail": "#FFFFFF", "eye": "#2A1E28", "shine": "#FFFFFF"},
     },
-    # Round ears and a muzzle with a big dark nose
     "Bear": {
-        "colors": {
-            "body": "#A8754F",
-            "belly": "#E9C9A0",
-            "ear_inner": "#E9C9A0",
-            "legs": "#7A5236",
-            "muzzle": "#E9C9A0",
-            "eye": "#24150D",
-            "shine": "#FFFFFF",
-            "nose": "#3A2418",
-            "mouth": "#3A2418",
-            "blush": "#E8907A",
-            "tail": "#A8754F",
-        },
-        "ears": "round",
-        "eyes": 0.9,
-        "muzzle": True,
-        "nose": "bear",
-        "mouth": "smile",
-        "tail": "nub",
+        "style": "blocky",
+        "animal": "bear",
+        "colors": {"body": "#8A5A36", "belly": "#D9B48A", "legs": "#6E4528", "ear_inner": "#D9B48A", "nose": "#24150D", "mouth": "#24150D", "eye": "#140C08", "shine": "#FFFFFF"},
     },
 }
 
@@ -1422,6 +1364,10 @@ def build(spec):
     mat = Mats(spec)
     for key, value in colors.items():
         mat[key] = material(key, value, gloss=key in ("eye", "shine", "nose"))
+    if spec.get("style") == "blocky":
+        import blocky
+
+        return blocky.build(sys.modules[__name__], spec, mat)
     parts = []
     c = Ctx(spec, mat, parts)
 

@@ -575,7 +575,30 @@ local function buildWild(world: Instance)
 		local center = Layout.biome(i)
 		part(wild, { Name = "BiomeGround", Size = Vector3.new(Layout.WILD_WIDTH, 0.3, Layout.BIOME_LENGTH), Position = center + Vector3.new(0, 0.15, 0), Color = biome.color, Material = Enum.Material.Grass })
 		local sign = part(wild, { Name = "BiomeSign", Size = Vector3.new(0.8, 6, 0.8), Position = center + Vector3.new(Layout.ROAD_WIDTH / 2 + 2, 3, Layout.BIOME_LENGTH / 2 - 2), Color = WOOD_DARK })
-		label(sign, ("%s · ⚡ %s to escape"):format(biome.name, Format.abbrev(Wild.needs(biome))), 18, 2.6, Vector3.new(0, 5, 0))
+		local open = Hatch.open(biome.tier)
+		label(sign, if open then ("%s · ⚡ %s to escape"):format(biome.name, Format.abbrev(Wild.needs(biome))) else biome.name .. " · 🔒 Coming Soon", 18, 2.6, Vector3.new(0, 5, 0))
+		if not open then
+			-- (the first closed biome is walled off, with a big sign; nothing in it until it opens)
+			if Hatch.open(biome.tier - 1) then
+				local edge = center + Vector3.new(0, 0, Layout.BIOME_LENGTH / 2)
+				local wall = part(wild, { Name = "ComingSoon", Size = Vector3.new(Layout.WILD_WIDTH, 16, 2), Position = edge + Vector3.new(0, 8, 0), Color = rgb(60, 60, 80), Transparency = 0.15 })
+				local board = Instance.new("SurfaceGui")
+				board.Face = Enum.NormalId.Back
+				board.PixelsPerStud = 8
+				local text = Instance.new("TextLabel")
+				text.Size = UDim2.fromScale(1, 1)
+				text.BackgroundTransparency = 1
+				text.Text = "🔒 COMING SOON"
+				text.TextScaled = true
+				text.Font = Enum.Font.LuckiestGuy
+				text.TextColor3 = rgb(255, 210, 80)
+				text.TextStrokeColor3 = rgb(28, 24, 40)
+				text.TextStrokeTransparency = 0
+				text.Parent = board
+				board.Parent = wall
+			end
+			continue
+		end
 		local egg = Hatch.egg(biome.tier)
 		for k = 1, WildConfig.NESTS do
 			local spot = Layout.wildNest(i, k)

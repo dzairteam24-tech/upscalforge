@@ -5,6 +5,9 @@
 return {
 	ISLANDS = 6, -- one per player (a server holds 6)
 	START_COINS = 500,
+	-- The maps (eggs and Wild biomes) open so far, by egg tier: the others say Coming Soon (their eggs aren't sold,
+	-- their biomes are walled off, and prizes give eggs of the open ones). Meadow first, with its new animals.
+	OPEN_TIER = 1,
 	FRIEND_BOOST = 0.1, -- each friend in the same server: +10% coins...
 	FRIEND_MAX = 5, -- ...for up to this many friends
 	-- Testing in Studio only: every player starts the session with this many coins (0: off). Studio then doesn't
