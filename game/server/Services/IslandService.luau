@@ -144,6 +144,7 @@ function IslandService.setFast(player: Player, on: boolean)
 	else
 		fast[player] = nil
 	end
+	player:SetAttribute("FastHatch", on) -- (the screen's egg timers: GrowingEggs)
 	IslandService.render(player)
 end
 

@@ -173,7 +173,7 @@ try("root", function()
 	root = Theme.root(gui)
 end)
 assert(gui.ZIndexBehavior == roblox.Enum.ZIndexBehavior.Sibling, "frames draw over their parents (a window never hides its content)")
-for _, name in { "HUD", "ShopWindow", "BagWindow", "IndexWindow", "StoreWindow", "DailyWindow", "FoodWindow", "GearWindow", "Notify", "Reveal" } do
+for _, name in { "HUD", "GrowingEggs", "ShopWindow", "BagWindow", "IndexWindow", "StoreWindow", "DailyWindow", "FoodWindow", "GearWindow", "Notify", "Reveal" } do
 	try(name .. ".mount", function()
 		Loader.require(UI[name]).mount(root)
 	end)
