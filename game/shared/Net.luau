@@ -28,7 +28,7 @@ local EVENTS = {
 	-- server -> client
 	"Data", -- (snapshot)
 	"Notify", -- (text, kind)
-	"Hatched", -- (creature id, species, mutation), or (id, full name, "Snap") for a snapped one
+	"Hatched", -- (creature id, species, mutation, snap grade or nil)
 	"SpeedUp", -- (gain): a step on the treadmill
 	"Bump", -- (position, kind: "Hit" or "Trap"): a bat hit a carrier, or a trap caught one
 }

@@ -18,47 +18,70 @@ local DailyWindow = require(script.Parent.DailyWindow)
 
 local HUD = {}
 
-function HUD.mount(gui: ScreenGui)
-	-- Coins
+function HUD.mount(gui: Instance)
+	-- Coins: a gold bar with the coin, and what the garden earns a second under it
 	local money = Instance.new("Frame")
 	money.Name = "Money"
-	money.Position = UDim2.fromOffset(12, 12)
-	money.Size = UDim2.fromOffset(230, 64)
-	money.BackgroundColor3 = Theme.panel
-	Theme.round(money, 14)
-	Theme.stroke(money, Theme.gold, 3)
-	local coins = Theme.text(money, { Size = UDim2.new(1, -16, 0, 34), Position = UDim2.fromOffset(10, 4), TextXAlignment = Enum.TextXAlignment.Left })
-	local rate = Theme.text(money, { Size = UDim2.new(1, -16, 0, 20), Position = UDim2.fromOffset(10, 38), TextColor3 = Theme.soft, TextXAlignment = Enum.TextXAlignment.Left })
+	money.Position = UDim2.fromOffset(46, 14)
+	money.Size = UDim2.fromOffset(230, 52)
+	Theme.gradient(money, Theme.gold, 0.3, 0.15)
+	Theme.round(money, 26)
+	Theme.stroke(money, Theme.outline, 3)
+	local coinIcon = Theme.text(money, { Text = "🪙", Size = UDim2.fromOffset(62, 62), Position = UDim2.fromOffset(-36, -5) })
+	coinIcon.ZIndex = 2
+	local coins = Theme.bold(money, { Size = UDim2.new(1, -40, 1, -10), Position = UDim2.fromOffset(32, 5), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 34 })
 	money.Parent = gui
+	local rate = Theme.bold(gui, { Size = UDim2.fromOffset(230, 24), Position = UDim2.fromOffset(60, 68), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(255, 240, 160), MaxText = 22 })
 
-	-- The bag
-	local bag = Theme.button(gui, "🎒 Bag", Theme.blue, function()
+	-- Speed (trained on the treadmill)
+	local speedBar = Instance.new("Frame")
+	speedBar.Name = "Speed"
+	speedBar.Position = UDim2.fromOffset(46, 98)
+	speedBar.Size = UDim2.fromOffset(170, 40)
+	Theme.gradient(speedBar, Theme.blue, 0.3, 0.15)
+	Theme.round(speedBar, 20)
+	Theme.stroke(speedBar, Theme.outline, 3)
+	local speedIcon = Theme.text(speedBar, { Text = "⚡", Size = UDim2.fromOffset(48, 48), Position = UDim2.fromOffset(-30, -4) })
+	speedIcon.ZIndex = 2
+	local speed = Theme.bold(speedBar, { Size = UDim2.new(1, -36, 1, -8), Position = UDim2.fromOffset(26, 4), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 28 })
+	speedBar.Parent = gui
+
+	-- The big buttons down the left side
+	local column = Instance.new("Frame")
+	column.Name = "Buttons"
+	column.BackgroundTransparency = 1
+	column.AnchorPoint = Vector2.new(0, 0.5)
+	column.Position = UDim2.new(0, 14, 0.56, 0)
+	column.Size = UDim2.fromOffset(160, 420)
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.fromOffset(74, 74)
+	grid.CellPadding = UDim2.fromOffset(10, 12)
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = column
+	column.Parent = gui
+	local bag = Theme.iconButton(column, "🎒", "Bag", Theme.blue, function()
 		Windows.toggle("Bag")
 	end)
-	bag.Size = UDim2.fromOffset(110, 48)
-	bag.Position = UDim2.new(0, 12, 0, 86)
-
-	-- Home: back to the garden from anywhere
-	local home = Theme.button(gui, "🏠 Home", Theme.green, function()
-		Net.event("Travel"):FireServer("home")
-	end)
-	home.Size = UDim2.fromOffset(110, 48)
-	home.Position = UDim2.new(0, 132, 0, 86)
-
-	-- To the Wild's gate, and the player's speed (trained on the treadmill)
-	local wild = Theme.button(gui, "🌿 Wild", Theme.gold, function()
-		Net.event("Travel"):FireServer("wild")
-	end)
-	wild.Size = UDim2.fromOffset(110, 48)
-	wild.Position = UDim2.new(0, 12, 0, 142)
-	-- Today's tasks: gold when the egg is ready to claim
-	local daily = Theme.button(gui, "📋 Daily", Theme.blue, function()
+	bag.LayoutOrder = 1
+	local daily, dailyName = Theme.iconButton(column, "📋", "Daily", Theme.purple, function()
 		Windows.toggle("Daily")
 	end)
-	daily.Size = UDim2.fromOffset(110, 48)
-	daily.Position = UDim2.new(0, 12, 0, 198)
+	daily.LayoutOrder = 2
+	local badge = Theme.bold(daily, { Text = "!", Size = UDim2.fromOffset(26, 26), Position = UDim2.new(1, -16, 0, -10), BackgroundTransparency = 0, BackgroundColor3 = Theme.red, Font = Theme.title, MaxText = 22 })
+	Theme.round(badge, 13)
+	badge.ZIndex = 3
+	-- Home: back to the garden from anywhere
+	local home = Theme.iconButton(column, "🏠", "Home", Theme.green, function()
+		Net.event("Travel"):FireServer("home")
+	end)
+	home.LayoutOrder = 3
+	-- To the Wild's gate
+	local wild = Theme.iconButton(column, "🌿", "Wild", Color3.fromRGB(240, 150, 50), function()
+		Net.event("Travel"):FireServer("wild")
+	end)
+	wild.LayoutOrder = 4
 	-- On or off the floating seat (MoveService)
-	local seat = Theme.button(gui, "", Theme.blue, function()
+	local seat, seatName = Theme.iconButton(column, "☁️", "Seat", Theme.pink, function()
 		local data = Store.data
 		local riding = Players.LocalPlayer:GetAttribute("RideSeat")
 		local on = type(riding) == "string" and riding ~= ""
@@ -66,53 +89,49 @@ function HUD.mount(gui: ScreenGui)
 		local first = if owned.Cloud then "Cloud" else next(owned)
 		Net.event("Seat"):FireServer(if on then "" else (if data and data.seat ~= "" then data.seat else first) or "")
 	end)
-	seat.Size = UDim2.fromOffset(110, 48)
-	seat.Position = UDim2.new(0, 132, 0, 198)
-	local speed = Theme.text(gui, { Size = UDim2.fromOffset(110, 48), Position = UDim2.new(0, 132, 0, 142), TextColor3 = Color3.new(1, 1, 1) })
-	speed.TextStrokeTransparency = 0.3
+	seat.LayoutOrder = 5
 
 	-- The weather
 	local banner = Instance.new("Frame")
 	banner.Name = "Weather"
 	banner.AnchorPoint = Vector2.new(0.5, 0)
-	banner.Position = UDim2.new(0.5, 0, 0, 6)
-	banner.Size = UDim2.fromOffset(400, 32)
+	banner.Position = UDim2.new(0.5, 0, 0, 8)
+	banner.Size = UDim2.fromOffset(460, 38)
 	banner.BackgroundColor3 = Color3.fromRGB(40, 36, 54)
-	banner.BackgroundTransparency = 0.2
-	Theme.round(banner, 12)
-	Theme.stroke(banner, Theme.gold, 2)
-	local weatherText = Theme.text(banner, { Size = UDim2.new(1, -16, 1, -6), Position = UDim2.fromOffset(8, 3), TextColor3 = Color3.new(1, 1, 1) })
-	local stroke = banner:FindFirstChildOfClass("UIStroke") :: UIStroke
+	banner.BackgroundTransparency = 0.15
+	Theme.round(banner, 19)
+	local stroke = Theme.stroke(banner, Theme.gold, 3)
+	local weatherText = Theme.bold(banner, { Size = UDim2.new(1, -20, 1, -10), Position = UDim2.fromOffset(10, 5), Font = Theme.font, MaxText = 22 })
 	banner.Parent = gui
 
 	-- A Peaceful private server says so (no bats or traps there: GearService)
 	local peaceful = Instance.new("Frame")
 	peaceful.Name = "Peaceful"
 	peaceful.AnchorPoint = Vector2.new(0.5, 0)
-	peaceful.Position = UDim2.new(0.5, 0, 0, 42)
-	peaceful.Size = UDim2.fromOffset(280, 28)
-	peaceful.BackgroundColor3 = Color3.fromRGB(40, 36, 54)
-	peaceful.BackgroundTransparency = 0.2
+	peaceful.Position = UDim2.new(0.5, 0, 0, 52)
+	peaceful.Size = UDim2.fromOffset(300, 30)
+	Theme.gradient(peaceful, Theme.green, 0.2, 0.15)
 	peaceful.Visible = false
-	Theme.round(peaceful, 10)
-	Theme.text(peaceful, { Text = "🕊️ Peaceful server: no bats or traps", Size = UDim2.new(1, -12, 1, -6), Position = UDim2.fromOffset(6, 3), TextColor3 = Color3.new(1, 1, 1) })
+	Theme.round(peaceful, 15)
+	Theme.stroke(peaceful, Theme.outline, 2)
+	Theme.bold(peaceful, { Text = "🕊️ Peaceful server: no bats or traps", Size = UDim2.new(1, -12, 1, -8), Position = UDim2.fromOffset(6, 4), Font = Theme.font, MaxText = 20 })
 	peaceful.Parent = gui
 
 	task.spawn(function()
 		while true do
 			peaceful.Visible = workspace:GetAttribute("Peaceful") == true
-			coins.Text = "🪙 " .. Format.abbrev(Store.coins())
+			coins.Text = Format.abbrev(Store.coins())
 			local today = DailyWindow.state()
 			local ready = Daily.done(today) and not today.claimed
-			daily.Text = if ready then "🎁 Daily!" else "📋 Daily"
-			daily.BackgroundColor3 = if ready then Theme.gold else Theme.blue
+			badge.Visible = ready
+			dailyName.Text = if ready then "Claim!" else "Daily"
 			local riding = Players.LocalPlayer:GetAttribute("RideSeat")
-			seat.Text = if type(riding) == "string" and riding ~= "" then "🚶 Walk" else "☁️ Seat"
+			seatName.Text = if type(riding) == "string" and riding ~= "" then "Walk" else "Seat"
 			local playerSpeed = Players.LocalPlayer:GetAttribute("Speed")
-			speed.Text = "⚡ " .. Format.abbrev(if type(playerSpeed) == "number" then math.floor(playerSpeed) else 0)
+			speed.Text = Format.abbrev(if type(playerSpeed) == "number" then math.floor(playerSpeed) else 0)
 			local fedUntil = Players.LocalPlayer:GetAttribute("FedUntil")
 			local fed = type(fedUntil) == "number" and fedUntil > workspace:GetServerTimeNow()
-			rate.Text = ("+%s / second%s"):format(Format.abbrev(Store.rate()), if fed then " · 😋 fed" else "")
+			rate.Text = ("+%s/s%s"):format(Format.abbrev(Store.rate()), if fed then " · 😋 fed" else "")
 			local now = workspace:GetServerTimeNow()
 			local weather, ends = Weather.at(math.floor(now))
 			local left = Format.time(math.max(0, math.ceil(ends - now)))

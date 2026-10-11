@@ -776,7 +776,7 @@ local function snap(player: Player, id: any)
 	if wasPlaced or #data.placed < data.pens then
 		table.insert(data.placed, newId)
 	end
-	Net.event("Hatched"):FireClient(player, newId, Snap.name(made), "Snap")
+	Net.event("Hatched"):FireClient(player, newId, made.s, made.m, made.g)
 	if made.g == "Rainbow" then
 		for _, other in Players:GetPlayers() do
 			IslandService.notify(other, ("🌈 %s snapped a %s!"):format(player.DisplayName, Snap.name(made)), "rare")

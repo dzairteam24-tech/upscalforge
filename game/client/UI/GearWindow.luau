@@ -15,8 +15,8 @@ local Windows = require(script.Parent.Windows)
 
 local GearWindow = {}
 
-function GearWindow.mount(gui: ScreenGui)
-	local window, content = Theme.window(gui, "🏏 Gear Shop", Vector2.new(520, 460))
+function GearWindow.mount(gui: Instance)
+	local window, content = Theme.window(gui, "🏏 Gear Shop", Vector2.new(520, 460), Theme.red)
 	Theme.text(content, {
 		Text = ("Hit a player carrying an egg to knock it out of their hands: %d hits with the same bat, fewer with a better one"):format(GearConfig.HITS),
 		Size = UDim2.new(1, 0, 0, 40),
@@ -24,11 +24,7 @@ function GearWindow.mount(gui: ScreenGui)
 		TextWrapped = true,
 		LayoutOrder = 0,
 	})
-	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, -8, 0, 84)
-	row.BackgroundColor3 = Theme.card
-	row.LayoutOrder = 1
-	Theme.round(row, 12)
+	local row = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 84), LayoutOrder = 1 })
 	local current = Theme.text(row, { Size = UDim2.new(0.6, -16, 0, 30), Position = UDim2.fromOffset(12, 8), TextXAlignment = Enum.TextXAlignment.Left })
 	local nextText = Theme.text(row, { Size = UDim2.new(0.6, -16, 0, 26), Position = UDim2.fromOffset(12, 44), TextColor3 = Theme.soft, TextXAlignment = Enum.TextXAlignment.Left })
 	local buy = Theme.button(row, "", Theme.green, function()
@@ -36,13 +32,8 @@ function GearWindow.mount(gui: ScreenGui)
 	end)
 	buy.Size = UDim2.new(0.36, 0, 0, 52)
 	buy.Position = UDim2.new(0.62, 0, 0, 16)
-	row.Parent = content
 
-	local trapRow = Instance.new("Frame")
-	trapRow.Size = UDim2.new(1, -8, 0, 84)
-	trapRow.BackgroundColor3 = Theme.card
-	trapRow.LayoutOrder = 2
-	Theme.round(trapRow, 12)
+	local trapRow = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 84), LayoutOrder = 2 })
 	local held = Theme.text(trapRow, { Size = UDim2.new(0.6, -16, 0, 30), Position = UDim2.fromOffset(12, 8), TextXAlignment = Enum.TextXAlignment.Left })
 	Theme.text(trapRow, {
 		Text = ("Set it down in the Wild: a carrier stepping on it is stuck %d s"):format(GearConfig.TRAP_STUCK),
@@ -57,7 +48,6 @@ function GearWindow.mount(gui: ScreenGui)
 	end)
 	buyTrap.Size = UDim2.new(0.36, 0, 0, 52)
 	buyTrap.Position = UDim2.new(0.62, 0, 0, 16)
-	trapRow.Parent = content
 
 	local function refresh()
 		local data = Store.data
@@ -66,10 +56,10 @@ function GearWindow.mount(gui: ScreenGui)
 		local price = Gear.upgradePrice(level)
 		nextText.Text = if price then "Next: " .. Gear.bat(level + 1).name else "The best bat!"
 		buy.Text = if price then "🪙 " .. Format.abbrev(price) else "Max"
-		buy.BackgroundColor3 = if price and Store.coins() >= price then Theme.green else Theme.soft
+		Theme.recolor(buy, if price and Store.coins() >= price then Theme.green else Theme.gray)
 		local traps = if data then data.traps or 0 else 0
 		held.Text = ("🪤 Traps ×%d"):format(traps)
-		buyTrap.BackgroundColor3 = if traps < GearConfig.TRAP_MAX_HELD and Store.coins() >= GearConfig.TRAP_PRICE then Theme.green else Theme.soft
+		Theme.recolor(buyTrap, if traps < GearConfig.TRAP_MAX_HELD and Store.coins() >= GearConfig.TRAP_PRICE then Theme.green else Theme.gray)
 	end
 	Windows.register("Gear", window, refresh)
 	task.spawn(function()

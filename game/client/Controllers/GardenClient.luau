@@ -18,6 +18,7 @@ local Wild = require(Shared.Logic.Wild)
 local Net = require(Shared.Net)
 
 local Notify = require(script.Parent.Parent.UI.Notify)
+local Reveal = require(script.Parent.Parent.UI.Reveal)
 local Store = require(script.Parent.Parent.Store)
 local Windows = require(script.Parent.Parent.UI.Windows)
 
@@ -43,9 +44,10 @@ local function billboard(parent: Instance, width: number, height: number, offset
 	text.Size = UDim2.fromScale(1, 1)
 	text.BackgroundTransparency = 1
 	text.TextScaled = true
-	text.Font = Enum.Font.FredokaOne
+	text.Font = Enum.Font.LuckiestGuy
 	text.TextColor3 = Color3.new(1, 1, 1)
-	text.TextStrokeTransparency = 0.3
+	text.TextStrokeColor3 = Color3.fromRGB(28, 24, 40)
+	text.TextStrokeTransparency = 0
 	text.Parent = gui
 	gui.Parent = parent
 	return text
@@ -394,12 +396,8 @@ function GardenClient.init()
 			spot:Destroy()
 		end)
 	end)
-	Net.event("Hatched").OnClientEvent:Connect(function(_id, species, mutation)
-		if mutation == "Snap" then
-			Notify.show(("🧊 SNAP! You made a %s!"):format(species), "rare")
-			return
-		end
-		Notify.show(("🐣 You hatched a %s%s!"):format(if mutation ~= "Normal" then mutation .. " " else "", species), if mutation ~= "Normal" then "rare" else "success")
+	Net.event("Hatched").OnClientEvent:Connect(function(_id, species, mutation, grade)
+		Reveal.show(species, mutation, grade)
 	end)
 	CollectionService:GetInstanceRemovedSignal("Incubator"):Connect(function(pad)
 		local entry = pads[pad :: BasePart]

@@ -26,20 +26,15 @@ function DailyWindow.state(): Daily.State
 	return { day = day, progress = {}, claimed = false }
 end
 
-function DailyWindow.mount(gui: ScreenGui)
-	local window, content = Theme.window(gui, "📋 Daily Tasks", Vector2.new(480, 380))
+function DailyWindow.mount(gui: Instance)
+	local window, content = Theme.window(gui, "📋 Daily Tasks", Vector2.new(480, 380), Theme.purple)
 	local header = Theme.text(content, { Size = UDim2.new(1, 0, 0, 24), TextColor3 = Theme.soft, LayoutOrder = 0 })
 	type Row = { text: TextLabel, mark: TextLabel }
 	local rows: { Row } = {}
 	for i = 1, DailyConfig.PER_DAY do
-		local row = Instance.new("Frame")
-		row.Size = UDim2.new(1, -8, 0, 54)
-		row.BackgroundColor3 = Theme.card
-		row.LayoutOrder = i
-		Theme.round(row, 12)
+		local row = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 54), LayoutOrder = i })
 		local text = Theme.text(row, { Size = UDim2.new(0.75, -12, 1, -12), Position = UDim2.fromOffset(12, 6), TextXAlignment = Enum.TextXAlignment.Left })
 		local mark = Theme.text(row, { Size = UDim2.new(0.25, -12, 1, -12), Position = UDim2.new(0.75, 0, 0, 6) })
-		row.Parent = content
 		table.insert(rows, { text = text, mark = mark })
 	end
 	local claim = Theme.button(content, "", Theme.gold, function()
@@ -64,7 +59,7 @@ function DailyWindow.mount(gui: ScreenGui)
 		end
 		local ready = Daily.done(state) and not state.claimed
 		claim.Text = if state.claimed then "✅ Claimed! Come back tomorrow" elseif ready then "🎁 Claim your free egg!" else "🎁 Finish all 3 for a free egg"
-		claim.BackgroundColor3 = if ready then Theme.gold else Theme.soft
+		Theme.recolor(claim, if ready then Theme.gold else Theme.gray)
 	end
 	Windows.register("Daily", window, refresh)
 	task.spawn(function()

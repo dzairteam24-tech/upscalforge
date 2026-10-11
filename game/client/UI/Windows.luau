@@ -1,6 +1,8 @@
 --!strict
 -- The windows by name, one open at a time (the shops' prompts and the HUD's buttons open them).
 
+local TweenService = game:GetService("TweenService")
+
 local Windows = {}
 
 local windows: { [string]: { frame: GuiObject, onOpen: (() -> ())? } } = {}
@@ -17,6 +19,13 @@ function Windows.open(name: string): boolean
 	for other, w in windows do
 		if other ~= name then
 			w.frame.Visible = false
+		end
+	end
+	if not entry.frame.Visible then
+		local scale = entry.frame:FindFirstChildOfClass("UIScale")
+		if scale then -- (it pops open)
+			scale.Scale = 0.7
+			TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 		end
 	end
 	entry.frame.Visible = true

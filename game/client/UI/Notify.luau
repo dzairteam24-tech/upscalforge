@@ -9,7 +9,7 @@ local Theme = require(script.Parent.Theme)
 
 local Notify = {}
 
-local COLORS = { info = Theme.blue, success = Theme.green, error = Theme.red, rare = Color3.fromRGB(190, 120, 255) }
+local COLORS = { info = Theme.blue, success = Theme.green, error = Theme.red, rare = Theme.purple }
 
 local list: Frame? = nil
 
@@ -19,27 +19,36 @@ function Notify.show(text: string, kind: string?)
 		return
 	end
 	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(1, 0, 0, 34)
-	frame.BackgroundColor3 = COLORS[kind or "info"] or Theme.blue
-	Theme.round(frame, 10)
-	Theme.text(frame, { Text = text, Size = UDim2.new(1, -16, 1, -8), Position = UDim2.fromOffset(8, 4), TextColor3 = Color3.new(1, 1, 1) })
+	frame.Size = UDim2.new(1, 0, 0, 40)
+	Theme.gradient(frame, COLORS[kind or "info"] or Theme.blue, 0.25, 0.1)
+	Theme.round(frame, 20)
+	local stroke = Theme.stroke(frame, Theme.outline, 3)
+	local label = Theme.bold(frame, { Text = text, Size = UDim2.new(1, -24, 1, -10), Position = UDim2.fromOffset(12, 5), Font = Theme.font, MaxText = 24 })
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.6
+	scale.Parent = frame
 	frame.Parent = holder
+	TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	task.delay(if kind == "rare" then 5 else 3, function()
-		TweenService:Create(frame, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
+		local fade = TweenInfo.new(0.3)
+		TweenService:Create(frame, fade, { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(stroke, fade, { Transparency = 1 }):Play()
+		TweenService:Create(label, fade, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
 		task.wait(0.3)
 		frame:Destroy()
 	end)
 end
 
-function Notify.mount(gui: ScreenGui)
+function Notify.mount(gui: Instance)
 	local holder = Instance.new("Frame")
 	holder.Name = "Notifications"
 	holder.AnchorPoint = Vector2.new(0.5, 0)
-	holder.Position = UDim2.new(0.5, 0, 0, 76)
-	holder.Size = UDim2.fromOffset(420, 200)
+	holder.Position = UDim2.new(0.5, 0, 0, 86)
+	holder.Size = UDim2.fromOffset(520, 240)
 	holder.BackgroundTransparency = 1
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 6)
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.Parent = holder
 	holder.Parent = gui
 	list = holder

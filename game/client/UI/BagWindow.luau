@@ -1,6 +1,9 @@
 --!strict
--- The bag: the eggs the player holds (they go into incubators on the island) and their creatures, each with
--- what it earns, to put on the island, take back or sell. And a button to make room for more on the island.
+-- The bag, in three tabs. Eggs: each kind the player holds as a card with the egg turning in 3D, to set down on
+-- the grass where they stand (as its tool in the inventory does). Creatures: a card for each, its model turning,
+-- colored by rarity, with its mutation, what it earns, and buttons to put it in the garden or take it back and to
+-- sell it (tap twice); the snaps ready on top. Garden: room for more eggs on the grass, creatures in the garden,
+-- the storage barn and the pasture.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -8,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Creatures = require(Shared.Config.Creatures)
 local IslandConfig = require(Shared.Config.Island)
 local Mutations = require(Shared.Config.Mutations)
+local SnapConfig = require(Shared.Config.Snap)
 local Earn = require(Shared.Logic.Earn)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
@@ -20,33 +24,43 @@ local Windows = require(script.Parent.Windows)
 
 local BagWindow = {}
 
-local RARITY_ORDER = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5 }
+local TABS = { "🥚 Eggs", "🐾 Creatures", "🌳 Garden" }
 
-function BagWindow.mount(gui: ScreenGui)
-	local window, content = Theme.window(gui, "🎒 Bag", Vector2.new(560, 600))
+function BagWindow.mount(gui: Instance)
+	local window, content = Theme.window(gui, "🎒 Bag", Vector2.new(720, 620), Theme.blue, true)
+	local tab = TABS[1]
 
-	local function row(order: number, height: number): Frame
-		local frame = Instance.new("Frame")
-		frame.Size = UDim2.new(1, -8, 0, height)
-		frame.BackgroundColor3 = Theme.card
-		frame.LayoutOrder = order
-		Theme.round(frame, 12)
-		frame.Parent = content
-		return frame
-	end
-
-	local function rebuild()
+	local function clear()
 		for _, child in content:GetChildren() do
-			if child:IsA("Frame") or child:IsA("TextLabel") then
+			if child:IsA("GuiObject") then
 				child:Destroy()
 			end
 		end
-		local data = Store.data
-		if not data then
-			return
+	end
+
+	local function hint(order: number, text: string)
+		Theme.text(content, { Text = text, Size = UDim2.new(1, -8, 0, 22), TextColor3 = Theme.soft, LayoutOrder = order })
+	end
+
+	-- A card's bottom button
+	local function cardButton(card: Frame, text: string, color: Color3, onClick: () -> ()): TextButton
+		local button = Theme.button(card, text, color, onClick)
+		button.AnchorPoint = Vector2.new(0.5, 1)
+		button.Position = UDim2.new(0.5, 0, 1, -8)
+		button.Size = UDim2.new(1, -16, 0, 34)
+		return button
+	end
+
+	local function eggsTab(data: { [string]: any })
+		local down = 0
+		for key in data.incubating do
+			local slot = tonumber(key)
+			if slot and slot <= IslandConfig.MACHINE_SLOT then
+				down += 1
+			end
 		end
-		-- Eggs: each kind the player holds, to set down on the grass where they stand (as its tool in the
-		-- inventory does)
+		hint(0, ("Stand on your grass and tap Set down (or take the egg from your hotbar and click) · %d / %d on the grass"):format(down, data.incubators))
+		local grid = Theme.grid(content, 1, 4, 196)
 		local kinds = 0
 		for tier = 11, 1, -1 do
 			local egg = Hatch.egg(tier)
@@ -55,85 +69,33 @@ function BagWindow.mount(gui: ScreenGui)
 				local count = held and held[tostring(tier)] or 0
 				if count > 0 and egg then
 					kinds += 1
-					local line = row(0, 44)
-					line.Name = ("Egg%02d"):format(kinds) -- (in this order)
-					Theme.text(line, { Text = ("🥚 %s%s ×%d"):format(if golden then "✨ Golden " else "", egg.name, count), Size = UDim2.new(0.6, -8, 1, -8), Position = UDim2.fromOffset(10, 4), TextXAlignment = Enum.TextXAlignment.Left })
-					local down = Theme.button(line, "Set down here", Theme.green, function()
+					local color = if golden then Theme.gold else egg.color
+					local card = Theme.card(grid, Theme.lighten(color, 0.45), { LayoutOrder = kinds })
+					local view = Theme.eggView(card, egg.color, golden)
+					view.Size = UDim2.new(1, 0, 0, 96)
+					view.Position = UDim2.fromOffset(0, 4)
+					Theme.bold(card, { Text = "×" .. count, Size = UDim2.fromOffset(60, 28), Position = UDim2.new(1, -66, 0, 6), TextXAlignment = Enum.TextXAlignment.Right, MaxText = 26 })
+					Theme.bold(card, { Text = (if golden then "✨ Golden " else "") .. egg.name, Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 100), MaxText = 20 })
+					Theme.text(card, { Text = "⏳ " .. Format.time(Hatch.seconds(tier)), Size = UDim2.new(1, -12, 0, 18), Position = UDim2.fromOffset(6, 124), TextColor3 = Theme.ink })
+					cardButton(card, "Set down", Theme.green, function()
 						Net.event("SetEgg"):FireServer(tier, golden)
 					end)
-					down.Size = UDim2.new(0.38, 0, 1, -10)
-					down.Position = UDim2.new(0.6, 0, 0, 5)
 				end
 			end
 		end
-		local eggs = row(0, if kinds > 0 then 30 else 40)
-		eggs.Name = "Egg00"
-		Theme.text(eggs, {
-			Text = if kinds > 0 then "🥚 Your eggs: stand on your grass, then take one from the inventory and click (or tap Set down)" else "🥚 No eggs: buy some at the Egg Shop in town",
-			Size = UDim2.new(1, -16, 1, -6),
-			Position = UDim2.fromOffset(8, 3),
-			TextXAlignment = Enum.TextXAlignment.Left,
-		})
-		-- Room for eggs on the grass
-		local down = 0
-		for key in data.incubating do
-			local slot = tonumber(key)
-			if slot and slot <= IslandConfig.MACHINE_SLOT then
-				down += 1
-			end
+		if kinds == 0 then
+			local empty = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 120), LayoutOrder = 2 })
+			Theme.text(empty, { Text = "🥚", Size = UDim2.fromOffset(70, 70), Position = UDim2.fromOffset(16, 25) })
+			Theme.bold(empty, { Text = "No eggs yet!", Size = UDim2.new(1, -110, 0, 36), Position = UDim2.fromOffset(96, 22), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 30 })
+			Theme.text(empty, { Text = "Buy some at the Egg Shop in town, or steal one from the Wild", Size = UDim2.new(1, -110, 0, 40), Position = UDim2.fromOffset(96, 60), TextColor3 = Theme.soft, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true })
 		end
-		local eggRoom = row(1, 48)
-		Theme.text(eggRoom, { Text = ("🥚 Eggs in your garden: %d / %d"):format(down, data.incubators), Size = UDim2.new(0.6, -8, 1, -12), Position = UDim2.fromOffset(10, 6), TextXAlignment = Enum.TextXAlignment.Left })
-		local roomPrice = Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS)
-		if roomPrice then
-			local more = Theme.button(eggRoom, ("+1 egg · 🪙 %s"):format(Format.abbrev(roomPrice)), Theme.gold, function()
-				Net.event("BuyIncubator"):FireServer()
-			end)
-			more.Size = UDim2.new(0.38, 0, 1, -12)
-			more.Position = UDim2.new(0.6, 0, 0, 6)
-		end
-		-- Room on the island
-		local room = row(2, 48)
-		Theme.text(room, { Text = ("🌷 In your garden: %d / %d"):format(#data.placed, data.pens), Size = UDim2.new(0.6, -8, 1, -12), Position = UDim2.fromOffset(10, 6), TextXAlignment = Enum.TextXAlignment.Left })
-		local price = Earn.nextPrice(IslandConfig.PEN_PRICES, data.pens, IslandConfig.PENS)
-		if price then
-			local more = Theme.button(room, ("+1 room · 🪙 %s"):format(Format.abbrev(price)), Theme.gold, function()
-				Net.event("BuyPen"):FireServer()
-			end)
-			more.Size = UDim2.new(0.38, 0, 1, -12)
-			more.Position = UDim2.new(0.6, 0, 0, 6)
-		end
-		-- The storage barn
-		local count = 0
-		for _ in data.creatures do
-			count += 1
-		end
-		local barn = row(3, 48)
-		local level = math.clamp(data.storage, 1, #IslandConfig.STORAGE)
-		Theme.text(barn, { Text = ("📦 Storage: %d / %d"):format(count, IslandConfig.STORAGE[level]), Size = UDim2.new(0.6, -8, 1, -12), Position = UDim2.fromOffset(10, 6), TextXAlignment = Enum.TextXAlignment.Left })
-		local barnPrice = IslandConfig.STORAGE_PRICES[level]
-		if barnPrice then
-			local bigger = Theme.button(barn, ("→ %d · 🪙 %s"):format(IslandConfig.STORAGE[level + 1], Format.abbrev(barnPrice)), Theme.gold, function()
-				Net.event("BuyStorage"):FireServer()
-			end)
-			bigger.Size = UDim2.new(0.38, 0, 1, -12)
-			bigger.Position = UDim2.new(0.6, 0, 0, 6)
-		end
-		-- The pasture, growing back
-		local growLevel = math.clamp(data.pasture or 1, 1, #IslandConfig.PASTURE_GROWTH)
-		local grow = row(3, 48)
-		Theme.text(grow, { Text = ("🌳 Pasture: %d / %d"):format(growLevel, #IslandConfig.PASTURE_GROWTH), Size = UDim2.new(0.6, -8, 1, -12), Position = UDim2.fromOffset(10, 6), TextXAlignment = Enum.TextXAlignment.Left })
-		local growPrice = IslandConfig.PASTURE_PRICES[growLevel]
-		if growPrice then
-			local bigger = Theme.button(grow, ("Bigger · 🪙 %s"):format(Format.abbrev(growPrice)), Theme.gold, function()
-				Net.event("BuyPasture"):FireServer()
-			end)
-			bigger.Size = UDim2.new(0.38, 0, 1, -12)
-			bigger.Position = UDim2.new(0.6, 0, 0, 6)
-		end
-		-- Creatures, best first
+	end
+
+	local function creaturesTab(data: { [string]: any })
 		local list = {}
+		local count = 0
 		for id, creature in data.creatures do
+			count += 1
 			table.insert(list, { id = id, creature = creature, rate = Earn.rate(creature), placed = table.find(data.placed, id) ~= nil })
 		end
 		table.sort(list, function(a, b)
@@ -142,53 +104,146 @@ function BagWindow.mount(gui: ScreenGui)
 			end
 			return a.rate > b.rate
 		end)
-		-- Snaps ready: one row for each kind that has enough
+		local level = math.clamp(data.storage, 1, #IslandConfig.STORAGE)
+		hint(0, ("🌷 In your garden %d / %d  ·  📦 Kept %d / %d"):format(#data.placed, data.pens, count, IslandConfig.STORAGE[level]))
+		-- Snaps ready: a gold button for each kind that has enough
 		local offered = {}
 		for _, entry in list do
 			local group, made = Snap.find(data.creatures, data.placed, entry.id)
 			local kind = if made then (made.g or "") .. Snap.name(entry.creature) else nil
 			if group and made and kind and not offered[kind] then
 				offered[kind] = true
-				local frame = row(4, 48)
-				local snapButton = Theme.button(frame, ("🧊 Snap %d %s → %s (🪙 %s/s)"):format(#group, Snap.name(entry.creature), Snap.name(made), Format.abbrev(Earn.rate(made))), Theme.gold, function()
+				local snapButton = Theme.button(content, ("🧊 Snap %d %s → %s  (🪙 %s/s)"):format(#group, Snap.name(entry.creature), Snap.name(made), Format.abbrev(Earn.rate(made))), Theme.gold, function()
 					Net.event("Snap"):FireServer(entry.id)
 				end)
-				snapButton.Size = UDim2.new(1, -12, 1, -12)
-				snapButton.Position = UDim2.fromOffset(6, 6)
+				snapButton.Size = UDim2.new(1, -8, 0, 48)
+				snapButton.LayoutOrder = 1
 			end
 		end
+		if #list == 0 then
+			local empty = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 120), LayoutOrder = 2 })
+			Theme.text(empty, { Text = "🐣", Size = UDim2.fromOffset(70, 70), Position = UDim2.fromOffset(16, 25) })
+			Theme.bold(empty, { Text = "No creatures yet!", Size = UDim2.new(1, -110, 0, 36), Position = UDim2.fromOffset(96, 22), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 30 })
+			Theme.text(empty, { Text = "Set an egg down on your grass and wait for it to hatch", Size = UDim2.new(1, -110, 0, 40), Position = UDim2.fromOffset(96, 60), TextColor3 = Theme.soft, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true })
+			return
+		end
+		local grid = Theme.grid(content, 2, 4, 214)
 		for i, entry in list do
-			local species = Creatures.byId[entry.creature.s]
-			local mutation = Mutations.byId[entry.creature.m] or Mutations.byId.Normal
-			local frame = row(10 + i, 58)
-			local mark = Instance.new("Frame")
-			mark.Size = UDim2.fromOffset(8, 42)
-			mark.Position = UDim2.fromOffset(8, 8)
-			mark.BackgroundColor3 = mutation.color
-			Theme.round(mark, 4)
-			mark.Parent = frame
-			local name = Snap.name(entry.creature)
-			Theme.text(frame, { Text = name, Size = UDim2.new(0.42, -24, 0, 26), Position = UDim2.fromOffset(24, 4), TextXAlignment = Enum.TextXAlignment.Left })
-			Theme.text(frame, {
-				Text = ("%s · 🪙 %s/s"):format(if species then species.rarity else "", Format.abbrev(entry.rate)),
-				Size = UDim2.new(0.42, -24, 0, 20),
-				Position = UDim2.fromOffset(24, 32),
-				TextColor3 = if species and RARITY_ORDER[species.rarity] >= 4 then Color3.fromRGB(190, 120, 255) else Theme.soft,
-				TextXAlignment = Enum.TextXAlignment.Left,
-			})
-			local toggle = Theme.button(frame, if entry.placed then "Take back" else "To garden", if entry.placed then Theme.blue else Theme.green, function()
+			local creature = entry.creature
+			local species = Creatures.byId[creature.s]
+			local rarity = if species then species.rarity else "Common"
+			local mutation = Mutations.byId[creature.m] or Mutations.byId.Normal
+			local grade = if creature.g then SnapConfig.byId[creature.g] else nil
+			local card = Theme.card(grid, Theme.lighten(Theme.RARITY[rarity] or Theme.gray, 0.35), { LayoutOrder = i })
+			local view = Theme.creatureView(card, { s = creature.s, m = creature.m, size = if grade then grade.size else nil })
+			view.Size = UDim2.new(1, 0, 0, 100)
+			view.Position = UDim2.fromOffset(0, 6)
+			-- Its mutation and size on top, and a mark when it's in the garden
+			local tags = {}
+			if mutation.id ~= "Normal" then
+				table.insert(tags, mutation.id)
+			end
+			if grade then
+				table.insert(tags, grade.id)
+			end
+			if #tags > 0 then
+				local tag = Theme.bold(card, { Text = table.concat(tags, " "), Size = UDim2.fromOffset(110, 22), Position = UDim2.fromOffset(6, 6), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = if mutation.id ~= "Normal" then mutation.color else Color3.new(1, 1, 1), MaxText = 18 })
+				tag.ZIndex = 2
+			end
+			if entry.placed then
+				local mark = Theme.bold(card, { Text = "🌷", Size = UDim2.fromOffset(28, 28), Position = UDim2.new(1, -32, 0, 4), MaxText = 24 })
+				mark.ZIndex = 2
+			end
+			Theme.bold(card, { Text = species and species.id or creature.s, Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 104), MaxText = 22 })
+			Theme.bold(card, { Text = rarity, Size = UDim2.new(1, -12, 0, 16), Position = UDim2.fromOffset(6, 127), TextColor3 = Theme.RARITY[rarity] or Theme.gray, Font = Theme.font, MaxText = 15 })
+			Theme.bold(card, { Text = ("🪙 %s/s"):format(Format.abbrev(entry.rate)), Size = UDim2.new(1, -12, 0, 20), Position = UDim2.fromOffset(6, 144), TextColor3 = Color3.fromRGB(255, 230, 120), MaxText = 18 })
+			local toggle = Theme.button(card, if entry.placed then "Take" else "Place", if entry.placed then Theme.blue else Theme.green, function()
 				Net.event(if entry.placed then "TakeCreature" else "PlaceCreature"):FireServer(entry.id)
 			end)
-			toggle.Size = UDim2.new(0.26, 0, 0, 40)
-			toggle.Position = UDim2.new(0.44, 0, 0, 9)
-			local sell = Theme.button(frame, ("Sell 🪙%s"):format(Format.abbrev(Earn.sellPrice(entry.creature))), Theme.red, function()
-				Net.event("SellCreature"):FireServer(entry.id)
+			toggle.AnchorPoint = Vector2.new(0, 1)
+			toggle.Position = UDim2.new(0, 8, 1, -8)
+			toggle.Size = UDim2.new(0.6, -12, 0, 34)
+			-- (selling takes two taps)
+			local sure = false
+			local sell: TextButton
+			sell = Theme.button(card, "💰", Theme.red, function()
+				if sure then
+					Net.event("SellCreature"):FireServer(entry.id)
+					return
+				end
+				sure = true
+				sell.Text = Format.abbrev(Earn.sellPrice(creature))
+				task.delay(2.5, function()
+					sure = false
+					sell.Text = "💰"
+				end)
 			end)
-			sell.Size = UDim2.new(0.27, 0, 0, 40)
-			sell.Position = UDim2.new(0.72, 0, 0, 9)
+			sell.AnchorPoint = Vector2.new(1, 1)
+			sell.Position = UDim2.new(1, -8, 1, -8)
+			sell.Size = UDim2.new(0.4, -4, 0, 34)
 		end
 	end
-	Windows.register("Bag", window, rebuild)
+
+	-- A row on the Garden tab: an icon, what it is, how far it's grown, and a button to grow it
+	local function upgradeRow(order: number, icon: string, title: string, detail: string, price: number?, label: string, remote: string)
+		local row = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 78), LayoutOrder = order })
+		Theme.text(row, { Text = icon, Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(10, 11) })
+		Theme.bold(row, { Text = title, Size = UDim2.new(0.58, -76, 0, 30), Position = UDim2.fromOffset(74, 10), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 26 })
+		Theme.text(row, { Text = detail, Size = UDim2.new(0.58, -76, 0, 22), Position = UDim2.fromOffset(74, 44), TextColor3 = Theme.soft, TextXAlignment = Enum.TextXAlignment.Left })
+		if price then
+			local button = Theme.button(row, ("%s · 🪙 %s"):format(label, Format.abbrev(price)), if Store.coins() >= price then Theme.green else Theme.gray, function()
+				Net.event(remote):FireServer()
+			end)
+			button.Size = UDim2.new(0.4, -12, 0, 52)
+			button.Position = UDim2.new(0.6, 0, 0, 13)
+		else
+			Theme.bold(row, { Text = "MAX", Size = UDim2.new(0.4, -12, 0, 40), Position = UDim2.new(0.6, 0, 0, 19), TextColor3 = Theme.gold })
+		end
+	end
+
+	local function gardenTab(data: { [string]: any })
+		local down = 0
+		for key in data.incubating do
+			local slot = tonumber(key)
+			if slot and slot <= IslandConfig.MACHINE_SLOT then
+				down += 1
+			end
+		end
+		upgradeRow(1, "🥚", ("Eggs on the grass %d / %d"):format(down, data.incubators), "How many eggs hatch in your garden at once", Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS), "+1", "BuyIncubator")
+		upgradeRow(2, "🌷", ("Creatures out %d / %d"):format(#data.placed, data.pens), "Only creatures in the garden earn coins", Earn.nextPrice(IslandConfig.PEN_PRICES, data.pens, IslandConfig.PENS), "+1", "BuyPen")
+		local count = 0
+		for _ in data.creatures do
+			count += 1
+		end
+		local level = math.clamp(data.storage, 1, #IslandConfig.STORAGE)
+		local next = IslandConfig.STORAGE[level + 1]
+		upgradeRow(3, "📦", ("Storage %d / %d"):format(count, IslandConfig.STORAGE[level]), "How many creatures you can keep", IslandConfig.STORAGE_PRICES[level], if next then "→ " .. next else "", "BuyStorage")
+		local growLevel = math.clamp(data.pasture or 1, 1, #IslandConfig.PASTURE_GROWTH)
+		upgradeRow(4, "🌳", ("Pasture %d / %d"):format(growLevel, #IslandConfig.PASTURE_GROWTH), "A bigger pasture, further back", IslandConfig.PASTURE_PRICES[growLevel], "Bigger", "BuyPasture")
+	end
+
+	local function rebuild()
+		clear()
+		local data = Store.data
+		if not data then
+			return
+		end
+		if tab == TABS[1] then
+			eggsTab(data)
+		elseif tab == TABS[2] then
+			creaturesTab(data)
+		else
+			gardenTab(data)
+		end
+	end
+	local select = Theme.tabs(window, TABS, Theme.blue, function(name)
+		tab = name
+		content.CanvasPosition = Vector2.zero
+		rebuild()
+	end)
+	Windows.register("Bag", window, function()
+		select(tab)
+	end)
 	Store.Changed:Connect(function()
 		if window.Visible then
 			rebuild()

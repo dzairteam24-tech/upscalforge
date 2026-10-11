@@ -17,8 +17,8 @@ local Windows = require(script.Parent.Windows)
 
 local FoodWindow = {}
 
-function FoodWindow.mount(gui: ScreenGui)
-	local window, content = Theme.window(gui, "🌾 Food Shop", Vector2.new(520, 380))
+function FoodWindow.mount(gui: Instance)
+	local window, content = Theme.window(gui, "🌾 Food Shop", Vector2.new(520, 380), Color3.fromRGB(240, 150, 50))
 	Theme.text(content, {
 		Text = ("Put food in your trough: your creatures earn ×%d while they're fed"):format(FoodConfig.BOOST),
 		Size = UDim2.new(1, 0, 0, 24),
@@ -28,11 +28,7 @@ function FoodWindow.mount(gui: ScreenGui)
 	type Row = { held: TextLabel, buy: TextButton, food: FoodConfig.Food }
 	local rows: { Row } = {}
 	for i, food in FoodConfig.LIST do
-		local row = Instance.new("Frame")
-		row.Size = UDim2.new(1, -8, 0, 64)
-		row.BackgroundColor3 = Theme.card
-		row.LayoutOrder = i
-		Theme.round(row, 12)
+		local row = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 64), LayoutOrder = i })
 		Theme.text(row, { Text = food.icon, Size = UDim2.fromOffset(44, 50), Position = UDim2.fromOffset(8, 7) })
 		Theme.text(row, { Text = food.name, Size = UDim2.new(0.5, -60, 0, 26), Position = UDim2.fromOffset(60, 6), TextXAlignment = Enum.TextXAlignment.Left })
 		Theme.text(row, {
@@ -48,7 +44,6 @@ function FoodWindow.mount(gui: ScreenGui)
 		end)
 		buy.Size = UDim2.new(0.3, 0, 0, 40)
 		buy.Position = UDim2.new(0.68, 0, 0, 12)
-		row.Parent = content
 		table.insert(rows, { held = held, buy = buy, food = food })
 	end
 
@@ -59,7 +54,7 @@ function FoodWindow.mount(gui: ScreenGui)
 			local price = Food.price(row.food, rate)
 			row.held.Text = ("×%d"):format(if data then data.food[row.food.id] or 0 else 0)
 			row.buy.Text = "🪙 " .. Format.abbrev(price)
-			row.buy.BackgroundColor3 = if Store.coins() >= price then Theme.green else Theme.soft
+			Theme.recolor(row.buy, if Store.coins() >= price then Theme.green else Theme.gray)
 		end
 	end
 	Windows.register("Food", window, refresh)
