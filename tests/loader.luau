@@ -9,6 +9,8 @@ local Loader = {}
 
 -- Extra globals for modules that need engine stand-ins (set by a test before requiring).
 Loader.extraEnv = {} :: { [string]: any }
+-- Rewrites a module's source before it loads (for engine calls Lune lacks, like events)
+Loader.transform = nil :: ((path: string, source: string) -> string)?
 
 local cache: { [string]: any } = {}
 local nodes: { [string]: any } = {}
@@ -61,6 +63,9 @@ local function load(path: string, node: any): any
 	end
 	local source = entries[path].source
 	assert(source, path .. " is not a module")
+	if Loader.transform then
+		source = Loader.transform(path, source)
+	end
 	local environment = {
 			script = node,
 			require = requireNode,

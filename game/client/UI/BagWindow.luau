@@ -45,24 +45,33 @@ function BagWindow.mount(gui: ScreenGui)
 		if not data then
 			return
 		end
-		-- Eggs
-		local eggsText = {}
+		-- Eggs: each kind the player holds, to set down on the grass where they stand (as its tool in the
+		-- inventory does)
+		local kinds = 0
 		for tier = 11, 1, -1 do
-			local golden = data.golden and data.golden[tostring(tier)] or 0
-			local count = data.eggs[tostring(tier)] or 0
 			local egg = Hatch.egg(tier)
-			if golden > 0 and egg then
-				table.insert(eggsText, ("✨ Golden %s ×%d"):format(egg.name, golden))
-			end
-			if count > 0 and egg then
-				table.insert(eggsText, ("%s ×%d"):format(egg.name, count))
+			for _, golden in { true, false } do
+				local held = if golden then data.golden else data.eggs
+				local count = held and held[tostring(tier)] or 0
+				if count > 0 and egg then
+					kinds += 1
+					local line = row(0, 44)
+					line.Name = ("Egg%02d"):format(kinds) -- (in this order)
+					Theme.text(line, { Text = ("🥚 %s%s ×%d"):format(if golden then "✨ Golden " else "", egg.name, count), Size = UDim2.new(0.6, -8, 1, -8), Position = UDim2.fromOffset(10, 4), TextXAlignment = Enum.TextXAlignment.Left })
+					local down = Theme.button(line, "Set down here", Theme.green, function()
+						Net.event("SetEgg"):FireServer(tier, golden)
+					end)
+					down.Size = UDim2.new(0.38, 0, 1, -10)
+					down.Position = UDim2.new(0.6, 0, 0, 5)
+				end
 			end
 		end
-		local eggs = row(1, 54)
+		local eggs = row(0, if kinds > 0 then 30 else 40)
+		eggs.Name = "Egg00"
 		Theme.text(eggs, {
-			Text = if #eggsText > 0 then "🥚 " .. table.concat(eggsText, "  ·  ") .. "\nTake one from your inventory (hotbar) and click in your garden" else "🥚 No eggs: buy some at the Egg Shop in town",
-			Size = UDim2.new(1, -16, 1, -8),
-			Position = UDim2.fromOffset(8, 4),
+			Text = if kinds > 0 then "🥚 Your eggs: stand on your grass, then take one from the inventory and click (or tap Set down)" else "🥚 No eggs: buy some at the Egg Shop in town",
+			Size = UDim2.new(1, -16, 1, -6),
+			Position = UDim2.fromOffset(8, 3),
 			TextXAlignment = Enum.TextXAlignment.Left,
 		})
 		-- Room for eggs on the grass

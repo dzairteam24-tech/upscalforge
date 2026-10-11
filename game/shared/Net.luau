@@ -12,6 +12,7 @@ local EVENTS = {
 	"TakeCreature", -- (id)
 	"UseIncubator", -- (slot)
 	"BuyIncubator",
+	"SetEgg", -- (tier, golden): one the player holds, down on the grass in front of them
 	"BuyPen",
 	"BuyStorage",
 	"BuyPasture",

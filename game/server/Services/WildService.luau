@@ -186,8 +186,9 @@ local function finish(player: Player, kept: boolean)
 		end
 		data.stats.stolen += 1
 		DailyService.add(player, "wild")
-		IslandService.notify(player, ("Home with a %s%s! 🥚 Take it from your inventory and set it down"):format(if carry.golden then "✨ Golden " else "", if egg then egg.name else "egg"), "success")
+		IslandService.notify(player, ("Home with a %s%s! 🥚 Click to set it down on your grass"):format(if carry.golden then "✨ Golden " else "", if egg then egg.name else "egg"), "success")
 		IslandService.push(player)
+		IslandService.holdEgg(player, biome.tier, carry.golden) -- (still in their hands, now from the inventory)
 	else
 		setFull(carry.nest, true)
 		setGolden(carry.nest, carry.golden)

@@ -50,7 +50,7 @@ local setEggFrom: (Player, number, boolean) -> ()
 local function eggTools(player: Player, data: Data)
 	local backpack = player:FindFirstChildOfClass("Backpack")
 	if not backpack then
-		return
+		return -- (they come when it does: assign)
 	end
 	local have: { [string]: Tool } = {}
 	local holders: { Instance } = { backpack }
@@ -117,7 +117,12 @@ end
 function IslandService.push(player: Player)
 	local data = DataService.get(player)
 	if data then
-		eggTools(player, data)
+		local ok, err = pcall(function()
+			eggTools(player, data)
+		end)
+		if not ok then
+			warn("[Island] Couldn't give the egg tools", player.Name, err)
+		end
 		Net.event("Data"):FireClient(player, data, islandOf[player])
 		player:SetAttribute("Coins", data.coins)
 		player:SetAttribute("FedUntil", data.fedUntil)
@@ -126,6 +131,23 @@ end
 
 function IslandService.islandOf(player: Player): number?
 	return islandOf[player]
+end
+
+-- Puts an egg the player holds in their hand (its tool from the inventory), as one from the Wild arrives home
+function IslandService.holdEgg(player: Player, tier: number, golden: boolean)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not humanoid or not backpack then
+		return
+	end
+	local kind = (if golden then "g" else "") .. tier
+	for _, tool in backpack:GetChildren() do
+		if tool:IsA("Tool") and tool:GetAttribute("EggKind") == kind then
+			humanoid:EquipTool(tool)
+			return
+		end
+	end
 end
 
 -- Who has a garden, or nil when it's free
@@ -389,6 +411,17 @@ local function assign(player: Player, data: Data)
 		end
 	end
 	IslandService.push(player)
+	-- Their eggs in the inventory, every time it's made again (on each spawn, the backpack starts empty)
+	player.ChildAdded:Connect(function(child)
+		if child:IsA("Backpack") then
+			task.wait(0.2)
+			IslandService.push(player)
+		end
+	end)
+	player.CharacterAdded:Connect(function()
+		task.wait(0.5)
+		IslandService.push(player)
+	end)
 	-- Start on the island
 	task.spawn(function()
 		local character = player.Character or player.CharacterAdded:Wait()
@@ -810,12 +843,11 @@ function IslandService.init()
 	Net.event("BuyStorage").OnServerEvent:Connect(buyStorage)
 	Net.event("BuyPasture").OnServerEvent:Connect(buyPasture)
 	Net.event("BuyIncubator").OnServerEvent:Connect(buyEggRoom)
-	-- (a respawn empties the backpack: the egg tools come back)
-	Players.PlayerAdded:Connect(function(player)
-		player.CharacterAdded:Connect(function()
-			task.wait(0.5)
-			IslandService.push(player)
-		end)
+	-- (the Bag's "Set down", for the egg tools' click)
+	Net.event("SetEgg").OnServerEvent:Connect(function(player, tier, golden)
+		if type(tier) == "number" and Hatch.egg(tier) and type(golden) == "boolean" then
+			setEgg(player, tier, golden)
+		end
 	end)
 	Net.event("Feed").OnServerEvent:Connect(feed)
 	-- Earning: every second, each island's creatures bring in their coins
