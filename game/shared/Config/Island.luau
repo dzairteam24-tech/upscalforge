@@ -19,22 +19,23 @@ return {
 	MACHINE_SLOT = 100, -- (their slots are 101, 102...: the nests' are 1 to 16)
 	PENS = 4, -- creatures living on the island at once...
 	PEN_PRICES = { 1000, 5000, 25000, 100000, 500000, 2500000, 10000000, 50000000 }, -- ...and more cost this
-	-- Seconds each egg incubates on the grass (by tier, Config/Eggs: Meadow... Legendary). In real time, even
-	-- while the player is away; an incubator (machine) halves it.
+	-- Seconds each egg incubates on the grass (by tier, Config/Eggs: Meadow... Legendary), paced like Steal an
+	-- Egg: the first eggs in seconds, the middle ones in minutes, the best in hours (an hour, a few, half a day).
+	-- In real time, even while the player is away; an incubator (machine) halves it.
 	HATCH_SECONDS = {
-		2 * 60, -- Meadow
-		5 * 60, -- Flower
-		10 * 60, -- Forest
-		20 * 60, -- Beach
-		35 * 60, -- Cave
-		60 * 60, -- Desert
-		90 * 60, -- Snow
-		2 * 3600, -- Volcano
+		30, -- Meadow
+		60, -- Flower
+		2 * 60, -- Forest
+		4 * 60, -- Beach
+		8 * 60, -- Cave
+		15 * 60, -- Desert
+		30 * 60, -- Snow
+		3600, -- Volcano
 		3 * 3600, -- Ice
-		4 * 3600, -- Pixel
-		6 * 3600, -- Legendary
+		6 * 3600, -- Pixel
+		12 * 3600, -- Legendary
 	},
-	STARTER_HATCH = 30, -- a new player's free first egg is already in their golden nest, hatching this fast
+	STARTER_HATCH = 15, -- a new player's free first egg is already in their golden nest, hatching this fast
 	OFFLINE_HOURS = 8, -- the island earns this long while its owner is away
 	SELL_SECONDS = 120, -- selling a creature pays this many seconds of its earnings
 	STORAGE = { 60, 100, 150 }, -- creatures a player can keep (placed or not), as their barn grows...
