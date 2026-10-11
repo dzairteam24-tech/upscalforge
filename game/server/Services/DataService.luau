@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Creatures = require(Shared.Config.Creatures)
 local IslandConfig = require(Shared.Config.Island)
 local WildConfig = require(Shared.Config.Wild)
 
@@ -150,6 +151,22 @@ local function load(player: Player)
 		if data.index[old] then
 			data.index[old] = nil
 			data.index[new] = true
+		end
+	end
+	-- (the old creatures are gone: only the new animals are kept, in the garden and the Index)
+	for id, creature in data.creatures do
+		if not Creatures.byId[creature.s] then
+			data.creatures[id] = nil
+		end
+	end
+	for i = #data.placed, 1, -1 do
+		if not data.creatures[data.placed[i]] then
+			table.remove(data.placed, i)
+		end
+	end
+	for species in data.index do
+		if not Creatures.byId[species] then
+			data.index[species] = nil
 		end
 	end
 	-- (the Index starts with what they already have)

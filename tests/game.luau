@@ -55,7 +55,8 @@ test("every egg's creatures exist, its chances add up to 1, and later eggs cost 
 			assert(Creatures.byId[id], egg.name .. ": no creature " .. id)
 			total += egg.chances[i]
 		end
-		assert(math.abs(total - 1) < 0.01, egg.name .. "'s chances add up to " .. total)
+		-- (an egg whose map is still Coming Soon is empty until its animals are designed)
+		assert(math.abs(total - 1) < 0.01 or (#egg.creatures == 0 and not Hatch.open(egg.tier)), egg.name .. "'s chances add up to " .. total)
 		assert(egg.price > previous, egg.name .. " costs more than the egg before")
 		previous = egg.price
 	end
@@ -232,6 +233,9 @@ end)
 test("an egg pays itself back: in under a minute for the first, longer for each better one, within a day", function()
 	local previous = 0
 	for _, egg in Eggs do
+		if #egg.creatures == 0 then
+			continue -- (Coming Soon)
+		end
 		local average = 0
 		for i, id in egg.creatures do
 			average += Creatures.byId[id].earn * egg.chances[i]
@@ -323,7 +327,7 @@ test("Index: a page is complete when all its egg's creatures are found, and its 
 	assert(Index.claimable(found, { ["1"] = true }, 1) == nil, "only once")
 	local total, every = Index.total(found)
 	eq(total, 8)
-	assert(every >= 40, "every creature of every egg")
+	assert(every >= 8, "every creature of every egg")
 end)
 
 test("Mutation Machine: one step up at a time, Neon the top, priced by what the creature earns, locked until fast", function()

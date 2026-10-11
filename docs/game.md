@@ -107,14 +107,8 @@
 
 ## الندرة في كل ماب
 
-| البيض | المخلوقات | الحظ |
-|---|---|---|
-| Meadow، Flower، Forest | Common، Uncommon، Rare، Epic | 60%، 30%، 9%، 1% |
-| Beach، Cave، Desert، Snow (**الوسط**) | + **Legendary** تاع المنطقة (Kraken، Spore Sage، Pharaoh Scarab، Aurora Wolf) | 58%، 30%، 9%، 2.5%، **0.5%** |
-| Volcano، Ice، Pixel (**الفوق**) | + Legendary (Inferno Drake، Frost Leviathan، Glitch) + **Mythic** (Molten Titan، Star Seraph، Void Emperor) | 57%، 30%، 9.5%، 3%، 0.4%، **0.1%** |
-
-- **Legendary Egg** (2T) تفقس واحد من الـ 10 أسطوريين.
-- الربح: Legendary ≈ ×250 تاع Common المنطقة، Mythic ≈ ×1200.
+- **8 حيوانات في كل ماب**، زوج من كل ندرة. الماب المتوسطة تبدّل زوج بـ **Legendary** (1 من 200)، والعالية فيها حتى **Mythic** (1 من 1000).
+- دروك غير **Meadow** مصممة (Common، Uncommon، Rare، Epic). المخلوقات القدام (المكعبات) تنحاو كامل، والحفظات القدام ينحالهم المخلوقات اللي ما بقاتش.
 
 ## كيما Steal an Egg (من الصور)
 
