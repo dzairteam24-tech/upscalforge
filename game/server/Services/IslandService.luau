@@ -21,6 +21,7 @@ local Food = require(Shared.Logic.Food)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
+local Night = require(Shared.Logic.Night)
 local Snap = require(Shared.Logic.Snap)
 local Weather = require(Shared.Logic.Weather)
 local PetModel = require(Shared.PetModel)
@@ -637,7 +638,7 @@ local function useIncubator(player: Player, slot: any)
 	else
 		local egg = data.incubating[key]
 		if egg then
-			local done = egg.start + Hatch.secondsIn(egg.tier, slot)
+			local done = math.ceil(Night.doneAt(egg.start, Hatch.secondsIn(egg.tier, slot))) -- (nights hatch faster)
 			local now = os.time()
 			if now < done then
 				IslandService.notify(player, ("Still incubating: %s left"):format(Format.time(done - now)))

@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
+local Night = require(Shared.Logic.Night)
 local Layout = require(Shared.Logic.Layout)
 local Weather = require(Shared.Logic.Weather)
 local Wild = require(Shared.Logic.Wild)
@@ -129,8 +130,9 @@ local function updatePad(pad: BasePart)
 		local color = if golden then Color3.fromRGB(255, 205, 70) else egg.color
 		pad_.egg.Color = color
 		pad_.egg.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
-		local left = start + duration - now()
-		pad_.progress = if duration > 0 then math.clamp(1 - left / duration, 0, 1) else 1
+		-- (nights grow eggs faster: Logic/Night)
+		local left = math.ceil(Night.doneAt(start, duration)) - now()
+		pad_.progress = if duration > 0 then math.clamp(Night.growth(start, now()) / duration, 0, 1) else 1
 		pad_.ready = left <= 0
 		pad_.bar.Visible = owner ~= 0 and not pad_.ready
 		pad_.fill.Size = UDim2.fromScale(pad_.progress, 1)
@@ -147,9 +149,10 @@ local function updatePad(pad: BasePart)
 		text = if mine then (if pad:GetAttribute("Machine") then "＋ Egg ⚡×2" else "＋ Egg") else ""
 		action = "Add egg"
 	else
-		local left = start + duration - now()
+		local done = math.ceil(Night.doneAt(start, duration))
+		local left = done - now()
 		if left <= 0 then
-			local weather = Weather.at(start + duration)
+			local weather = Weather.at(done)
 			text = if weather.mutation then ("READY! %s"):format(weather.icon) else "READY!"
 			action = "Hatch"
 		else

@@ -292,6 +292,23 @@ test("Heist: its prize is luck, the same for everyone: empty sometimes, mid tier
 	end
 end)
 
+test("Night: on the clock, eggs grow SPEED times as fast through it", function()
+	local NightConfig = R(Shared.Config.Night)
+	local Night = R(Shared.Logic.Night)
+	local cycle, length, speed = NightConfig.CYCLE, NightConfig.LENGTH, NightConfig.SPEED
+	assert(not Night.isNight(0) and Night.isNight(cycle - 1) and not Night.isNight(cycle), "the last seconds of each cycle")
+	eq(Night.overlap(0, cycle * 3), length * 3)
+	eq(Night.growth(0, 100), 100) -- (a day stretch: as usual)
+	eq(Night.growth(cycle - length, cycle), length * speed)
+	-- An egg done in the day is done as usual; one that meets a night is done sooner, by its growth
+	eq(Night.doneAt(0, 100), 100)
+	local done = Night.doneAt(0, cycle)
+	assert(done < cycle, "a night on the way hatches it sooner")
+	assert(math.abs(Night.growth(0, done) - cycle) < 1e-6, "done exactly when it's grown enough")
+	local long = Night.doneAt(123, 12 * 3600)
+	assert(math.abs(Night.growth(123, long) - 12 * 3600) < 1e-6, "a long egg too")
+end)
+
 test("Heist: rounds only on weekends, on the clock", function()
 	local saturday = 2 * 86400 -- 3 Jan 1970
 	eq(Heist.weekday(saturday), 6)

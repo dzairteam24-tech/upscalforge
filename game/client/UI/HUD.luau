@@ -8,6 +8,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Mutations = require(Shared.Config.Mutations)
 local Format = require(Shared.Logic.Format)
 local Daily = require(Shared.Logic.Daily)
+local Night = require(Shared.Logic.Night)
+local NightConfig = require(Shared.Config.Night)
 local Weather = require(Shared.Logic.Weather)
 local Net = require(Shared.Net)
 
@@ -104,11 +106,24 @@ function HUD.mount(gui: Instance)
 	local weatherText = Theme.bold(banner, { Size = UDim2.new(1, -20, 1, -10), Position = UDim2.fromOffset(10, 5), Font = Theme.font, MaxText = 22 })
 	banner.Parent = gui
 
+	-- The night: coming soon, or on (eggs grow faster)
+	local nightBar = Instance.new("Frame")
+	nightBar.Name = "Night"
+	nightBar.AnchorPoint = Vector2.new(0.5, 0)
+	nightBar.Position = UDim2.new(0.5, 0, 0, 52)
+	nightBar.Size = UDim2.fromOffset(340, 32)
+	nightBar.BackgroundColor3 = Color3.fromRGB(40, 46, 110)
+	nightBar.Visible = false
+	Theme.round(nightBar, 16)
+	Theme.stroke(nightBar, Color3.fromRGB(170, 180, 255), 2)
+	local nightText = Theme.bold(nightBar, { Size = UDim2.new(1, -16, 1, -8), Position = UDim2.fromOffset(8, 4), Font = Theme.font, MaxText = 20 })
+	nightBar.Parent = gui
+
 	-- A Peaceful private server says so (no bats or traps there: GearService)
 	local peaceful = Instance.new("Frame")
 	peaceful.Name = "Peaceful"
 	peaceful.AnchorPoint = Vector2.new(0.5, 0)
-	peaceful.Position = UDim2.new(0.5, 0, 0, 52)
+	peaceful.Position = UDim2.new(0.5, 0, 0, 90)
 	peaceful.Size = UDim2.fromOffset(300, 30)
 	Theme.gradient(peaceful, Theme.green, 0.2, 0.15)
 	peaceful.Visible = false
@@ -133,6 +148,16 @@ function HUD.mount(gui: Instance)
 			local fed = type(fedUntil) == "number" and fedUntil > workspace:GetServerTimeNow()
 			rate.Text = ("+%s/s%s"):format(Format.abbrev(Store.rate()), if fed then " · 😋 fed" else "")
 			local now = workspace:GetServerTimeNow()
+			local nightFrom, nightTo = Night.window(now)
+			if Night.isNight(now) then
+				nightBar.Visible = true
+				nightText.Text = ("🌙 NIGHT! Eggs grow ×%d · %s"):format(NightConfig.SPEED, Format.time(math.max(0, math.ceil(nightTo - now))))
+			elseif nightFrom - now <= NightConfig.WARNING then
+				nightBar.Visible = true
+				nightText.Text = ("🌙 Night in %s: eggs grow ×%d"):format(Format.time(math.max(0, math.ceil(nightFrom - now))), NightConfig.SPEED)
+			else
+				nightBar.Visible = false
+			end
 			local weather, ends = Weather.at(math.floor(now))
 			local left = Format.time(math.max(0, math.ceil(ends - now)))
 			if weather.mutation then
