@@ -13,6 +13,15 @@ local looks: { [string]: { [string]: Color3 } } = {
 		nose = Color3.fromRGB(42, 26, 18),
 		shine = Color3.fromRGB(255, 255, 255),
 	},
+	["Chicken"] = {
+		beak = Color3.fromRGB(245, 184, 46),
+		body = Color3.fromRGB(250, 250, 245),
+		comb = Color3.fromRGB(229, 55, 58),
+		eye = Color3.fromRGB(26, 20, 16),
+		legs = Color3.fromRGB(245, 184, 46),
+		shine = Color3.fromRGB(255, 255, 255),
+		wing = Color3.fromRGB(236, 236, 228),
+	},
 	["Cat"] = {
 		belly = Color3.fromRGB(255, 242, 224),
 		body = Color3.fromRGB(245, 154, 60),
@@ -22,6 +31,15 @@ local looks: { [string]: { [string]: Color3 } } = {
 		nose = Color3.fromRGB(255, 143, 171),
 		shine = Color3.fromRGB(255, 255, 255),
 		stripe = Color3.fromRGB(184, 95, 30),
+	},
+	["Pig"] = {
+		body = Color3.fromRGB(255, 168, 188),
+		ear = Color3.fromRGB(240, 124, 152),
+		eye = Color3.fromRGB(36, 20, 26),
+		legs = Color3.fromRGB(240, 140, 164),
+		nose = Color3.fromRGB(181, 83, 107),
+		shine = Color3.fromRGB(255, 255, 255),
+		snout = Color3.fromRGB(255, 143, 171),
 	},
 	["Bunny"] = {
 		belly = Color3.fromRGB(255, 255, 255),
@@ -33,6 +51,14 @@ local looks: { [string]: { [string]: Color3 } } = {
 		shine = Color3.fromRGB(255, 255, 255),
 		tail = Color3.fromRGB(255, 255, 255),
 	},
+	["Sheep"] = {
+		body = Color3.fromRGB(244, 242, 236),
+		eye = Color3.fromRGB(244, 242, 236),
+		face = Color3.fromRGB(58, 48, 44),
+		legs = Color3.fromRGB(58, 48, 44),
+		nose = Color3.fromRGB(26, 20, 18),
+		shine = Color3.fromRGB(255, 255, 255),
+	},
 	["Bear"] = {
 		belly = Color3.fromRGB(217, 180, 138),
 		body = Color3.fromRGB(138, 90, 54),
@@ -41,6 +67,16 @@ local looks: { [string]: { [string]: Color3 } } = {
 		legs = Color3.fromRGB(110, 69, 40),
 		mouth = Color3.fromRGB(36, 21, 13),
 		nose = Color3.fromRGB(36, 21, 13),
+		shine = Color3.fromRGB(255, 255, 255),
+	},
+	["Horse"] = {
+		blaze = Color3.fromRGB(255, 255, 255),
+		body = Color3.fromRGB(160, 88, 46),
+		eye = Color3.fromRGB(20, 12, 8),
+		hoof = Color3.fromRGB(42, 26, 18),
+		legs = Color3.fromRGB(138, 74, 38),
+		mane = Color3.fromRGB(58, 36, 24),
+		nose = Color3.fromRGB(110, 58, 30),
 		shine = Color3.fromRGB(255, 255, 255),
 	},
 	["Bee"] = {
