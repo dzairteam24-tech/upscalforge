@@ -84,7 +84,7 @@ local function present(item: Item)
 	local scale = Instance.new("UIScale")
 	scale.Scale = 0.2
 	scale.Parent = card
-	local title = Theme.bold(card, { Text = if grade then "SNAP!" else "HATCHED!", Size = UDim2.new(1, 0, 0, 56), TextColor3 = Theme.gold, MaxText = 52 })
+	local title = Theme.bold(card, { Text = if grade then "FUSED!" else "HATCHED!", Size = UDim2.new(1, 0, 0, 56), TextColor3 = Theme.gold, MaxText = 52 })
 	title.ZIndex = 23
 	local view = Theme.creatureView(card, { s = item.species, m = item.mutation, size = if grade then grade.size else nil })
 	view.Size = UDim2.fromOffset(300, 240)

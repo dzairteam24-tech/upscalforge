@@ -845,7 +845,7 @@ local function snap(player: Player, id: any)
 	end
 	local group, made = Snap.find(data.creatures, data.placed, id)
 	if not group or not made then
-		IslandService.notify(player, ("You need %d matching creatures to snap"):format(SnapConfig.NEED), "error")
+		IslandService.notify(player, ("You need %d matching creatures to fuse"):format(SnapConfig.NEED), "error")
 		return
 	end
 	local wasPlaced = false
@@ -871,7 +871,7 @@ local function snap(player: Player, id: any)
 	end
 	if made.g == "Rainbow" then
 		for _, other in Players:GetPlayers() do
-			IslandService.notify(other, ("🌈 %s snapped a %s!"):format(player.DisplayName, Snap.name(made)), "rare")
+			IslandService.notify(other, ("🌈 %s fused a %s!"):format(player.DisplayName, Snap.name(made)), "rare")
 		end
 	end
 	IslandService.render(player)

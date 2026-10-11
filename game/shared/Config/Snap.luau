@@ -19,5 +19,5 @@ end
 return {
 	LIST = LIST,
 	byId = byId,
-	NEED = 4, -- creatures that snap into one
+	NEED = 3, -- creatures that fuse into one (at the Fuse Machine), as in Steal an Egg
 }

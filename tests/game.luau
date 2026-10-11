@@ -150,19 +150,18 @@ test("the Mother Cube: once an hour for two minutes, hungrier with more players"
 	end
 end)
 
-test("Cube Snap: four matching make a Mega, four Megas a Rainbow, and they earn more", function()
+test("Fuse: three matching make a Mega, three Megas a Rainbow, and they earn more", function()
 	local c = {
 		a = { s = "Cubby", m = "Golden" },
 		b = { s = "Cubby", m = "Golden" },
-		c = { s = "Cubby", m = "Golden" },
 		d = { s = "Cubby", m = "Normal" }, -- another mutation: no
 		f = { s = "Kitty", m = "Golden" }, -- another creature: no
 	}
-	eq(Snap.find(c, {}, "a"), nil, "only three match")
+	eq(Snap.find(c, {}, "a"), nil, "only two match")
 	c.g = { s = "Cubby", m = "Golden" }
 	c.h2 = { s = "Cubby", m = "Golden" }
 	local group, made = Snap.find(c, { "b" }, "a")
-	assert(group and made, "four match")
+	assert(group and made, "three match")
 	eq(#group, SnapConfig.NEED)
 	eq(group[1], "a", "the chosen one first")
 	assert(not table.find(group, "b"), "the ones in the garden last")
@@ -173,10 +172,9 @@ test("Cube Snap: four matching make a Mega, four Megas a Rainbow, and they earn 
 		a = { s = "Bear", m = "Normal", g = "Mega" },
 		b = { s = "Bear", m = "Lava", g = "Mega" },
 		c = { s = "Bear", m = "Golden", g = "Mega" },
-		d = { s = "Bear", m = "Normal", g = "Mega" },
 	}
 	local _, rainbow = Snap.find(megas, {}, "a")
-	assert(rainbow, "four Megas")
+	assert(rainbow, "three Megas")
 	eq(rainbow.g, "Rainbow")
 	eq(rainbow.m, "Lava", "the best mutation")
 	eq(Snap.find({ a = { s = "Bear", m = "Normal", g = "Rainbow" } }, {}, "a"), nil, "Rainbow is the top")
@@ -184,7 +182,7 @@ test("Cube Snap: four matching make a Mega, four Megas a Rainbow, and they earn 
 	local plain = { s = "Cubby", m = "Golden" }
 	local mega = { s = "Cubby", m = "Golden", g = "Mega" }
 	eq(Earn.rate(mega), Earn.rate(plain) * SnapConfig.byId.Mega.mult)
-	assert(Earn.rate(mega) > 4 * Earn.rate(plain), "a Mega beats the four it took")
+	assert(Earn.rate(mega) > SnapConfig.NEED * Earn.rate(plain), "a Mega beats the three it took")
 	eq(Snap.name(mega), "Mega Golden Cubby")
 	eq(Snap.name({ s = "Cubby", m = "Normal" }), "Cubby")
 end)

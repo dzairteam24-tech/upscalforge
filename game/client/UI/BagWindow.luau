@@ -125,20 +125,8 @@ function BagWindow.mount(gui: Instance)
 		end)
 		local level = math.clamp(data.storage, 1, #IslandConfig.STORAGE)
 		hint(0, ("🌷 In your garden %d / %d  ·  📦 Kept %d / %d"):format(#data.placed, data.pens, count, IslandConfig.STORAGE[level]))
-		-- Snaps ready: a gold button for each kind that has enough
-		local offered = {}
-		for _, entry in list do
-			local group, made = Snap.find(data.creatures, data.placed, entry.id)
-			local kind = if made then (made.g or "") .. Snap.name(entry.creature) else nil
-			if group and made and kind and not offered[kind] then
-				offered[kind] = true
-				local snapButton = Theme.button(content, ("🧊 Snap %d %s → %s  (🪙 %s/s)"):format(#group, Snap.name(entry.creature), Snap.name(made), Format.abbrev(Earn.rate(made))), Theme.gold, function()
-					Net.event("Snap"):FireServer(entry.id)
-				end)
-				snapButton.Size = UDim2.new(1, -8, 0, 48)
-				snapButton.LayoutOrder = 1
-			end
-		end
+		-- (fusing is at the Fuse Machine in town)
+		hint(1, "⚙️ Fuse 3 matching creatures into a stronger one at the Fuse Machine in town")
 		if #list == 0 then
 			local empty = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 120), LayoutOrder = 2 })
 			Theme.text(empty, { Text = "🐣", Size = UDim2.fromOffset(70, 70), Position = UDim2.fromOffset(16, 25) })

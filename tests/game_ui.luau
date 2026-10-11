@@ -111,6 +111,8 @@ local function service(name: string): any
 		return { Create = function() return { Play = function() end, Completed = signal() } end }
 	elseif name == "RunService" then
 		return { Heartbeat = signal(), Stepped = signal(), RenderStepped = signal(), IsServer = function() return false end, IsStudio = function() return false end }
+	elseif name == "CollectionService" then
+		return { GetTagged = function() return {} end, GetInstanceAddedSignal = function() return signal() end, GetInstanceRemovedSignal = function() return signal() end }
 	elseif name == "SoundService" then
 		return roblox.Instance.new("Folder")
 	end
@@ -173,7 +175,7 @@ try("root", function()
 	root = Theme.root(gui)
 end)
 assert(gui.ZIndexBehavior == roblox.Enum.ZIndexBehavior.Sibling, "frames draw over their parents (a window never hides its content)")
-for _, name in { "HUD", "GrowingEggs", "ShopWindow", "BagWindow", "IndexWindow", "StoreWindow", "DailyWindow", "FoodWindow", "GearWindow", "Notify", "Reveal" } do
+for _, name in { "HUD", "GrowingEggs", "ShopWindow", "BagWindow", "IndexWindow", "FuseWindow", "StoreWindow", "DailyWindow", "FoodWindow", "GearWindow", "Notify", "Reveal" } do
 	try(name .. ".mount", function()
 		Loader.require(UI[name]).mount(root)
 	end)
@@ -204,7 +206,7 @@ Store.data = {
 	index = { Cubby = true, Kitty = true, Bunny = true, Bear = true, Fox = true },
 	indexClaimed = {},
 }
-for _, name in { "Bag", "Shop", "Index", "Store", "Daily", "Food", "Gear" } do
+for _, name in { "Bag", "Shop", "Index", "Fuse", "Store", "Daily", "Food", "Gear" } do
 	try("open " .. name, function()
 		assert(Windows.open(name), name .. " is registered")
 	end)

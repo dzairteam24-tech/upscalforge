@@ -25,7 +25,10 @@ local Layout = {
 -- The shops' stalls: a row along the square's north edge, a little apart, their fronts south toward the square
 -- and the gardens (the road to the Wild starts behind them)
 Layout.SHOP_ROW = -40 -- (Z of the stalls' counters)
-Layout.SHOP_SPOTS = { Vector3.new(-26, 0, Layout.SHOP_ROW), Vector3.new(0, 0, Layout.SHOP_ROW), Vector3.new(26, 0, Layout.SHOP_ROW) }
+Layout.SHOP_SPOTS = {}
+for k = 1, 6 do -- (the Fuse Machine, the Trail, Egg, Food and Gear Shops, the Mutation Machine)
+	table.insert(Layout.SHOP_SPOTS, Vector3.new((k - 3.5) * 26, 0, Layout.SHOP_ROW))
+end
 -- Where players appear in the square, facing the stalls (north)
 Layout.SPAWN = CFrame.new(0, 0.2, -4)
 
