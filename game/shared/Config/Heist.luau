@@ -10,5 +10,17 @@ return {
 	WEEKEND_DAYS = { [0] = true, [6] = true }, -- days of the week (UTC, 0 = Sunday) with rounds
 	STEAL_RANGE = 10, -- how close to the carrier a thief must be
 	STEAL_GUARD = 4, -- seconds a new carrier can't be robbed
-	REWARD_EGGS = 2, -- the prize: eggs of the best tier the winner has hatched
+	-- The prize, the same luck for everyone (a new player as much as the strongest): the egg may be empty, or hold
+	-- one egg from the middle tiers up, the better the rarer (out of 100; tier 0 = empty)
+	PRIZES = {
+		{ tier = 0, weight = 25 }, -- empty: no luck this time
+		{ tier = 5, weight = 26 }, -- Cave
+		{ tier = 6, weight = 18 }, -- Desert
+		{ tier = 7, weight = 12 }, -- Snow
+		{ tier = 8, weight = 8 }, -- Volcano
+		{ tier = 9, weight = 6 }, -- Ice
+		{ tier = 10, weight = 4 }, -- Pixel
+		{ tier = 11, weight = 1 }, -- Legendary
+	},
+	ANNOUNCE_TIER = 9, -- a prize this good (or better) is told to the whole server
 }

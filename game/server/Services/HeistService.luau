@@ -28,6 +28,7 @@ local prompt: ProximityPrompt? = nil
 local carrier: Player? = nil
 local guardUntil = 0
 local roundStart = -1
+local rng = Random.new()
 local warned = -1
 
 local function everyone(text: string, kind: string)
@@ -77,23 +78,30 @@ local function endRound(winner: Player?)
 		return
 	end
 	local data = DataService.get(winner)
-	if data then
-		local tier = IslandService.bestTier(data)
-		local key = tostring(tier)
-		data.eggs[key] = (data.eggs[key] or 0) + HeistConfig.REWARD_EGGS
-		IslandService.push(winner)
-		-- (the prize in their hands, from the inventory, to set down on their grass)
-		IslandService.holdEgg(winner, tier, false)
-		local root = rootOf(winner)
-		if root then
-			IslandService.fx("Home", root.Position - Vector3.new(0, 2, 0), Color3.fromRGB(255, 200, 60))
-		end
-		local prize = Hatch.egg(tier)
-		local name = if prize then prize.name else "Egg"
-		IslandService.notify(winner, ("🥚 Home with the Heist Egg! %d× %s in your inventory: click to set one down"):format(HeistConfig.REWARD_EGGS, name), "success")
+	if not data then
+		return
+	end
+	local root = rootOf(winner)
+	-- What's inside: the same luck for everyone (Config/Heist PRIZES)
+	local tier = Heist.prize(rng:NextNumber())
+	local prize = if tier then Hatch.egg(tier) else nil
+	if not tier or not prize then
+		IslandService.notify(winner, "💨 You got it home... but the Heist Egg was empty! Better luck next round", "info")
+		return
+	end
+	local key = tostring(tier)
+	data.eggs[key] = (data.eggs[key] or 0) + 1
+	IslandService.push(winner)
+	IslandService.holdEgg(winner, tier, false) -- (in their hands, from the inventory, to set down on their grass)
+	if root then
+		IslandService.fx("Home", root.Position - Vector3.new(0, 2, 0), prize.color)
+	end
+	local big = tier >= HeistConfig.ANNOUNCE_TIER
+	IslandService.notify(winner, ("🥚 The Heist Egg held a %s! It's in your hands: click to set it down"):format(prize.name), if big then "rare" else "success")
+	if big then
 		for _, player in Players:GetPlayers() do
 			if player ~= winner then
-				IslandService.notify(player, ("🥚 %s brought the Heist Egg home and won %d× %s!"):format(winner.DisplayName, HeistConfig.REWARD_EGGS, name), "rare")
+				IslandService.notify(player, ("🥚 %s's Heist Egg held a %s!"):format(winner.DisplayName, prize.name), "rare")
 			end
 		end
 	end

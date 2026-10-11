@@ -271,6 +271,26 @@ test("the shop: the first egg is always in, rare eggs seldom, and the count stay
 	eq(Stock.restockAt(301), 600)
 end)
 
+test("Heist: its prize is luck, the same for everyone: empty sometimes, mid tiers up, Legendary the rarest", function()
+	local counts: { [number]: number } = {}
+	local empty = 0
+	local n = 20000
+	for i = 0, n - 1 do
+		local tier = Heist.prize((i + 0.5) / n)
+		if tier then
+			assert(tier >= 5 and tier <= 11, "from the middle tiers to Legendary")
+			counts[tier] = (counts[tier] or 0) + 1
+		else
+			empty += 1
+		end
+	end
+	assert(math.abs(empty / n - 0.25) < 0.01, "empty a quarter of the time")
+	assert(counts[11] and math.abs(counts[11] / n - 0.01) < 0.005, "Legendary about 1 in 100")
+	for tier = 6, 11 do
+		assert((counts[tier] or 0) <= (counts[tier - 1] or 0), "the better the rarer")
+	end
+end)
+
 test("Heist: rounds only on weekends, on the clock", function()
 	local saturday = 2 * 86400 -- 3 Jan 1970
 	eq(Heist.weekday(saturday), 6)

@@ -31,4 +31,20 @@ function Heist.nextRound(t: number, always: boolean?): number
 	return start
 end
 
+-- What the Heist Egg holds, for a roll in [0, 1): an egg's tier, or nil when it's empty (Config/Heist PRIZES)
+function Heist.prize(roll: number): number?
+	local total = 0
+	for _, prize in HeistConfig.PRIZES do
+		total += prize.weight
+	end
+	local at = roll * total
+	for _, prize in HeistConfig.PRIZES do
+		at -= prize.weight
+		if at < 0 then
+			return if prize.tier > 0 then prize.tier else nil
+		end
+	end
+	return nil
+end
+
 return Heist
