@@ -231,14 +231,18 @@ test("the bat: a weak bat needs many hits on a strong one, a strong bat few", fu
 	end
 end)
 
-test("an egg pays itself back: a tier's average creature earns its price in under 10 minutes", function()
+test("an egg pays itself back: in under a minute for the first, longer for each better one, within a day", function()
+	local previous = 0
 	for _, egg in Eggs do
 		local average = 0
 		for i, id in egg.creatures do
 			average += Creatures.byId[id].earn * egg.chances[i]
 		end
-		assert(egg.price / average < 600, ("%s pays back in %d s"):format(egg.name, egg.price / average))
+		local payback = egg.price / average
+		assert(payback > previous and payback < 86400, ("%s pays back in %d s"):format(egg.name, payback))
+		previous = payback
 	end
+	assert(Eggs[1].price / 14 < 60, "the first egg in under a minute")
 end)
 
 test("the weather: steady through a window, every kind comes, clear sky most", function()
@@ -367,7 +371,7 @@ test("the Wild: biomes get harder, the treadmill trains speed, eggs 4-8 only com
 	eq(Wild.walk(0), WildConfig.START_SPEED, "a new player walks at the start speed")
 	assert(Wild.walk(1e6) > Wild.walk(1e3) and Wild.walk(1e12) == WildConfig.WALK_MAX, "faster with more ⚡, capped")
 	eq(Wild.gain(1), 1, "the treadmill starts at +1")
-	eq(Wild.gain(2), 2, "then +2")
+	eq(Wild.gain(2), 5, "then +5 (as in Steal an Egg)")
 	local before = 0
 	for level, step in WildConfig.TREADMILL do
 		assert(step.gain > before, "each level gives more")

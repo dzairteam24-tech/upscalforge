@@ -17,13 +17,13 @@ local BIOMES: { Biome } = {
 	-- `tier`: its eggs (Config/Eggs); `need`: the speed (⚡) a player needs to outrun its guardian with an egg
 	-- (Logic/Wild turns it into the guardian's real pace); `theme`: its props (Config/PropLooks zones)
 	{ id = "Meadow", name = "Meadow", tier = 1, need = 0, color = rgb(132, 200, 110), theme = 1 },
-	{ id = "Flower", name = "Flower Field", tier = 2, need = 200, color = rgb(190, 220, 120), theme = 2 },
-	{ id = "Forest", name = "Forest", tier = 3, need = 1000, color = rgb(84, 150, 84), theme = 3 },
-	{ id = "Beach", name = "Beach", tier = 4, need = 5000, color = rgb(240, 222, 160), theme = 4 },
-	{ id = "Cave", name = "Cave", tier = 5, need = 25000, color = rgb(120, 110, 140), theme = 5 },
-	{ id = "Desert", name = "Desert", tier = 6, need = 100000, color = rgb(232, 196, 130), theme = 6 },
-	{ id = "Snow", name = "Snow", tier = 7, need = 400000, color = rgb(230, 240, 250), theme = 7 },
-	{ id = "Volcano", name = "Volcano", tier = 8, need = 1500000, color = rgb(120, 70, 60), theme = 8 },
+	{ id = "Flower", name = "Flower Field", tier = 2, need = 1000, color = rgb(190, 220, 120), theme = 2 },
+	{ id = "Forest", name = "Forest", tier = 3, need = 10000, color = rgb(84, 150, 84), theme = 3 },
+	{ id = "Beach", name = "Beach", tier = 4, need = 100000, color = rgb(240, 222, 160), theme = 4 },
+	{ id = "Cave", name = "Cave", tier = 5, need = 1000000, color = rgb(120, 110, 140), theme = 5 },
+	{ id = "Desert", name = "Desert", tier = 6, need = 10000000, color = rgb(232, 196, 130), theme = 6 },
+	{ id = "Snow", name = "Snow", tier = 7, need = 100000000, color = rgb(230, 240, 250), theme = 7 },
+	{ id = "Volcano", name = "Volcano", tier = 8, need = 1000000000, color = rgb(120, 70, 60), theme = 8 },
 }
 
 return {
@@ -41,13 +41,13 @@ return {
 	GRAB_RANGE = 10, -- how close a player must be to grab a dropped egg
 	RESET = 300, -- every nest gets its egg back this often
 	CARRY = 0.9, -- a player carrying an egg runs this much of their speed
-	-- Speed (⚡) is a big number that grows without end (0, 200, 5K, 1.5M...); how fast the player really walks
+	-- Speed (⚡) is a big number that grows without end (0, 1K, 1M, 1B...); how fast the player really walks
 	-- grows with it slowly (Logic/Wild.walk): START_SPEED studs a second at 0, WALK_PER_DOUBLING more each time
 	-- ⚡ + WALK_BASE doubles, up to WALK_MAX
 	START_SPEED = 24,
-	WALK_BASE = 100,
-	WALK_PER_DOUBLING = 5,
-	WALK_MAX = 110,
+	WALK_BASE = 1000,
+	WALK_PER_DOUBLING = 4.8,
+	WALK_MAX = 120,
 	-- Sprint (Shift, or the button on a phone): walking this many times faster while it's held
 	SPRINT = 2,
 	-- On the floating seat (MoveService) the player goes this many times their own walk, up to SEAT_MAX_SPEED.
@@ -58,15 +58,15 @@ return {
 	-- the player gets their level's ⚡. Its console upgrades it with coins (never Robux: speed isn't sold).
 	TREADMILL = {
 		{ gain = 1, price = 0 },
-		{ gain = 2, price = 500 },
-		{ gain = 5, price = 3000 },
-		{ gain = 10, price = 15000 },
-		{ gain = 25, price = 75000 },
-		{ gain = 50, price = 400000 },
-		{ gain = 100, price = 2000000 },
-		{ gain = 250, price = 10000000 },
-		{ gain = 500, price = 50000000 },
-		{ gain = 1000, price = 250000000 },
+		{ gain = 5, price = 20000 },
+		{ gain = 15, price = 250000 },
+		{ gain = 40, price = 3000000 },
+		{ gain = 100, price = 40000000 },
+		{ gain = 250, price = 500000000 },
+		{ gain = 600, price = 6000000000 },
+		{ gain = 1500, price = 80000000000 },
+		{ gain = 4000, price = 1000000000000 },
+		{ gain = 10000, price = 12000000000000 },
 	},
 	TREADMILL_EVERY = 1,
 }

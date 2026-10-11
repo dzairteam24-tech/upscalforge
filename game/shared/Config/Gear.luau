@@ -12,12 +12,12 @@ end
 
 local BATS: { Bat } = {
 	{ name = "Stick", price = 0, color = rgb(150, 105, 70), material = Enum.Material.Wood },
-	{ name = "Wooden Bat", price = 1500, color = rgb(205, 150, 90), material = Enum.Material.Wood },
-	{ name = "Iron Bat", price = 15000, color = rgb(170, 175, 185), material = Enum.Material.Metal },
-	{ name = "Gold Bat", price = 150000, color = rgb(255, 200, 60), material = Enum.Material.Foil },
-	{ name = "Diamond Bat", price = 1500000, color = rgb(120, 220, 255), material = Enum.Material.Glass },
-	{ name = "Lava Bat", price = 15000000, color = rgb(255, 100, 40), material = Enum.Material.Neon },
-	{ name = "Cosmic Bat", price = 150000000, color = rgb(150, 90, 255), material = Enum.Material.Neon },
+	{ name = "Wooden Bat", price = 50000, color = rgb(205, 150, 90), material = Enum.Material.Wood },
+	{ name = "Iron Bat", price = 2000000, color = rgb(170, 175, 185), material = Enum.Material.Metal },
+	{ name = "Gold Bat", price = 100000000, color = rgb(255, 200, 60), material = Enum.Material.Foil },
+	{ name = "Diamond Bat", price = 5000000000, color = rgb(120, 220, 255), material = Enum.Material.Glass },
+	{ name = "Lava Bat", price = 250000000000, color = rgb(255, 100, 40), material = Enum.Material.Neon },
+	{ name = "Cosmic Bat", price = 10000000000000, color = rgb(150, 90, 255), material = Enum.Material.Neon },
 }
 
 return {
@@ -30,7 +30,7 @@ return {
 
 	-- Traps: bought at the Gear Shop, set down in the Wild. A player carrying an egg who steps on someone else's
 	-- trap is stuck there for a moment (the guardian, or a bat, catches up)
-	TRAP_PRICE = 2500,
+	TRAP_PRICE = 250000,
 	TRAP_MAX_HELD = 10,
 	TRAP_MAX_SET = 3, -- set at once, per player
 	TRAP_TIME = 90, -- seconds a set trap lasts
