@@ -270,12 +270,16 @@ local function addRoamer(model: Instance)
 	if index == 0 then
 		return
 	end
-	local pivot = model:GetPivot()
+	-- Where it starts: the spot the server put it on. (Not its pivot: the model can arrive before its parts, and
+	-- its pivot is then nowhere near the garden, so it would appear far away and walk home.)
+	local spot = model:GetAttribute("Spot")
+	local start = if typeof(spot) == "Vector3" then spot + Vector3.new(0, number(model, "Height") / 2, 0) else model:GetPivot().Position
+	local pivot = if model.PrimaryPart then model:GetPivot() else CFrame.new(start)
 	roamers[model] = {
 		model = model,
 		base = pivot.Rotation,
-		y = pivot.Position.Y,
-		at = pivot.Position,
+		y = start.Y,
+		at = start,
 		target = pastureSpot(index),
 		rest = math.random() * 2,
 		phase = math.random() * 10,
@@ -294,7 +298,8 @@ local function roam(dt: number)
 	local camera = workspace.CurrentCamera
 	local eye = if camera then camera.CFrame.Position else Vector3.zero
 	for model, r in roamers do
-		if (r.at - eye).Magnitude > ANIMATE_RANGE then
+		-- (not until its body is in: moving it by its pivot before that would send its parts astray)
+		if not model.PrimaryPart or (r.at - eye).Magnitude > ANIMATE_RANGE then
 			continue
 		end
 		local flat = Vector3.new(r.target.X, r.y, r.target.Z) - r.at
