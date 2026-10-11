@@ -5,7 +5,7 @@
 export type Creature = {
 	id: string,
 	tier: number, -- the egg it hatches from (Config/Eggs)
-	rarity: string, -- Common, Uncommon, Rare, Epic, Legendary
+	rarity: string, -- Common, Uncommon, Rare, Epic, Legendary, Mythic
 	earn: number, -- coins a second on the island
 	color: Color3, -- the block stand-in's color (without the 3D models)
 	top: string, -- the block stand-in's top piece
@@ -57,16 +57,20 @@ local list: { Creature } = {
 	{ id = "Byte", tier = 10, rarity = "Uncommon", earn = 27000000, color = rgb(142, 91, 217), top = "none", face = "square" },
 	{ id = "Cursor", tier = 10, rarity = "Rare", earn = 110000000, color = rgb(240, 240, 240), top = "none", face = "square" },
 	{ id = "King", tier = 10, rarity = "Epic", earn = 450000000, color = rgb(108, 99, 217), top = "crown", face = "shades" },
-	{ id = "Slime King", tier = 11, rarity = "Legendary", earn = 120000000, color = rgb(107, 227, 107), top = "crown", face = "happy" },
-	{ id = "Blossom Queen", tier = 11, rarity = "Legendary", earn = 150000000, color = rgb(255, 176, 214), top = "crown", face = "sparkle" },
-	{ id = "Elder Treant", tier = 11, rarity = "Legendary", earn = 180000000, color = rgb(120, 84, 56), top = "leaf", face = "round" },
-	{ id = "Kraken", tier = 11, rarity = "Legendary", earn = 210000000, color = rgb(40, 90, 140), top = "crown", face = "angry" },
-	{ id = "Spore Sage", tier = 11, rarity = "Legendary", earn = 250000000, color = rgb(150, 90, 220), top = "cap", face = "sleepy" },
-	{ id = "Pharaoh Scarab", tier = 11, rarity = "Legendary", earn = 300000000, color = rgb(245, 196, 66), top = "horns", face = "sparkle" },
-	{ id = "Aurora Wolf", tier = 11, rarity = "Legendary", earn = 380000000, color = rgb(220, 240, 255), top = "cat", face = "sparkle" },
-	{ id = "Inferno Drake", tier = 11, rarity = "Legendary", earn = 480000000, color = rgb(40, 30, 34), top = "horns", face = "angry" },
-	{ id = "Frost Leviathan", tier = 11, rarity = "Legendary", earn = 620000000, color = rgb(120, 200, 240), top = "unihorn", face = "sparkle" },
-	{ id = "Glitch", tier = 11, rarity = "Legendary", earn = 1000000000, color = rgb(24, 24, 32), top = "halo", face = "square" },
+	{ id = "Slime King", tier = 11, rarity = "Legendary", earn = 1000, color = rgb(107, 227, 107), top = "crown", face = "happy" },
+	{ id = "Blossom Queen", tier = 11, rarity = "Legendary", earn = 5000, color = rgb(255, 176, 214), top = "crown", face = "sparkle" },
+	{ id = "Elder Treant", tier = 11, rarity = "Legendary", earn = 25000, color = rgb(120, 84, 56), top = "leaf", face = "round" },
+	{ id = "Kraken", tier = 11, rarity = "Legendary", earn = 125000, color = rgb(40, 90, 140), top = "crown", face = "angry" },
+	{ id = "Spore Sage", tier = 11, rarity = "Legendary", earn = 620000, color = rgb(150, 90, 220), top = "cap", face = "sleepy" },
+	{ id = "Pharaoh Scarab", tier = 11, rarity = "Legendary", earn = 3100000, color = rgb(245, 196, 66), top = "horns", face = "sparkle" },
+	{ id = "Aurora Wolf", tier = 11, rarity = "Legendary", earn = 16000000, color = rgb(220, 240, 255), top = "cat", face = "sparkle" },
+	{ id = "Inferno Drake", tier = 11, rarity = "Legendary", earn = 78000000, color = rgb(40, 30, 34), top = "horns", face = "angry" },
+	{ id = "Frost Leviathan", tier = 11, rarity = "Legendary", earn = 390000000, color = rgb(120, 200, 240), top = "unihorn", face = "sparkle" },
+	{ id = "Glitch", tier = 11, rarity = "Legendary", earn = 2000000000, color = rgb(24, 24, 32), top = "halo", face = "square" },
+	-- Mythics: the rarest of all, only in the best eggs (Volcano, Ice, Pixel), never in the Legendary Egg
+	{ id = "Molten Titan", tier = 8, rarity = "Mythic", earn = 375000000, color = rgb(40, 28, 30), top = "crown", face = "angry" },
+	{ id = "Star Seraph", tier = 9, rarity = "Mythic", earn = 1900000000, color = rgb(235, 245, 255), top = "halo", face = "sparkle" },
+	{ id = "Void Emperor", tier = 10, rarity = "Mythic", earn = 9400000000, color = rgb(46, 20, 70), top = "crown", face = "square" },
 }
 
 local byId: { [string]: Creature } = {}

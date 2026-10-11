@@ -35,6 +35,7 @@ Theme.RARITY = {
 	Rare = Color3.fromRGB(80, 160, 255),
 	Epic = Color3.fromRGB(176, 110, 255),
 	Legendary = Color3.fromRGB(255, 190, 50),
+	Mythic = Color3.fromRGB(255, 60, 110),
 }
 
 local function lighten(color: Color3, amount: number): Color3

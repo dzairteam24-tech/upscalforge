@@ -719,7 +719,7 @@ local function useIncubator(player: Player, slot: any)
 				local at = if egg.x and egg.z then Layout.garden(index):PointToWorldSpace(Vector3.new(egg.x, 0, egg.z)) else Layout.incubator(index, slot, data.pasture)
 				IslandService.fx("Hatch", at, if mutation ~= "Normal" then Mutations.byId[mutation].color else nil)
 			end
-			if Mutations.byId[mutation].order >= 3 or Creatures.byId[species].rarity == "Legendary" then
+			if Mutations.byId[mutation].order >= 3 or Creatures.byId[species].rarity == "Legendary" or Creatures.byId[species].rarity == "Mythic" then
 				for _, other in Players:GetPlayers() do
 					IslandService.notify(other, ("✨ %s hatched a %s%s!"):format(player.DisplayName, if mutation ~= "Normal" then mutation .. " " else "", species), "rare")
 				end

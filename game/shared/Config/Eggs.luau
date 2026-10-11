@@ -15,20 +15,23 @@ local function rgb(r: number, g: number, b: number): Color3
 	return Color3.fromRGB(r, g, b)
 end
 
+-- The first eggs: Common to Epic. The middle ones add their zone's Legendary; the best ones a Mythic too.
 local COMMON_TO_EPIC = { 0.6, 0.3, 0.09, 0.01 }
+local WITH_LEGENDARY = { 0.58, 0.3, 0.09, 0.025, 0.005 } -- (a Legendary: 1 in 200)
+local WITH_MYTHIC = { 0.57, 0.3, 0.095, 0.03, 0.004, 0.001 } -- (a Mythic: 1 in 1000)
 
 local list: { Egg } = {
 	{ tier = 1, name = "Meadow Egg", color = rgb(123, 201, 111), price = 500, creatures = { "Cubby", "Kitty", "Bunny", "Bear" }, chances = COMMON_TO_EPIC },
 	{ tier = 2, name = "Flower Egg", color = rgb(243, 166, 200), price = 5000, creatures = { "Bee", "Ladybug", "Butterfly", "Uni" }, chances = COMMON_TO_EPIC },
 	{ tier = 3, name = "Forest Egg", color = rgb(78, 154, 91), price = 50000, creatures = { "Fox", "Owl", "Deer", "Sprout" }, chances = COMMON_TO_EPIC },
-	{ tier = 4, name = "Beach Egg", color = rgb(242, 213, 138), price = 500000, creatures = { "Crab", "Turtle", "Dolphin", "Octopus" }, chances = COMMON_TO_EPIC },
-	{ tier = 5, name = "Cave Egg", color = rgb(107, 78, 154), price = 5000000, creatures = { "Mushroom", "Bat", "Glowworm", "Shade" }, chances = COMMON_TO_EPIC },
-	{ tier = 6, name = "Desert Egg", color = rgb(232, 181, 98), price = 50000000, creatures = { "Camel", "Scorpion", "Cactus", "Sphinx" }, chances = COMMON_TO_EPIC },
-	{ tier = 7, name = "Snow Egg", color = rgb(221, 239, 252), price = 500000000, creatures = { "Penguin", "Seal", "Snowman", "Yeti" }, chances = COMMON_TO_EPIC },
-	{ tier = 8, name = "Volcano Egg", color = rgb(201, 71, 46), price = 5000000000, creatures = { "Imp", "Salamander", "Golem", "Phoenix" }, chances = COMMON_TO_EPIC },
-	{ tier = 9, name = "Ice Egg", color = rgb(159, 216, 242), price = 50000000000, creatures = { "Ice Fox", "Narwhal", "Frost Owl", "Ice Dragon" }, chances = COMMON_TO_EPIC },
-	{ tier = 10, name = "Pixel Egg", color = rgb(142, 91, 217), price = 500000000000, creatures = { "Bot", "Byte", "Cursor", "King" }, chances = COMMON_TO_EPIC },
-	{ tier = 11, name = "Legendary Egg", color = rgb(255, 200, 70), price = 10000000000000, creatures = { "Slime King", "Blossom Queen", "Elder Treant", "Kraken", "Spore Sage", "Pharaoh Scarab", "Aurora Wolf", "Inferno Drake", "Frost Leviathan", "Glitch" }, chances = { 0.3, 0.2, 0.14, 0.1, 0.08, 0.06, 0.05, 0.03, 0.02, 0.02 } },
+	{ tier = 4, name = "Beach Egg", color = rgb(242, 213, 138), price = 500000, creatures = { "Crab", "Turtle", "Dolphin", "Octopus", "Kraken" }, chances = WITH_LEGENDARY },
+	{ tier = 5, name = "Cave Egg", color = rgb(107, 78, 154), price = 5000000, creatures = { "Mushroom", "Bat", "Glowworm", "Shade", "Spore Sage" }, chances = WITH_LEGENDARY },
+	{ tier = 6, name = "Desert Egg", color = rgb(232, 181, 98), price = 50000000, creatures = { "Camel", "Scorpion", "Cactus", "Sphinx", "Pharaoh Scarab" }, chances = WITH_LEGENDARY },
+	{ tier = 7, name = "Snow Egg", color = rgb(221, 239, 252), price = 500000000, creatures = { "Penguin", "Seal", "Snowman", "Yeti", "Aurora Wolf" }, chances = WITH_LEGENDARY },
+	{ tier = 8, name = "Volcano Egg", color = rgb(201, 71, 46), price = 5000000000, creatures = { "Imp", "Salamander", "Golem", "Phoenix", "Inferno Drake", "Molten Titan" }, chances = WITH_MYTHIC },
+	{ tier = 9, name = "Ice Egg", color = rgb(159, 216, 242), price = 50000000000, creatures = { "Ice Fox", "Narwhal", "Frost Owl", "Ice Dragon", "Frost Leviathan", "Star Seraph" }, chances = WITH_MYTHIC },
+	{ tier = 10, name = "Pixel Egg", color = rgb(142, 91, 217), price = 500000000000, creatures = { "Bot", "Byte", "Cursor", "King", "Glitch", "Void Emperor" }, chances = WITH_MYTHIC },
+	{ tier = 11, name = "Legendary Egg", color = rgb(255, 200, 70), price = 2000000000000, creatures = { "Slime King", "Blossom Queen", "Elder Treant", "Kraken", "Spore Sage", "Pharaoh Scarab", "Aurora Wolf", "Inferno Drake", "Frost Leviathan", "Glitch" }, chances = { 0.3, 0.2, 0.14, 0.1, 0.08, 0.06, 0.05, 0.03, 0.02, 0.02 } },
 }
 
 return list
