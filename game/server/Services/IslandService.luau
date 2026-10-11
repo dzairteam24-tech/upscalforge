@@ -683,10 +683,10 @@ local function useIncubator(player: Player, slot: any)
 	if not data or type(slot) ~= "number" or slot ~= slot // 1 or slot < 1 or not throttle(player) then
 		return
 	end
-	if not nearPad(player, slot) then
+	local key = tostring(slot)
+	if not data.incubating[key] and not nearPad(player, slot) then -- (an egg hatches from anywhere: Growing Eggs)
 		return
 	end
-	local key = tostring(slot)
 	local machine = Hatch.isMachine(slot)
 	if machine and slot - IslandConfig.MACHINE_SLOT > data.machines then
 		-- Buy the next incubator

@@ -1,7 +1,7 @@
 --!strict
 -- Growing Eggs, as in Steal an Egg: a panel on the right with every egg hatching in the player's garden (on the
 -- grass or in an incubator), each with its bar and the time left (nights count: Logic/Night), and Grow All (the
--- Hatch All Now product, Config/Robux). The > button folds it away; it hides when nothing is hatching.
+-- Hatch All Now product, Config/Robux). A ready egg hatches from anywhere with its HATCH! button. The > button folds it away; it hides when nothing is hatching.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -20,7 +20,7 @@ local GrowingEggs = {}
 local ROW = 58
 local MAX_ROWS = 6
 
-type Row = { frame: Frame, fill: Frame, time: TextLabel, start: number, seconds: number }
+type Row = { frame: Frame, fill: Frame, time: TextLabel, hatch: TextButton, start: number, seconds: number }
 
 function GrowingEggs.mount(gui: Instance)
 	local holder = Instance.new("Frame")
@@ -123,7 +123,14 @@ function GrowingEggs.mount(gui: Instance)
 			fill.Parent = bar
 			local time = Theme.bold(bar, { Size = UDim2.new(1, -8, 1, -6), Position = UDim2.fromOffset(4, 3), MaxText = 24 })
 			bar.Parent = frame
-			rows[key] = { frame = frame, fill = fill, time = time, start = egg.start, seconds = seconds }
+			local slot = tonumber(key) or 1
+			local hatch = Theme.button(frame, "HATCH!", Theme.green, function()
+				Net.event("UseIncubator"):FireServer(slot)
+			end)
+			hatch.Position = bar.Position
+			hatch.Size = bar.Size
+			hatch.Visible = false
+			rows[key] = { frame = frame, fill = fill, time = time, hatch = hatch, start = egg.start, seconds = seconds }
 		end
 		local count = math.min(#keys, MAX_ROWS)
 		holder.Size = UDim2.fromOffset(330, 64 + count * (ROW + 6))
@@ -140,6 +147,7 @@ function GrowingEggs.mount(gui: Instance)
 				local progress = if row.seconds > 0 then math.clamp(Night.growth(row.start, now) / row.seconds, 0, 1) else 1
 				row.fill.Size = UDim2.fromScale(progress, 1)
 				row.time.Text = if left <= 0 then "READY!" else Format.time(math.ceil(left))
+				row.hatch.Visible = left <= 0
 			end
 			task.wait(0.5)
 		end
