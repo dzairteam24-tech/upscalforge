@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Creatures = require(Shared.Config.Creatures)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
@@ -53,26 +54,94 @@ local function billboard(parent: Instance, width: number, height: number, offset
 	return text
 end
 
--- Incubators
+-- Incubators: the egg in each (spotted, bobbing; it wobbles as it gets close, and bounces and sparkles when it's
+-- ready), a bar of how far it's got and what's left, and the owner's prompt
 local EGG_SIZE = Layout.NEST_SIZE * 0.45
-type Pad = { egg: Part, text: TextLabel }
+local SPOTS = { Vector3.new(0.3, 0.32, 0.38), Vector3.new(-0.36, 0.05, 0.36), Vector3.new(0.1, -0.22, 0.48), Vector3.new(-0.15, 0.42, -0.4), Vector3.new(0.42, -0.05, -0.32) }
+type Pad = { egg: Part, spots: { Part }, sparkle: ParticleEmitter, light: PointLight, text: TextLabel, bar: Frame, fill: Frame, progress: number, ready: boolean, has: boolean }
 local pads: { [BasePart]: Pad } = {}
+
+local function eggBar(pad: BasePart): (TextLabel, Frame, Frame)
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromScale(7, 2.2)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 6.5, 0)
+	gui.MaxDistance = 90
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.fromScale(1, 0.55)
+	text.BackgroundTransparency = 1
+	text.TextScaled = true
+	text.Font = Enum.Font.LuckiestGuy
+	text.TextColor3 = Color3.new(1, 1, 1)
+	text.TextStrokeColor3 = Color3.fromRGB(28, 24, 40)
+	text.TextStrokeTransparency = 0
+	text.Parent = gui
+	local bar = Instance.new("Frame")
+	bar.AnchorPoint = Vector2.new(0.5, 0)
+	bar.Position = UDim2.fromScale(0.5, 0.6)
+	bar.Size = UDim2.fromScale(0.8, 0.32)
+	bar.BackgroundColor3 = Color3.fromRGB(28, 24, 40)
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = bar
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(0, 1)
+	fill.BackgroundColor3 = Color3.fromRGB(92, 214, 110)
+	corner:Clone().Parent = fill
+	local shine = Instance.new("UIGradient")
+	shine.Rotation = 90
+	shine.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(200, 200, 200))
+	shine.Parent = fill
+	fill.Parent = bar
+	bar.Parent = gui
+	gui.Parent = pad
+	return text, bar, fill
+end
 
 local function updatePad(pad: BasePart)
 	local entry = pads[pad]
 	if not entry then
-		local egg = Instance.new("Part")
+		local function ball(size: Vector3): Part
+			local p = Instance.new("Part")
+			p.Shape = Enum.PartType.Ball
+			p.Size = size
+			p.Anchored = true
+			p.CanCollide = false
+			p.CanQuery = false
+			p.CanTouch = false
+			p.CastShadow = false
+			return p
+		end
+		local egg = ball(Vector3.one * EGG_SIZE) -- the same for every tier: it fits the nest
 		egg.Name = "IncubatingEgg"
-		egg.Shape = Enum.PartType.Ball
-		egg.Size = Vector3.one * EGG_SIZE -- the same for every tier: it fits the nest
-		egg.Anchored = true
-		egg.CanCollide = false
-		egg.CanQuery = false
+		egg.CastShadow = true
 		local mesh = Instance.new("SpecialMesh")
 		mesh.MeshType = Enum.MeshType.Sphere
 		mesh.Scale = Vector3.new(1, 1.3, 1)
 		mesh.Parent = egg
-		entry = { egg = egg, text = billboard(pad, 7, 1.6, Vector3.new(0, 6.5, 0)) }
+		local spots = {}
+		for i, _ in SPOTS do
+			local spot = ball(Vector3.one * EGG_SIZE * (0.26 - i * 0.02))
+			spot.Name = "EggSpot"
+			spot.Parent = egg
+			table.insert(spots, spot)
+		end
+		local sparkle = Instance.new("ParticleEmitter")
+		sparkle.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		sparkle.Rate = 6
+		sparkle.Lifetime = NumberRange.new(0.8, 1.4)
+		sparkle.Speed = NumberRange.new(1, 3)
+		sparkle.SpreadAngle = Vector2.new(180, 180)
+		sparkle.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0) })
+		sparkle.LightEmission = 0.8
+		sparkle.Enabled = false
+		sparkle.Parent = egg
+		local light = Instance.new("PointLight")
+		light.Range = 10
+		light.Brightness = 1.5
+		light.Enabled = false
+		light.Parent = egg
+		local text, bar, fill = eggBar(pad)
+		entry = { egg = egg, spots = spots, sparkle = sparkle, light = light, text = text, bar = bar, fill = fill, progress = 0, ready = false, has = false }
 		pads[pad] = entry
 	end
 	local pad_ = entry :: Pad
@@ -82,12 +151,28 @@ local function updatePad(pad: BasePart)
 	local tier, start, duration, price = number(pad, "Tier"), number(pad, "Start"), number(pad, "Duration"), number(pad, "Price")
 	pad.Transparency = if open then 0 else 0.6
 	local egg = Hatch.egg(tier)
+	pad_.has = egg ~= nil
 	pad_.egg.Parent = if egg then pad else nil
+	pad_.bar.Visible = false
 	if egg then
 		local golden = pad:GetAttribute("Golden") == true
-		pad_.egg.Color = if golden then Color3.fromRGB(255, 205, 70) else egg.color
+		local color = if golden then Color3.fromRGB(255, 205, 70) else egg.color
+		pad_.egg.Color = color
 		pad_.egg.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
-		pad_.egg.CFrame = CFrame.new(pad.Position + Vector3.new(0, EGG_SIZE * 0.6 + math.sin(os.clock() * 2 + pad.Position.X) * 0.08, 0)) * CFrame.Angles(0, os.clock() * 0.6, 0)
+		for _, spot in pad_.spots do
+			spot.Color = color:Lerp(Color3.new(1, 1, 1), 0.55)
+		end
+		local left = start + duration - now()
+		pad_.progress = if duration > 0 then math.clamp(1 - left / duration, 0, 1) else 1
+		pad_.ready = left <= 0
+		pad_.sparkle.Color = ColorSequence.new(if pad_.ready then Color3.fromRGB(255, 240, 150) else color)
+		pad_.sparkle.Enabled = golden or pad_.ready
+		pad_.sparkle.Rate = if pad_.ready then 14 else 5
+		pad_.light.Color = color
+		pad_.light.Enabled = pad_.ready
+		pad_.bar.Visible = owner ~= 0 and not pad_.ready
+		pad_.fill.Size = UDim2.fromScale(pad_.progress, 1)
+		pad_.fill.BackgroundColor3 = Color3.fromRGB(255, 196, 64):Lerp(Color3.fromRGB(92, 214, 110), pad_.progress)
 	end
 	local action = ""
 	local text = ""
@@ -103,18 +188,51 @@ local function updatePad(pad: BasePart)
 		local left = start + duration - now()
 		if left <= 0 then
 			local weather = Weather.at(start + duration)
-			text = if weather.mutation then ("✅ Ready! %s"):format(weather.icon) else "✅ Ready!"
+			text = if weather.mutation then ("READY! %s"):format(weather.icon) else "READY!"
 			action = "Hatch"
 		else
-			text = "⏳ " .. Format.time(math.ceil(left))
+			text = Format.time(math.ceil(left))
 			action = "Check"
 		end
 	end
 	pad_.text.Text = text
+	pad_.text.TextColor3 = if pad_.has and pad_.ready then Color3.fromRGB(150, 255, 140) else Color3.new(1, 1, 1)
 	local prompt = pad:FindFirstChildOfClass("ProximityPrompt")
 	if prompt then
 		prompt.Enabled = mine and action ~= ""
 		prompt.ActionText = action
+	end
+end
+
+-- Every frame: the eggs near the camera bob and turn; close to hatching they wobble, ready they bounce
+local function animateEggs()
+	local clock = os.clock()
+	local camera = workspace.CurrentCamera
+	local eye = if camera then camera.CFrame.Position else Vector3.zero
+	for pad, entry in pads do
+		if not entry.has or (pad.Position - eye).Magnitude > 120 then
+			continue
+		end
+		local seed = pad.Position.X + pad.Position.Z
+		local lift = EGG_SIZE * 0.6 + math.sin(clock * 2 + seed) * 0.08
+		local tilt = CFrame.identity
+		if entry.ready then
+			lift += math.abs(math.sin(clock * 6 + seed)) * 0.6
+			tilt = CFrame.Angles(0, 0, math.sin(clock * 12 + seed) * 0.12)
+		elseif entry.progress > 0.75 then
+			local strength = (entry.progress - 0.75) / 0.25
+			-- (a shake now and then, more often near the end)
+			local beat = math.sin(clock * (2 + strength * 3) + seed)
+			if beat > 0.7 then
+				tilt = CFrame.Angles(math.sin(clock * 30) * 0.12 * strength, 0, math.sin(clock * 26 + 1) * 0.18 * strength)
+			end
+		end
+		local frame = CFrame.new(pad.Position + Vector3.new(0, lift, 0)) * tilt * CFrame.Angles(0, clock * 0.6 + seed, 0)
+		entry.egg.CFrame = frame
+		for i, spot in entry.spots do
+			local at = SPOTS[i]
+			spot.CFrame = frame * CFrame.new(at.X * EGG_SIZE, at.Y * EGG_SIZE * 1.3, at.Z * EGG_SIZE)
+		end
 	end
 end
 
@@ -186,6 +304,52 @@ local function coinPop(model: Model, amount: number)
 	end)
 end
 
+-- A creature's glow: its mutation's (Golden sparkles, Crystal shimmers, Lava smokes and glows, Neon shines), and
+-- a Legendary's sparkle
+local AURAS: { [string]: { color: Color3, texture: string, rate: number, light: number, rise: number } } = {
+	Golden = { color = Color3.fromRGB(255, 215, 80), texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 4, light = 0, rise = 1 },
+	Crystal = { color = Color3.fromRGB(150, 220, 255), texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 6, light = 1, rise = 1.5 },
+	Lava = { color = Color3.fromRGB(255, 120, 40), texture = "rbxasset://textures/particles/fire_main.dds", rate = 8, light = 2, rise = 3 },
+	Neon = { color = Color3.fromRGB(60, 255, 170), texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 8, light = 3, rise = 2 },
+}
+local function aura(model: Model)
+	local body = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+	if not body or body:FindFirstChild("Aura") then
+		return
+	end
+	local mutation = model:GetAttribute("Mutation")
+	local look = AURAS[if type(mutation) == "string" then mutation else ""]
+	local species = Creatures.byId[tostring(model:GetAttribute("Species"))]
+	if not look and species and species.rarity == "Legendary" then
+		look = { color = Color3.fromRGB(255, 240, 200), texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 3, light = 0, rise = 1 }
+	end
+	if not look then
+		return
+	end
+	local height = number(model, "Height")
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Name = "Aura"
+	emitter.Texture = look.texture
+	emitter.Color = ColorSequence.new(look.color)
+	emitter.LightEmission = 0.7
+	emitter.Rate = look.rate
+	emitter.Lifetime = NumberRange.new(0.8, 1.6)
+	emitter.Speed = NumberRange.new(0.5, 1.5)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Acceleration = Vector3.new(0, look.rise, 0)
+	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, math.max(0.3, height * 0.15)), NumberSequenceKeypoint.new(1, 0) })
+	emitter.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+	emitter.Parent = body
+	if look.light > 0 then
+		local light = Instance.new("PointLight")
+		light.Name = "AuraLight"
+		light.Color = look.color
+		light.Brightness = look.light
+		light.Range = 6 + height * 2
+		light.Parent = body
+	end
+end
+
 local function addRoamer(model: Instance)
 	if not model:IsA("Model") or roamers[model] then
 		return
@@ -194,6 +358,7 @@ local function addRoamer(model: Instance)
 	if index == 0 then
 		return
 	end
+	aura(model)
 	local pivot = model:GetPivot()
 	roamers[model] = {
 		model = model,
@@ -411,6 +576,7 @@ function GardenClient.init()
 	end
 	CollectionService:GetInstanceAddedSignal("IslandCreature"):Connect(addRoamer)
 	RunService.RenderStepped:Connect(roam)
+	RunService.RenderStepped:Connect(animateEggs)
 	RunService.RenderStepped:Connect(function()
 		for _, cube in CollectionService:GetTagged("MotherCube") do
 			if cube:IsA("BasePart") then

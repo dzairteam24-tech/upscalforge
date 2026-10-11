@@ -367,6 +367,7 @@ local function render(index: number, player: Player?, data: Data?)
 				built.model:SetAttribute("Island", index)
 				built.model:SetAttribute("Height", built.height)
 				built.model:SetAttribute("Mutation", creature.m)
+				built.model:SetAttribute("Species", creature.s)
 				built.model:SetAttribute("Grade", creature.g or "")
 				built.model:AddTag("IslandCreature")
 				built.model.Parent = folder
