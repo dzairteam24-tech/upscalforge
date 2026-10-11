@@ -1,0 +1,19 @@
+{
+ "cells": 4,
+ "roles": [
+  [
+   "face",
+   "legs"
+  ],
+  [
+   "body",
+   "eye"
+  ],
+  [
+   "shine"
+  ],
+  [
+   "nose"
+  ]
+ ]
+}

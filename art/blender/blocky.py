@@ -131,7 +131,64 @@ def bear(a):
     a.block("body", (0.3, 0.26, 0.3), (0, 1.12, 1.45), anim="tail")
 
 
-ANIMALS = {"dog": dog, "cat": cat, "bunny": bunny, "bear": bear}
+def chicken(a):
+    # A white hen: a chunky body, a red comb and wattle, a yellow beak, little yellow legs, tail feathers up
+    a.legs(0.16, 0.26, -0.05, 0.25, 0.5)
+    a.block("body", (1.1, 1.3, 0.95), (0, 0.15, 0.95), studs=True)
+    a.pair("wing", (0.14, 0.8, 0.55), (0.6, 0.2, 0.98))
+    a.block("body", (0.8, 0.75, 0.85), (0, -0.55, 1.75), studs=True)  # head
+    a.block("beak", (0.3, 0.3, 0.2), (0, -1.05, 1.72))
+    a.block("comb", (0.16, 0.5, 0.32), (0, -0.55, 2.32))
+    a.block("comb", (0.16, 0.12, 0.24), (0, -0.98, 1.5))  # wattle
+    a.eyes(0.22, -0.94, 1.92, size=0.18)
+    a.block("body", (0.7, 0.3, 0.55), (0, 0.9, 1.45), anim="tail", rotation=(math.radians(-20), 0, 0))
+
+
+def pig(a):
+    # A pink pig: round body, a big snout with nostrils, floppy ears, a curly tail
+    a.legs(0.38, 0.4, -0.55, 0.6, 0.45)
+    a.block("body", (1.35, 1.8, 1.1), (0, 0.05, 1.0), studs=True)
+    a.block("body", (1.2, 0.95, 1.0), (0, -1.0, 1.55), studs=True)  # head
+    a.block("snout", (0.6, 0.25, 0.42), (0, -1.58, 1.4))
+    for s in (-1, 1):
+        a.block("nose", (0.1, 0.04, 0.14), (0.12 * s, -1.72, 1.42))
+        a.block("ear", (0.32, 0.12, 0.34), (0.42 * s, -1.3, 2.05), rotation=(math.radians(25), 0, 0))
+    a.eyes(0.3, -1.48, 1.78, size=0.2)
+    a.block("snout", (0.16, 0.16, 0.3), (0, 1.0, 1.35), anim="tail", rotation=(0, math.radians(35), 0))
+
+
+def sheep(a):
+    # A fluffy sheep: a wool body (studded all over the top), a dark face and legs, little side ears
+    a.legs(0.3, 0.38, -0.5, 0.55, 0.55)
+    a.block("body", (1.45, 1.8, 1.15), (0, 0.05, 1.12), studs=True)
+    a.block("body", (1.25, 0.35, 1.0), (0, -0.85, 1.25))  # wool front
+    a.block("face", (0.8, 0.8, 0.85), (0, -1.15, 1.7))
+    a.block("body", (0.95, 0.6, 0.35), (0, -1.05, 2.25), studs=True)  # wool on the head
+    for s in (-1, 1):
+        a.block("face", (0.36, 0.18, 0.18), (0.55 * s, -1.15, 1.85), rotation=(0, 0, math.radians(-20 * s)))
+    a.eyes(0.2, -1.56, 1.82, size=0.18)
+    a.block("nose", (0.22, 0.04, 0.1), (0, -1.57, 1.5))
+    a.block("body", (0.35, 0.3, 0.35), (0, 1.0, 1.4), anim="tail")
+
+
+def horse(a):
+    # A chestnut horse: long legs and body, a tall neck and long head, a dark mane and tail, a blaze on the nose
+    a.legs(0.34, 0.42, -0.75, 0.75, 1.0)
+    a.block("body", (1.15, 2.3, 0.95), (0, 0.05, 1.45), studs=True)
+    a.block("body", (0.75, 0.6, 1.0), (0, -1.0, 2.2))  # neck
+    a.block("body", (0.8, 1.2, 0.7), (0, -1.5, 2.85), studs=True)  # head
+    a.block("blaze", (0.3, 0.04, 0.5), (0, -2.12, 2.8))
+    a.block("nose", (0.62, 0.3, 0.3), (0, -2.0, 2.62))
+    a.block("mane", (0.2, 0.9, 1.1), (0, -0.85, 2.55))
+    for s in (-1, 1):
+        a.block("body", (0.18, 0.16, 0.36), (0.28 * s, -1.2, 3.35))
+    a.eyes(0.42, -1.9, 3.0, size=0.18)
+    a.block("mane", (0.24, 0.24, 0.95), (0, 1.25, 1.35), anim="tail", rotation=(math.radians(-20), 0, 0))
+    for y in (-0.75, 0.75):
+        a.pair("hoof", (0.36, 0.36, 0.14), (0.42, y, 0.07))
+
+
+ANIMALS = {"dog": dog, "cat": cat, "bunny": bunny, "bear": bear, "chicken": chicken, "pig": pig, "sheep": sheep, "horse": horse}
 
 
 def build(cubelings, spec, mat):

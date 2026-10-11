@@ -21,6 +21,11 @@ local list: { Creature } = {
 	{ id = "Cat", tier = 1, rarity = "Uncommon", earn = 14, color = rgb(245, 154, 60), top = "cat", face = "happy" },
 	{ id = "Bunny", tier = 1, rarity = "Rare", earn = 56, color = rgb(240, 240, 245), top = "bunny", face = "round" },
 	{ id = "Bear", tier = 1, rarity = "Epic", earn = 230, color = rgb(168, 117, 79), top = "round", face = "round" },
+	-- (Meadow has eight, as Steal an Egg's maps do: two of each rarity)
+	{ id = "Chicken", tier = 1, rarity = "Common", earn = 5, color = rgb(250, 250, 245), top = "flame", face = "round" },
+	{ id = "Pig", tier = 1, rarity = "Uncommon", earn = 16, color = rgb(255, 168, 188), top = "round", face = "happy" },
+	{ id = "Sheep", tier = 1, rarity = "Rare", earn = 64, color = rgb(244, 242, 236), top = "round", face = "sleepy" },
+	{ id = "Horse", tier = 1, rarity = "Epic", earn = 260, color = rgb(160, 88, 46), top = "cat", face = "round" },
 	{ id = "Bee", tier = 2, rarity = "Common", earn = 20, color = rgb(245, 210, 70), top = "antenna", face = "round" },
 	{ id = "Ladybug", tier = 2, rarity = "Uncommon", earn = 70, color = rgb(229, 83, 75), top = "antenna", face = "round" },
 	{ id = "Butterfly", tier = 2, rarity = "Rare", earn = 280, color = rgb(185, 166, 245), top = "antenna", face = "sparkle" },

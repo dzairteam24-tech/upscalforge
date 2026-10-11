@@ -94,7 +94,7 @@ function IndexWindow.mount(gui: Instance)
 			return
 		end
 		local pageGot, pageAll = Index.progress(found, tier)
-		local columns = if pageAll > 4 then 5 else 4
+		local columns = if pageAll == 8 or pageAll <= 4 then 4 else 5
 		local rows = math.ceil(pageAll / columns)
 		Theme.bold(page, { Text = egg.name, Size = UDim2.new(0.66, 0, 0, 34), TextColor3 = egg.color, TextXAlignment = Enum.TextXAlignment.Left, MaxText = 32 })
 		-- The creatures

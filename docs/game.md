@@ -102,7 +102,7 @@
 ## المخلوقات الجدد (ستايل Steal an Egg)
 
 - حيوانات حقيقية مصنوعة **بالبلوكات** مع نقاط Lego فوقهم (`art/blender/blocky.py`).
-- **Meadow (مفتوحة):** 🐶 **Dog** (Common)، 🐱 **Cat** (Uncommon)، 🐰 **Bunny** (Rare)، 🐻 **Bear** (Epic). الحفظات القدام يتبدلو وحدهم (Cubby → Dog، Kitty → Cat).
+- **8 مخلوقات في كل ماب** كيما تاعهم، زوج من كل ندرة. **Meadow (مفتوحة):** Common: 🐶 **Dog** (4/s، 32%)، 🐔 **Chicken** (5/s، 28%)؛ Uncommon: 🐱 **Cat** (14/s، 16%)، 🐷 **Pig** (16/s، 14%)؛ Rare: 🐰 **Bunny** (56/s، 5%)، 🐑 **Sheep** (64/s، 4%)؛ Epic: 🐻 **Bear** (230/s، 0.6%)، 🐴 **Horse** (260/s، 0.4%). الحفظات القدام يتبدلو وحدهم (Cubby → Dog، Kitty → Cat).
 - **الماب الأخرى: 🔒 Coming Soon** (`Config/Island` → `OPEN_TIER = 1`): البيض تاعهم ما يتباعش، المناطق في البرية مسكّرة بحيط مكتوب عليه COMING SOON (بلا عشوش وبلا حراس)، صفحاتهم في الـ Index مسكّرة، والجوايز (Heist، Mother Cube) تعطي بيض Meadow. كي نكملو ماب، نزيدو `OPEN_TIER` بواحد.
 
 ## الندرة في كل ماب

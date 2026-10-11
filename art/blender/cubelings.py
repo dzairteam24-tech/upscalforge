@@ -57,6 +57,26 @@ SPECIES = {
         "animal": "bunny",
         "colors": {"body": "#F7F6FB", "belly": "#FFFFFF", "legs": "#E4E2EE", "ear_inner": "#FFB3C6", "nose": "#FF7FA0", "tail": "#FFFFFF", "eye": "#2A1E28", "shine": "#FFFFFF"},
     },
+    "Chicken": {
+        "style": "blocky",
+        "animal": "chicken",
+        "colors": {"body": "#FAFAF5", "legs": "#F5B82E", "wing": "#ECECE4", "beak": "#F5B82E", "comb": "#E5373A", "eye": "#1A1410", "shine": "#FFFFFF"},
+    },
+    "Pig": {
+        "style": "blocky",
+        "animal": "pig",
+        "colors": {"body": "#FFA8BC", "legs": "#F08CA4", "snout": "#FF8FAB", "nose": "#B5536B", "ear": "#F07C98", "eye": "#24141A", "shine": "#FFFFFF"},
+    },
+    "Sheep": {
+        "style": "blocky",
+        "animal": "sheep",
+        "colors": {"body": "#F4F2EC", "face": "#3A302C", "legs": "#3A302C", "nose": "#1A1412", "eye": "#F4F2EC", "shine": "#FFFFFF"},
+    },
+    "Horse": {
+        "style": "blocky",
+        "animal": "horse",
+        "colors": {"body": "#A0582E", "legs": "#8A4A26", "mane": "#3A2418", "blaze": "#FFFFFF", "nose": "#6E3A1E", "hoof": "#2A1A12", "eye": "#140C08", "shine": "#FFFFFF"},
+    },
     "Bear": {
         "style": "blocky",
         "animal": "bear",

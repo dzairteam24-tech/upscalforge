@@ -77,8 +77,8 @@ test("hatching: the chances come out about right, and the weather sets the least
 		end)
 		counts[creature] = (counts[creature] or 0) + 1
 	end
-	assert(counts.Dog > 11000 and counts.Dog < 13000, "Dog about 60%: " .. counts.Dog)
-	assert((counts.Bear or 0) > 100 and (counts.Bear or 0) < 320, "Bear about 1%: " .. tostring(counts.Bear))
+	assert(counts.Dog > 5900 and counts.Dog < 6900, "Dog about 32%: " .. counts.Dog)
+	assert((counts.Bear or 0) > 60 and (counts.Bear or 0) < 200, "Bear about 0.6%: " .. tostring(counts.Bear))
 	for _ = 1, 200 do
 		local _, mutation = Hatch.roll(3, function()
 			return rng:NextNumber()
@@ -313,16 +313,16 @@ end)
 
 test("Index: a page is complete when all its egg's creatures are found, and its reward claimed once", function()
 	local Index = R(Shared.Logic.Index)
-	local found: { [string]: boolean } = { Dog = true, Cat = true, Bunny = true }
+	local found: { [string]: boolean } = { Dog = true, Chicken = true, Cat = true, Pig = true, Bunny = true, Sheep = true, Horse = true }
 	local got, all = Index.progress(found, 1)
-	eq(got, 3)
-	eq(all, 4)
+	eq(got, 7)
+	eq(all, 8)
 	assert(Index.claimable(found, {}, 1) == nil, "not before the last one")
 	found.Bear = true
 	assert(Index.claimable(found, {}, 1), "complete: claimable")
 	assert(Index.claimable(found, { ["1"] = true }, 1) == nil, "only once")
 	local total, every = Index.total(found)
-	eq(total, 4)
+	eq(total, 8)
 	assert(every >= 40, "every creature of every egg")
 end)
 
