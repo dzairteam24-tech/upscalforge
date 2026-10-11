@@ -13,6 +13,7 @@ local Creatures = require(Shared.Config.Creatures)
 local DailyConfig = require(Shared.Config.Daily)
 local FoodConfig = require(Shared.Config.Food)
 local IslandConfig = require(Shared.Config.Island)
+local MutateConfig = require(Shared.Config.Mutate)
 local Mutations = require(Shared.Config.Mutations)
 local SnapConfig = require(Shared.Config.Snap)
 local WildConfig = require(Shared.Config.Wild)
@@ -21,6 +22,7 @@ local Food = require(Shared.Logic.Food)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
+local Mutate = require(Shared.Logic.Mutate)
 local Night = require(Shared.Logic.Night)
 local Snap = require(Shared.Logic.Snap)
 local Weather = require(Shared.Logic.Weather)
@@ -837,6 +839,38 @@ local function feed(player: Player)
 	IslandService.push(player)
 end
 
+-- The Mutation Machine (Config/Mutate): a creature's mutation one step up, for coins, once the player is fast
+-- enough
+local function mutate(player: Player, id: any)
+	local data = DataService.get(player)
+	if not data or type(id) ~= "string" or not throttle(player) then
+		return
+	end
+	local creature = data.creatures[id]
+	if not creature then
+		return
+	end
+	if not Mutate.open(data.power) then
+		IslandService.notify(player, ("Locked: the Mutation Machine opens at ⚡ %s"):format(Format.abbrev(MutateConfig.UNLOCK)), "error")
+		return
+	end
+	local nextMutation = Mutate.next(creature.m)
+	if not nextMutation then
+		IslandService.notify(player, "That's the best mutation there is", "error")
+		return
+	end
+	local price = Mutate.price(creature)
+	if data.coins < price then
+		IslandService.notify(player, ("You need 🪙 %s"):format(Format.abbrev(price)), "error")
+		return
+	end
+	data.coins -= price
+	creature.m = nextMutation
+	Net.event("Hatched"):FireClient(player, id, creature.s, creature.m, creature.g)
+	IslandService.render(player)
+	IslandService.push(player)
+end
+
 -- Cube Snap (Config/Snap): four matching creatures become one Mega, four Megas one Rainbow
 local function snap(player: Player, id: any)
 	local data = DataService.get(player)
@@ -923,6 +957,7 @@ function IslandService.init()
 	end
 	DataService.onLoaded(assign)
 	Net.event("Snap").OnServerEvent:Connect(snap)
+	Net.event("Mutate").OnServerEvent:Connect(mutate)
 	Net.event("ClaimDaily").OnServerEvent:Connect(claimDaily)
 	Players.PlayerRemoving:Connect(function(player)
 		release(player)

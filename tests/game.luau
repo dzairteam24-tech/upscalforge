@@ -326,6 +326,17 @@ test("Index: a page is complete when all its egg's creatures are found, and its 
 	assert(every >= 40, "every creature of every egg")
 end)
 
+test("Mutation Machine: one step up at a time, Neon the top, priced by what the creature earns, locked until fast", function()
+	local Mutate = R(Shared.Logic.Mutate)
+	local MutateConfig = R(Shared.Config.Mutate)
+	eq(Mutate.next("Normal"), "Golden")
+	eq(Mutate.next("Lava"), "Neon")
+	eq(Mutate.next("Neon"), nil)
+	local bear = { s = "Bear", m = "Normal" }
+	eq(Mutate.price(bear), math.floor(Earn.rate(bear) * MutateConfig.COST_SECONDS))
+	assert(not Mutate.open(MutateConfig.UNLOCK - 1) and Mutate.open(MutateConfig.UNLOCK), "opens at its speed")
+end)
+
 test("Heist: rounds only on weekends, on the clock", function()
 	local saturday = 2 * 86400 -- 3 Jan 1970
 	eq(Heist.weekday(saturday), 6)

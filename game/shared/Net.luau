@@ -24,6 +24,7 @@ local EVENTS = {
 	"BuyTrap",
 	"ClaimDaily", -- the egg for doing all of today's tasks
 	"ClaimIndex", -- (egg tier): a complete Index page's reward
+	"Mutate", -- (creature id): its mutation one step up at the Mutation Machine
 	"BuyTrail", -- (trail id): buy it, or wear it if it's theirs (TrailService)
 	"BuyRobux", -- ("FastHatch", "HatchAll" or "Seat:<name>"): the Robux shop (RobuxService)
 	"Sprint", -- (on)
