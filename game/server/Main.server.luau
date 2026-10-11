@@ -4,10 +4,12 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Layout = require(Shared.Logic.Layout)
 local Net = require(Shared.Net)
 
 local Services = script.Parent.Services
 local ArtService = require(Services.ArtService)
+local CarryService = require(Services.CarryService)
 local DataService = require(Services.DataService)
 local GearService = require(Services.GearService)
 local HeistService = require(Services.HeistService)
@@ -32,6 +34,7 @@ HeistService.init()
 MotherService.init()
 WildService.init()
 MoveService.init()
+CarryService.init()
 GearService.init()
 IndexService.init()
 RobuxService.init()
@@ -55,7 +58,7 @@ task.spawn(function()
 			local character = player.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if root and root.Position.Y < -40 then
-				root.CFrame = CFrame.new(0, 5, 16)
+				root.CFrame = Layout.SPAWN + Vector3.new(0, 5, 0)
 				root.AssemblyLinearVelocity = Vector3.zero
 			end
 		end

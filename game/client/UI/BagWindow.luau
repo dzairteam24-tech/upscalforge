@@ -1,8 +1,8 @@
 --!strict
 -- The bag, in three tabs. Eggs: each kind the player holds as a card with the egg in 3D, to set down on
 -- the grass where they stand (as its tool in the inventory does). Creatures: a card for each, its model in 3D,
--- colored by rarity, with its mutation, what it earns, and buttons to put it in the garden or take it back and to
--- sell it (tap twice); the snaps ready on top. Garden: room for more eggs on the grass, creatures in the garden,
+-- colored by rarity, with its mutation, what it earns, what it sells for, and a button to put it in the garden
+-- or take it back to the inventory (selling is at the Sell pad in the square: CarryService). Garden: room for more eggs on the grass, creatures in the garden,
 -- the storage barn and the pasture.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -170,24 +170,9 @@ function BagWindow.mount(gui: Instance)
 			toggle.AnchorPoint = Vector2.new(0, 1)
 			toggle.Position = UDim2.new(0, 8, 1, -8)
 			toggle.Size = UDim2.new(0.6, -12, 0, 34)
-			-- (selling takes two taps)
-			local sure = false
-			local sell: TextButton
-			sell = Theme.button(card, "💰", Theme.red, function()
-				if sure then
-					Net.event("SellCreature"):FireServer(entry.id)
-					return
-				end
-				sure = true
-				sell.Text = Format.abbrev(Earn.sellPrice(creature))
-				task.delay(2.5, function()
-					sure = false
-					sell.Text = "💰"
-				end)
-			end)
-			sell.AnchorPoint = Vector2.new(1, 1)
-			sell.Position = UDim2.new(1, -8, 1, -8)
-			sell.Size = UDim2.new(0.4, -4, 0, 34)
+			-- (what it sells for, at the Sell pad in the square: carried there from the inventory)
+			local worth = Theme.bold(card, { Text = "💰" .. Format.abbrev(Earn.sellPrice(creature)), Size = UDim2.new(0.4, -4, 0, 34), Position = UDim2.new(1, -8, 1, -8), TextColor3 = Color3.fromRGB(255, 220, 90), MaxText = 18 })
+			worth.AnchorPoint = Vector2.new(1, 1)
 		end
 	end
 

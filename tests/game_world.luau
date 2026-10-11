@@ -120,7 +120,8 @@ for index = 1, IslandConfig.ISLANDS do
 	assert(math.abs(Layout.TROUGH.X) - 3 >= Layout.PATH_WIDTH / 2, "the trough off the path")
 	local center = Layout.garden(index).Position
 	local gate = Layout.gate(index).Position
-	assert(center.Z > Layout.CENTER.Z + Layout.SQUARE_RADIUS, "south of the square")
+	assert(center.Z > Layout.CENTER.Z, "south of the square")
+	assert((center - Layout.CENTER).Magnitude > Layout.SQUARE_RADIUS + Layout.GARDEN_SIZE, "well away from the square (the Safe Zone)")
 	assert((gate - Layout.CENTER).Magnitude < (center - Layout.CENTER).Magnitude - Layout.GARDEN_SIZE / 2 + 0.01, "its gate toward the square")
 	assert((gate - Layout.CENTER).Magnitude > Layout.GARDEN_ROAD_RADIUS + Layout.ROAD_WIDTH_TOWN / 2, "past the arc road")
 	-- (its corners, its treadmill and its pasture grown all the way in nobody else's garden)

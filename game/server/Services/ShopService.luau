@@ -1,6 +1,6 @@
 --!strict
 -- The Egg Shop in town: eggs in stock (Logic/Stock, the same in every server, restocked every few minutes)
--- to buy with coins, and creatures to sell back for coins. When a restock brings a rare egg, the whole server
+-- to buy with coins (creatures are sold at the Sell pad: CarryService). When a restock brings a rare egg, the whole server
 -- hears about it.
 
 local Players = game:GetService("Players")
@@ -56,27 +56,6 @@ local function buyEgg(player: Player, tier: any)
 	IslandService.push(player)
 end
 
-local function sell(player: Player, id: any)
-	local data = DataService.get(player)
-	if not data or type(id) ~= "string" then
-		return
-	end
-	local creature = data.creatures[id]
-	if not creature then
-		return
-	end
-	local price = Earn.sellPrice(creature)
-	data.creatures[id] = nil
-	local at = table.find(data.placed, id)
-	if at then
-		table.remove(data.placed, at)
-		IslandService.render(player)
-	end
-	data.coins += price
-	IslandService.notify(player, ("Sold %s for 🪙 %s"):format(creature.s, Format.abbrev(price)), "success")
-	IslandService.push(player)
-end
-
 -- The Food Shop: food for the trough, priced on what the player's garden earns
 local function buyFood(player: Player, id: any)
 	local data = DataService.get(player)
@@ -99,7 +78,6 @@ end
 function ShopService.init()
 	Net.event("BuyFood").OnServerEvent:Connect(buyFood)
 	Net.event("BuyEgg").OnServerEvent:Connect(buyEgg)
-	Net.event("SellCreature").OnServerEvent:Connect(sell)
 	-- Rare eggs in the new stock, told to everyone
 	task.spawn(function()
 		local seen = Stock.window(os.time())

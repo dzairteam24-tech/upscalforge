@@ -7,7 +7,6 @@ local RunService = game:GetService("RunService")
 local EVENTS = {
 	-- client -> server
 	"BuyEgg", -- (tier)
-	"SellCreature", -- (id)
 	"PlaceCreature", -- (id)
 	"TakeCreature", -- (id)
 	"UseIncubator", -- (slot)

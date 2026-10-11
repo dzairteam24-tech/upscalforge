@@ -48,6 +48,11 @@ local rng = Random.new()
 
 -- Told when a player's speed (data.power) changed here (WildService sets it: their walk follows)
 function IslandService.powerChanged(_player: Player) end
+-- Set by CarryService: the creatures in the inventory (hotbar) made again, and whether one lies on the ground
+function IslandService.toolsChanged(_player: Player, _data: Data) end
+function IslandService.isAway(_player: Player, _id: string): boolean
+	return false
+end
 
 function IslandService.notify(player: Player, text: string, kind: string?)
 	Net.event("Notify"):FireClient(player, text, kind or "info")
@@ -133,6 +138,7 @@ function IslandService.push(player: Player)
 	if data then
 		local ok, err = pcall(function()
 			eggTools(player, data)
+			IslandService.toolsChanged(player, data)
 		end)
 		if not ok then
 			warn("[Island] Couldn't give the egg tools", player.Name, err)
@@ -248,7 +254,7 @@ function IslandService.bestFood(data: Data): FoodConfig.Food?
 	return nil
 end
 
--- Adds a hatched creature (it moves onto the island if there's room); nil when the player's storage is full
+-- Adds a hatched creature (into the inventory, after the bat: CarryService); nil when the player's storage is full
 function IslandService.addCreature(player: Player, data: Data, species: string, mutation: string): string?
 	local count = 0
 	for _ in data.creatures do
@@ -269,9 +275,6 @@ function IslandService.addCreature(player: Player, data: Data, species: string, 
 		data.power += reward.power
 		IslandService.powerChanged(player)
 		IslandService.notify(player, ("📖 New in your Index: %s! +🪙 %s +⚡ %s"):format(species, Format.abbrev(reward.coins), Format.abbrev(reward.power)), "success")
-	end
-	if #data.placed < data.pens then
-		table.insert(data.placed, id)
 	end
 	return id
 end
@@ -722,6 +725,7 @@ local function useIncubator(player: Player, slot: any)
 			data.incubating[key] = nil
 			DailyService.add(player, "hatch")
 			Net.event("Hatched"):FireClient(player, id, species, mutation)
+			IslandService.notify(player, ("🐾 Your %s is in your inventory: set it down in your garden, or sell it at the 💰 Sell pad"):format(species), "info")
 			local index = islandOf[player]
 			if index then
 				local at = if egg.x and egg.z then Layout.garden(index):PointToWorldSpace(Vector3.new(egg.x, 0, egg.z)) else Layout.incubator(index, slot, data.pasture)
@@ -748,9 +752,9 @@ local function useIncubator(player: Player, slot: any)
 	IslandService.push(player)
 end
 
-local function place(player: Player, id: any)
+function IslandService.place(player: Player, id: any)
 	local data = DataService.get(player)
-	if not data or type(id) ~= "string" or not data.creatures[id] or table.find(data.placed, id) then
+	if not data or type(id) ~= "string" or not data.creatures[id] or table.find(data.placed, id) or IslandService.isAway(player, id) then
 		return
 	end
 	if #data.placed >= data.pens then
@@ -890,6 +894,12 @@ local function snap(player: Player, id: any)
 		IslandService.notify(player, ("You need %d matching creatures to fuse"):format(SnapConfig.NEED), "error")
 		return
 	end
+	for _, other in group do
+		if IslandService.isAway(player, other) then
+			IslandService.notify(player, "One of them is lying on the ground: grab it back first", "error")
+			return
+		end
+	end
 	local wasPlaced = false
 	for _, other in group do
 		data.creatures[other] = nil
@@ -902,7 +912,7 @@ local function snap(player: Player, id: any)
 	local newId = tostring(data.nextId)
 	data.nextId += 1
 	data.creatures[newId] = { s = made.s, m = made.m, g = made.g }
-	if wasPlaced or #data.placed < data.pens then
+	if wasPlaced then
 		table.insert(data.placed, newId)
 	end
 	Net.event("Hatched"):FireClient(player, newId, made.s, made.m, made.g)
@@ -979,7 +989,7 @@ function IslandService.init()
 	end)
 	task.spawn(countFriends)
 	Net.event("UseIncubator").OnServerEvent:Connect(useIncubator)
-	Net.event("PlaceCreature").OnServerEvent:Connect(place)
+	Net.event("PlaceCreature").OnServerEvent:Connect(IslandService.place)
 	Net.event("TakeCreature").OnServerEvent:Connect(take)
 	Net.event("BuyPen").OnServerEvent:Connect(buyPen)
 	Net.event("BuyStorage").OnServerEvent:Connect(buyStorage)
