@@ -159,5 +159,16 @@ for _ in data.incubating do
 end
 assert(down == 2, "the egg is down on the grass: " .. down)
 assert(data.eggs["1"] == 0, "and out of the inventory")
+-- The pasture grown all the way: the incubators move back with it, to its back edge
+local top = #(Loader.require(Shared.Config.Island)).PASTURE_GROWTH
+data.pasture = top
+IslandService.render(player :: any)
+for _, d in island:GetDescendants() do
+	if d:IsA("BasePart") and d:GetAttribute("Machine") then
+		local want = Layout.incubator(1, d:GetAttribute("Slot"), top)
+		local got = d.CFrame.Position -- (Lune's parts only know their CFrame)
+		assert(math.abs(got.X - want.X) < 0.01 and math.abs(got.Z - want.Z) < 0.01, "an incubator at the grown pasture's back")
+	end
+end
 print("island test passed")
 require("@lune/process").exit(0)

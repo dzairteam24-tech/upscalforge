@@ -109,6 +109,12 @@ for index = 1, IslandConfig.ISLANDS do
 		assert(inside(spot, Layout.PASTURE), ("incubator %d at the back, in the pasture"):format(k))
 		local local_ = frame:PointToObjectSpace(spot)
 		assert((local_ - Layout.BARN).Magnitude > 9, "clear of the barn")
+		-- (and at every level, at the back edge of the pasture grown that far)
+		for level = 1, #IslandConfig.PASTURE_GROWTH do
+			local center, size = Layout.pastureArea(level)
+			local grown = frame:PointToObjectSpace(Layout.incubator(index, IslandConfig.MACHINE_SLOT + k, level))
+			assert(math.abs(center.Z + size.Z / 2 - grown.Z) < 12, ("incubator %d at the back at level %d"):format(k, level))
+		end
 	end
 	assert(inside(frame:PointToWorldSpace(Layout.TROUGH), Layout.PASTURE) and inside(frame:PointToWorldSpace(Layout.BARN), Layout.PASTURE), "the trough and the barn in the pasture")
 	assert(math.abs(Layout.TROUGH.X) - 3 >= Layout.PATH_WIDTH / 2, "the trough off the path")

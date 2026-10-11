@@ -252,6 +252,22 @@ local function render(index: number, player: Player?, data: Data?)
 	-- The pasture as far as the owner has grown it
 	local level = if data then data.pasture else 1
 	island:SetAttribute("Pasture", level)
+	-- (the incubators and the barn always at its back edge)
+	local back = island:FindFirstChild("Back")
+	if back then
+		local shift = Layout.backShift(level).Z
+		local was = back:GetAttribute("Shift")
+		local delta = shift - (if type(was) == "number" then was else 0)
+		if delta ~= 0 then
+			local move = Layout.garden(index):VectorToWorldSpace(Vector3.new(0, 0, delta))
+			for _, p in back:GetDescendants() do
+				if p:IsA("BasePart") then
+					p.CFrame += move
+				end
+			end
+			back:SetAttribute("Shift", shift)
+		end
+	end
 	local growing: { Instance } = if drawnLevel[index] == level then {} else island:GetDescendants()
 	for _, d in growing do
 		local grow = d:GetAttribute("Grow")
@@ -640,7 +656,7 @@ local function useIncubator(player: Player, slot: any)
 			Net.event("Hatched"):FireClient(player, id, species, mutation)
 			local index = islandOf[player]
 			if index then
-				local at = if egg.x and egg.z then Layout.garden(index):PointToWorldSpace(Vector3.new(egg.x, 0, egg.z)) else Layout.incubator(index, slot)
+				local at = if egg.x and egg.z then Layout.garden(index):PointToWorldSpace(Vector3.new(egg.x, 0, egg.z)) else Layout.incubator(index, slot, data.pasture)
 				IslandService.fx("Hatch", at, if mutation ~= "Normal" then Mutations.byId[mutation].color else nil)
 			end
 			if Mutations.byId[mutation].order >= 3 or Creatures.byId[species].rarity == "Legendary" then

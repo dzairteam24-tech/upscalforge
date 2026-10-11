@@ -88,17 +88,26 @@ for k = 1, #IslandConfig.MACHINE_PRICES do
 	table.insert(Layout.MACHINES, Vector3.new(-HALF + 12 + (k - 1) * 11, 0, HALF - 9))
 end
 
--- What the creatures walk round (a spot in the garden's space and how far from it to keep)
+-- The barn and the incubators stand at the back of the pasture: as it grows back (pastureGrowth), they move back
+-- with it, always at the back edge. These spots (Layout.BARN, Layout.MACHINES) are at the first level.
+function Layout.backShift(level: number?): Vector3
+	return Vector3.new(0, 0, Layout.pastureGrowth(level or 1))
+end
+
+-- What the creatures walk round (a spot in the garden's space and how far from it to keep; `back`: it moves
+-- back with the pasture)
 Layout.OBSTACLES = {
-	{ center = Layout.TROUGH, radius = 4 },
-	{ center = Layout.BARN, radius = 7 },
+	{ center = Layout.TROUGH, radius = 4, back = false },
+	{ center = Layout.BARN, radius = 7, back = true },
 }
 for _, spot in Layout.MACHINES do
-	table.insert(Layout.OBSTACLES, { center = spot, radius = 5 })
+	table.insert(Layout.OBSTACLES, { center = spot, radius = 5, back = true })
 end
-function Layout.blocked(inside: Vector3): boolean
+function Layout.blocked(inside: Vector3, level: number?): boolean
+	local shift = Layout.backShift(level)
 	for _, obstacle in Layout.OBSTACLES do
-		if Vector3.new(inside.X - obstacle.center.X, 0, inside.Z - obstacle.center.Z).Magnitude < obstacle.radius then
+		local center = if obstacle.back then obstacle.center + shift else obstacle.center
+		if Vector3.new(inside.X - center.X, 0, inside.Z - center.Z).Magnitude < obstacle.radius then
 			return true
 		end
 	end
@@ -122,12 +131,12 @@ Layout.START_SPOT = NESTS[1]
 -- `level`, clear of the trough, the barn and the incubators
 function Layout.eggSpot(inside: Vector3, level: number): boolean
 	local back = HALF + Layout.pastureGrowth(level) - 3
-	return math.abs(inside.X) <= HALF - 3 and inside.Z >= -HALF + 3 and inside.Z <= back and not Layout.blocked(inside)
+	return math.abs(inside.X) <= HALF - 3 and inside.Z >= -HALF + 3 and inside.Z <= back and not Layout.blocked(inside, level)
 end
 
-function Layout.incubator(index: number, slot: number): Vector3
+function Layout.incubator(index: number, slot: number, level: number?): Vector3
 	if slot > IslandConfig.MACHINE_SLOT then
-		return Layout.garden(index):PointToWorldSpace(Layout.MACHINES[slot - IslandConfig.MACHINE_SLOT])
+		return Layout.garden(index):PointToWorldSpace(Layout.MACHINES[slot - IslandConfig.MACHINE_SLOT] + Layout.backShift(level))
 	end
 	return Layout.garden(index):PointToWorldSpace(NESTS[slot])
 end
