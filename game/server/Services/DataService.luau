@@ -4,6 +4,7 @@
 -- data that isn't saved.
 
 local DataStoreService = game:GetService("DataStoreService")
+local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -46,6 +47,8 @@ export type Data = {
 local DataService = {}
 
 local STORE_NAME = "CubelingsNest_v1"
+-- (testing in Studio with test coins: nothing is saved)
+local TESTING = RunService:IsStudio() and IslandConfig.STUDIO_COINS > 0
 local SAVE_EVERY = 60
 
 local store: DataStore? = nil
@@ -131,6 +134,9 @@ local function load(player: Player)
 	if data.firstPlayed == 0 then
 		data.firstPlayed = os.time()
 	end
+	if TESTING then
+		data.coins = math.max(data.coins, IslandConfig.STUDIO_COINS)
+	end
 	if player.Parent then
 		loaded[player] = data
 		for _, fn in onLoaded do
@@ -141,7 +147,7 @@ end
 
 function DataService.save(player: Player)
 	local data = loaded[player]
-	if not data or not store then
+	if not data or not store or TESTING then
 		return
 	end
 	data.lastSeen = os.time()

@@ -5,6 +5,9 @@
 return {
 	ISLANDS = 6, -- one per player (a server holds 6)
 	START_COINS = 150,
+	-- Testing in Studio only: every player starts the session with this many coins (0: off). Studio then doesn't
+	-- save, so the test coins never reach the real game's saves.
+	STUDIO_COINS = 500000000,
 	INCUBATORS = 3, -- a new island has this many...
 	INCUBATOR_PRICES = { -- ...and the 4th, 5th... (up to 16) cost this
 		1000, 5000, 15000, 50000, 150000, 500000, 1500000, 5000000, 15000000, 50000000, 150000000, 500000000, 1500000000,

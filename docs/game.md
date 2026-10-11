@@ -110,6 +110,8 @@
 - **البيض في الحشيش:** بيضة بسيطة تطلع وتهبط، تتهز كي تقرب تفقس، وتنقز كي تكون واجدة؛ فوقها شريط تقدم (من الأصفر للأخضر) والوقت.
 
 ## الإعدادات
+
+- **التجربة في Studio:** كل لاعب يبدا بـ **500M 🪙** (`Config/Island` → `STUDIO_COINS`، 0 = بلا)، و Studio ما يسجّلش (باش الدراهم تاع التجربة ما يوصلوش للعبة الحقيقية).
 - `game/shared/Config/`: `Creatures`، `Eggs`، `Mutations`، `Weather`، `Island`، `Shop`، `Heist`، `Wild`، `Gear`، `Snap`، `Mother`، `Daily`.
 - الأصول 3D: `Art.luau` (الـ IDs) و `CreatureLooks` و `TownLooks` و `PropLooks` و `SeatLooks`.
 

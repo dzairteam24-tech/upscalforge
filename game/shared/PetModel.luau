@@ -356,10 +356,11 @@ end
 function PetModel.build(pet: { s: string, v: string, z: string }): Built
 	local size = SIZES[pet.z] or SIZES.Normal
 	local t = template(pet.s)
-	if t then
-		return buildFromMeshes(pet, t, BASE_SIZE * size.scale)
-	end
-	return buildBlocks(pet)
+	local built = if t then buildFromMeshes(pet, t, BASE_SIZE * size.scale) else buildBlocks(pet)
+	-- (its pivot is its body, wherever it's placed: without this a model's pivot stays where its parts were
+	-- first put, and moving it by its pivot sends it off somewhere else)
+	built.model.PrimaryPart = built.body
+	return built
 end
 
 function buildBlocks(pet: { s: string, v: string, z: string }): Built
