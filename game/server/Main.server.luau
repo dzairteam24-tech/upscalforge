@@ -33,10 +33,7 @@ GearService.init()
 DataService.init()
 
 ArtService.init(function(name, model)
-	if name == "TownModel" then
-		WorldService.dressTown(model)
-		PropService.decorate() -- (the town model holds props too)
-	elseif name == "PropsModel" then
+	if name == "TownModel" or name == "PropsModel" then -- (the gardens' corner props)
 		PropService.decorate()
 	elseif name == "CreatureModels" then
 		IslandService.redraw()

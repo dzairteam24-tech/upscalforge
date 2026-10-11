@@ -1,16 +1,14 @@
 --!strict
--- Builds the world (Logic/Layout, docs/images/map-plan.png): the round square where players arrive, the shops on
--- an arc north of it, the big gate into the Wild beyond them, and the players' gardens on an arc south of it, each
--- fenced, with its laser gate toward the square, incubators and owner's sign; the roads between them. Everything is simple parts, so it works
--- before the 3D art loads; once the town model (Config/Art TOWN_ASSET_ID) is in, each shop is drawn with its
--- building from art/models/Town.glb.
+-- Builds the world (Logic/Layout, docs/images/map-plan.png): the round square where players arrive, the shops'
+-- market stalls in a row on its west side facing the spawn, the big gate into the Wild north of it, and the
+-- players' gardens on an arc south of it, each fenced, with its laser gate toward the square, incubators and
+-- owner's sign; the roads between them. Everything is simple parts: light, and there before any art loads.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local IslandConfig = require(Shared.Config.Island)
 local WildConfig = require(Shared.Config.Wild)
-local TownLooks = require(Shared.Config.TownLooks)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
@@ -73,43 +71,66 @@ end
 ---------------------------------------------------------------------------------------------------------------
 -- The town
 
--- The shops, in the order of their spots on the arc north of the square (Layout.shop), and the art building
--- each is drawn with
+-- The shops, in the order of their stalls (Layout.shop), with their sign and colors
 local SHOPS = {
-	{ name = "Egg Shop", art = "Shop", ui = "Shop", color = rgb(110, 200, 140) },
-	{ name = "Food Shop", art = "Potion", ui = "Food", color = rgb(160, 110, 230) },
-	{ name = "Gear Shop", art = "Arcade", ui = "Gear", color = rgb(240, 110, 170) },
+	{ name = "Egg Shop", sign = "🥚 EGGS", ui = "Shop", color = rgb(92, 200, 120) },
+	{ name = "Food Shop", sign = "🌾 FOOD", ui = "Food", color = rgb(240, 150, 50) },
+	{ name = "Gear Shop", sign = "🏏 GEAR", ui = "Gear", color = rgb(235, 90, 120) },
 }
 WorldService.SHOPS = SHOPS
 
-local ART_WIDTH = 22 -- the art buildings' width, base included (studs)
-
-type Shop = { model: Model, frame: CFrame, booth: BasePart, art: string }
-local shops: { Shop } = {}
-
+-- A market stall: a counter, a striped awning over it and a big sign on top, its front toward the square.
+-- The counter holds the prompt that opens the shop's window.
 local function buildShop(town: Instance, index: number)
 	local shop = SHOPS[index]
 	local frame = Layout.shop(index)
+	local width, depth = Layout.SHOP_WIDTH, Layout.SHOP_DEPTH
 	local model = Instance.new("Model")
 	model.Name = shop.name
-	-- A plain booth until the art loads (it stays, invisible, for the prompt and to bump into)
-	local booth: BasePart = part(model, {
-		Name = "Booth",
-		Size = Vector3.new(16, 12, 12),
-		CFrame = frame * CFrame.new(0, 6, 4),
-		Color = rgb(250, 238, 214),
-	})
-	part(model, { Name = "Roof", Size = Vector3.new(18, 3, 14), CFrame = frame * CFrame.new(0, 13.5, 4), Color = shop.color })
-	label(booth, shop.name, 12, 2.4, Vector3.new(0, 11, 0))
+	local counter = part(model, { Name = "Counter", Size = Vector3.new(width - 1, 3.2, 2.4), CFrame = frame * CFrame.new(0, 1.6, 1.2), Color = rgb(176, 124, 78), Material = Enum.Material.WoodPlanks })
+	part(model, { Name = "CounterTop", Size = Vector3.new(width - 0.4, 0.4, 3), CFrame = frame * CFrame.new(0, 3.4, 1.2), Color = rgb(250, 238, 214), CanCollide = false })
+	part(model, { Name = "Back", Size = Vector3.new(width, 9, 0.6), CFrame = frame * CFrame.new(0, 4.5, depth), Color = shop.color:Lerp(Color3.new(1, 1, 1), 0.55) })
+	for _, x in { -1, 1 } do
+		for _, z in { 0.3, depth } do
+			part(model, { Name = "Post", Size = Vector3.new(0.6, 9.4, 0.6), CFrame = frame * CFrame.new(x * (width / 2 - 0.3), 4.7, z), Color = rgb(250, 238, 214) })
+		end
+	end
+	-- The awning: stripes of the shop's color and white, sloping down toward the front
+	local stripes = 7
+	for k = 1, stripes do
+		local x = -width / 2 + (k - 0.5) * width / stripes
+		part(model, {
+			Name = "Awning",
+			Size = Vector3.new(width / stripes, 0.3, depth + 2.4),
+			CFrame = frame * CFrame.new(x, 9.8, depth / 2 - 0.6) * CFrame.Angles(math.rad(-14), 0, 0),
+			Color = if k % 2 == 1 then shop.color else rgb(255, 255, 255),
+			CanCollide = false,
+		})
+	end
+	-- The sign over it
+	local board = part(model, { Name = "Sign", Size = Vector3.new(width - 3, 3, 0.4), CFrame = frame * CFrame.new(0, 12.6, depth / 2), Color = shop.color, CanCollide = false })
+	local surface = Instance.new("SurfaceGui")
+	surface.Face = Enum.NormalId.Front
+	surface.PixelsPerStud = 40
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.fromScale(1, 1)
+	text.BackgroundTransparency = 1
+	text.Text = shop.sign
+	text.TextScaled = true
+	text.Font = Enum.Font.LuckiestGuy
+	text.TextColor3 = Color3.new(1, 1, 1)
+	text.TextStrokeColor3 = rgb(28, 24, 40)
+	text.TextStrokeTransparency = 0
+	text.Parent = surface
+	surface.Parent = board
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Open"
 	prompt.ObjectText = shop.name
-	prompt.MaxActivationDistance = 14
+	prompt.MaxActivationDistance = 12
 	prompt.RequiresLineOfSight = false
 	prompt:SetAttribute("OpenUI", shop.ui)
-	prompt.Parent = booth
+	prompt.Parent = counter
 	model.Parent = town
-	table.insert(shops, { model = model, frame = frame * CFrame.new(0, 0, 4), booth = booth, art = shop.art })
 end
 
 local function buildTown(world: Instance)
@@ -117,6 +138,21 @@ local function buildTown(world: Instance)
 	town.Name = "Town"
 	-- The square where players arrive (no fountain: room for the Mother Cube and the Heist Egg)
 	disc(town, "Plaza", Layout.CENTER + Vector3.new(0, 0.1, 0), Layout.SQUARE_RADIUS, 0.3, PAVING, Enum.Material.Pavement)
+	-- The market: paving under the stalls on the square's west side
+	local west = Layout.SHOP_SPOTS[1].X
+	local lo, hi = math.huge, -math.huge
+	for _, spot in Layout.SHOP_SPOTS do
+		lo, hi = math.min(lo, spot.Z), math.max(hi, spot.Z)
+	end
+	local floorWidth = Layout.SHOP_DEPTH + 10
+	part(town, {
+		Name = "Market",
+		Size = Vector3.new(floorWidth, 0.3, hi - lo + Layout.SHOP_WIDTH + 6),
+		CFrame = CFrame.new(Layout.CENTER.X + west - Layout.SHOP_DEPTH / 2 + 2, 0.12, (lo + hi) / 2),
+		Color = PAVING,
+		Material = Enum.Material.Pavement,
+		CanCollide = false,
+	})
 	local sign = part(town, { Name = "Sign", Size = Vector3.one, Position = Layout.CENTER + Vector3.new(0, 18, 0), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(sign, "🥚 Cubeling Nest", 22, 4, Vector3.zero)
 	for index = 1, #SHOPS do
@@ -125,96 +161,13 @@ local function buildTown(world: Instance)
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Anchored = true
 	spawn.Size = Vector3.new(8, 0.4, 8)
-	spawn.Position = Layout.CENTER + Vector3.new(0, 0.2, 16)
+	spawn.CFrame = Layout.SPAWN -- (facing the stalls)
 	spawn.Transparency = 1
 	spawn.CanCollide = false
 	spawn.Neutral = true
 	spawn.Duration = 0
 	spawn.Parent = town
 	town.Parent = world
-end
-
--- A part's box along the world's axes (half sizes)
-local function extents(p: BasePart): Vector3
-	local r, u, l, h = p.CFrame.RightVector, p.CFrame.UpVector, p.CFrame.LookVector, p.Size / 2
-	return Vector3.new(
-		math.abs(r.X) * h.X + math.abs(u.X) * h.Y + math.abs(l.X) * h.Z,
-		math.abs(r.Y) * h.X + math.abs(u.Y) * h.Y + math.abs(l.Y) * h.Z,
-		math.abs(r.Z) * h.X + math.abs(u.Z) * h.Y + math.abs(l.Z) * h.Z
-	)
-end
-
--- Draws a shop with its art building from the town model (parts Building<Name>__<role>): in the booth's
--- place and size, its front (where the logo is) toward the square, colored from Config/TownLooks.
-local function dressShop(root: Instance, shop: Shop): boolean
-	local pattern = "^Building" .. shop.art .. "__(.+)$"
-	local pieces: { { part: BasePart, role: string } } = {}
-	for _, d in root:GetDescendants() do
-		if d:IsA("BasePart") then
-			local function roleOf(name: string): string?
-				return string.match((string.gsub(name, "%.%d+$", "")), pattern)
-			end
-			local role = roleOf(d.Name) or (if d.Parent then roleOf(d.Parent.Name) else nil)
-			if role then
-				table.insert(pieces, { part = d, role = role })
-			end
-		end
-	end
-	if #pieces == 0 then
-		return false
-	end
-	local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
-	local logo, logos = Vector3.zero, 0
-	for _, piece in pieces do
-		local e = extents(piece.part)
-		lo = lo:Min(piece.part.Position - e)
-		hi = hi:Max(piece.part.Position + e)
-		if string.sub(piece.role, 1, 5) == "logo_" then
-			logo += piece.part.Position
-			logos += 1
-		end
-	end
-	local middle = (lo + hi) / 2
-	local base = Vector3.new(middle.X, lo.Y, middle.Z)
-	local front = if logos > 0 then (logo / logos - middle) * Vector3.new(1, 0, 1) else Vector3.new(0, 0, -1)
-	if front.Magnitude < 1e-3 then
-		front = Vector3.new(0, 0, -1)
-	end
-	local turn = Layout.facing(Vector3.zero, front.Unit):Inverse() -- the import's front to -Z
-	local scale = ART_WIDTH / math.max(hi.X - lo.X, hi.Z - lo.Z)
-	local looks = (TownLooks :: any)[shop.art] or {}
-	local art = Instance.new("Model")
-	art.Name = "Art"
-	for _, piece in pieces do
-		local p = piece.part:Clone()
-		for _, child in p:GetChildren() do
-			if not child:IsA("DataModelMesh") then
-				child:Destroy()
-			end
-		end
-		local color = looks[piece.role]
-		if color then
-			p.Color = color
-			if p:IsA("MeshPart") then
-				p.TextureID = ""
-			end
-		end
-		p.Material = Enum.Material.SmoothPlastic
-		p.Size = piece.part.Size * scale
-		p.CFrame = shop.frame * CFrame.new(turn:VectorToWorldSpace(piece.part.Position - base) * scale) * turn * piece.part.CFrame.Rotation
-		p.Anchored = true
-		p.CanCollide = false
-		p.CanQuery = false
-		p.Parent = art
-	end
-	for _, d in shop.model:GetChildren() do
-		if d:IsA("BasePart") and d ~= shop.booth then
-			d:Destroy()
-		end
-	end
-	shop.booth.Transparency = 1
-	art.Parent = shop.model
-	return true
 end
 
 ---------------------------------------------------------------------------------------------------------------
@@ -475,9 +428,8 @@ local function arc(parent: Instance, radius: number, from: number, to: number, w
 	end
 end
 
--- The ground under it all, the roads (the ring round the square and the shops' paths, the road north to the
--- Wild's gate, the road south and the arc past the gardens' gates), and invisible walls round it (open onto the
--- Wild)
+-- The ground under it all, the roads (north to the Wild's gate, south and the arc past the gardens' gates), and
+-- invisible walls round it (open onto the Wild)
 local function buildGrounds(world: Instance)
 	local half, north, south = Layout.ground()
 	local middle = (north + south) / 2
@@ -576,7 +528,6 @@ function WorldService.build(): Folder
 	if existing then
 		existing:Destroy()
 	end
-	table.clear(shops)
 	local world = Instance.new("Folder")
 	world.Name = "World"
 	buildTown(world)
@@ -587,17 +538,6 @@ function WorldService.build(): Folder
 	buildWild(world)
 	world.Parent = workspace
 	return world
-end
-
--- Once the town model is in ReplicatedStorage (ArtService), the shops get their art buildings
-function WorldService.dressTown(root: Instance)
-	local dressed = 0
-	for _, shop in shops do
-		if not shop.model:FindFirstChild("Art") and dressShop(root, shop) then
-			dressed += 1
-		end
-	end
-	print(("[World] %d shops drawn with the town model"):format(dressed))
 end
 
 return WorldService

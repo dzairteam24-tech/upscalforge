@@ -79,7 +79,7 @@ print(("gardens=%d gates=%d incubators=%d shops=%d"):format(gardens, gates, pads
 assert(gardens == IslandConfig.ISLANDS, "one garden per player")
 assert(gates == IslandConfig.ISLANDS, "a gate per garden")
 assert(pads == IslandConfig.ISLANDS * #IslandConfig.MACHINE_PRICES, "every incubator in every garden (eggs on the grass get theirs when set down)")
-assert(shops == #Layout.SHOP_ANGLES, "a shop on each spot")
+assert(shops == #Layout.SHOP_SPOTS, "a shop on each spot")
 
 -- Every incubator and pen spot lies in its garden; the gardens stand on their arc south of the square, their gates
 -- toward it, clear of each other, of the shops and of the road to the Wild
@@ -132,16 +132,18 @@ for index = 1, IslandConfig.ISLANDS do
 	end
 end
 assert(Layout.gardenAt(Layout.CENTER) == nil, "the square is no garden")
--- The shops: on their arc north of the square, facing it, clear of the road to the Wild and of each other
-for shop = 1, #Layout.SHOP_ANGLES do
+-- The shops: a row of stalls by the square, facing it and the spawn, side by side, off every road
+for shop = 1, #Layout.SHOP_SPOTS do
 	local frame = Layout.shop(shop)
 	local at = frame.Position
-	assert(at.Z < Layout.CENTER.Z - Layout.SQUARE_RADIUS, "north of the square")
-	assert(math.abs(at.X) - Layout.SHOP_DEPTH / 2 >= Layout.ROAD_WIDTH_TOWN / 2, "off the road to the Wild")
+	assert((at - Layout.CENTER).Magnitude < Layout.SQUARE_RADIUS + 15, "beside the square")
 	assert((frame * CFrame.new(0, 0, -10)).Position.Magnitude < at.Magnitude, "facing the square")
+	assert(Layout.roadDistance(at + frame.LookVector * -Layout.SHOP_DEPTH / 2) > 0, "off the roads")
 	assert(Layout.gardenAt(at) == nil, "not in a garden")
-	for other = shop + 1, #Layout.SHOP_ANGLES do
-		assert((Layout.shop(other).Position - at).Magnitude >= Layout.SHOP_DEPTH + 10, "shops apart")
+	local toStall = at - Layout.SPAWN.Position
+	assert(Layout.SPAWN.LookVector:Dot(toStall.Unit) > 0.7, "in front of the spawn")
+	for other = shop + 1, #Layout.SHOP_SPOTS do
+		assert((Layout.shop(other).Position - at).Magnitude >= Layout.SHOP_WIDTH, "stalls side by side")
 	end
 end
 
