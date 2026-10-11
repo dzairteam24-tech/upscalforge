@@ -2,7 +2,7 @@
 -- The bat (Config/Gear, Logic/Gear): every player holds one (a tool), upgraded with coins at the Gear Shop.
 -- Swinging it at a player who carries an egg (from the Wild or the Heist) or a creature (CarryService, outside
 -- their garden) counts a hit; enough hits in a row knock it out of their hands (fewer with a better bat than theirs). Nobody carrying nothing is
--- touched, nor a new player, nor anyone in the Safe Zone (the square), nor anyone in a Peaceful private server.
+-- touched, nor a new player, nor anyone in a Safe Zone (the square, where they sell, and every garden), nor anyone in a Peaceful private server.
 --
 -- Traps (bought there too) are set down in the Wild; a player carrying an egg who steps on someone else's is
 -- stuck for a moment.
@@ -71,7 +71,7 @@ local function swing(player: Player)
 	local bestDistance = GearConfig.RANGE
 	for _, other in Players:GetPlayers() do
 		local otherRoot = rootOf(other)
-		if other ~= player and otherRoot and carrying(other) and not Layout.inSafeZone(otherRoot.Position) then
+		if other ~= player and otherRoot and carrying(other) and not Layout.inSafeZone(otherRoot.Position) and not Layout.gardenAt(otherRoot.Position) then
 			local offset = otherRoot.Position - root.Position
 			local distance = offset.Magnitude
 			if distance <= bestDistance and (distance < 3 or root.CFrame.LookVector:Dot(offset.Unit) > 0.2) then
