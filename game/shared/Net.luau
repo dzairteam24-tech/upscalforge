@@ -24,6 +24,7 @@ local EVENTS = {
 	"BuyTrap",
 	"ClaimDaily", -- the egg for doing all of today's tasks
 	"ClaimIndex", -- (egg tier): a complete Index page's reward
+	"BuyTrail", -- (trail id): buy it, or wear it if it's theirs (TrailService)
 	"BuyRobux", -- ("FastHatch", "HatchAll" or "Seat:<name>"): the Robux shop (RobuxService)
 	"Sprint", -- (on)
 	"Seat", -- (seat name, or "" to stand): the floating seat the player rides (SeatModel)

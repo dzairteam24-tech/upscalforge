@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Trails = require(Shared.Config.Trails)
 local WildConfig = require(Shared.Config.Wild)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
@@ -579,7 +580,8 @@ local function train()
 				continue
 			end
 			running[player] = 0
-			local gain = Wild.gain(data.treadmill)
+			local trail = Trails.byId[data.trail] -- (a trail multiplies each step: Config/Trails)
+			local gain = Wild.gain(data.treadmill) * (if trail then trail.mult else 1)
 			data.power += gain
 			applySpeed(player)
 			Net.event("SpeedUp"):FireClient(player, gain)

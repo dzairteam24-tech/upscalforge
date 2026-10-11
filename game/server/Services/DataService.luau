@@ -44,6 +44,8 @@ export type Data = {
 	seats: { [string]: boolean }, -- the floating seats they own (Config/SeatLooks)
 	index: { [string]: boolean }, -- every species they've hatched (the Index, Logic/Index)
 	indexClaimed: { [string]: boolean }, -- the Index pages (egg tiers) whose reward they took
+	trails: { [string]: boolean }, -- the trails they bought (Config/Trails)...
+	trail: string, -- ...and the one they wear ("": none)
 }
 
 local DataService = {}
@@ -104,6 +106,8 @@ local function template(): Data
 		seats = { Cloud = true },
 		index = {},
 		indexClaimed = {},
+		trails = {},
+		trail = "",
 	}
 end
 
