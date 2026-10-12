@@ -8,19 +8,19 @@
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 
 local Layout = {
-	SQUARE_RADIUS = 70, -- the square where players arrive: the town square
+	SQUARE_RADIUS = 120, -- the square where players arrive: the town square
 	SHOP_DEPTH = 10, -- a stall, from its counter back
 	SHOP_WIDTH = 18,
 	GARDEN_RADIUS = 330, -- the gardens' middles, this far from the square's
 	GARDEN_STEP = 34, -- degrees between two gardens: they fill the whole south half round the square, east to west
 	GARDEN_ROAD_RADIUS = 260, -- the arc road past the gardens' gates
 	ROAD_WIDTH_TOWN = 20,
-	WILD_GATE_DISTANCE = 380, -- the big gate into the Wild, this far north of the square
+	WILD_GATE_DISTANCE = 470, -- the big gate into the Wild, this far north of the square
 	GARDEN_SIZE = 96,
 	GATE_WIDTH = 16, -- the opening in a garden's front fence
 	FENCE_HEIGHT = 10, -- the invisible wall behind the low picket fence (too tall to jump)
 	CENTER = Vector3.new(0, 0, 0), -- the town's middle: the gardens' arc and the way to the Wild are measured from it
-	SQUARE_CENTER = Vector3.new(0, 0, -110), -- the square itself, moved up toward the gate to leave room for the gardens
+	SQUARE_CENTER = Vector3.new(0, 0, -140), -- the square itself, moved up toward the gate to leave room for the gardens
 }
 
 -- The shops: two buildings along each side of the paved ground in front of the Wild's gate, just outside its
@@ -28,10 +28,10 @@ local Layout = {
 -- the lane stay empty
 Layout.SHOP_EDGE = 126 -- (the counters' distance from the lane's middle: the paving's edge is at WILD_WIDTH / 2 = 120)
 Layout.SHOP_SPOTS = {
-	Vector3.new(-Layout.SHOP_EDGE, 0, -225), -- the Shop
-	Vector3.new(-Layout.SHOP_EDGE, 0, -295), -- the Fuse Machine
-	Vector3.new(Layout.SHOP_EDGE, 0, -225), -- the Trail Shop
-	Vector3.new(Layout.SHOP_EDGE, 0, -295), -- the Mutation Machine
+	Vector3.new(-Layout.SHOP_EDGE, 0, -295), -- the Shop
+	Vector3.new(-Layout.SHOP_EDGE, 0, -365), -- the Fuse Machine
+	Vector3.new(Layout.SHOP_EDGE, 0, -295), -- the Trail Shop
+	Vector3.new(Layout.SHOP_EDGE, 0, -365), -- the Mutation Machine
 }
 -- Where players appear in the square, facing the stalls (north)
 Layout.SPAWN = CFrame.new(Layout.SQUARE_CENTER.X, 0.2, Layout.SQUARE_CENTER.Z - 4)
