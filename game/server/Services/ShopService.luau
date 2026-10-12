@@ -31,7 +31,6 @@ local function sellCreature(player: Player, id: any)
 	local price = Earn.sellPrice(creature)
 	data.creatures[id] = nil
 	data.coins += price
-	IslandService.notify(player, ("Sold %s for 🪙 %s"):format(creature.s, Format.abbrev(price)), "success")
 	IslandService.push(player)
 end
 
@@ -52,7 +51,6 @@ local function sellEgg(player: Player, tier: any, golden: any, all: any)
 	local price = Earn.eggSellPrice(egg.price, golden == true) * count
 	bag[key] = if have - count > 0 then have - count else nil
 	data.coins += price
-	IslandService.notify(player, ("Sold %d× %s%s for 🪙 %s"):format(count, if golden == true then "Golden " else "", egg.name, Format.abbrev(price)), "success")
 	IslandService.push(player)
 end
 

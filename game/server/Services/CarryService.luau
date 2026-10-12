@@ -119,7 +119,6 @@ local function sell(player: Player)
 	local holding = held[player]
 	local data = DataService.get(player)
 	if not holding or not data then
-		IslandService.notify(player, "Hold a creature from your inventory to sell it here", "info")
 		return
 	end
 	local creature = data.creatures[holding.id]
@@ -130,7 +129,6 @@ local function sell(player: Player)
 	letGo(player)
 	data.creatures[holding.id] = nil
 	data.coins += price
-	IslandService.notify(player, ("Sold %s for 🪙 %s"):format(title(creature), Format.abbrev(price)), "success")
 	IslandService.fx("Steal", Layout.SELL_SPOT + Vector3.new(0, 3, 0), Color3.fromRGB(255, 210, 70))
 	IslandService.push(player)
 end
@@ -144,8 +142,6 @@ local function use(player: Player, id: string)
 		IslandService.place(player, id)
 	elseif onPad(player) then
 		sell(player)
-	else
-		IslandService.notify(player, "Set it down in your garden, or sell it at the 💰 Sell pad in the square", "info")
 	end
 end
 

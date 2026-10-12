@@ -141,8 +141,11 @@ local function buildMachine(town: Instance, index: number)
 	end
 	part(model, { Name = "PipeTop", Size = Vector3.new(8.4, 1.4, 1.4), CFrame = frame * CFrame.new(0, 13.5, 5), Color = rgb(70, 75, 90), CanCollide = false })
 	local sign = part(model, { Name = "MachineSign", Size = Vector3.one, CFrame = frame * CFrame.new(0, 17, 5), Transparency = 1, CanCollide = false, CanQuery = false })
-	label(sign, shop.name, 16, 3, Vector3.zero)
-	local status = label(sign, "", 10, 2, Vector3.new(0, -2.6, 0)) -- (each player's own: FuseWindow, MutateWindow)
+	local name = label(sign, string.upper(shop.name), 20, 4, Vector3.zero)
+	name.Font = Enum.Font.LuckiestGuy
+	name.TextStrokeTransparency = 0
+	name.TextStrokeColor3 = rgb(20, 18, 30)
+	local status = label(sign, "", 12, 2.4, Vector3.new(0, -3.4, 0)) -- (each player's own: FuseWindow, MutateWindow)
 	status.Name = "Status"
 	sign:AddTag(if shop.ui == "Fuse" then "FuseSign" else "MutateSign")
 	local prompt = Instance.new("ProximityPrompt")
@@ -187,16 +190,17 @@ local function buildShop(town: Instance, index: number)
 			CanCollide = false,
 		})
 	end
-	-- The sign over it: a wooden board with a colored edge and the shop's name, and its mark on top
-	local signAt = frame * CFrame.new(0, 12.6, depth / 2)
-	part(model, { Name = "SignEdge", Size = Vector3.new(width - 2.4, 3.6, 0.3), CFrame = signAt * CFrame.new(0, 0, 0.2), Color = shop.color, CanCollide = false })
-	local board = part(model, { Name = "Sign", Size = Vector3.new(width - 3.2, 2.9, 0.4), CFrame = signAt, Color = rgb(150, 100, 60), Material = Enum.Material.WoodPlanks, CanCollide = false })
-	shopIcon(model, shop.icon or "", signAt * CFrame.new(0, 1.5, 0), shop.color)
+	-- The sign over it: a big dark board with a thick edge in the shop's color and the shop's name in large white
+	-- letters, easy to read from the square; its mark on top
+	local signAt = frame * CFrame.new(0, 13.2, depth / 2)
+	part(model, { Name = "SignEdge", Size = Vector3.new(width - 0.6, 4.9, 0.3), CFrame = signAt * CFrame.new(0, 0, 0.2), Color = shop.color, CanCollide = false })
+	local board = part(model, { Name = "Sign", Size = Vector3.new(width - 1.6, 4.1, 0.4), CFrame = signAt, Color = rgb(34, 30, 48), CanCollide = false })
+	shopIcon(model, shop.icon or "", signAt * CFrame.new(0, 2.5, 0), shop.color)
 	local surface = Instance.new("SurfaceGui")
 	surface.Face = Enum.NormalId.Front
-	surface.PixelsPerStud = 40
+	surface.PixelsPerStud = 50
 	local text = Instance.new("TextLabel")
-	text.Size = UDim2.fromScale(0.9, 0.85)
+	text.Size = UDim2.fromScale(0.94, 0.88)
 	text.AnchorPoint = Vector2.new(0.5, 0.5)
 	text.Position = UDim2.fromScale(0.5, 0.5)
 	text.BackgroundTransparency = 1
@@ -204,7 +208,7 @@ local function buildShop(town: Instance, index: number)
 	text.TextScaled = true
 	text.Font = Enum.Font.LuckiestGuy
 	text.TextColor3 = Color3.new(1, 1, 1)
-	text.TextStrokeColor3 = rgb(28, 24, 40)
+	text.TextStrokeColor3 = shop.color:Lerp(rgb(10, 10, 20), 0.5)
 	text.TextStrokeTransparency = 0
 	text.Parent = surface
 	surface.Parent = board
