@@ -138,11 +138,13 @@ local function updatePad(pad: BasePart)
 		local scale = pad:GetAttribute("EggSize")
 		pad_.scale = if type(scale) == "number" then scale else 1
 		-- (stacked cube layers, Shared/EggModel: drawn again only when it's another egg)
-		local look = ("%d:%s:%s"):format(tier, tostring(golden), tostring(pad_.scale))
+		local species = pad:GetAttribute("Species")
+		local shows = if type(species) == "string" and species ~= "" then species else nil -- (the creature it shows)
+		local look = ("%d:%s:%s:%s"):format(tier, tostring(golden), tostring(pad_.scale), shows or "")
 		if look ~= pad_.look then
 			pad_.look = look
 			pad_.egg.Size = Vector3.one * EGG_SIZE * pad_.scale
-			EggModel.dress(pad_.egg, egg.color, golden)
+			EggModel.dress(pad_.egg, egg.color, golden, shows)
 		end
 		-- (nights grow eggs faster: Logic/Night)
 		local left = math.ceil(Night.doneAt(start, duration)) - now()

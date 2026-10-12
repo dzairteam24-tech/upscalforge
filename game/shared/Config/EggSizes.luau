@@ -24,6 +24,6 @@ return {
 	-- How big eggs are in the world: small, smaller than the creatures (the first map's biggest egg is still a
 	-- small thing), like Steal an Egg's
 	BASE = 1.5, -- studs across a Normal egg (times its size's scale; it's drawn 1.3 times as tall)
-	NEST = 0.55, -- a nest's scale (Shared/Nest: 3 studs across, a Huge egg still fits)
-	SIT = 0.55, -- how high over the ground an egg's bottom sits in its nest
+	NEST = 0.45, -- a nest's scale (Shared/Nest: 2.4 studs across, just round a Normal egg)
+	SIT = 0.45, -- how high over the ground an egg's bottom sits in its nest
 }

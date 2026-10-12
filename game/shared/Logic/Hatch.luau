@@ -2,6 +2,7 @@
 -- Eggs (Config/Eggs) and what hatches from them: how long an egg incubates, and the creature and mutation it
 -- hatches into.
 
+local Creatures = require(script.Parent.Parent.Config.Creatures)
 local EggSizes = require(script.Parent.Parent.Config.EggSizes)
 local Eggs = require(script.Parent.Parent.Config.Eggs)
 local IslandConfig = require(script.Parent.Parent.Config.Island)
@@ -23,18 +24,41 @@ function Hatch.size(id: string?): EggSizes.Size
 	return EggSizes.byId[id or "Normal"] or EggSizes.byId.Normal
 end
 
--- The key an egg is kept under in a bag: its tier, and its size unless Normal ("1", "1_Big")
-function Hatch.key(tier: number, size: string?): string
-	return if size and size ~= "Normal" and EggSizes.byId[size] then ("%d_%s"):format(tier, size) else tostring(tier)
+-- The key an egg is kept under in a bag: its tier, its size unless Normal, and the creature in it when it's
+-- known (a Wild egg shows it: "1", "1_Big", "1@Cat", "1_Huge@Bear")
+function Hatch.key(tier: number, size: string?, species: string?): string
+	local key = if size and size ~= "Normal" and EggSizes.byId[size] then ("%d_%s"):format(tier, size) else tostring(tier)
+	return if species and Creatures.byId[species] then key .. "@" .. species else key
 end
 
--- An egg key's tier and size (nil tier when it's no egg key)
-function Hatch.parse(key: string): (number?, string)
-	local tier, size = string.match(key, "^(%d+)_(%a+)$")
-	if tier and EggSizes.byId[size] then
-		return tonumber(tier), size
+-- An egg key's tier, size and creature (nil tier when it's no egg key; nil creature when it's not known: it's
+-- rolled when it hatches)
+function Hatch.parse(key: string): (number?, string, string?)
+	local base, species = string.match(key, "^([^@]+)@(%a+)$")
+	if base and not Creatures.byId[species] then
+		return nil, "Normal", nil
 	end
-	return tonumber(key), "Normal"
+	base = base or key
+	local tier, size = string.match(base, "^(%d+)_(%a+)$")
+	if tier and EggSizes.byId[size] then
+		return tonumber(tier), size, species
+	end
+	return tonumber(base), "Normal", species
+end
+
+-- The creature in an egg of this tier, by luck (its chances, Config/Eggs): a Wild egg's is known from the
+-- start, and shows on it (Shared/EggModel)
+function Hatch.species(tier: number, random: () -> number): string
+	local egg = byTier[tier]
+	assert(egg, "no egg of tier " .. tostring(tier))
+	local roll = random()
+	for i, chance in egg.chances do
+		if roll < chance then
+			return egg.creatures[i]
+		end
+		roll -= chance
+	end
+	return egg.creatures[#egg.creatures]
 end
 
 -- The keys of the eggs held in a bag (key -> count), the best first: by tier, then by size
@@ -68,10 +92,11 @@ function Hatch.rollSize(random: () -> number): string
 	return "Normal"
 end
 
--- An egg's name with its size and gold: "✨ Golden Big Meadow Egg"
-function Hatch.name(tier: number, size: string?, golden: boolean?): string
+-- An egg's name with its size, gold and creature: "✨ Golden Big Meadow Egg", "Big Cat Egg"
+function Hatch.name(tier: number, size: string?, golden: boolean?, species: string?): string
 	local egg = byTier[tier]
-	return ("%s%s%s"):format(if golden then "✨ Golden " else "", if size and size ~= "Normal" then size .. " " else "", if egg then egg.name else "Egg")
+	local what = if species then species .. " Egg" elseif egg then egg.name else "Egg"
+	return ("%s%s%s"):format(if golden then "✨ Golden " else "", if size and size ~= "Normal" then size .. " " else "", what)
 end
 
 -- Whether an egg's map is open yet (Config/Island OPEN_TIER); the others are Coming Soon
@@ -99,18 +124,9 @@ end
 
 -- The creature and mutation an egg hatches into. `random` gives numbers in [0, 1); `atLeast` is the weather's
 -- mutation, which the hatch can't be below.
-function Hatch.roll(tier: number, random: () -> number, atLeast: string?): (string, string)
-	local egg = byTier[tier]
-	assert(egg, "no egg of tier " .. tostring(tier))
-	local roll = random()
-	local creature = egg.creatures[#egg.creatures]
-	for i, chance in egg.chances do
-		if roll < chance then
-			creature = egg.creatures[i]
-			break
-		end
-		roll -= chance
-	end
+function Hatch.roll(tier: number, random: () -> number, atLeast: string?, species: string?): (string, string)
+	-- (the creature: the one the egg showed, else by luck)
+	local creature = if species and Creatures.byId[species] then species else Hatch.species(tier, random)
 	-- The rarest mutation that comes up wins
 	local mutation = "Normal"
 	for _, candidate in Mutations.list do

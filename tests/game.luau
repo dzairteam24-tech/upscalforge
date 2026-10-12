@@ -393,6 +393,29 @@ test("egg sizes: by luck, kept by tier and size, heavier eggs slow the thief and
 	eq(tier, 2)
 	eq(size, "Normal")
 	eq(Hatch.parse("nonsense"), nil, "not an egg key")
+	-- (an egg from the Wild shows the creature in it: it's in its key, and it's what hatches)
+	eq(Hatch.key(1, "Big", "Cat"), "1_Big@Cat")
+	eq(Hatch.key(1, "Normal", "Bear"), "1@Bear")
+	local t3, s3, c3 = Hatch.parse("1_Huge@Bear")
+	eq(t3, 1)
+	eq(s3, "Huge")
+	eq(c3, "Bear")
+	eq(Hatch.parse("1@Nobody"), nil, "no such creature: no egg key")
+	eq(Hatch.name(1, "Big", false, "Cat"), "Big Cat Egg")
+	local hatched = Hatch.roll(1, function()
+		return 0
+	end, nil, "Horse")
+	eq(hatched, "Horse", "the egg that shows a horse hatches a horse, whatever the luck")
+	local found: { [string]: number } = {}
+	local seed = 3
+	for _ = 1, 5000 do
+		local species = Hatch.species(1, function()
+			seed = (seed * 1103515245 + 12345) % 2147483648
+			return seed / 2147483648
+		end)
+		found[species] = (found[species] or 0) + 1
+	end
+	assert((found.Dog or 0) > (found.Horse or 0) and (found.Horse or 0) > 0, "common creatures' eggs come up more often than rare ones'")
 	eq(Hatch.name(1, "Huge", true), "✨ Golden Huge Meadow Egg")
 	local keys = Hatch.sortedKeys({ ["1"] = 2, ["1_Huge"] = 1, ["2_Small"] = 1, ["1_Small"] = 0 })
 	eq(table.concat(keys, ","), "2_Small,1_Huge,1", "the best first: by tier, then by size; none held, none shown")

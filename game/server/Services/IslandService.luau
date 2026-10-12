@@ -92,7 +92,7 @@ local function eggTools(player: Player, data: Data)
 	for _, golden in { true, false } do
 		local held = if golden then data.golden else data.eggs
 		for _, key in Hatch.sortedKeys(held) do -- (best first)
-			local tier, size = Hatch.parse(key)
+			local tier, size, species = Hatch.parse(key)
 			local kind = (if golden then "g" else "") .. key
 			local count = held[key] or 0
 			local tool = have[kind]
@@ -121,7 +121,7 @@ local function eggTools(player: Player, data: Data)
 				mesh.MeshType = Enum.MeshType.Sphere
 				mesh.Scale = Vector3.new(1, 1.3, 1)
 				mesh.Parent = handle
-				EggModel.dress(handle, egg.color, golden)
+				EggModel.dress(handle, egg.color, golden, species)
 				handle.Parent = created
 				created.Activated:Connect(function()
 					setEggFrom(player, key, golden)
@@ -130,7 +130,7 @@ local function eggTools(player: Player, data: Data)
 				tool = created
 			end
 			local t = tool :: Tool
-			t.Name = ("%s ×%d"):format(Hatch.name(tier, size, golden), count)
+			t.Name = ("%s ×%d"):format(Hatch.name(tier, size, golden, species), count)
 			if size ~= "Normal" then
 				t.ToolTip = ("⚖️ %s: a %s creature"):format(size, Hatch.size(size).creature)
 			end
@@ -457,7 +457,8 @@ local function render(index: number, player: Player?, data: Data?)
 		end
 		pad:SetAttribute("Tier", if egg then egg.tier else 0)
 		pad:SetAttribute("Golden", egg ~= nil and egg.m ~= nil)
-		pad:SetAttribute("EggSize", if egg then Hatch.size(egg.w).scale else 1) -- (GardenClient draws it that big)
+		pad:SetAttribute("EggSize", if egg then Hatch.size(egg.w).scale else 1) -- (GardenClient draws it that big...)
+		pad:SetAttribute("Species", if egg then egg.s or "" else "") -- (...looking like the creature in it)
 		pad:SetAttribute("Start", if egg then egg.start else 0)
 		pad:SetAttribute("Duration", if egg then hatchTime(player, egg.tier, slot) else 0)
 	end
@@ -611,7 +612,7 @@ end
 
 -- Takes the best egg the player holds (a Golden one first): its tier, and the least mutation it hatches; nil
 -- when they have none
-local function takeEgg(data: Data): (number?, string?, string?)
+local function takeEgg(data: Data): (number?, string?, string?, string?)
 	-- (the best key in a bag: by tier, then by size)
 	local function best(eggs: { [string]: number }): string?
 		local found, foundTier, foundWeight = nil, 0, 0
@@ -627,16 +628,16 @@ local function takeEgg(data: Data): (number?, string?, string?)
 	local golden = best(data.golden)
 	if golden then
 		data.golden[golden] -= 1
-		local tier, size = Hatch.parse(golden)
-		return tier, WildConfig.GOLDEN_MUTATION, size
+		local tier, size, species = Hatch.parse(golden)
+		return tier, WildConfig.GOLDEN_MUTATION, size, species
 	end
 	local key = best(data.eggs)
 	if not key then
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	end
 	data.eggs[key] -= 1
-	local tier, size = Hatch.parse(key)
-	return tier, nil, size
+	local tier, size, species = Hatch.parse(key)
+	return tier, nil, size, species
 end
 
 -- How many eggs the player has set down on the grass
@@ -654,7 +655,7 @@ end
 -- Sets an egg the player holds (the one in their hand: its tool) down on the grass just in front of them, like
 -- in Steal an Egg
 local function setEgg(player: Player, key: string, golden: boolean)
-	local tier, size = Hatch.parse(key)
+	local tier, size, species = Hatch.parse(key)
 	local data = DataService.get(player)
 	local index = islandOf[player]
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -687,10 +688,10 @@ local function setEgg(player: Player, key: string, golden: boolean)
 	end
 	held[key] -= 1
 	local least = if golden then WildConfig.GOLDEN_MUTATION else nil
-	data.incubating[tostring(slot)] = { tier = tier, start = os.time(), m = least, w = if size ~= "Normal" then size else nil, x = inside.X, z = inside.Z }
+	data.incubating[tostring(slot)] = { tier = tier, start = os.time(), m = least, w = if size ~= "Normal" then size else nil, s = species, x = inside.X, z = inside.Z }
 	local egg = Hatch.egg(tier)
 	IslandService.fx("SetEgg", frame:PointToWorldSpace(Vector3.new(inside.X, 0, inside.Z)), if least then Color3.fromRGB(255, 205, 70) elseif egg then egg.color else nil)
-	IslandService.notify(player, ("%s set down: %s"):format(Hatch.name(tier, size, golden), Format.time(Hatch.seconds(tier))), "success")
+	IslandService.notify(player, ("%s set down: %s"):format(Hatch.name(tier, size, golden, species), Format.time(Hatch.seconds(tier))), "success")
 	IslandService.render(player)
 	IslandService.push(player)
 end
@@ -755,9 +756,10 @@ local function useIncubator(player: Player, slot: any)
 				return
 			end
 			local weather = Weather.at(done)
+			-- (the creature the egg showed, when it did; else by luck)
 			local species, mutation = Hatch.roll(egg.tier, function()
 				return rng:NextNumber()
-			end, Hatch.atLeast(weather.mutation, egg.m))
+			end, Hatch.atLeast(weather.mutation, egg.m), egg.s)
 			local id = IslandService.addCreature(player, data, species, mutation, egg.w)
 			if not id then
 				return
@@ -783,13 +785,13 @@ local function useIncubator(player: Player, slot: any)
 			end
 		else
 			-- Put the best egg the player holds into the incubator
-			local tier, least, size = takeEgg(data)
+			local tier, least, size, species = takeEgg(data)
 			if not tier then
 				IslandService.notify(player, "You have no eggs: steal one from the Wild", "error")
 				return
 			end
-			data.incubating[key] = { tier = tier, start = os.time(), m = least, w = if size ~= "Normal" then size else nil }
-			IslandService.notify(player, ("%s incubating: %s"):format(Hatch.name(tier, size, least ~= nil), Format.time(hatchTime(player, tier, slot))), "success")
+			data.incubating[key] = { tier = tier, start = os.time(), m = least, w = if size ~= "Normal" then size else nil, s = species }
+			IslandService.notify(player, ("%s incubating: %s"):format(Hatch.name(tier, size, least ~= nil, species), Format.time(hatchTime(player, tier, slot))), "success")
 		end
 	end
 	IslandService.render(player)

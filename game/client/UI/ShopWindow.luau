@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Creatures = require(Shared.Config.Creatures)
 local Hatch = require(Shared.Logic.Hatch)
+local EggModel = require(Shared.EggModel)
 local Mutations = require(Shared.Config.Mutations)
 local SnapConfig = require(Shared.Config.Snap)
 local Earn = require(Shared.Logic.Earn)
@@ -61,7 +62,7 @@ function ShopWindow.mount(gui: Instance)
 		for _, golden in { false, true } do
 			local held = if golden then data.golden else data.eggs
 			for _, key in Hatch.sortedKeys(held) do
-				local tier, size = Hatch.parse(key)
+				local tier, size, species = Hatch.parse(key)
 				local egg = if tier then Hatch.egg(tier) else nil
 				local count = held[key] or 0
 				if count <= 0 or not egg or not tier then
@@ -70,10 +71,10 @@ function ShopWindow.mount(gui: Instance)
 				sold += 1
 				local each = math.floor(Earn.eggSellPrice(egg.price, golden) * Hatch.size(size).mult)
 				local row = Theme.card(sellView, Theme.lighten(egg.color, 0.5), { Size = UDim2.new(1, -8, 0, 84), LayoutOrder = sold })
-				local view = Theme.eggView(row, egg.color, golden)
+				local view = Theme.eggView(row, EggModel.colorOf(species) or egg.color, golden)
 				view.Size = UDim2.fromOffset(70, 70)
 				view.Position = UDim2.fromOffset(8, 7)
-				Theme.bold(row, { Text = ("%s ×%d"):format(Hatch.name(tier, size, golden), count), Size = UDim2.new(0.4, -80, 0, 30), Position = UDim2.fromOffset(84, 10), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 24 })
+				Theme.bold(row, { Text = ("%s ×%d"):format(Hatch.name(tier, size, golden, species), count), Size = UDim2.new(0.4, -80, 0, 30), Position = UDim2.fromOffset(84, 10), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 24 })
 				Theme.text(row, { Text = ("🪙 %s each"):format(Format.abbrev(each)), Size = UDim2.new(0.4, -80, 0, 22), Position = UDim2.fromOffset(84, 44), TextColor3 = Theme.ink, TextXAlignment = Enum.TextXAlignment.Left })
 				local one = Theme.button(row, ("Sell 1 · 🪙 %s"):format(Format.abbrev(each)), Theme.green, function()
 					Net.event("SellEgg"):FireServer(key, golden, false)

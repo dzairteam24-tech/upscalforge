@@ -15,6 +15,7 @@ local SnapConfig = require(Shared.Config.Snap)
 local Earn = require(Shared.Logic.Earn)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
+local EggModel = require(Shared.EggModel)
 local Snap = require(Shared.Logic.Snap)
 local Net = require(Shared.Net)
 
@@ -84,18 +85,18 @@ function BagWindow.mount(gui: Instance)
 		for _, golden in { true, false } do
 			local held = if golden then data.golden else data.eggs
 			for _, key in Hatch.sortedKeys(held) do
-				local tier, size = Hatch.parse(key)
+				local tier, size, species = Hatch.parse(key)
 				local egg = if tier then Hatch.egg(tier) else nil
 				local count = held[key] or 0
 				if count > 0 and egg and tier then
 					kinds += 1
 					local color = if golden then Theme.gold else egg.color
 					local card = Theme.card(grid, Theme.lighten(color, 0.45), { LayoutOrder = kinds })
-					local view = Theme.eggView(card, egg.color, golden)
+					local view = Theme.eggView(card, EggModel.colorOf(species) or egg.color, golden)
 					view.Size = UDim2.new(1, 0, 0, 96)
 					view.Position = UDim2.fromOffset(0, 4)
 					Theme.bold(card, { Text = "×" .. count, Size = UDim2.fromOffset(60, 28), Position = UDim2.new(1, -66, 0, 6), TextXAlignment = Enum.TextXAlignment.Right, MaxText = 26 })
-					Theme.bold(card, { Text = Hatch.name(tier, size, golden), Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 100), MaxText = 20 })
+					Theme.bold(card, { Text = Hatch.name(tier, size, golden, species), Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 100), MaxText = 20 })
 					Theme.text(card, { Text = "⏳ " .. Format.time(Hatch.seconds(tier)), Size = UDim2.new(1, -12, 0, 18), Position = UDim2.fromOffset(6, 124), TextColor3 = Theme.ink })
 					local down = Theme.button(card, "Set down", Theme.green, function()
 						Net.event("SetEgg"):FireServer(key, golden)
@@ -118,17 +119,17 @@ function BagWindow.mount(gui: Instance)
 		for _, golden in { true, false } do
 			local held = if golden then data.storedGolden else data.storedEggs
 			for _, key in Hatch.sortedKeys(held) do
-				local tier, size = Hatch.parse(key)
+				local tier, size, species = Hatch.parse(key)
 				local egg = if tier then Hatch.egg(tier) else nil
 				local count = held[key] or 0
 				if count > 0 and egg and tier then
 					stored += 1
 					local card = Theme.card(barn, Theme.lighten(if golden then Theme.gold else egg.color, 0.45), { LayoutOrder = stored })
-					local view = Theme.eggView(card, egg.color, golden)
+					local view = Theme.eggView(card, EggModel.colorOf(species) or egg.color, golden)
 					view.Size = UDim2.new(1, 0, 0, 70)
 					view.Position = UDim2.fromOffset(0, 4)
 					Theme.bold(card, { Text = "×" .. count, Size = UDim2.fromOffset(60, 26), Position = UDim2.new(1, -66, 0, 6), TextXAlignment = Enum.TextXAlignment.Right, MaxText = 24 })
-					Theme.bold(card, { Text = Hatch.name(tier, size, golden), Size = UDim2.new(1, -12, 0, 20), Position = UDim2.fromOffset(6, 76), MaxText = 17 })
+					Theme.bold(card, { Text = Hatch.name(tier, size, golden, species), Size = UDim2.new(1, -12, 0, 20), Position = UDim2.fromOffset(6, 76), MaxText = 17 })
 					cardButton(card, "Take out", Theme.blue, function()
 						Net.event("Withdraw"):FireServer(if golden then "golden" else "egg", key, false)
 					end)
