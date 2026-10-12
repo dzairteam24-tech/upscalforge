@@ -122,6 +122,12 @@ local function menuBoard(model: Instance, shop: ShopSpot, frame: CFrame, at: Vec
 	gui.Parent = board
 end
 
+-- A short paved path from a shop's door to the avenue (the shops stand on the grass beside it)
+local function forecourt(model: Instance, frame: CFrame)
+	local length = Layout.SHOP_EDGE - Layout.AVENUE_WIDTH / 2 - 2
+	part(model, { Name = "Forecourt", Size = Vector3.new(11, 0.3, length), CFrame = frame * CFrame.new(0, 0.12, -3 - length / 2 + 1), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
+end
+
 -- A machine in the market row (the Fuse Machine, the Mutation Machine): a big boxy body in its color with a
 -- glowing window in front, pipes and a light on top, its name floating over it. Its front holds the prompt.
 local function buildMachine(town: Instance, index: number)
@@ -132,6 +138,7 @@ local function buildMachine(town: Instance, index: number)
 	local dark = shop.color:Lerp(rgb(30, 30, 40), 0.55)
 	part(model, { Name = "Platform", Size = Vector3.new(Layout.SHOP_WIDTH + 4, 0.8, Layout.SHOP_DEPTH + 6), CFrame = frame * CFrame.new(0, 0.4, (Layout.SHOP_DEPTH - 1) / 2), Color = rgb(96, 100, 116), Material = Enum.Material.DiamondPlate })
 	menuBoard(model, shop, frame, Vector3.new(Layout.SHOP_WIDTH / 2 - 1.5, 0.8, -1.2))
+	forecourt(model, frame)
 	local body = part(model, { Name = "Body", Size = Vector3.new(13, 9, 8), CFrame = frame * CFrame.new(0, 5.3, 5), Color = dark })
 	local window = part(model, { Name = "Window", Size = Vector3.new(7, 6, 0.4), CFrame = frame * CFrame.new(1.5, 5.6, 0.9), Color = shop.color:Lerp(Color3.new(1, 1, 1), 0.5), Material = Enum.Material.Neon, CanCollide = false })
 	local glyph = Instance.new("SurfaceGui")
@@ -213,6 +220,7 @@ local function buildShop(town: Instance, index: number)
 	model.Name = shop.name
 	local wall = shop.color:Lerp(Color3.new(1, 1, 1), 0.6)
 	local dark = shop.color:Lerp(rgb(40, 36, 56), 0.3)
+	forecourt(model, frame)
 	-- Platform and floor
 	part(model, { Name = "Platform", Size = Vector3.new(width + 4, 0.5, depth + 5), CFrame = frame * CFrame.new(0, 0.25, (depth - 1) / 2), Color = STONE, Material = Enum.Material.Slate })
 	part(model, { Name = "Floor", Size = Vector3.new(width, 0.15, depth), CFrame = frame * CFrame.new(0, 0.58, depth / 2), Color = PLANK, Material = Enum.Material.WoodPlanks, CanCollide = false })
@@ -262,6 +270,30 @@ local function buildShop(town: Instance, index: number)
 	model.Parent = town
 end
 
+-- Trees along the avenue to the gate, on both sides, a pair every so often (clear of the shops' paths)
+local function avenueTrees(town: Instance)
+	local first = Layout.SQUARE_CENTER.Z - Layout.SQUARE_RADIUS - 30
+	local last = Layout.wildGate().Z + 40
+	local z = first
+	while z > last do
+		local nearShop = false
+		for _, spot in Layout.SHOP_SPOTS do
+			if math.abs(spot.Z - z) < 22 then
+				nearShop = true
+			end
+		end
+		if not nearShop then
+			for _, side in { -1, 1 } do
+				local at = Vector3.new(side * (Layout.AVENUE_WIDTH / 2 + 7), 0, z)
+				part(town, { Name = "TreeTrunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(7, 1.6, 1.6), CFrame = CFrame.new(at + Vector3.new(0, 3.5, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(120, 82, 52), Material = Enum.Material.Wood })
+				part(town, { Name = "TreeLeaves", Shape = Enum.PartType.Ball, Size = Vector3.one * 9, Position = at + Vector3.new(0, 10, 0), Color = rgb(78, 160, 84) })
+				part(town, { Name = "TreeLeaves", Shape = Enum.PartType.Ball, Size = Vector3.one * 6, Position = at + Vector3.new(1.8, 13.5, 0.8), Color = rgb(96, 180, 98), CanCollide = false })
+			end
+		end
+		z -= 38
+	end
+end
+
 local function buildTown(world: Instance)
 	local town = Instance.new("Model")
 	town.Name = "Town"
@@ -272,6 +304,7 @@ local function buildTown(world: Instance)
 	for index = 1, #SHOPS do
 		buildShop(town, index)
 	end
+	avenueTrees(town)
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Anchored = true
 	spawn.Size = Vector3.new(8, 0.4, 8)
@@ -633,8 +666,6 @@ local function buildWild(world: Instance)
 	-- The arch: as wide as the whole entrance of the Wild, a tower at each side, a green beam across and the
 	-- name over it in big letters
 	local half = Layout.WILD_WIDTH / 2
-	local approachFrom = Layout.SQUARE_CENTER.Z - Layout.SQUARE_RADIUS
-	part(wild, { Name = "Approach", Size = Vector3.new(Layout.WILD_WIDTH, 0.3, approachFrom - gate.Z), Position = Vector3.new(gate.X, 0.12, (approachFrom + gate.Z) / 2), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
 	for _, side in { -1, 1 } do
 		part(wild, { Name = "GateTower", Size = Vector3.new(16, 56, 16), Position = gate + Vector3.new(side * (half - 8), 28, 0), Color = rgb(120, 116, 110), Material = Enum.Material.Slate })
 		part(wild, { Name = "GateTowerTop", Size = Vector3.new(19, 4, 19), Position = gate + Vector3.new(side * (half - 8), 58, 0), Color = rgb(90, 160, 90) })

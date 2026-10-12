@@ -8,13 +8,14 @@
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 
 local Layout = {
-	SQUARE_RADIUS = 120, -- the square where players arrive: the town square
+	SQUARE_RADIUS = 55, -- the paved square where players arrive (the grass round it is open ground) -- the square where players arrive: the town square
 	SHOP_DEPTH = 10, -- a stall, from its counter back
 	SHOP_WIDTH = 18,
 	GARDEN_RADIUS = 330, -- the gardens' middles, this far from the square's
 	GARDEN_STEP = 34, -- degrees between two gardens: they fill the whole south half round the square, east to west
 	GARDEN_ROAD_RADIUS = 260, -- the arc road past the gardens' gates
 	ROAD_WIDTH_TOWN = 20,
+	AVENUE_WIDTH = 28, -- the paved way from the square to the Wild's gate: grass on both sides
 	WILD_GATE_DISTANCE = 470, -- the big gate into the Wild, this far north of the square
 	GARDEN_SIZE = 96,
 	GATE_WIDTH = 16, -- the opening in a garden's front fence
@@ -23,10 +24,9 @@ local Layout = {
 	SQUARE_CENTER = Vector3.new(0, 0, -140), -- the square itself, moved up toward the gate to leave room for the gardens
 }
 
--- The shops: two buildings along each side of the paved ground in front of the Wild's gate, just outside its
--- edge on the grass, their fronts toward the lane between them (the way from the square to the gate); the square and
--- the lane stay empty
-Layout.SHOP_EDGE = 126 -- (the counters' distance from the lane's middle: the paving's edge is at WILD_WIDTH / 2 = 120)
+-- The shops: two buildings along each side of the avenue to the Wild's gate, on the grass, their fronts toward it
+-- (a short paved path from each door joins the avenue). Everything else is open green ground, with room to fight.
+Layout.SHOP_EDGE = 38 -- (the counters' distance from the avenue's middle)
 Layout.SHOP_SPOTS = {
 	Vector3.new(-Layout.SHOP_EDGE, 0, -295), -- the Shop
 	Vector3.new(-Layout.SHOP_EDGE, 0, -365), -- the Fuse Machine
@@ -238,7 +238,7 @@ function Layout.roads(): ({ Road }, { Arc })
 	local roads: { Road } = {}
 	local arcs: { Arc } = {}
 	-- (from behind the stalls)
-	table.insert(roads, { a = Layout.SQUARE_CENTER + Vector3.new(0, 0, -Layout.SQUARE_RADIUS - 2), b = Layout.wildGate(), width = w })
+	table.insert(roads, { a = Layout.SQUARE_CENTER + Vector3.new(0, 0, -Layout.SQUARE_RADIUS - 2), b = Layout.wildGate(), width = Layout.AVENUE_WIDTH })
 	table.insert(roads, { a = Layout.SQUARE_CENTER + Vector3.new(0, 0, Layout.SQUARE_RADIUS - 2), b = around(Layout.GARDEN_ROAD_RADIUS, 180), width = w })
 	local last = Layout.gardenAngle(IslandConfig.ISLANDS) + Layout.GARDEN_STEP * 0.3
 	table.insert(arcs, { radius = Layout.GARDEN_ROAD_RADIUS, from = 180 - last, to = 180 + last, width = w })
