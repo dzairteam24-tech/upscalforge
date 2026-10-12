@@ -82,13 +82,15 @@ end
 --   the pen at the back, behind its own fence: every creature in the garden lives there. It grows back with
 --   the pasture's level (PASTURE_GROWTH).
 local HALF = Layout.GARDEN_SIZE / 2
-local FIELD_FRONT, FIELD_BACK = -HALF + 25, 13 -- the hatching field
-local PEN_FRONT, PEN_BACK = FIELD_BACK + 3, HALF - 2 -- the creatures' pen
-Layout.FIELD = { center = Vector3.new(0, 0, (FIELD_FRONT + FIELD_BACK) / 2), size = Vector3.new(Layout.GARDEN_SIZE - 8, 0, FIELD_BACK - FIELD_FRONT) }
+-- Behind the yard, the rest of the garden in two equal halves, fence to fence: the hatching field, then the pen
+local FIELD_FRONT, PEN_BACK = -HALF + 16, HALF - 1
+local FIELD_BACK = (FIELD_FRONT + PEN_BACK) / 2 - 0.5 -- the hatching field
+local PEN_FRONT = FIELD_BACK + 1 -- the creatures' pen
+Layout.FIELD = { center = Vector3.new(0, 0, (FIELD_FRONT + FIELD_BACK) / 2), size = Vector3.new(Layout.GARDEN_SIZE - 2, 0, FIELD_BACK - FIELD_FRONT) }
 -- (the pen: called the pasture in the rest of the game, it's where the creatures roam)
 Layout.PASTURE = {
 	center = Vector3.new(0, 0, (PEN_FRONT + PEN_BACK) / 2),
-	size = Vector3.new(Layout.GARDEN_SIZE - 8, 0, PEN_BACK - PEN_FRONT),
+	size = Vector3.new(Layout.GARDEN_SIZE - 2, 0, PEN_BACK - PEN_FRONT),
 }
 Layout.NEST_SIZE = 6 -- a nest's width (an egg in it is drawn to fit, whatever its tier)
 Layout.PATH_WIDTH = 6

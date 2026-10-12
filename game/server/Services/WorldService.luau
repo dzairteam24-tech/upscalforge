@@ -436,7 +436,6 @@ local function buildGarden(world: Instance, index: number)
 	for level, extra in IslandConfig.PASTURE_GROWTH do
 		local back = stage("Back" .. level, level, true)
 		fence(at(0, 0, half + extra), size, back)
-		hedge(at(px, 0, pz + hz + extra), pasture.size.X, back)
 		local before = IslandConfig.PASTURE_GROWTH[level - 1]
 		if before then
 			local grow = stage("Grow" .. level, level, false)
@@ -445,7 +444,6 @@ local function buildGarden(world: Instance, index: number)
 			part(grow, { Name = "Pasture", Size = Vector3.new(pasture.size.X, 0.3, length + 0.1), CFrame = at(px, 0.45, middle), Color = rgb(108, 186, 92), Material = Enum.Material.Grass, CanCollide = false })
 			for _, side in { -1, 1 } do
 				fence(at(side * half, 0, middle) * CFrame.Angles(0, math.rad(90), 0), length, grow)
-				hedge(at(px + side * hx, 0, middle) * CFrame.Angles(0, math.rad(90), 0), length, grow)
 			end
 		end
 		-- (how each part looks when shown)
@@ -465,8 +463,7 @@ local function buildGarden(world: Instance, index: number)
 	end
 	local fx, fz, fhx, fhz = field.center.X, field.center.Z, field.size.X / 2, field.size.Z / 2
 	for _, s in { -1, 1 } do
-		-- The pen's sides (a hedge) and its front: a wooden fence with an opening in the middle
-		hedge(at(px + s * hx, 0, pz) * CFrame.Angles(0, math.rad(90), 0), pasture.size.Z)
+		-- (the garden's fence is the sides of both halves) The pen's front: a wooden fence, open in the middle
 		local piece = hx - Layout.PATH_WIDTH / 2 - 1
 		local penFront = at(px + s * (hx - piece / 2), 0, pz - hz)
 		for _, y in { 1.2, 2.6 } do
@@ -475,8 +472,7 @@ local function buildGarden(world: Instance, index: number)
 		for i = 0, 3 do
 			part(model, { Name = "PenPost", Size = Vector3.new(0.9, 3.6, 0.9), CFrame = penFront * CFrame.new(-piece / 2 + i * piece / 3, 1.7, 0), Color = rgb(250, 240, 222), CanCollide = false })
 		end
-		-- The hatching field's sides and its front (a hedge, open where the path comes in)
-		hedge(at(fx + s * fhx, 0, fz) * CFrame.Angles(0, math.rad(90), 0), field.size.Z)
+		-- The hatching field's front, along the yard (a low hedge, open where the path comes in)
 		local front = fhx - Layout.PATH_WIDTH / 2 - 1
 		hedge(at(fx + s * (fhx - front / 2), 0, fz - fhz), front)
 	end
