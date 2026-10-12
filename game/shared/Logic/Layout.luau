@@ -9,8 +9,8 @@ local IslandConfig = require(script.Parent.Parent.Config.Island)
 
 local Layout = {
 	SQUARE_RADIUS = 70, -- the square where players arrive: the town square
-	SHOP_DEPTH = 8, -- a stall, from its counter back
-	SHOP_WIDTH = 15,
+	SHOP_DEPTH = 10, -- a stall, from its counter back
+	SHOP_WIDTH = 18,
 	GARDEN_RADIUS = 330, -- the gardens' middles, this far from the square's
 	GARDEN_STEP = 34, -- degrees between two gardens: they fill the whole south half round the square, east to west
 	GARDEN_ROAD_RADIUS = 260, -- the arc road past the gardens' gates
@@ -23,9 +23,10 @@ local Layout = {
 	SQUARE_CENTER = Vector3.new(0, 0, -110), -- the square itself, moved up toward the gate to leave room for the gardens
 }
 
--- The shops' stalls: two along each side edge of the paved ground in front of the Wild's gate, their fronts toward
--- the open lane between them (the way from the square to the gate); the square and the lane stay empty
-Layout.SHOP_EDGE = 100 -- (the counters' distance from the lane's middle: just inside the paving's edge)
+-- The shops: two buildings along each side of the paved ground in front of the Wild's gate, just outside its
+-- edge on the grass, their fronts toward the lane between them (the way from the square to the gate); the square and
+-- the lane stay empty
+Layout.SHOP_EDGE = 126 -- (the counters' distance from the lane's middle: the paving's edge is at WILD_WIDTH / 2 = 120)
 Layout.SHOP_SPOTS = {
 	Vector3.new(-Layout.SHOP_EDGE, 0, -205), -- the Shop
 	Vector3.new(-Layout.SHOP_EDGE, 0, -250), -- the Fuse Machine

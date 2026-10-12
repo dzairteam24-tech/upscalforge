@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local IslandConfig = require(Shared.Config.Island)
+local SnapConfig = require(Shared.Config.Snap)
 local WildConfig = require(Shared.Config.Wild)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
@@ -82,15 +83,44 @@ end
 -- The town
 
 -- The shops, in the order of their stalls (Layout.shop), with their sign and colors
-type ShopSpot = { name: string, ui: string, color: Color3, sign: string?, emoji: string, machine: boolean? }
+type ShopSpot = { name: string, ui: string, color: Color3, sign: string?, emoji: string, machine: boolean?, menu: { string } }
 local SHOPS: { ShopSpot } = {
-	{ name = "Shop", sign = "SHOP", ui = "Shop", emoji = "🛒", color = rgb(92, 200, 120) },
-	{ name = "Fuse Machine", machine = true, ui = "Fuse", emoji = "⚙️", color = rgb(60, 130, 240) },
-	{ name = "Trail Shop", sign = "TRAILS", ui = "Trails", emoji = "✨", color = rgb(255, 200, 40) },
-	{ name = "Mutation Machine", machine = true, ui = "Mutate", emoji = "🧪", color = rgb(90, 230, 110) },
+	{ name = "Shop", sign = "SHOP", ui = "Shop", emoji = "🛒", color = rgb(92, 200, 120), menu = { "💰 Sell your eggs", "💰 Sell your creatures", "🍎 Food for the trough" } },
+	{ name = "Fuse Machine", machine = true, ui = "Fuse", emoji = "⚙️", color = rgb(60, 130, 240), menu = { ("%d the same → 1 Mega"):format(SnapConfig.NEED), ("%d Megas → 1 Rainbow"):format(SnapConfig.NEED), "Bigger, earns far more" } },
+	{ name = "Trail Shop", sign = "TRAILS", ui = "Trails", emoji = "✨", color = rgb(255, 200, 40), menu = { "A colored trail behind you", "More speed every step", "Green → Rainbow" } },
+	{ name = "Mutation Machine", machine = true, ui = "Mutate", emoji = "🧪", color = rgb(90, 230, 110), menu = { "Raise a creature's mutation", "Normal → Golden → Crystal", "→ Lava → Neon" } },
 }
 
 WorldService.SHOPS = SHOPS
+
+-- A menu board on two legs, facing the lane: a title and a line for each thing the shop does (what it sells)
+local function menuBoard(model: Instance, shop: ShopSpot, frame: CFrame, at: Vector3)
+	local board = part(model, { Name = "MenuBoard", Size = Vector3.new(6, 4.4, 0.4), CFrame = frame * CFrame.new(at.X, at.Y + 3.1, at.Z) * CFrame.Angles(math.rad(-8), 0, 0), Color = rgb(34, 30, 48), CanCollide = false })
+	part(model, { Name = "MenuFrame", Size = Vector3.new(6.5, 4.9, 0.3), CFrame = frame * CFrame.new(at.X, at.Y + 3.1, at.Z + 0.12) * CFrame.Angles(math.rad(-8), 0, 0), Color = shop.color, CanCollide = false })
+	for _, side in { -1, 1 } do
+		part(model, { Name = "MenuLeg", Size = Vector3.new(0.4, 3.2, 0.4), CFrame = frame * CFrame.new(at.X + side * 2.4, at.Y + 1.6, at.Z + 0.5), Color = rgb(120, 82, 52), Material = Enum.Material.WoodPlanks, CanCollide = false })
+	end
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.PixelsPerStud = 60
+	local function line(text: string, y: number, h: number, font: Enum.Font, color: Color3)
+		local t = Instance.new("TextLabel")
+		t.AnchorPoint = Vector2.new(0.5, 0)
+		t.Position = UDim2.fromScale(0.5, y)
+		t.Size = UDim2.fromScale(0.92, h)
+		t.BackgroundTransparency = 1
+		t.Text = text
+		t.TextScaled = true
+		t.Font = font
+		t.TextColor3 = color
+		t.Parent = gui
+	end
+	line("MENU", 0.04, 0.26, Enum.Font.LuckiestGuy, rgb(255, 221, 64))
+	for i, text in shop.menu do
+		line(text, 0.28 + (i - 1) * 0.23, 0.2, Enum.Font.FredokaOne, Color3.new(1, 1, 1))
+	end
+	gui.Parent = board
+end
 
 -- A machine in the market row (the Fuse Machine, the Mutation Machine): a big boxy body in its color with a
 -- glowing window in front, pipes and a light on top, its name floating over it. Its front holds the prompt.
@@ -100,7 +130,8 @@ local function buildMachine(town: Instance, index: number)
 	local model = Instance.new("Model")
 	model.Name = shop.name
 	local dark = shop.color:Lerp(rgb(30, 30, 40), 0.55)
-	part(model, { Name = "Base", Size = Vector3.new(16, 0.8, 11), CFrame = frame * CFrame.new(0, 0.4, 4), Color = rgb(90, 95, 110), Material = Enum.Material.DiamondPlate })
+	part(model, { Name = "Platform", Size = Vector3.new(Layout.SHOP_WIDTH + 4, 0.8, Layout.SHOP_DEPTH + 6), CFrame = frame * CFrame.new(0, 0.4, (Layout.SHOP_DEPTH - 1) / 2), Color = rgb(96, 100, 116), Material = Enum.Material.DiamondPlate })
+	menuBoard(model, shop, frame, Vector3.new(Layout.SHOP_WIDTH / 2 - 1.5, 0.8, -1.2))
 	local body = part(model, { Name = "Body", Size = Vector3.new(13, 9, 8), CFrame = frame * CFrame.new(0, 5.3, 5), Color = dark })
 	local window = part(model, { Name = "Window", Size = Vector3.new(7, 6, 0.4), CFrame = frame * CFrame.new(1.5, 5.6, 0.9), Color = shop.color:Lerp(Color3.new(1, 1, 1), 0.5), Material = Enum.Material.Neon, CanCollide = false })
 	local glyph = Instance.new("SurfaceGui")
@@ -122,7 +153,7 @@ local function buildMachine(town: Instance, index: number)
 		part(model, { Name = "Pipe", Shape = Enum.PartType.Cylinder, Size = Vector3.new(4, 1.4, 1.4), CFrame = frame * CFrame.new(x, 11.5, 5) * CFrame.Angles(0, 0, math.rad(90)), Color = shop.color, Material = Enum.Material.Neon, CanCollide = false })
 	end
 	part(model, { Name = "PipeTop", Size = Vector3.new(8.4, 1.4, 1.4), CFrame = frame * CFrame.new(0, 13.5, 5), Color = rgb(70, 75, 90), CanCollide = false })
-	local sign = part(model, { Name = "MachineSign", Size = Vector3.one, CFrame = frame * CFrame.new(0, 17, 5), Transparency = 1, CanCollide = false, CanQuery = false })
+	local sign = part(model, { Name = "MachineSign", Size = Vector3.one, CFrame = frame * CFrame.new(0, 18, 5), Transparency = 1, CanCollide = false, CanQuery = false })
 	bigName(sign, shop.emoji .. " " .. string.upper(shop.name), 24, 5)
 	local status = label(sign, "", 12, 2.4, Vector3.new(0, -4.4, 0)) -- (each player's own: FuseWindow, MutateWindow)
 	status.Name = "Status"
@@ -137,33 +168,35 @@ local function buildMachine(town: Instance, index: number)
 	model.Parent = town
 end
 
--- A market stall: a rug, a wooden counter with a colored front and flower boxes, shelves of goods on the back
--- wall, posts with lanterns and a striped awning with a scalloped edge, its front toward the square. Its name
--- floats over it in big letters. The counter holds the prompt that opens the shop's window.
+-- A shop building, just outside the paving's edge, its front toward the lane: a stone platform, a back wall and
+-- two side walls with windows, a flat roof with a colored fascia and a scalloped valance, lanterns, a counter
+-- with goods on it and shelves behind, flower boxes, a menu board (what it sells) and its name floating high
+-- over it in big letters. The counter holds the prompt that opens the shop's window.
 local CREAM = rgb(250, 238, 214)
-local WOOD = rgb(176, 124, 78)
-local DARK_WOOD = rgb(120, 82, 52)
+local PLANK = rgb(176, 124, 78)
+local DARK_PLANK = rgb(120, 82, 52)
+local STONE = rgb(150, 146, 140)
 
 local function goods(model: Instance, shop: ShopSpot, frame: CFrame, width: number, depth: number)
 	-- Two shelves on the back wall with little boxes in the shop's colors
-	for row, y in { 4.2, 6.6 } do
-		part(model, { Name = "Shelf", Size = Vector3.new(width - 3, 0.35, 1.4), CFrame = frame * CFrame.new(0, y, depth - 1), Color = DARK_WOOD, Material = Enum.Material.WoodPlanks, CanCollide = false })
-		for k = 1, 5 do
+	for row, y in { 4.9, 7.3 } do
+		part(model, { Name = "Shelf", Size = Vector3.new(width - 3, 0.35, 1.4), CFrame = frame * CFrame.new(0, y, depth - 1), Color = DARK_PLANK, Material = Enum.Material.WoodPlanks, CanCollide = false })
+		for k = 1, 6 do
 			local tint = shop.color:Lerp(Color3.new(1, 1, 1), ((k + row) % 3) * 0.25)
-			part(model, { Name = "Goods", Size = Vector3.new(1.3, 1 + ((k + row) % 2) * 0.4, 1), CFrame = frame * CFrame.new(-(width - 3) / 2 + (k - 0.5) * (width - 3) / 5, y + 0.9, depth - 1), Color = tint, CanCollide = false })
+			part(model, { Name = "Goods", Size = Vector3.new(1.3, 1 + ((k + row) % 2) * 0.4, 1), CFrame = frame * CFrame.new(-(width - 3) / 2 + (k - 0.5) * (width - 3) / 6, y + 0.9, depth - 1), Color = tint, CanCollide = false })
 		end
 	end
 	-- On the counter: coins and an apple for the Shop, colored bars for the Trails
 	for k = 1, 3 do
-		local x = (k - 2) * 3.4
+		local x = (k - 2) * 3.6
 		if shop.ui == "Shop" and k < 3 then
 			for h = 0, 2 do
-				part(model, { Name = "Coin", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.35, 1.7, 1.7), CFrame = frame * CFrame.new(x, 3.8 + h * 0.36, 1.5) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(255, 205, 60), Material = Enum.Material.Neon, CanCollide = false })
+				part(model, { Name = "Coin", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.35, 1.7, 1.7), CFrame = frame * CFrame.new(x, 4.3 + h * 0.36, 0.9) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(255, 205, 60), Material = Enum.Material.Neon, CanCollide = false })
 			end
 		elseif shop.ui == "Shop" then
-			part(model, { Name = "Apple", Shape = Enum.PartType.Ball, Size = Vector3.one * 1.7, CFrame = frame * CFrame.new(x, 4.3, 1.5), Color = rgb(225, 60, 60), CanCollide = false })
+			part(model, { Name = "Apple", Shape = Enum.PartType.Ball, Size = Vector3.one * 1.7, CFrame = frame * CFrame.new(x, 4.8, 0.9), Color = rgb(225, 60, 60), CanCollide = false })
 		else
-			part(model, { Name = "Bar", Size = Vector3.new(2.4, 0.5, 1.2), CFrame = frame * CFrame.new(x, 3.9, 1.5), Color = shop.color:Lerp(Color3.new(1, 1, 1), (k - 1) * 0.3), Material = Enum.Material.Neon, CanCollide = false })
+			part(model, { Name = "Bar", Size = Vector3.new(2.4, 0.5, 1.2), CFrame = frame * CFrame.new(x, 4.4, 0.9), Color = shop.color:Lerp(Color3.new(1, 1, 1), (k - 1) * 0.3), Material = Enum.Material.Neon, CanCollide = false })
 		end
 	end
 end
@@ -178,47 +211,47 @@ local function buildShop(town: Instance, index: number)
 	local width, depth = Layout.SHOP_WIDTH, Layout.SHOP_DEPTH
 	local model = Instance.new("Model")
 	model.Name = shop.name
-	-- A rug under the stall, in the shop's color
-	part(model, { Name = "Rug", Size = Vector3.new(width + 3, 0.2, depth + 4), CFrame = frame * CFrame.new(0, 0.25, depth / 2 + 0.5), Color = shop.color:Lerp(Color3.new(1, 1, 1), 0.45), CanCollide = false })
-	-- The counter: dark wood with a colored band along its front, a cream top that overhangs
-	local counter = part(model, { Name = "Counter", Size = Vector3.new(width - 1, 3.2, 2.4), CFrame = frame * CFrame.new(0, 1.6, 1.2), Color = WOOD, Material = Enum.Material.WoodPlanks })
-	part(model, { Name = "CounterBand", Size = Vector3.new(width - 1.2, 0.7, 0.2), CFrame = frame * CFrame.new(0, 2.5, -0.05), Color = shop.color, CanCollide = false })
-	part(model, { Name = "CounterFoot", Size = Vector3.new(width - 0.6, 0.5, 2.8), CFrame = frame * CFrame.new(0, 0.25, 1.2), Color = DARK_WOOD, Material = Enum.Material.WoodPlanks, CanCollide = false })
-	part(model, { Name = "CounterTop", Size = Vector3.new(width - 0.4, 0.4, 3.2), CFrame = frame * CFrame.new(0, 3.4, 1.2), Color = CREAM, CanCollide = false })
-	-- The back wall, with a darker lintel
-	part(model, { Name = "Back", Size = Vector3.new(width, 9, 0.6), CFrame = frame * CFrame.new(0, 4.5, depth), Color = shop.color:Lerp(Color3.new(1, 1, 1), 0.6) })
-	part(model, { Name = "Lintel", Size = Vector3.new(width, 0.6, 0.9), CFrame = frame * CFrame.new(0, 8.7, depth), Color = DARK_WOOD, Material = Enum.Material.WoodPlanks, CanCollide = false })
-	goods(model, shop, frame, width, depth)
-	-- Posts with a cap, and a warm lantern hanging at each front corner
-	for _, x in { -1, 1 } do
-		for _, z in { 0.3, depth } do
-			part(model, { Name = "Post", Size = Vector3.new(0.6, 9.4, 0.6), CFrame = frame * CFrame.new(x * (width / 2 - 0.3), 4.7, z), Color = CREAM })
-			part(model, { Name = "PostCap", Size = Vector3.new(1, 0.4, 1), CFrame = frame * CFrame.new(x * (width / 2 - 0.3), 9.5, z), Color = DARK_WOOD, CanCollide = false })
-		end
-		part(model, { Name = "Lantern", Shape = Enum.PartType.Ball, Size = Vector3.one * 1.1, CFrame = frame * CFrame.new(x * (width / 2 - 0.3), 8.2, -0.7), Color = rgb(255, 214, 120), Material = Enum.Material.Neon, CanCollide = false })
-		-- A flower box at each end of the counter
-		part(model, { Name = "FlowerBox", Size = Vector3.new(2.2, 1, 1.2), CFrame = frame * CFrame.new(x * (width / 2 + 1.3), 0.5, 0.6), Color = DARK_WOOD, Material = Enum.Material.WoodPlanks, CanCollide = false })
+	local wall = shop.color:Lerp(Color3.new(1, 1, 1), 0.6)
+	local dark = shop.color:Lerp(rgb(40, 36, 56), 0.3)
+	-- Platform and floor
+	part(model, { Name = "Platform", Size = Vector3.new(width + 4, 0.5, depth + 5), CFrame = frame * CFrame.new(0, 0.25, (depth - 1) / 2), Color = STONE, Material = Enum.Material.Slate })
+	part(model, { Name = "Floor", Size = Vector3.new(width, 0.15, depth), CFrame = frame * CFrame.new(0, 0.58, depth / 2), Color = PLANK, Material = Enum.Material.WoodPlanks, CanCollide = false })
+	-- Walls: the back one and the two sides (with a window each), a darker wooden foot all round
+	part(model, { Name = "Back", Size = Vector3.new(width, 9, 0.6), CFrame = frame * CFrame.new(0, 5, depth), Color = wall })
+	part(model, { Name = "BackFoot", Size = Vector3.new(width, 2.2, 0.7), CFrame = frame * CFrame.new(0, 1.6, depth - 0.05), Color = DARK_PLANK, Material = Enum.Material.WoodPlanks, CanCollide = false })
+	for _, side in { -1, 1 } do
+		local x = side * (width / 2 - 0.3)
+		part(model, { Name = "Side", Size = Vector3.new(0.6, 9, depth), CFrame = frame * CFrame.new(x, 5, depth / 2), Color = wall })
+		part(model, { Name = "SideFoot", Size = Vector3.new(0.7, 2.2, depth), CFrame = frame * CFrame.new(x, 1.6, depth / 2), Color = DARK_PLANK, Material = Enum.Material.WoodPlanks, CanCollide = false })
+		part(model, { Name = "WindowFrame", Size = Vector3.new(0.8, 3.8, 4.6), CFrame = frame * CFrame.new(x, 6, depth / 2), Color = CREAM, CanCollide = false })
+		part(model, { Name = "WindowGlass", Size = Vector3.new(0.4, 3.2, 4), CFrame = frame * CFrame.new(x, 6, depth / 2), Color = rgb(170, 220, 245), Material = Enum.Material.Glass, Transparency = 0.35, CanCollide = false })
+		-- A front post with a cap, a lantern hanging beside it, and a flower box at its foot
+		part(model, { Name = "Post", Size = Vector3.new(1, 9.6, 1), CFrame = frame * CFrame.new(side * (width / 2 - 0.1), 5.3, -0.4), Color = CREAM })
+		part(model, { Name = "PostCap", Size = Vector3.new(1.4, 0.5, 1.4), CFrame = frame * CFrame.new(side * (width / 2 - 0.1), 10.3, -0.4), Color = DARK_PLANK, CanCollide = false })
+		part(model, { Name = "Lantern", Shape = Enum.PartType.Ball, Size = Vector3.one * 1.1, CFrame = frame * CFrame.new(side * (width / 2 - 1.4), 8.5, -1.6), Color = rgb(255, 214, 120), Material = Enum.Material.Neon, CanCollide = false })
+		part(model, { Name = "FlowerBox", Size = Vector3.new(2.4, 1, 1.2), CFrame = frame * CFrame.new(side * (width / 2 + 1.6), 1, -1.2), Color = DARK_PLANK, Material = Enum.Material.WoodPlanks, CanCollide = false })
 		for k, c in { rgb(90, 190, 90), rgb(255, 150, 190), rgb(90, 190, 90) } do
-			part(model, { Name = "Flower", Shape = Enum.PartType.Ball, Size = Vector3.one * 0.9, CFrame = frame * CFrame.new(x * (width / 2 + 1.3) + (k - 2) * 0.7, 1.3, 0.6), Color = c, CanCollide = false })
+			part(model, { Name = "Flower", Shape = Enum.PartType.Ball, Size = Vector3.one * 0.9, CFrame = frame * CFrame.new(side * (width / 2 + 1.6) + (k - 2) * 0.75, 1.8, -1.2), Color = c, CanCollide = false })
 		end
 	end
-	-- The awning: stripes of the shop's color and white, sloping down toward the front, and a scalloped edge
-	local stripes = 7
-	for k = 1, stripes do
-		local x = -width / 2 + (k - 0.5) * width / stripes
-		local color = if k % 2 == 1 then shop.color else rgb(255, 255, 255)
-		part(model, {
-			Name = "Awning",
-			Size = Vector3.new(width / stripes, 0.3, depth + 2.4),
-			CFrame = frame * CFrame.new(x, 9.8, depth / 2 - 0.6) * CFrame.Angles(math.rad(-14), 0, 0),
-			Color = color,
-			CanCollide = false,
-		})
-		part(model, { Name = "Scallop", Shape = Enum.PartType.Ball, Size = Vector3.new(width / stripes * 0.98, 1.3, 0.5), CFrame = frame * CFrame.new(x, 8.75, -1.45), Color = color, CanCollide = false })
+	-- The roof, its fascia in the shop's color with a cream line under it, and a scalloped valance
+	part(model, { Name = "Roof", Size = Vector3.new(width + 2.4, 0.7, depth + 4), CFrame = frame * CFrame.new(0, 10.5, (depth - 1) / 2), Color = dark })
+	part(model, { Name = "Fascia", Size = Vector3.new(width + 2.6, 1.4, 0.6), CFrame = frame * CFrame.new(0, 10, -2.6), Color = shop.color, CanCollide = false })
+	part(model, { Name = "FasciaLine", Size = Vector3.new(width + 2.6, 0.3, 0.7), CFrame = frame * CFrame.new(0, 9.2, -2.6), Color = CREAM, CanCollide = false })
+	local scallops = 9
+	for k = 1, scallops do
+		local x = -(width + 2.6) / 2 + (k - 0.5) * (width + 2.6) / scallops
+		part(model, { Name = "Scallop", Shape = Enum.PartType.Ball, Size = Vector3.new((width + 2.6) / scallops * 0.98, 1.3, 0.5), CFrame = frame * CFrame.new(x, 8.7, -2.6), Color = if k % 2 == 1 then shop.color else Color3.new(1, 1, 1), CanCollide = false })
 	end
+	-- The counter: dark wood with a colored band along its front and a cream top that overhangs
+	local counter = part(model, { Name = "Counter", Size = Vector3.new(width - 2, 3.2, 2.4), CFrame = frame * CFrame.new(0, 2.1, 0.8), Color = PLANK, Material = Enum.Material.WoodPlanks })
+	part(model, { Name = "CounterBand", Size = Vector3.new(width - 2.2, 0.7, 0.2), CFrame = frame * CFrame.new(0, 3, -0.45), Color = shop.color, CanCollide = false })
+	part(model, { Name = "CounterTop", Size = Vector3.new(width - 1.6, 0.4, 3.2), CFrame = frame * CFrame.new(0, 3.9, 0.8), Color = CREAM, CanCollide = false })
+	goods(model, shop, frame, width, depth)
+	menuBoard(model, shop, frame, Vector3.new(width / 2 - 3, 0.5, -2.2))
 	-- The name over it in big letters, floating high so it reads from the square
-	local sign = part(model, { Name = "Sign", Size = Vector3.one, CFrame = frame * CFrame.new(0, 15, depth / 2), Transparency = 1, CanCollide = false, CanQuery = false })
-	bigName(sign, shop.emoji .. " " .. (shop.sign or shop.name), 20, 6)
+	local sign = part(model, { Name = "Sign", Size = Vector3.one, CFrame = frame * CFrame.new(0, 17, depth / 2), Transparency = 1, CanCollide = false, CanQuery = false })
+	bigName(sign, shop.emoji .. " " .. (shop.sign or shop.name), 22, 6.5)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Open"
 	prompt.ObjectText = shop.name
