@@ -1,36 +1,24 @@
 --!strict
--- The bat, and what it knocks loose. Everything a player carries outside their garden (the eggs in their hotbar,
--- the creatures not in the garden or the barn, an egg from the Wild or the Heist) can be stolen: two bat hits
--- on the same player knock what's in their hands out (or, with empty hands, something they carry). It lies on the
--- ground and anyone can grab it, the owner too: it goes into the grabber's hotbar, and they have to take it home to
--- be safe. Nobody takes it in a minute, it goes back to its owner. Nothing happens inside any garden.
+-- The bat. Only an egg on its way home can be stolen: one carried from the Wild (or the Heist Egg). Two bat hits
+-- on its carrier knock it out of their hands, onto the ground, and anyone can grab it (WildService, HeistService)
+-- and has to run it home in turn. Once it's in its taker's garden it's theirs and safe for good: in their hotbar,
+-- to set down and hatch, or in their barn. Every hit pushes the one hit back, whatever they carry; nothing
+-- happens inside any garden.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Ball = require(Shared.Ball)
 local StealConfig = require(Shared.Config.Steal)
-local Format = require(Shared.Logic.Format)
-local Hatch = require(Shared.Logic.Hatch)
 local Net = require(Shared.Net)
 local Layout = require(Shared.Logic.Layout)
 
-local DataService = require(script.Parent.DataService)
 local HeistService = require(script.Parent.HeistService)
 local IslandService = require(script.Parent.IslandService)
 local WildService = require(script.Parent.WildService)
 
 local StealService = {}
 
-type Data = DataService.Data
-type Creature = DataService.Creature
-
--- Something on the ground: an egg (tier, golden) or a creature, whose owner lost it
-type Drop = { owner: Player, tier: number?, size: string?, golden: boolean?, creature: Creature?, model: Model, expires: number }
-local drops: { [Model]: Drop } = {}
-
-local rng = Random.new()
 local lastSwing: { [Player]: number } = {}
 local combo: { [Player]: { target: Player, hits: number, expires: number } } = {}
 
@@ -43,198 +31,16 @@ local function inGarden(position: Vector3): boolean
 end
 
 ---------------------------------------------------------------------------------------------------------------
--- What is carried
-
--- What the player has in their hands, or else something they carry (picked at random)
-type Loot = { creature: string?, key: string?, golden: boolean? }
-local function lootOf(player: Player, data: Data): Loot?
-	local character = player.Character
-	if character then
-		for _, tool in character:GetChildren() do
-			if tool:IsA("Tool") then
-				local id = tool:GetAttribute("CreatureId")
-				if type(id) == "string" and data.creatures[id] and not data.stored[id] and not table.find(data.placed, id) then
-					return { creature = id }
-				end
-				local kind = tool:GetAttribute("EggKind")
-				if type(kind) == "string" then
-					local golden = string.sub(kind, 1, 1) == "g"
-					local key = if golden then string.sub(kind, 2) else kind
-					local bag = if golden then data.golden else data.eggs
-					if Hatch.parse(key) and (bag[key] or 0) > 0 then
-						return { key = key, golden = golden }
-					end
-				end
-			end
-		end
-	end
-	-- (empty hands: any one thing they carry)
-	local all: { Loot } = {}
-	for id in data.creatures do
-		if not data.stored[id] and not table.find(data.placed, id) then
-			table.insert(all, { creature = id })
-		end
-	end
-	for _, golden in { false, true } do
-		for key, count in (if golden then data.golden else data.eggs) do
-			if count > 0 and Hatch.parse(key) then
-				table.insert(all, { key = key, golden = golden })
-			end
-		end
-	end
-	return if #all > 0 then all[rng:NextInteger(1, #all)] else nil
-end
-
----------------------------------------------------------------------------------------------------------------
--- On the ground
-
-local function title(drop: Drop): string
-	if drop.creature then
-		return drop.creature.s
-	end
-	return if drop.tier then Hatch.name(drop.tier, drop.size, drop.golden) else "Egg"
-end
-
--- Hands the drop to a player (a thief, or its owner back), into their hotbar. False when there's no room.
-local function give(drop: Drop, taker: Player): boolean
-	local data = DataService.get(taker)
-	if not data then
-		return false
-	end
-	if drop.creature then
-		local count = 0
-		for _ in data.creatures do
-			count += 1
-		end
-		if count >= IslandService.storage(data) then
-			IslandService.notify(taker, "Your barn is full: sell some creatures or grow it", "error")
-			return false
-		end
-		local id = tostring(data.nextId)
-		data.nextId += 1
-		data.creatures[id] = { s = drop.creature.s, m = drop.creature.m, g = drop.creature.g, w = drop.creature.w }
-	elseif drop.tier then
-		local bag = if drop.golden then data.golden else data.eggs
-		local key = Hatch.key(drop.tier, drop.size)
-		bag[key] = (bag[key] or 0) + 1
-	end
-	IslandService.push(taker)
-	return true
-end
-
-local function remove(drop: Drop)
-	drops[drop.model] = nil
-	drop.model:Destroy()
-end
-
--- Back to its owner (nobody took it in time, or they left)
-local function sendHome(drop: Drop)
-	if not drops[drop.model] then
-		return
-	end
-	remove(drop)
-	if drop.owner.Parent and give(drop, drop.owner) then
-		IslandService.notify(drop.owner, ("Your %s came back"):format(title(drop)), "info")
-	end
-end
-
-local function grab(taker: Player, drop: Drop)
-	local root = rootOf(taker)
-	if not drops[drop.model] or not root or (root.CFrame.Position - drop.model:GetPivot().Position).Magnitude > StealConfig.GRAB_RANGE + 4 then
-		return
-	end
-	if inGarden(root.CFrame.Position) and taker ~= drop.owner then
-		return
-	end
-	if not give(drop, taker) then
-		return
-	end
-	remove(drop)
-	if taker ~= drop.owner and drop.owner.Parent then
-		IslandService.notify(drop.owner, ("😱 %s stole your %s!"):format(taker.DisplayName, title(drop)), "error")
-	end
-end
-
--- Puts what was knocked out on the ground where the victim stands
-local function lay(drop: Drop, at: Vector3)
-	local frame = CFrame.new(at.X, 1.4, at.Z)
-	local model: Model
-	local body: BasePart
-	if drop.creature then
-		model, body = Ball.build(drop.creature.s, frame, true)
-	else
-		local egg = if drop.tier then Hatch.egg(drop.tier) else nil
-		model = Instance.new("Model")
-		body = Instance.new("Part")
-		body.Name = "Body"
-		body.Shape = Enum.PartType.Ball
-		body.Size = Vector3.one * 3 * Hatch.size(drop.size).scale
-		body.CFrame = frame
-		body.Anchored = true
-		body.CanCollide = false
-		body.Color = if drop.golden then Color3.fromRGB(255, 205, 70) elseif egg then egg.color else Color3.new(1, 1, 1)
-		body.Material = if drop.golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
-		local mesh = Instance.new("SpecialMesh")
-		mesh.MeshType = Enum.MeshType.Sphere
-		mesh.Scale = Vector3.new(1, 1.3, 1)
-		mesh.Parent = body
-		body.Parent = model
-		model.PrimaryPart = body
-	end
-	model.Name = "Dropped"
-	drop.model = model
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Grab"
-	prompt.ObjectText = title(drop)
-	prompt.HoldDuration = 0.4
-	prompt.MaxActivationDistance = StealConfig.GRAB_RANGE
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = body
-	prompt.Triggered:Connect(function(taker)
-		grab(taker, drop)
-	end)
-	model.Parent = workspace
-	drops[model] = drop
-end
-
----------------------------------------------------------------------------------------------------------------
 -- The bat
 
--- Knocks what the victim carries out of their hands
+-- Knocks the egg its carrier is taking home out of their hands (only that egg: what's home is safe)
 local function knock(victim: Player)
-	local root = rootOf(victim)
-	local data = DataService.get(victim)
-	if not root or not data then
-		return
-	end
 	if HeistService.isCarrier(victim) then
 		HeistService.knock(victim)
 		IslandService.notify(victim, "💥 Knocked out of your hands! Grab it back!", "error")
-		return
-	end
-	if victim:GetAttribute("WildEgg") == true then
+	elseif victim:GetAttribute("WildEgg") == true then
 		WildService.knock(victim)
-		return
 	end
-	local loot = lootOf(victim, data)
-	if not loot then
-		return
-	end
-	local drop: Drop
-	if loot.creature then
-		local creature = data.creatures[loot.creature]
-		data.creatures[loot.creature] = nil
-		drop = { owner = victim, creature = { s = creature.s, m = creature.m, g = creature.g, w = creature.w }, model = Instance.new("Model"), expires = os.clock() + StealConfig.DROP_TIME }
-	else
-		local key = loot.key :: string
-		local bag = if loot.golden then data.golden else data.eggs
-		bag[key] = if (bag[key] or 0) > 1 then bag[key] - 1 else nil
-		local tier, size = Hatch.parse(key)
-		drop = { owner = victim, tier = tier, size = size, golden = loot.golden, model = Instance.new("Model"), expires = os.clock() + StealConfig.DROP_TIME }
-	end
-	lay(drop, root.CFrame.Position)
-	IslandService.notify(victim, ("💥 Your %s was knocked out of your hands! Grab it back!"):format(title(drop)), "error")
-	IslandService.push(victim) -- (its tool goes away)
 end
 
 local function swing(player: Player, tool: Tool?)
@@ -314,7 +120,7 @@ local function giveBat(player: Player)
 	local tool = Instance.new("Tool")
 	tool.Name = "Bat"
 	tool.CanBeDropped = false
-	tool.ToolTip = "Hit someone carrying eggs or creatures twice to knock them out of their hands (not in a garden)"
+	tool.ToolTip = "Hit someone carrying an egg home from the Wild twice to knock it out of their hands (not in a garden)"
 	tool.GripForward, tool.GripPos, tool.GripRight, tool.GripUp = Vector3.new(-1, 0, 0), Vector3.new(0, 0, -0.2), Vector3.new(0, 1, 0), Vector3.new(0, 0, 1)
 	-- A baseball bat, from the hand up (+Z): a taped grip with a knob, a thin neck widening to a long barrel
 	-- with a red band, a rounded end
@@ -371,25 +177,8 @@ function StealService.init()
 		setUp(player)
 	end
 	Players.PlayerAdded:Connect(setUp)
-	-- Whoever leaves gets what's on the ground back first (before their data is saved: this starts before DataService)
 	Players.PlayerRemoving:Connect(function(player)
 		lastSwing[player], combo[player] = nil, nil
-		for _, drop in drops do
-			if drop.owner == player then
-				sendHome(drop)
-			end
-		end
-	end)
-	task.spawn(function()
-		while true do
-			task.wait(1)
-			local now = os.clock()
-			for _, drop in drops do
-				if now >= drop.expires then
-					sendHome(drop)
-				end
-			end
-		end
 	end)
 end
 

@@ -1,7 +1,7 @@
 --!strict
--- The barn: what a player carries (the eggs in their hotbar and the creatures not in the garden) can be stolen
--- outside their garden, so they take it home and keep it in the barn, safe, or hatch / set it down. Storing and
--- taking out only work inside their own garden: the only safe place.
+-- The barn: where a player keeps the eggs and creatures they don't need in their hotbar (eggs brought home are
+-- safe either way: only an egg on its way home can be stolen, StealService). Storing and taking out only work
+-- inside their own garden.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 

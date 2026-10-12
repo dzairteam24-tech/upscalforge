@@ -1,6 +1,6 @@
 --!strict
 -- A creature carried as a ball (like a Pokéball): a sphere in its rarity's color with a dark belt and a white
--- button, so what's carried (and can be stolen) isn't the creature itself.
+-- button, so what's carried isn't the creature itself.
 
 local Creatures = require(script.Parent.Config.Creatures)
 

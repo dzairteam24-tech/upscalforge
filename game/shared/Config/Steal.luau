@@ -1,6 +1,6 @@
 --!strict
--- Stealing: what a player carries outside their garden can be knocked out of their hands with a bat. Gardens are
--- the only safe place (Logic/Layout gardenAt); the barn keeps eggs and creatures safe anywhere.
+-- Stealing: an egg on its way home (from the Wild, or the Heist Egg) can be knocked out of its carrier's hands
+-- with a bat (StealService); once it's in its taker's garden it's safe. Nothing happens inside a garden.
 
 return {
 	HITS = 2, -- hits on the same player, close together, to knock something loose
@@ -9,6 +9,4 @@ return {
 	REACH = 9, -- how close (studs) the target must be, in front of the swinger
 	HIT_PUSH = 34, -- how hard a hit pushes the target back (studs a second)...
 	KNOCK_PUSH = 60, -- ...and the knock-out hit (it knocks them down too)
-	DROP_TIME = 60, -- seconds a knocked-out egg or creature waits on the ground before going back to its owner
-	GRAB_RANGE = 10, -- how close to grab it
 }

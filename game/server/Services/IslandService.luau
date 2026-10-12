@@ -213,8 +213,8 @@ function IslandService.islandOf(player: Player): number?
 	return islandOf[player]
 end
 
--- Whether the player stands in their own garden (the only safe place: what they carry can't be stolen there,
--- and the barn and the incubators only work there)
+-- Whether the player stands in their own garden (where an egg they bring from the Wild is theirs and safe, and
+-- the barn and the incubators only work there)
 function IslandService.inOwnGarden(player: Player): boolean
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	return root ~= nil and islandOf[player] ~= nil and Layout.gardenAt(root.CFrame.Position) == islandOf[player]

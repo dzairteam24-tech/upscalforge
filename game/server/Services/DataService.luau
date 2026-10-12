@@ -20,7 +20,7 @@ export type Data = {
 	gems: number,
 	eggs: { [string]: number }, -- egg key (Logic/Hatch.key: its tier, and its size unless Normal: "1", "1_Big") -> how many the player holds
 	golden: { [string]: number }, -- egg key -> how many Golden Eggs (from the Wild's golden nests) they hold
-	storedEggs: { [string]: number }, -- egg tier -> how many they keep in the barn (safe: the ones above are carried, and can be stolen)
+	storedEggs: { [string]: number }, -- egg key -> how many they keep in the barn (out of the hotbar)
 	storedGolden: { [string]: number }, -- the same for Golden Eggs
 	stored: { [string]: boolean }, -- creature ids kept in the barn (safe, not in the hotbar); the rest of those not in the garden are carried
 	creatures: { [string]: Creature }, -- creature id -> species and mutation

@@ -250,7 +250,7 @@ onActivated(again)()
 assert(data.creatures[id] and not table.find(data.placed, id), "away from the garden it isn't set down, nor sold")
 assert(not workspaceInstance:FindFirstChild("SellPad", true), "no Sell pad in the square")
 
--- Stealing: two bat hits on a player carrying eggs outside any garden knock one out onto the ground
+-- Stealing: only an egg on its way home (from the Wild, the Heist) can be knocked loose; what's home is safe
 local StealService = Loader.require(Server.Services.StealService)
 StealService.init()
 task.wait(0.5) -- (the bat comes to the backpack a moment later)
@@ -267,11 +267,10 @@ victimData.golden = {}
 root.CFrame = roblox.CFrame.new(0, 3, -100)
 thiefRoot.CFrame = roblox.CFrame.new(0, 3, -95) -- (looking north, toward them)
 swingBat()
-assert((victimData.eggs["1"] or 0) == 2, "one hit knocks nothing out")
 task.wait(0.6)
 swingBat()
-assert(victimData.eggs["1"] == 1, "two hits knock an egg out of their bag")
-assert(workspaceInstance:FindFirstChild("Dropped"), "the egg lies on the ground")
+assert(victimData.eggs["1"] == 2, "eggs brought home are safe, even outside the garden")
+assert(not workspaceInstance:FindFirstChild("Dropped"), "nothing knocked onto the ground")
 -- (nor anyone in a garden)
 root.CFrame = Layout.garden(1) * roblox.CFrame.new(0, 3, 0)
 thiefRoot.CFrame = root.CFrame * roblox.CFrame.new(0, 0, 4)
@@ -279,7 +278,7 @@ task.wait(0.6)
 swingBat()
 task.wait(0.6)
 swingBat()
-assert(victimData.eggs["1"] == 1, "the garden is safe")
+assert(victimData.eggs["1"] == 2, "the garden is safe")
 
 -- Storage: only in their own garden; the barn keeps eggs and creatures out of the hotbar
 local handlers = {}

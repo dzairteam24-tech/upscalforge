@@ -78,7 +78,7 @@ function BagWindow.mount(gui: Instance)
 		end
 		-- How many eggs can hatch at once, and the button for one more, right here
 		upgradeRow(0, "🥚", ("Hatching %d / %d"):format(down, data.incubators), "Eggs on your grass at once", Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS), "+1 egg", "BuyIncubator")
-		hint(1, "Eggs in your hotbar can be stolen outside your garden: set them down or store them at home")
+		hint(1, "Eggs you brought home are safe: set them down to hatch, or store them in the barn")
 		local grid = Theme.grid(content, 2, 4, 196)
 		local kinds = 0
 		for _, golden in { true, false } do
@@ -112,7 +112,7 @@ function BagWindow.mount(gui: Instance)
 				end
 			end
 		end
-		-- The barn: eggs kept there are safe anywhere (what's in the hotbar can be stolen outside the garden)
+		-- The barn: eggs kept out of the hotbar
 		local stored = 0
 		local barn = Theme.grid(content, 5, 4, 150)
 		for _, golden in { true, false } do
@@ -209,7 +209,7 @@ function BagWindow.mount(gui: Instance)
 			toggle.Position = UDim2.new(0, 8, 1, -8)
 			toggle.Size = UDim2.new(if entry.placed then 1 else 0.5, if entry.placed then -16 else -10, 0, 34)
 			if not entry.placed then
-				-- (what's in the hotbar can be stolen outside the garden; in the barn it's safe anywhere)
+				-- (in the hotbar, or kept in the barn)
 				local keep = Theme.button(card, if entry.stored then "↩ Out" else "📦 Store", Theme.gray, function()
 					Net.event(if entry.stored then "Withdraw" else "Store"):FireServer("creature", entry.id, false)
 				end)
