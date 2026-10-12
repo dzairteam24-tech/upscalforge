@@ -13,6 +13,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Format = require(Shared.Logic.Format)
 local Creatures = require(Shared.Config.Creatures)
 local Hatch = require(Shared.Logic.Hatch)
+local EggModel = require(Shared.EggModel)
 local Snap = require(Shared.Logic.Snap)
 local Night = require(Shared.Logic.Night)
 local Layout = require(Shared.Logic.Layout)
@@ -60,7 +61,7 @@ end
 -- Incubators: the egg in each (bobbing; it wobbles as it gets close, and bounces when it's ready), a bar of how
 -- far it's got and what's left, and the owner's prompt
 local EGG_SIZE = Layout.NEST_SIZE * 0.45
-type Pad = { egg: Part, text: TextLabel, bar: Frame, fill: Frame, progress: number, ready: boolean, has: boolean, scale: number }
+type Pad = { egg: Part, text: TextLabel, bar: Frame, fill: Frame, progress: number, ready: boolean, has: boolean, scale: number, look: string }
 local pads: { [BasePart]: Pad } = {}
 
 local function eggBar(pad: BasePart): (TextLabel, Frame, Frame)
@@ -115,7 +116,7 @@ local function updatePad(pad: BasePart)
 		mesh.Scale = Vector3.new(1, 1.3, 1)
 		mesh.Parent = egg
 		local text, bar, fill = eggBar(pad)
-		entry = { egg = egg, text = text, bar = bar, fill = fill, progress = 0, ready = false, has = false, scale = 1 }
+		entry = { egg = egg, text = text, bar = bar, fill = fill, progress = 0, ready = false, has = false, scale = 1, look = "" }
 		pads[pad] = entry
 	end
 	local pad_ = entry :: Pad
@@ -135,10 +136,13 @@ local function updatePad(pad: BasePart)
 		-- (a bigger or smaller egg: Config/EggSizes)
 		local scale = pad:GetAttribute("EggSize")
 		pad_.scale = if type(scale) == "number" then scale else 1
-		pad_.egg.Size = Vector3.one * EGG_SIZE * pad_.scale
-		local color = if golden then Color3.fromRGB(255, 205, 70) else egg.color
-		pad_.egg.Color = color
-		pad_.egg.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		-- (stacked cube layers, Shared/EggModel: drawn again only when it's another egg)
+		local look = ("%d:%s:%s"):format(tier, tostring(golden), tostring(pad_.scale))
+		if look ~= pad_.look then
+			pad_.look = look
+			pad_.egg.Size = Vector3.one * EGG_SIZE * pad_.scale
+			EggModel.dress(pad_.egg, egg.color, golden)
+		end
 		-- (nights grow eggs faster: Logic/Night)
 		local left = math.ceil(Night.doneAt(start, duration)) - now()
 		pad_.progress = if duration > 0 then math.clamp(Night.growth(start, now()) / duration, 0, 1) else 1
@@ -247,11 +251,16 @@ local function nameTag(model: Model, body: BasePart): BillboardGui
 	local mutation = model:GetAttribute("Mutation")
 	local grade = model:GetAttribute("Grade")
 	local name = Snap.name({ s = tostring(model:GetAttribute("Species")), m = if type(mutation) == "string" then mutation else "Normal", g = if type(grade) == "string" and grade ~= "" then grade else nil })
+	local size = model:GetAttribute("EggSize")
+	if type(size) == "string" and size ~= "" then
+		name = size .. " " .. name -- (from a big or huge egg)
+	end
+	-- (big, in the world's scale like Steal an Egg's: its rarity in its color, its name, what it earns in green)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "NameTag"
-	gui.Size = UDim2.fromOffset(140, 54)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, number(model, "Height") / 2 + 1.6, 0)
-	gui.MaxDistance = 45
+	gui.Size = UDim2.fromScale(7, 2.7)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, number(model, "Height") / 2 + 2.2, 0)
+	gui.MaxDistance = 80
 	gui.LightInfluence = 0
 	type Line = { text: string, color: Color3 }
 	local lines: { Line } = {
@@ -259,11 +268,12 @@ local function nameTag(model: Model, body: BasePart): BillboardGui
 		{ text = name, color = Color3.new(1, 1, 1) },
 		{ text = "🪙 " .. Format.abbrev(number(model, "Earn")) .. "/s", color = Color3.fromRGB(110, 255, 110) },
 	}
+	local tops, heights = { 0, 0.38, 0.68 }, { 0.38, 0.3, 0.32 }
 	for i, line in lines do
 		local text = Instance.new("TextLabel")
 		text.BackgroundTransparency = 1
-		text.Position = UDim2.fromScale(0, (i - 1) / 3)
-		text.Size = UDim2.fromScale(1, 1 / 3)
+		text.Position = UDim2.fromScale(0, tops[i])
+		text.Size = UDim2.fromScale(1, heights[i])
 		text.Font = Enum.Font.LuckiestGuy
 		text.TextScaled = true
 		text.Text = line.text
@@ -296,13 +306,13 @@ local function coinPop(model: Model, amount: number)
 	if not head then
 		return
 	end
-	local text = billboard(head, 4, 1, Vector3.new(0, number(model, "Height") + 1, 0))
+	local text = billboard(head, 4, 1, Vector3.new(0, number(model, "Height") / 2 + 5.4, 0)) -- (over its name tag)
 	local gui = text.Parent :: BillboardGui
 	text.Text = "+" .. Format.abbrev(amount)
 	text.TextColor3 = Color3.fromRGB(255, 215, 80)
 	task.spawn(function()
 		for i = 1, 20 do
-			gui.StudsOffsetWorldSpace = Vector3.new(0, number(model, "Height") + 1 + i * 0.1, 0)
+			gui.StudsOffsetWorldSpace = Vector3.new(0, number(model, "Height") / 2 + 5.4 + i * 0.1, 0)
 			text.TextTransparency = math.max(0, (i - 12) / 8)
 			text.TextStrokeTransparency = math.max(0.3, (i - 12) / 8)
 			task.wait(0.05)

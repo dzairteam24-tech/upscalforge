@@ -29,6 +29,7 @@ local Snap = require(Shared.Logic.Snap)
 local Weather = require(Shared.Logic.Weather)
 local PetModel = require(Shared.PetModel)
 local Nest = require(Shared.Nest)
+local EggModel = require(Shared.EggModel)
 local Net = require(Shared.Net)
 
 local DailyService = require(script.Parent.DailyService)
@@ -119,6 +120,7 @@ local function eggTools(player: Player, data: Data)
 				mesh.MeshType = Enum.MeshType.Sphere
 				mesh.Scale = Vector3.new(1, 1.3, 1)
 				mesh.Parent = handle
+				EggModel.dress(handle, egg.color, golden)
 				handle.Parent = created
 				created.Activated:Connect(function()
 					setEggFrom(player, key, golden)
@@ -488,6 +490,7 @@ local function render(index: number, player: Player?, data: Data?)
 				built.model:SetAttribute("Mutation", creature.m)
 				built.model:SetAttribute("Species", creature.s)
 				built.model:SetAttribute("Grade", creature.g or "")
+				built.model:SetAttribute("EggSize", creature.w or "") -- (its name tag says Big, Huge...)
 				built.model:AddTag("IslandCreature")
 				built.model.Parent = folder
 			end

@@ -12,6 +12,10 @@ local LIFT = 0.15 -- gap between the head and the egg
 
 -- How tall a part is drawn (a sphere mesh can stretch it)
 local function height(part: BasePart): number
+	local tall = part:GetAttribute("EggTall") -- (an egg drawn in layers, Shared/EggModel: its mesh draws nothing)
+	if type(tall) == "number" then
+		return part.Size.Y * tall
+	end
 	local mesh = part:FindFirstChildOfClass("SpecialMesh")
 	return part.Size.Y * (if mesh then mesh.Scale.Y else 1)
 end

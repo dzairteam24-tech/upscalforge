@@ -20,6 +20,7 @@ local Wild = require(Shared.Logic.Wild)
 local Carry = require(Shared.Carry)
 local PetModel = require(Shared.PetModel)
 local SleepPose = require(Shared.SleepPose)
+local EggModel = require(Shared.EggModel)
 local Net = require(Shared.Net)
 
 local DailyService = require(script.Parent.DailyService)
@@ -112,7 +113,7 @@ local GOLD = Color3.fromRGB(255, 205, 70)
 
 local function setFull(nest: Nest, full: boolean)
 	nest.full = full
-	nest.egg.Transparency = if full then 0 else 1
+	EggModel.setVisible(nest.egg, full)
 	nest.prompt.Enabled = full
 end
 
@@ -123,7 +124,8 @@ local function dress(nest: Nest)
 	egg.Color = if nest.golden then GOLD else nest.color
 	egg.Material = if nest.golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
 	egg.Size = Vector3.one * 3.2 * size.scale
-	egg.Position = nest.ground + Vector3.new(0, 0.7 + egg.Size.Y * 0.65, 0) -- (sitting in its nest: the mesh is 1.3 tall)
+	egg.Position = nest.ground + Vector3.new(0, 0.7 + egg.Size.Y * 0.65, 0) -- (sitting in its nest: it's drawn 1.3 tall)
+	EggModel.dress(egg, nest.color, nest.golden) -- (its layers redrawn for its size and gold)
 	local text = if not nest.full then "" else (if nest.golden then "✨ GOLDEN " else "") .. (if nest.size == "Huge" then "⭐ HUGE ⚖️" elseif nest.size == "Big" then "BIG ⚖️" else "")
 	local label = egg:FindFirstChild("EggLabel")
 	if text ~= "" and not label then
@@ -300,6 +302,7 @@ local function carriedEgg(nest: Nest, golden: boolean, size: string, at: Vector3
 	mesh.Scale = Vector3.new(1, 1.3, 1)
 	mesh.Parent = part
 	part.Position = at
+	EggModel.dress(part, nest.color, golden)
 	part.Parent = workspace
 	part:AddTag("WildCarry")
 	-- Anyone can grab it where it's dropped (caught by the guardian, knocked by a bat)
@@ -465,7 +468,7 @@ local function draw(guardian: Guardian)
 	local biome = WildConfig.BIOMES[guardian.biome]
 	local egg = Hatch.egg(biome.tier)
 	local species = biome.guardian or (if egg then egg.creatures[#egg.creatures] else "Bear")
-	local built = PetModel.build({ s = species, v = "Normal", z = "Huge" }) -- (big: it guards a whole ring of nests)
+	local built = PetModel.build({ s = species, v = "Normal", z = biome.guardianSize or "Huge" })
 	for _, p in built.parts do
 		p.Anchored = true
 		p.CanCollide = false
