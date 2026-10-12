@@ -33,6 +33,7 @@ local EVENTS = {
 	"Hatched", -- (creature id, species, mutation, snap grade or nil)
 	"SpeedUp", -- (gain): a step on the treadmill
 	"Fx", -- (kind, position, color?): an effect everyone near sees and hears (client Effects)
+	"Banner", -- (text, color?): a big moment, across the middle of the player's screen (client UI/Banner)
 	"Knocked", -- (push, hard): a bat hit this player: they fly back (and fall, on the knock-out hit)
 	"HitMark", -- (target's character, hits, needed): the swinger's count over the one they hit
 }

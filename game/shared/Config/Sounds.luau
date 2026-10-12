@@ -24,5 +24,7 @@ return {
 	Home = s(PING, 1.2, 0.7), -- an egg brought home
 	Hit = s("rbxasset://sounds/swordslash.wav", 1, 0.7), -- a bat hit
 	Swing = s("rbxasset://sounds/swordlunge.wav", 1.2, 0.5), -- a bat swung
+	Heart = s("rbxasset://sounds/button.wav", 0.35, 0.7), -- a heartbeat while a guardian chases the player
+	Escape = s(PING, 1.4, 0.7), -- got away from a guardian
 	Knock = s("rbxasset://sounds/swordslash.wav", 0.7, 1), -- the hit that knocks something loose
 }

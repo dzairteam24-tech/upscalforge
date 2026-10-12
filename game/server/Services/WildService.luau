@@ -190,6 +190,7 @@ local function finish(player: Player, kept: boolean)
 		end
 		data.stats.stolen += 1
 		DailyService.add(player, "wild")
+		IslandService.banner(player, "🏠 HOME SAFE!", Color3.fromRGB(120, 230, 120))
 		IslandService.notify(player, ("Home with a %s! 🥚 Click to set it down on your grass"):format(Hatch.name(biome.tier, carry.size, carry.golden)), "success")
 		IslandService.push(player)
 		IslandService.holdEgg(player, key, carry.golden)
@@ -317,12 +318,14 @@ local function steal(player: Player, nest: Nest)
 	end)
 	hold(player, { nest = nest, part = part, safe = false, golden = golden, size = size })
 	local biome = WildConfig.BIOMES[nest.biome]
+	-- (the moment, big: run! and why it's harder, when it is)
+	local red = Color3.fromRGB(255, 110, 90)
 	if size == "Big" or size == "Huge" then
-		IslandService.notify(player, ("⚖️ A %s egg: heavy, you run slower. Run!"):format(string.lower(size)), "info")
+		IslandService.banner(player, ("🏃 RUN! ⚖️ %s egg: you're slower"):format(size), red)
 	elseif Wild.outruns(data.power, biome) then
-		IslandService.notify(player, ("Got it! Run out of the %s before its guardian wakes up! 🏃"):format(biome.name), "success")
+		IslandService.banner(player, "🏃 RUN!", red)
 	else
-		IslandService.notify(player, ("Got it! But its guardian is faster than you (⚡ %s needed). Run!"):format(Format.abbrev(Wild.needs(biome))), "info")
+		IslandService.banner(player, ("🏃 RUN! It's faster than you (⚡ %s)"):format(Format.abbrev(Wild.needs(biome))), red)
 	end
 	wake(nest.biome, player, root.Position)
 end
@@ -487,7 +490,8 @@ local function tick(frame: number)
 		elseif not carry.safe and Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= carry.nest.biome then
 			carry.safe = true
 			applySpeed(player)
-			IslandService.notify(player, "😮‍💨 You got away! Now carry it home to your garden", "success")
+			IslandService.banner(player, "😮‍💨 ESCAPED! Now take it home", Color3.fromRGB(120, 230, 120))
+			IslandService.fx("Escape", root.Position)
 		end
 	end
 	-- Dropped eggs nobody came for go back to their nest
@@ -522,6 +526,8 @@ local function tick(frame: number)
 			guardian.text.Text = "😡 " .. guardian.label
 			target = Vector3.new(root.Position.X, 0, root.Position.Z)
 			if (target - guardian.position).Magnitude <= WildConfig.CATCH_RANGE then
+				IslandService.banner(thief, "🐾 CAUGHT!", Color3.fromRGB(255, 110, 90))
+				IslandService.fx("Knock", root.Position)
 				IslandService.notify(thief, "🐾 The guardian caught you! You dropped the egg: go back for it before someone else takes it", "error")
 				drop(thief, root.Position)
 				root.CFrame = gateSpot()
@@ -536,8 +542,8 @@ local function tick(frame: number)
 			if (guardian.home - guardian.position).Magnitude < 0.5 then
 				guardian.text.Text = "💤 " .. guardian.label
 				if not guardian.asleep then
-					guardian.asleep = true -- (lies down)
-					place(guardian, guardian.position + Vector3.new(0, 0, 1))
+					guardian.asleep = true -- (lies down, facing its nests again)
+					place(guardian, Vector3.new(Layout.biome(guardian.biome).X, 0, guardian.position.Z))
 				end
 				continue
 			end
@@ -546,6 +552,21 @@ local function tick(frame: number)
 		if offset.Magnitude > 0.05 then
 			guardian.position += offset.Unit * math.min(offset.Magnitude, speed * dt)
 			place(guardian, target)
+		end
+	end
+	-- Who's being chased right now (their screen pulses red, with a heartbeat: client UI/Banner)
+	local chased: { [Player]: boolean } = {}
+	for _, guardian in guardians do
+		local thief = guardian.chasing
+		local carry = if thief then carrying[thief] else nil
+		if thief and carry and not carry.safe then
+			chased[thief] = true
+		end
+	end
+	for _, player in Players:GetPlayers() do
+		local now = chased[player] == true
+		if (player:GetAttribute("Chased") == true) ~= now then
+			player:SetAttribute("Chased", if now then true else nil)
 		end
 	end
 end

@@ -175,7 +175,7 @@ try("root", function()
 	root = Theme.root(gui)
 end)
 assert(gui.ZIndexBehavior == roblox.Enum.ZIndexBehavior.Sibling, "frames draw over their parents (a window never hides its content)")
-for _, name in { "HUD", "GrowingEggs", "ShopWindow", "BagWindow", "IndexWindow", "FuseWindow", "TrailWindow", "MutateWindow", "StoreWindow", "DailyWindow", "Notify", "Reveal" } do
+for _, name in { "HUD", "GrowingEggs", "ShopWindow", "BagWindow", "IndexWindow", "FuseWindow", "TrailWindow", "MutateWindow", "StoreWindow", "DailyWindow", "Notify", "Reveal", "Banner" } do
 	try(name .. ".mount", function()
 		Loader.require(UI[name]).mount(root)
 	end)
@@ -243,6 +243,11 @@ assert(bag.Visible, "the Bag button opens the Bag")
 -- A hatch reveal
 try("reveal", function()
 	Loader.require(UI.Reveal).show("Cat", "Golden", nil)
+	Loader.require(UI.Reveal).show("Dog", "Normal", nil, "Huge")
+end)
+-- A big moment across the screen
+try("banner", function()
+	Loader.require(UI.Banner).show("🏃 RUN!", roblox.Color3.fromRGB(255, 110, 90))
 end)
 task.wait(0.5)
 

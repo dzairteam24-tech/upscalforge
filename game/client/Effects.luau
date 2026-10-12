@@ -99,8 +99,15 @@ local KINDS: { [string]: (Vector3, Color3?) -> () } = {
 	SetEgg = function(at)
 		Effects.sound("SetEgg", at)
 	end,
-	Steal = function(at)
+	-- (an egg grabbed from its nest: a puff of its color)
+	Steal = function(at, color)
+		Effects.burst(at + Vector3.new(0, 1, 0), { count = 16, colors = { color or Color3.new(1, 1, 1), Color3.fromRGB(255, 240, 180) }, size = 0.6, speed = 16, life = 0.7, up = -20, spread = 70 })
 		Effects.sound("Steal", at)
+	end,
+	-- (out of the guardian's biome: a green puff of relief)
+	Escape = function(at)
+		Effects.burst(at + Vector3.new(0, 2, 0), { count = 14, colors = { Color3.fromRGB(120, 230, 120), Color3.new(1, 1, 1) }, size = 0.6, speed = 14, life = 0.8, up = 4, spread = 180 })
+		Effects.sound("Escape", at)
 	end,
 	Swing = function(at)
 		Effects.sound("Swing", at)

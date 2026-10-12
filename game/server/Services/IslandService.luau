@@ -61,6 +61,11 @@ function IslandService.fx(kind: string, at: Vector3, color: Color3?)
 	Net.event("Fx"):FireAllClients(kind, at, color)
 end
 
+-- A big moment for one player, in big letters across their screen ("🏃 RUN!", "🏠 HOME SAFE!")
+function IslandService.banner(player: Player, text: string, color: Color3?)
+	Net.event("Banner"):FireClient(player, text, color)
+end
+
 -- The eggs the player holds, in their inventory (hotbar): a tool for each kind, an egg in the hand; using it sets
 -- one down in their garden (setEgg)
 local setEggFrom: (Player, string, boolean) -> ()
@@ -755,7 +760,7 @@ local function useIncubator(player: Player, slot: any)
 			end
 			data.incubating[key] = nil
 			DailyService.add(player, "hatch")
-			Net.event("Hatched"):FireClient(player, id, species, mutation)
+			Net.event("Hatched"):FireClient(player, id, species, mutation, nil, egg.w)
 			-- Straight into the pen if there is room (the hatching field stays clear), else into the inventory
 			if #data.placed < data.pens then
 				table.insert(data.placed, id)
