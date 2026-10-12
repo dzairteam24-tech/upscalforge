@@ -2,8 +2,10 @@
 -- Sounds (Config/Sounds) and bursts of particles: the UI's clicks and messages, and what happens in the world
 -- (the server's Fx event): an egg hatching, set down, stolen, brought home.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Sounds = require(Shared.Config.Sounds)
@@ -100,8 +102,17 @@ local KINDS: { [string]: (Vector3, Color3?) -> () } = {
 	Steal = function(at)
 		Effects.sound("Steal", at)
 	end,
+	Swing = function(at)
+		Effects.sound("Swing", at)
+	end,
+	-- (a bat hit: stars round the head; the knock-out one bigger and louder)
 	Hit = function(at)
+		Effects.burst(at + Vector3.new(0, 2, 0), { count = 10, colors = { Color3.fromRGB(255, 230, 90), Color3.new(1, 1, 1) }, size = 0.7, speed = 14, life = 0.5, up = 0, spread = 180 })
 		Effects.sound("Hit", at)
+	end,
+	Knock = function(at)
+		Effects.burst(at + Vector3.new(0, 2, 0), { count = 24, colors = { Color3.fromRGB(255, 230, 90), Color3.fromRGB(255, 120, 60), Color3.new(1, 1, 1) }, size = 1, speed = 24, life = 0.8, up = -20, spread = 180 })
+		Effects.sound("Knock", at)
 	end,
 	Home = function(at, color)
 		Effects.burst(at + Vector3.new(0, 3, 0), { count = 24, colors = { color or CONFETTI[2], CONFETTI[1], CONFETTI[3] }, size = 0.6, speed = 22, life = 1.2, up = -30, spread = 50 })
@@ -110,7 +121,80 @@ local KINDS: { [string]: (Vector3, Color3?) -> () } = {
 	end,
 }
 
+-- A bat hit this player: they're pushed back, the screen shakes; the knock-out hit knocks them down a moment
+local function knocked(push: Vector3, hard: boolean)
+	local character = Players.LocalPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not root or not humanoid then
+		return
+	end
+	if hard then
+		humanoid.PlatformStand = true -- (falls over)
+		task.delay(0.9, function()
+			if humanoid.Parent then
+				humanoid.PlatformStand = false
+			end
+		end)
+	end
+	root.AssemblyLinearVelocity = push
+	task.spawn(function()
+		for i = 1, if hard then 10 else 5 do
+			local strength = (if hard then 0.5 else 0.25) * (1 - i / 11)
+			humanoid.CameraOffset = Vector3.new((math.random() - 0.5) * strength, (math.random() - 0.5) * strength, 0)
+			task.wait(0.03)
+		end
+		humanoid.CameraOffset = Vector3.zero
+	end)
+end
+
+-- The swinger's count over the one they hit ("1/2", then "💥"): it pops up and fades
+local function hitMark(target: Model, hits: number, needed: number)
+	local head = target:FindFirstChild("Head") :: BasePart?
+	if not head then
+		return
+	end
+	local old = head:FindFirstChild("HitMark")
+	if old then
+		old:Destroy()
+	end
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "HitMark"
+	gui.Size = UDim2.fromScale(3, 1.5)
+	gui.StudsOffset = Vector3.new(0, 2.6, 0)
+	gui.AlwaysOnTop = true
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.fromScale(1, 1)
+	text.BackgroundTransparency = 1
+	text.TextScaled = true
+	text.Font = Enum.Font.LuckiestGuy
+	text.Text = if hits >= needed then "💥" else ("%d/%d"):format(hits, needed)
+	text.TextColor3 = if hits >= needed then Color3.fromRGB(255, 120, 60) else Color3.fromRGB(255, 230, 90)
+	text.TextStrokeColor3 = Color3.fromRGB(28, 24, 40)
+	text.TextStrokeTransparency = 0
+	text.Parent = gui
+	gui.Parent = head
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.4
+	scale.Parent = text
+	TweenService:Create(scale, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(0.6, function()
+		TweenService:Create(text, TweenInfo.new(0.3), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	end)
+	task.delay(1, gui.Destroy, gui)
+end
+
 function Effects.init()
+	Net.event("Knocked").OnClientEvent:Connect(function(push: Vector3, hard: boolean)
+		if typeof(push) == "Vector3" then
+			knocked(push, hard == true)
+		end
+	end)
+	Net.event("HitMark").OnClientEvent:Connect(function(target: Model, hits: number, needed: number)
+		if typeof(target) == "Instance" and target:IsA("Model") and type(hits) == "number" and type(needed) == "number" then
+			hitMark(target, hits, needed)
+		end
+	end)
 	Net.event("Fx").OnClientEvent:Connect(function(kind: string, at: Vector3, color: Color3?)
 		local play = KINDS[kind]
 		if play and typeof(at) == "Vector3" and near(at) then

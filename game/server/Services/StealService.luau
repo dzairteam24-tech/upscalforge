@@ -13,6 +13,7 @@ local Ball = require(Shared.Ball)
 local StealConfig = require(Shared.Config.Steal)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
+local Net = require(Shared.Net)
 local Layout = require(Shared.Logic.Layout)
 
 local DataService = require(script.Parent.DataService)
@@ -242,7 +243,11 @@ local function swing(player: Player, tool: Tool?)
 		return
 	end
 	lastSwing[player] = now
-	-- (the swing everyone sees: the bat swept forward and back)
+	-- (the swing everyone sees and hears: the bat swept forward and back)
+	local swinger = rootOf(player)
+	if swinger then
+		IslandService.fx("Swing", swinger.CFrame.Position)
+	end
 	if tool then
 		local rest = tool.Grip
 		tool.Grip = rest * CFrame.Angles(math.rad(-80), 0, 0)
@@ -273,7 +278,6 @@ local function swing(player: Player, tool: Tool?)
 	if not target or not targetRoot or inGarden(targetRoot.CFrame.Position) then
 		return
 	end
-	IslandService.fx("Hit", targetRoot.CFrame.Position)
 	local run = combo[player]
 	if not run or run.target ~= target or now > run.expires then
 		run = { target = target, hits = 0, expires = now }
@@ -281,7 +285,18 @@ local function swing(player: Player, tool: Tool?)
 	end
 	run.hits += 1
 	run.expires = now + StealConfig.COMBO_WINDOW
-	if run.hits >= StealConfig.HITS then
+	local hard = run.hits >= StealConfig.HITS
+	-- (the one hit flies back, on their own screen: their character is theirs to move; the knock-out hit harder)
+	local away = targetRoot.CFrame.Position - root.CFrame.Position
+	away = Vector3.new(away.X, 0, away.Z)
+	away = if away.Magnitude > 0.01 then away.Unit else root.CFrame.LookVector
+	local push = away * (if hard then StealConfig.KNOCK_PUSH else StealConfig.HIT_PUSH) + Vector3.new(0, if hard then 30 else 18, 0)
+	Net.event("Knocked"):FireClient(target, push, hard)
+	if target.Character then
+		Net.event("HitMark"):FireClient(player, target.Character, math.min(run.hits, StealConfig.HITS), StealConfig.HITS)
+	end
+	IslandService.fx(if hard then "Knock" else "Hit", targetRoot.CFrame.Position)
+	if hard then
 		combo[player] = nil
 		knock(target)
 	end

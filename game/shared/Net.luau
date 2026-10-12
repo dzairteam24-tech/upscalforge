@@ -7,14 +7,14 @@ local RunService = game:GetService("RunService")
 local EVENTS = {
 	-- client -> server
 	"SellCreature", -- (creature id): at the Sell stall
-	"SellEgg", -- (tier, golden, all): one egg of the kind the player holds, or all of them
+	"SellEgg", -- (egg key or tier, golden, all): one egg of the kind the player holds, or all of them
 	"PlaceCreature", -- (id)
-	"Store", -- (what: "egg", "golden" or "creature", tier or id, all?): into the barn, in their own garden
-	"Withdraw", -- (what, tier or id, all?): out of the barn, in their own garden
+	"Store", -- (what: "egg", "golden" or "creature", egg key or id, all?): into the barn, in their own garden
+	"Withdraw", -- (what, egg key or id, all?): out of the barn, in their own garden
 	"TakeCreature", -- (id)
 	"UseIncubator", -- (slot)
 	"BuyIncubator",
-	"SetEgg", -- (tier, golden): one the player holds, down on the grass in front of them
+	"SetEgg", -- (egg key or tier, golden): one the player holds, down on the grass in front of them
 	"BuyPen",
 	"BuyStorage",
 	"BuyPasture",
@@ -33,6 +33,8 @@ local EVENTS = {
 	"Hatched", -- (creature id, species, mutation, snap grade or nil)
 	"SpeedUp", -- (gain): a step on the treadmill
 	"Fx", -- (kind, position, color?): an effect everyone near sees and hears (client Effects)
+	"Knocked", -- (push, hard): a bat hit this player: they fly back (and fall, on the knock-out hit)
+	"HitMark", -- (target's character, hits, needed): the swinger's count over the one they hit
 }
 
 local FOLDER = "Remotes"

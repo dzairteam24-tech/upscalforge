@@ -23,4 +23,6 @@ return {
 	Steal = s("rbxasset://sounds/unsheath.wav", 1.3, 0.6), -- an egg grabbed from a nest
 	Home = s(PING, 1.2, 0.7), -- an egg brought home
 	Hit = s("rbxasset://sounds/swordslash.wav", 1, 0.7), -- a bat hit
+	Swing = s("rbxasset://sounds/swordlunge.wav", 1.2, 0.5), -- a bat swung
+	Knock = s("rbxasset://sounds/swordslash.wav", 0.7, 1), -- the hit that knocks something loose
 }
