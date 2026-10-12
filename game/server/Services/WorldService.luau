@@ -613,14 +613,17 @@ local function buildWild(world: Instance)
 	local middle = gate + Vector3.new(0, 0, -length / 2)
 	part(wild, { Name = "WildGround", Size = Vector3.new(Layout.WILD_WIDTH, 4, length + 8), Position = middle + Vector3.new(0, -2.1, -4), Color = rgb(150, 205, 120), Material = Enum.Material.Grass })
 	part(wild, { Name = "WildRoad", Size = Vector3.new(Layout.ROAD_WIDTH, 0.34, length), Position = middle + Vector3.new(0, 0.17, 0), Color = PAVING, Material = Enum.Material.Pavement })
-	-- The arch
+	-- The arch: as wide as the whole entrance of the Wild, a tower at each side, a green beam across and the
+	-- name over it in big letters
+	local half = Layout.WILD_WIDTH / 2
 	for _, side in { -1, 1 } do
-		part(wild, { Name = "GateTower", Size = Vector3.new(10, 36, 10), Position = gate + Vector3.new(side * 24, 18, 0), Color = rgb(120, 116, 110), Material = Enum.Material.Slate })
-		part(wild, { Name = "GateTowerTop", Size = Vector3.new(12, 3, 12), Position = gate + Vector3.new(side * 24, 37.5, 0), Color = rgb(90, 160, 90) })
+		part(wild, { Name = "GateTower", Size = Vector3.new(16, 56, 16), Position = gate + Vector3.new(side * (half - 8), 28, 0), Color = rgb(120, 116, 110), Material = Enum.Material.Slate })
+		part(wild, { Name = "GateTowerTop", Size = Vector3.new(19, 4, 19), Position = gate + Vector3.new(side * (half - 8), 58, 0), Color = rgb(90, 160, 90) })
 	end
-	local arch = part(wild, { Name = "Arch", Size = Vector3.new(58, 7, 8), Position = gate + Vector3.new(0, 31, 0), Color = rgb(90, 160, 90) })
-	label(arch, "🌿 THE WILD", 40, 7, Vector3.new(0, 9, 0))
-	local glow = part(wild, { Name = "GateGlow", Size = Vector3.new(38, 27.5, 0.4), Position = gate + Vector3.new(0, 13.9, 0), Color = rgb(120, 255, 160), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false })
+	part(wild, { Name = "Arch", Size = Vector3.new(Layout.WILD_WIDTH, 10, 12), Position = gate + Vector3.new(0, 51, 0), Color = rgb(90, 160, 90) })
+	local title = part(wild, { Name = "GateTitle", Size = Vector3.one, Position = gate + Vector3.new(0, 78, 0), Transparency = 1, CanCollide = false, CanQuery = false })
+	bigName(title, "🌿 THE WILD", 90, 18)
+	local glow = part(wild, { Name = "GateGlow", Size = Vector3.new(Layout.WILD_WIDTH - 32, 46, 0.4), Position = gate + Vector3.new(0, 23, 0), Color = rgb(120, 255, 160), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false })
 	glow.Transparency = 0.75
 	for i, biome in WildConfig.BIOMES do
 		local center = Layout.biome(i)
