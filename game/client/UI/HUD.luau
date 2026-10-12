@@ -1,5 +1,5 @@
 --!strict
--- The always-on screen, laid out like Steal an Egg: big Shop, Index and Bag buttons on the left; speed, coins
+-- The always-on screen, laid out like Steal an Egg: square Store, Index and Bag buttons on the left; speed, coins
 -- (and what the garden earns a second) and the friend boost down the bottom left; Daily, Home and Wild
 -- down the right; the night's countdown in the bottom right; the weather over the top; and the server's players
 -- with their coins a second and speed in the top right.
@@ -26,41 +26,31 @@ local HUD = {}
 local LOCAL = Players.LocalPlayer
 local BOARD_ROWS = 6
 
--- A wide button with an icon and a word, like the big games' left-side buttons
-local function wideButton(parent: Instance, icon: string, label: string, color: Color3, order: number, onClick: () -> ()): TextButton
-	local button = Theme.button(parent, "", color, onClick)
-	button.LayoutOrder = order
-	Theme.text(button, { Text = icon, Size = UDim2.new(0.3, 0, 1, 0), Position = UDim2.fromScale(0, 0) })
-	Theme.bold(button, { Text = label, Size = UDim2.new(0.7, -4, 1, 0), Position = UDim2.fromScale(0.3, 0), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 34 })
-	return button
-end
-
 function HUD.mount(gui: Instance)
-	-- Left: Shop, Index, Bag
+	-- Left: Store, Index, Bag, square buttons like the right ones (the same size, look and spacing)
 	local left = Instance.new("Frame")
 	left.Name = "Left"
 	left.BackgroundTransparency = 1
 	left.AnchorPoint = Vector2.new(0, 0.5)
 	left.Position = UDim2.new(0, 16, 0.45, 0)
-	left.Size = UDim2.fromOffset(190, 210)
+	left.Size = UDim2.fromOffset(84, 260)
 	local leftLayout = Instance.new("UIListLayout")
-	leftLayout.Padding = UDim.new(0, 10)
+	leftLayout.Padding = UDim.new(0, 12)
 	leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	leftLayout.Parent = left
 	left.Parent = gui
-	for _, b in {
-		wideButton(left, "🛒", "Shop", Theme.green, 1, function()
-			Windows.toggle("Store")
-		end),
-		wideButton(left, "📖", "Index", Color3.fromRGB(60, 190, 240), 2, function()
-			Windows.toggle("Index")
-		end),
-		wideButton(left, "🎒", "Bag", Color3.fromRGB(240, 150, 50), 3, function()
-			Windows.toggle("Bag")
-		end),
-	} do
-		b.Size = UDim2.new(1, 0, 0, 60)
-	end
+	local store = Theme.iconButton(left, "🛒", "Store", Theme.green, function()
+		Windows.toggle("Store")
+	end)
+	store.LayoutOrder = 1
+	local index = Theme.iconButton(left, "📖", "Index", Color3.fromRGB(60, 190, 240), function()
+		Windows.toggle("Index")
+	end)
+	index.LayoutOrder = 2
+	local bag = Theme.iconButton(left, "🎒", "Bag", Color3.fromRGB(240, 150, 50), function()
+		Windows.toggle("Bag")
+	end)
+	bag.LayoutOrder = 3
 
 	-- Bottom left: speed, coins and what they earn, the friend boost
 	local stats = Instance.new("Frame")
