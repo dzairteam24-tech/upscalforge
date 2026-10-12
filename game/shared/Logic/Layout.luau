@@ -16,7 +16,7 @@ local Layout = {
 	GARDEN_ROAD_RADIUS = 260, -- the arc road past the gardens' gates
 	ROAD_WIDTH_TOWN = 20,
 	AVENUE_WIDTH = 28, -- the paved way from the square to the Wild's gate: grass on both sides
-	WILD_GATE_DISTANCE = 470, -- the big gate into the Wild, this far north of the square
+	WILD_GATE_DISTANCE = 400, -- the big gate into the Wild, this far north of the square
 	GARDEN_SIZE = 96,
 	GATE_WIDTH = 16, -- the opening in a garden's front fence
 	FENCE_HEIGHT = 10, -- the invisible wall behind the low picket fence (too tall to jump)
@@ -24,14 +24,14 @@ local Layout = {
 	SQUARE_CENTER = Vector3.new(0, 0, -140), -- the square itself, moved up toward the gate to leave room for the gardens
 }
 
--- The shops: two buildings along each side of the avenue to the Wild's gate, on the grass, their fronts toward it
--- (a short paved path from each door joins the avenue). Everything else is open green ground, with room to fight.
-Layout.SHOP_EDGE = 38 -- (the counters' distance from the avenue's middle)
+-- The shops: a straight row in line with the Wild's gate, two on each side of it, outside its towers, their fronts
+-- toward the square. The avenue and the grass round it stay open (room to fight).
+Layout.SHOP_Z = -Layout.WILD_GATE_DISTANCE + 16 -- (the counters' Z: just in front of the gate's line)
 Layout.SHOP_SPOTS = {
-	Vector3.new(-Layout.SHOP_EDGE, 0, -295), -- the Shop
-	Vector3.new(-Layout.SHOP_EDGE, 0, -365), -- the Fuse Machine
-	Vector3.new(Layout.SHOP_EDGE, 0, -295), -- the Trail Shop
-	Vector3.new(Layout.SHOP_EDGE, 0, -365), -- the Mutation Machine
+	Vector3.new(-138, 0, Layout.SHOP_Z), -- the Shop
+	Vector3.new(-176, 0, Layout.SHOP_Z), -- the Fuse Machine
+	Vector3.new(138, 0, Layout.SHOP_Z), -- the Trail Shop
+	Vector3.new(176, 0, Layout.SHOP_Z), -- the Mutation Machine
 }
 -- Where players appear in the square, facing the stalls (north)
 Layout.SPAWN = CFrame.new(Layout.SQUARE_CENTER.X, 0.2, Layout.SQUARE_CENTER.Z - 4)
@@ -50,10 +50,10 @@ local function around(radius: number, degrees: number): Vector3
 end
 Layout.around = around
 
--- A shop's stall: its counter's middle, facing the lane between the two rows
+-- A shop's stall: its counter's middle, facing south (the square)
 function Layout.shop(index: number): CFrame
 	local at = Layout.SHOP_SPOTS[index]
-	return Layout.facing(at, Vector3.new(0, 0, at.Z))
+	return Layout.facing(at, at + Vector3.new(0, 0, 1))
 end
 
 -- How far round (degrees from south, west negative) a garden stands: the first in the west

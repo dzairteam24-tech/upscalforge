@@ -122,9 +122,9 @@ local function menuBoard(model: Instance, shop: ShopSpot, frame: CFrame, at: Vec
 	gui.Parent = board
 end
 
--- A short paved path from a shop's door to the avenue (the shops stand on the grass beside it)
+-- A paved pad in front of a shop's door
 local function forecourt(model: Instance, frame: CFrame)
-	local length = Layout.SHOP_EDGE - Layout.AVENUE_WIDTH / 2 - 2
+	local length = 14
 	part(model, { Name = "Forecourt", Size = Vector3.new(11, 0.3, length), CFrame = frame * CFrame.new(0, 0.12, -3 - length / 2 + 1), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
 end
 
@@ -270,19 +270,13 @@ local function buildShop(town: Instance, index: number)
 	model.Parent = town
 end
 
--- Trees along the avenue to the gate, on both sides, a pair every so often (clear of the shops' paths)
+-- Trees along the avenue to the gate, on both sides, a pair every so often
 local function avenueTrees(town: Instance)
 	local first = Layout.SQUARE_CENTER.Z - Layout.SQUARE_RADIUS - 30
 	local last = Layout.wildGate().Z + 40
 	local z = first
 	while z > last do
-		local nearShop = false
-		for _, spot in Layout.SHOP_SPOTS do
-			if math.abs(spot.Z - z) < 22 then
-				nearShop = true
-			end
-		end
-		if not nearShop then
+		do
 			for _, side in { -1, 1 } do
 				local at = Vector3.new(side * (Layout.AVENUE_WIDTH / 2 + 7), 0, z)
 				part(town, { Name = "TreeTrunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(7, 1.6, 1.6), CFrame = CFrame.new(at + Vector3.new(0, 3.5, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(120, 82, 52), Material = Enum.Material.Wood })

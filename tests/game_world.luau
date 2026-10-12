@@ -139,14 +139,14 @@ for index = 1, IslandConfig.ISLANDS do
 	end
 end
 assert(Layout.gardenAt(Layout.SQUARE_CENTER) == nil, "the square is no garden")
--- The shops: buildings on the grass either side of the avenue to the gate, facing it, a little apart, off every road
+-- The shops: buildings in a straight row in line with the gate, outside its towers, facing the square, a little apart, off every road
 local gateZ = Layout.wildGate().Z
 for shop = 1, #Layout.SHOP_SPOTS do
 	local frame = Layout.shop(shop)
 	local at = frame.Position
-	assert(math.abs(at.X) > Layout.AVENUE_WIDTH / 2 + Layout.SHOP_DEPTH and math.abs(at.X) < 80, "on the grass beside the avenue")
+	assert(math.abs(at.X) > Layout.WILD_WIDTH / 2 + 10 and math.abs(at.Z - gateZ) < 30, "in line with the gate, outside its towers")
 	assert(at.Z + Layout.SHOP_WIDTH / 2 < Layout.SQUARE_CENTER.Z - Layout.SQUARE_RADIUS and at.Z - Layout.SHOP_WIDTH / 2 > gateZ, "between the square and the gate")
-	assert(math.abs((frame * CFrame.new(0, 0, -10)).Position.X) < math.abs(at.X), "facing the lane in the middle")
+	assert(frame.LookVector.Z > 0.9, "facing the square")
 	assert(Layout.roadDistance(at + frame.LookVector * -Layout.SHOP_DEPTH / 2) > 0, "off the roads")
 	assert(Layout.gardenAt(at) == nil, "not in a garden")
 	local toStall = at - Layout.SPAWN.Position
