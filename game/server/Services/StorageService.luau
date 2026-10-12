@@ -14,14 +14,14 @@ local IslandService = require(script.Parent.IslandService)
 
 local StorageService = {}
 
--- Moves eggs between what's carried and what's in the barn
-local function moveEggs(player: Player, golden: boolean, tier: any, all: any, into: boolean)
+-- Moves eggs between what's carried and what's in the barn (ref: their key, Logic/Hatch.key, or a tier)
+local function moveEggs(player: Player, golden: boolean, ref: any, all: any, into: boolean)
 	local data = DataService.get(player)
-	local egg = if type(tier) == "number" then Hatch.egg(tier) else nil
-	if not data or not egg then
+	local key = if type(ref) == "number" then tostring(ref) elseif type(ref) == "string" then ref else nil
+	local tier = if key then Hatch.parse(key) else nil
+	if not data or not key or not tier or not Hatch.egg(tier) then
 		return
 	end
-	local key = tostring(egg.tier)
 	local from, to
 	if into then
 		from, to = if golden then data.golden else data.eggs, if golden then data.storedGolden else data.storedEggs

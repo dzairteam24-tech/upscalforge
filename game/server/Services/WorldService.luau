@@ -690,6 +690,7 @@ end
 -- each with its ground, its sign (and the speed needed to outrun its guardians) and its nests, each holding an
 -- egg (WildService takes it and puts it back)
 local function buildWild(world: Instance)
+	local nestLuck = Random.new(os.time()) -- (the nests' layout: new each server)
 	local wild = Instance.new("Model")
 	wild.Name = "Wild"
 	local gate = Layout.wildGate()
@@ -742,8 +743,11 @@ local function buildWild(world: Instance)
 			continue
 		end
 		local egg = Hatch.egg(biome.tier)
+		local spots = Layout.wildNests(i, WildConfig.NESTS, function()
+			return nestLuck:NextNumber()
+		end)
 		for k = 1, WildConfig.NESTS do
-			local spot = Layout.wildNest(i, k, WildConfig.NESTS)
+			local spot = spots[k]
 			-- (a nest in its biome's look: straw, petals, leaves, shells, stones, snow, lava, ice...)
 			Nest.build(wild, CFrame.new(spot + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, k, 0), biome.tier, 1.3)
 			local eggPart = part(wild, { Name = "WildEgg", Shape = Enum.PartType.Ball, Size = Vector3.one * 3.2, Position = spot + Vector3.new(0, 2.8, 0), Color = if egg then egg.color else GOLD, CanCollide = false })

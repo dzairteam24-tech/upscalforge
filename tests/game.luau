@@ -14,6 +14,7 @@ local WeatherConfig = R(Shared.Config.Weather)
 local HeistConfig = R(Shared.Config.Heist)
 local Earn = R(Shared.Logic.Earn)
 local Hatch = R(Shared.Logic.Hatch)
+local EggSizes = R(Shared.Config.EggSizes)
 local Heist = R(Shared.Logic.Heist)
 local Weather = R(Shared.Logic.Weather)
 local FoodConfig = R(Shared.Config.Food)
@@ -375,6 +376,48 @@ test("the Wild: biomes get harder, the treadmill trains speed, eggs 4-8 only com
 	end
 	eq(Wild.upgradePrice(1), WildConfig.TREADMILL[2].price)
 	eq(Wild.upgradePrice(#WildConfig.TREADMILL), nil, "the top")
+end)
+
+test("egg sizes: by luck, kept by tier and size, heavier eggs slow the thief and hatch bigger creatures that earn more", function()
+	local total = 0
+	for _, size in EggSizes.LIST do
+		total += size.chance
+	end
+	assert(math.abs(total - 1) < 1e-9, "the chances add up to 1")
+	eq(Hatch.key(1, "Normal"), "1", "a Normal egg keeps its old key (old saves still work)")
+	eq(Hatch.key(3, "Big"), "3_Big")
+	local tier, size = Hatch.parse("3_Big")
+	eq(tier, 3)
+	eq(size, "Big")
+	tier, size = Hatch.parse("2")
+	eq(tier, 2)
+	eq(size, "Normal")
+	eq(Hatch.parse("nonsense"), nil, "not an egg key")
+	eq(Hatch.name(1, "Huge", true), "✨ Golden Huge Meadow Egg")
+	local keys = Hatch.sortedKeys({ ["1"] = 2, ["1_Huge"] = 1, ["2_Small"] = 1, ["1_Small"] = 0 })
+	eq(table.concat(keys, ","), "2_Small,1_Huge,1", "the best first: by tier, then by size; none held, none shown")
+	-- (rolled many times, each size comes up about as often as it should)
+	local counts: { [string]: number } = {}
+	local state = 7
+	for _ = 1, 20000 do
+		local rolled = Hatch.rollSize(function()
+			state = (state * 1103515245 + 12345) % 2147483648
+			return state / 2147483648
+		end)
+		counts[rolled] = (counts[rolled] or 0) + 1
+	end
+	for _, each in EggSizes.LIST do
+		assert(math.abs((counts[each.id] or 0) / 20000 - each.chance) < 0.02, each.id .. " comes up about right")
+	end
+	local before = math.huge
+	for _, each in EggSizes.LIST do
+		assert(each.carry <= before, "a heavier egg never lets its thief run faster")
+		before = each.carry
+	end
+	assert(Hatch.size("Huge").carry < 1, "a huge egg slows its thief")
+	local plain = Earn.rate({ s = "Dog", m = "Normal" })
+	eq(Earn.rate({ s = "Dog", m = "Normal", w = "Huge" }), plain * Hatch.size("Huge").mult, "a huge egg's creature earns more")
+	assert(Earn.rate({ s = "Dog", m = "Normal", w = "Small" }) < plain, "a small one less")
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))

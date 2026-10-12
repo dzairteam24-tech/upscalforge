@@ -6,7 +6,7 @@ local SnapConfig = require(script.Parent.Parent.Config.Snap)
 
 local Snap = {}
 
-export type Creature = { s: string, m: string, g: string? }
+export type Creature = { s: string, m: string, g: string?, w: string? }
 
 -- What a creature of this grade snaps into, if anything
 function Snap.next(grade: string?): SnapConfig.Grade?

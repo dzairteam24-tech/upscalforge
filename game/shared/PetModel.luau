@@ -10,7 +10,7 @@ local CreatureLooks = require(Config.CreatureLooks)
 local Creatures = require(Config.Creatures)
 
 -- How big each size draws (pet.z): Normal hatches; Big and Huge are snapped creatures (Config/Snap)
-local SIZES: { [string]: { scale: number } } = { Normal = { scale = 1 }, Big = { scale = 1.7 }, Huge = { scale = 2.3 } }
+local SIZES: { [string]: { scale: number } } = { Small = { scale = 0.7 }, Normal = { scale = 1 }, Big = { scale = 1.7 }, Huge = { scale = 2.3 } }
 
 export type Built = {
 	model: Model,

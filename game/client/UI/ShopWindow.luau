@@ -6,7 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Creatures = require(Shared.Config.Creatures)
-local Eggs = require(Shared.Config.Eggs)
+local Hatch = require(Shared.Logic.Hatch)
 local Mutations = require(Shared.Config.Mutations)
 local SnapConfig = require(Shared.Config.Snap)
 local Earn = require(Shared.Logic.Earn)
@@ -58,27 +58,30 @@ function ShopWindow.mount(gui: Instance)
 		Theme.text(sellView, { Text = "Sell what you don't need for coins. Creatures living in your garden can't be sold: take them out in your Bag first", Size = UDim2.new(1, -8, 0, 40), TextColor3 = Theme.soft, TextWrapped = true, LayoutOrder = 0 })
 		-- Eggs: a row for each kind held, golden ones apart
 		local sold = 0
-		for _, egg in Eggs do
-			for _, golden in { false, true } do
-				local count = (if golden then data.golden else data.eggs)[tostring(egg.tier)] or 0
-				if count <= 0 then
+		for _, golden in { false, true } do
+			local held = if golden then data.golden else data.eggs
+			for _, key in Hatch.sortedKeys(held) do
+				local tier, size = Hatch.parse(key)
+				local egg = if tier then Hatch.egg(tier) else nil
+				local count = held[key] or 0
+				if count <= 0 or not egg or not tier then
 					continue
 				end
 				sold += 1
-				local each = Earn.eggSellPrice(egg.price, golden)
-				local row = Theme.card(sellView, Theme.lighten(egg.color, 0.5), { Size = UDim2.new(1, -8, 0, 84), LayoutOrder = egg.tier * 2 + (if golden then 1 else 0) })
+				local each = math.floor(Earn.eggSellPrice(egg.price, golden) * Hatch.size(size).mult)
+				local row = Theme.card(sellView, Theme.lighten(egg.color, 0.5), { Size = UDim2.new(1, -8, 0, 84), LayoutOrder = sold })
 				local view = Theme.eggView(row, egg.color, golden)
 				view.Size = UDim2.fromOffset(70, 70)
 				view.Position = UDim2.fromOffset(8, 7)
-				Theme.bold(row, { Text = ("%s%s ×%d"):format(if golden then "✨ " else "", egg.name, count), Size = UDim2.new(0.4, -80, 0, 30), Position = UDim2.fromOffset(84, 10), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 24 })
+				Theme.bold(row, { Text = ("%s ×%d"):format(Hatch.name(tier, size, golden), count), Size = UDim2.new(0.4, -80, 0, 30), Position = UDim2.fromOffset(84, 10), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 24 })
 				Theme.text(row, { Text = ("🪙 %s each"):format(Format.abbrev(each)), Size = UDim2.new(0.4, -80, 0, 22), Position = UDim2.fromOffset(84, 44), TextColor3 = Theme.ink, TextXAlignment = Enum.TextXAlignment.Left })
 				local one = Theme.button(row, ("Sell 1 · 🪙 %s"):format(Format.abbrev(each)), Theme.green, function()
-					Net.event("SellEgg"):FireServer(egg.tier, golden, false)
+					Net.event("SellEgg"):FireServer(key, golden, false)
 				end)
 				one.Size = UDim2.new(0.3, -8, 0, 52)
 				one.Position = UDim2.new(0.4, 0, 0, 16)
 				local all = Theme.button(row, ("All %d · 🪙 %s"):format(count, Format.abbrev(each * count)), Theme.blue, function()
-					Net.event("SellEgg"):FireServer(egg.tier, golden, true)
+					Net.event("SellEgg"):FireServer(key, golden, true)
 				end)
 				all.Size = UDim2.new(0.3, -8, 0, 52)
 				all.Position = UDim2.new(0.7, 0, 0, 16)

@@ -2,6 +2,7 @@
 -- Eggs (Config/Eggs) and what hatches from them: how long an egg incubates, and the creature and mutation it
 -- hatches into.
 
+local EggSizes = require(script.Parent.Parent.Config.EggSizes)
 local Eggs = require(script.Parent.Parent.Config.Eggs)
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 local Mutations = require(script.Parent.Parent.Config.Mutations)
@@ -15,6 +16,62 @@ end
 
 function Hatch.egg(tier: number): Eggs.Egg?
 	return byTier[tier]
+end
+
+-- An egg's size (Config/EggSizes), Normal when unknown
+function Hatch.size(id: string?): EggSizes.Size
+	return EggSizes.byId[id or "Normal"] or EggSizes.byId.Normal
+end
+
+-- The key an egg is kept under in a bag: its tier, and its size unless Normal ("1", "1_Big")
+function Hatch.key(tier: number, size: string?): string
+	return if size and size ~= "Normal" and EggSizes.byId[size] then ("%d_%s"):format(tier, size) else tostring(tier)
+end
+
+-- An egg key's tier and size (nil tier when it's no egg key)
+function Hatch.parse(key: string): (number?, string)
+	local tier, size = string.match(key, "^(%d+)_(%a+)$")
+	if tier and EggSizes.byId[size] then
+		return tonumber(tier), size
+	end
+	return tonumber(key), "Normal"
+end
+
+-- The keys of the eggs held in a bag (key -> count), the best first: by tier, then by size
+function Hatch.sortedKeys(bag: { [string]: number }?): { string }
+	local keys: { string } = {}
+	for key, count in bag or {} do
+		if count > 0 and Hatch.parse(key) then
+			table.insert(keys, key)
+		end
+	end
+	table.sort(keys, function(a, b)
+		local ta, sa = Hatch.parse(a)
+		local tb, sb = Hatch.parse(b)
+		if ta ~= tb then
+			return (ta or 0) > (tb or 0)
+		end
+		return Hatch.size(sa).weight > Hatch.size(sb).weight
+	end)
+	return keys
+end
+
+-- A size, by luck (random gives numbers in [0, 1))
+function Hatch.rollSize(random: () -> number): string
+	local roll = random()
+	for _, size in EggSizes.LIST do
+		if roll < size.chance then
+			return size.id
+		end
+		roll -= size.chance
+	end
+	return "Normal"
+end
+
+-- An egg's name with its size and gold: "✨ Golden Big Meadow Egg"
+function Hatch.name(tier: number, size: string?, golden: boolean?): string
+	local egg = byTier[tier]
+	return ("%s%s%s"):format(if golden then "✨ Golden " else "", if size and size ~= "Normal" then size .. " " else "", if egg then egg.name else "Egg")
 end
 
 -- Whether an egg's map is open yet (Config/Island OPEN_TIER); the others are Coming Soon

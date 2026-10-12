@@ -35,7 +35,7 @@ end
 
 local function title(creature: Creature): string
 	local mutation = if creature.m ~= "Normal" then creature.m .. " " else ""
-	local grade = if creature.g then creature.g .. " " else ""
+	local grade = (if creature.g then creature.g .. " " else "") .. (if creature.w then creature.w .. " " else "")
 	return grade .. mutation .. creature.s
 end
 

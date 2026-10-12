@@ -60,7 +60,7 @@ end
 -- Incubators: the egg in each (bobbing; it wobbles as it gets close, and bounces when it's ready), a bar of how
 -- far it's got and what's left, and the owner's prompt
 local EGG_SIZE = Layout.NEST_SIZE * 0.45
-type Pad = { egg: Part, text: TextLabel, bar: Frame, fill: Frame, progress: number, ready: boolean, has: boolean }
+type Pad = { egg: Part, text: TextLabel, bar: Frame, fill: Frame, progress: number, ready: boolean, has: boolean, scale: number }
 local pads: { [BasePart]: Pad } = {}
 
 local function eggBar(pad: BasePart): (TextLabel, Frame, Frame)
@@ -105,7 +105,7 @@ local function updatePad(pad: BasePart)
 		local egg = Instance.new("Part")
 		egg.Name = "IncubatingEgg"
 		egg.Shape = Enum.PartType.Ball
-		egg.Size = Vector3.one * EGG_SIZE -- the same for every tier: it fits the nest
+		egg.Size = Vector3.one * EGG_SIZE -- the same for every tier (its size: updatePad)
 		egg.Anchored = true
 		egg.CanCollide = false
 		egg.CanQuery = false
@@ -115,7 +115,7 @@ local function updatePad(pad: BasePart)
 		mesh.Scale = Vector3.new(1, 1.3, 1)
 		mesh.Parent = egg
 		local text, bar, fill = eggBar(pad)
-		entry = { egg = egg, text = text, bar = bar, fill = fill, progress = 0, ready = false, has = false }
+		entry = { egg = egg, text = text, bar = bar, fill = fill, progress = 0, ready = false, has = false, scale = 1 }
 		pads[pad] = entry
 	end
 	local pad_ = entry :: Pad
@@ -132,6 +132,10 @@ local function updatePad(pad: BasePart)
 	pad_.bar.Visible = false
 	if egg then
 		local golden = pad:GetAttribute("Golden") == true
+		-- (a bigger or smaller egg: Config/EggSizes)
+		local scale = pad:GetAttribute("EggSize")
+		pad_.scale = if type(scale) == "number" then scale else 1
+		pad_.egg.Size = Vector3.one * EGG_SIZE * pad_.scale
 		local color = if golden then Color3.fromRGB(255, 205, 70) else egg.color
 		pad_.egg.Color = color
 		pad_.egg.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
@@ -184,7 +188,7 @@ local function animateEggs()
 			continue
 		end
 		local seed = pad.Position.X + pad.Position.Z
-		local lift = EGG_SIZE * 0.6 + math.sin(clock * 2 + seed) * 0.08
+		local lift = EGG_SIZE * entry.scale * 0.6 + math.sin(clock * 2 + seed) * 0.08
 		local tilt = CFrame.identity
 		if entry.ready then
 			lift += math.abs(math.sin(clock * 6 + seed)) * 0.6

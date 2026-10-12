@@ -187,6 +187,26 @@ for _ in data.incubating do
 end
 assert(down == 2, "the egg is down on the grass: " .. down)
 assert(data.eggs["1"] == 0, "and out of the inventory")
+-- A Big egg (from the Wild) has a tool of its own, and goes down as Big (a Big creature hatches from it)
+data.eggs["1_Big"] = 1
+IslandService.push(player :: any)
+local bigTool
+for _, t in backpack:GetChildren() do
+	if t:GetAttribute("EggKind") == "1_Big" then
+		bigTool = t
+	end
+end
+assert(bigTool and bigTool.Name == "Big Meadow Egg ×1", "a tool for the Big Meadow Egg: " .. tostring(bigTool and bigTool.Name))
+root.CFrame = frame * roblox.CFrame.new(Layout.START_SPOT + roblox.Vector3.new(24, 3, 0))
+task.wait(1.2)
+onActivated(bigTool)()
+local big = 0
+for _, egg in data.incubating do
+	if egg.w == "Big" then
+		big += 1
+	end
+end
+assert(big == 1 and (data.eggs["1_Big"] or 0) == 0, "the Big egg is down, out of the inventory")
 -- The pasture grown all the way: the incubators move back with it, to its back edge
 local top = #(Loader.require(Shared.Config.Island)).PASTURE_GROWTH
 data.pasture = top

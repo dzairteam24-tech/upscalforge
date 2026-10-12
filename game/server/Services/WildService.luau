@@ -28,9 +28,10 @@ local IslandService = require(script.Parent.IslandService)
 
 local WildService = {}
 
-type Nest = { egg: BasePart, prompt: ProximityPrompt, full: boolean, golden: boolean, color: Color3, biome: number, index: number }
-type Carry = { nest: Nest, part: Part, safe: boolean, golden: boolean }
-type Drop = { nest: Nest, part: Part, golden: boolean, expires: number }
+-- (size: its egg's, rolled at each refill, Config/EggSizes; ground: where the egg rests, under its middle)
+type Nest = { egg: BasePart, prompt: ProximityPrompt, full: boolean, golden: boolean, size: string, ground: Vector3, color: Color3, biome: number, index: number }
+type Carry = { nest: Nest, part: Part, safe: boolean, golden: boolean, size: string }
+type Drop = { nest: Nest, part: Part, golden: boolean, size: string, expires: number }
 type Guardian = {
 	biome: number,
 	home: Vector3,
@@ -74,7 +75,7 @@ local function applySpeed(player: Player)
 	local sprinting = player:GetAttribute("Sprinting") == true and free
 	local carry = carrying[player]
 	local walk = Wild.walk(data.power)
-	humanoid.WalkSpeed = if carry and not carry.safe then Wild.carrying(data.power)
+	humanoid.WalkSpeed = if carry and not carry.safe then Wild.carrying(data.power) * Hatch.size(carry.size).carry -- (a heavy egg slows them)
 		elseif sprinting then math.max(walk, math.min(WildConfig.MAX_SPEED, walk * WildConfig.SPRINT))
 		else walk
 	player:SetAttribute("Speed", data.power)
@@ -111,34 +112,55 @@ local function setFull(nest: Nest, full: boolean)
 	nest.prompt.Enabled = full
 end
 
--- Makes a nest golden (or plain again): its egg shines, with a label over it
-local function setGolden(nest: Nest, golden: boolean)
-	nest.golden = golden
-	nest.egg.Color = if golden then GOLD else nest.color
-	nest.egg.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
-	local label = nest.egg:FindFirstChild("GoldenLabel")
-	if golden and not label then
+-- Dresses a nest's egg for its gold and size: its color, how big it is, and a label over it (golden, big, huge)
+local function dress(nest: Nest)
+	local egg = nest.egg
+	local size = Hatch.size(nest.size)
+	egg.Color = if nest.golden then GOLD else nest.color
+	egg.Material = if nest.golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	egg.Size = Vector3.one * 3.2 * size.scale
+	egg.Position = nest.ground + Vector3.new(0, 0.7 + egg.Size.Y * 0.65, 0) -- (sitting in its nest: the mesh is 1.3 tall)
+	local text = if not nest.full then "" else (if nest.golden then "✨ GOLDEN " else "") .. (if nest.size == "Huge" then "⭐ HUGE ⚖️" elseif nest.size == "Big" then "BIG ⚖️" else "")
+	local label = egg:FindFirstChild("EggLabel")
+	if text ~= "" and not label then
 		local gui = Instance.new("BillboardGui")
-		gui.Name = "GoldenLabel"
+		gui.Name = "EggLabel"
 		gui.Size = UDim2.fromScale(8, 1.6)
-		gui.StudsOffset = Vector3.new(0, 4, 0)
+		gui.StudsOffsetWorldSpace = Vector3.new(0, 4.5, 0)
 		gui.AlwaysOnTop = true
 		gui.MaxDistance = 250
-		local text = Instance.new("TextLabel")
-		text.Size = UDim2.fromScale(1, 1)
-		text.BackgroundTransparency = 1
-		text.TextScaled = true
-		text.Font = Enum.Font.LuckiestGuy
-		text.TextColor3 = GOLD
-		text.TextStrokeColor3 = Color3.fromRGB(28, 24, 40)
-		text.TextStrokeTransparency = 0
-		text.Text = "✨ GOLDEN EGG"
-		text.Parent = gui
-		gui.Parent = nest.egg
-	elseif not golden and label then
+		local textLabel = Instance.new("TextLabel")
+		textLabel.Size = UDim2.fromScale(1, 1)
+		textLabel.BackgroundTransparency = 1
+		textLabel.TextScaled = true
+		textLabel.Font = Enum.Font.LuckiestGuy
+		textLabel.TextStrokeColor3 = Color3.fromRGB(28, 24, 40)
+		textLabel.TextStrokeTransparency = 0
+		textLabel.Parent = gui
+		gui.Parent = egg
+		label = gui
+	elseif text == "" and label then
 		label:Destroy()
+		label = nil
 	end
-	nest.prompt.ObjectText = (if golden then "✨ Golden " else "") .. string.gsub(nest.prompt.ObjectText, "^✨ Golden ", "")
+	if label then
+		local textLabel = label:FindFirstChildOfClass("TextLabel") :: TextLabel
+		textLabel.Text = text
+		textLabel.TextColor3 = if nest.golden then GOLD elseif nest.size == "Huge" then Color3.fromRGB(255, 120, 230) else Color3.fromRGB(255, 255, 255)
+	end
+	nest.prompt.ObjectText = Hatch.name(WildConfig.BIOMES[nest.biome].tier, nest.size, nest.golden)
+end
+
+-- Makes a nest golden (or plain again)
+local function setGolden(nest: Nest, golden: boolean)
+	nest.golden = golden
+	dress(nest)
+end
+
+-- Gives a nest's egg a size (Config/EggSizes)
+local function setSize(nest: Nest, size: string)
+	nest.size = size
+	dress(nest)
 end
 
 -- Ends a carry: the egg goes into the thief's bag (`kept`) or back to its nest
@@ -160,7 +182,7 @@ local function finish(player: Player, kept: boolean)
 	local egg = Hatch.egg(biome.tier)
 	local data = DataService.get(player)
 	if kept and data then
-		local key = tostring(biome.tier)
+		local key = Hatch.key(biome.tier, carry.size)
 		if carry.golden then
 			data.golden[key] = (data.golden[key] or 0) + 1
 		else
@@ -168,16 +190,17 @@ local function finish(player: Player, kept: boolean)
 		end
 		data.stats.stolen += 1
 		DailyService.add(player, "wild")
-		IslandService.notify(player, ("Home with a %s%s! 🥚 Click to set it down on your grass"):format(if carry.golden then "✨ Golden " else "", if egg then egg.name else "egg"), "success")
+		IslandService.notify(player, ("Home with a %s! 🥚 Click to set it down on your grass"):format(Hatch.name(biome.tier, carry.size, carry.golden)), "success")
 		IslandService.push(player)
-		IslandService.holdEgg(player, biome.tier, carry.golden)
+		IslandService.holdEgg(player, key, carry.golden)
 		local root = rootOf(player)
 		if root then
 			IslandService.fx("Home", root.Position - Vector3.new(0, 2, 0), if carry.golden then GOLD elseif egg then egg.color else nil)
 		end -- (still in their hands, now from the inventory)
 	else
 		setFull(carry.nest, true)
-		setGolden(carry.nest, carry.golden)
+		carry.nest.golden = carry.golden
+		setSize(carry.nest, carry.size)
 	end
 	applySpeed(player)
 end
@@ -231,7 +254,7 @@ local function drop(player: Player, at: Vector3)
 	if prompt then
 		prompt.Enabled = true
 	end
-	drops[held.part] = { nest = held.nest, part = held.part, golden = held.golden, expires = os.clock() + WildConfig.DROP_TIME }
+	drops[held.part] = { nest = held.nest, part = held.part, golden = held.golden, size = held.size, expires = os.clock() + WildConfig.DROP_TIME }
 end
 
 -- Someone picks up a dropped egg: its guardian (if they're still in its biome) wakes again
@@ -243,7 +266,7 @@ function WildService.pickUp(player: Player, part: BasePart)
 	end
 	drops[part] = nil
 	local safe = Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= dropped.nest.biome
-	hold(player, { nest = dropped.nest, part = dropped.part, safe = safe, golden = dropped.golden })
+	hold(player, { nest = dropped.nest, part = dropped.part, safe = safe, golden = dropped.golden, size = dropped.size })
 	if not safe then
 		wake(dropped.nest.biome, player, root.Position)
 		IslandService.notify(player, "🥚 Got it back! Run before the guardian wakes up!", "success")
@@ -261,14 +284,14 @@ local function steal(player: Player, nest: Nest)
 	if (root.Position - nest.egg.Position).Magnitude > 14 then
 		return
 	end
-	local golden = nest.golden
+	local golden, size = nest.golden, nest.size
 	setFull(nest, false)
 	setGolden(nest, false)
 	IslandService.fx("Steal", nest.egg.Position, if golden then GOLD else nest.color)
 	local part = Instance.new("Part")
 	part.Name = "CarriedEgg"
 	part.Shape = Enum.PartType.Ball
-	part.Size = Vector3.new(2.6, 2.6, 2.6)
+	part.Size = Vector3.one * 2.6 * Hatch.size(size).scale
 	part.Color = if golden then GOLD else nest.color
 	part.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
 	part.Anchored = true
@@ -284,7 +307,7 @@ local function steal(player: Player, nest: Nest)
 	-- Anyone can grab it where it's dropped (caught by the guardian)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Grab"
-	prompt.ObjectText = (if golden then "✨ Golden " else "") .. (Hatch.egg(WildConfig.BIOMES[nest.biome].tier) or { name = "Egg" }).name
+	prompt.ObjectText = Hatch.name(WildConfig.BIOMES[nest.biome].tier, size, golden)
 	prompt.HoldDuration = 0.5
 	prompt.MaxActivationDistance = WildConfig.GRAB_RANGE
 	prompt.RequiresLineOfSight = false
@@ -292,9 +315,11 @@ local function steal(player: Player, nest: Nest)
 	prompt.Triggered:Connect(function(taker)
 		WildService.pickUp(taker, part)
 	end)
-	hold(player, { nest = nest, part = part, safe = false, golden = golden })
+	hold(player, { nest = nest, part = part, safe = false, golden = golden, size = size })
 	local biome = WildConfig.BIOMES[nest.biome]
-	if Wild.outruns(data.power, biome) then
+	if size == "Big" or size == "Huge" then
+		IslandService.notify(player, ("⚖️ A %s egg: heavy, you run slower. Run!"):format(string.lower(size)), "info")
+	elseif Wild.outruns(data.power, biome) then
 		IslandService.notify(player, ("Got it! Run out of the %s before its guardian wakes up! 🏃"):format(biome.name), "success")
 	else
 		IslandService.notify(player, ("Got it! But its guardian is faster than you (⚡ %s needed). Run!"):format(Format.abbrev(Wild.needs(biome))), "info")
@@ -320,10 +345,14 @@ local function refill()
 	for _, dropped in drops do
 		carried[dropped.nest] = true
 	end
+	-- (each egg comes back by luck: small, normal, big or, rarely, huge)
 	for _, nest in nests do
 		if not carried[nest] then
 			setFull(nest, true)
-			setGolden(nest, false)
+			nest.golden = false
+			setSize(nest, Hatch.rollSize(function()
+				return rng:NextNumber()
+			end))
 		end
 	end
 	-- Some biomes get a golden nest
@@ -386,7 +415,7 @@ local function draw(guardian: Guardian)
 	built.model.Name = "Guardian"
 	built.model.Parent = folder
 	guardian.built = built
-	place(guardian, guardian.position + Vector3.new(0, 0, 1))
+	place(guardian, Vector3.new(Layout.biome(guardian.biome).X, 0, guardian.position.Z)) -- (facing its nests and the road)
 end
 
 local function spawnGuardians()
@@ -467,7 +496,8 @@ local function tick(frame: number)
 			drops[part] = nil
 			part:Destroy()
 			setFull(dropped.nest, true)
-			setGolden(dropped.nest, dropped.golden)
+			dropped.nest.golden = dropped.golden
+			setSize(dropped.nest, dropped.size)
 		end
 	end
 	for _, guardian in guardians do
@@ -589,7 +619,7 @@ function WildService.init()
 			local biome, index = egg:GetAttribute("Biome"), egg:GetAttribute("Nest")
 			local prompt = egg:FindFirstChildOfClass("ProximityPrompt")
 			if egg:IsA("BasePart") and type(biome) == "number" and type(index) == "number" and prompt then
-				local nest: Nest = { egg = egg, prompt = prompt, full = true, golden = false, color = egg.Color, biome = biome, index = index }
+				local nest: Nest = { egg = egg, prompt = prompt, full = true, golden = false, size = "Normal", ground = egg.Position - Vector3.new(0, 2.8, 0), color = egg.Color, biome = biome, index = index }
 				table.insert(nests, nest)
 				prompt.Triggered:Connect(function(player)
 					steal(player, nest)

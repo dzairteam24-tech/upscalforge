@@ -2,21 +2,23 @@
 -- What creatures earn on their owner's island (Config/Creatures, Config/Mutations).
 
 local Creatures = require(script.Parent.Parent.Config.Creatures)
+local EggSizes = require(script.Parent.Parent.Config.EggSizes)
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 local Mutations = require(script.Parent.Parent.Config.Mutations)
 local SnapConfig = require(script.Parent.Parent.Config.Snap)
 
 local Earn = {}
 
--- g: a snapped creature's grade (Config/Snap)
-export type Owned = { s: string, m: string, g: string? }
+-- g: a snapped creature's grade (Config/Snap); w: the size of the egg it hatched from (Config/EggSizes)
+export type Owned = { s: string, m: string, g: string?, w: string? }
 
 -- Coins a second one creature earns
 function Earn.rate(creature: Owned): number
 	local species = Creatures.byId[creature.s]
 	local mutation = Mutations.byId[creature.m] or Mutations.byId.Normal
 	local grade = if creature.g then SnapConfig.byId[creature.g] else nil
-	return if species then species.earn * mutation.mult * (if grade then grade.mult else 1) else 0
+	local size = if creature.w then EggSizes.byId[creature.w] else nil
+	return if species then species.earn * mutation.mult * (if grade then grade.mult else 1) * (if size then size.mult else 1) else 0
 end
 
 -- Coins a second the creatures living on an island earn together

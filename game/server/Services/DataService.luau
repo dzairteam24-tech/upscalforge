@@ -14,12 +14,12 @@ local IslandConfig = require(Shared.Config.Island)
 local WildConfig = require(Shared.Config.Wild)
 
 -- g: a snapped creature's grade (Config/Snap)
-export type Creature = { s: string, m: string, g: string? }
+export type Creature = { s: string, m: string, g: string?, w: string? } -- (w: its egg's size, Config/EggSizes)
 export type Data = {
 	coins: number,
 	gems: number,
-	eggs: { [string]: number }, -- egg tier -> how many the player holds
-	golden: { [string]: number }, -- egg tier -> how many Golden Eggs (from the Wild's golden nests) they hold
+	eggs: { [string]: number }, -- egg key (Logic/Hatch.key: its tier, and its size unless Normal: "1", "1_Big") -> how many the player holds
+	golden: { [string]: number }, -- egg key -> how many Golden Eggs (from the Wild's golden nests) they hold
 	storedEggs: { [string]: number }, -- egg tier -> how many they keep in the barn (safe: the ones above are carried, and can be stolen)
 	storedGolden: { [string]: number }, -- the same for Golden Eggs
 	stored: { [string]: boolean }, -- creature ids kept in the barn (safe, not in the hotbar); the rest of those not in the garden are carried
@@ -27,7 +27,7 @@ export type Data = {
 	placed: { string }, -- the creatures living on the island (they earn)
 	incubators: number, -- nests on the ground
 	machines: number, -- incubators at the back of the garden (Config/Island MACHINE_PRICES)
-	incubating: { [string]: { tier: number, start: number, m: string?, x: number?, z: number? } }, -- slot -> its egg and os.time() it went in (m: a Golden Egg's least mutation; x, z: where it was set down in the garden, for one on the grass)
+	incubating: { [string]: { tier: number, start: number, m: string?, w: string?, x: number?, z: number? } }, -- slot -> its egg and os.time() it went in (w: its size; m: a Golden Egg's least mutation; x, z: where it was set down in the garden, for one on the grass)
 	pens: number,
 	nextId: number,
 	lastSeen: number,

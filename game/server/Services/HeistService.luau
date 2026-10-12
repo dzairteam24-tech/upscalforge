@@ -96,7 +96,7 @@ local function endRound(winner: Player?)
 	local key = tostring(tier)
 	data.eggs[key] = (data.eggs[key] or 0) + 1
 	IslandService.push(winner)
-	IslandService.holdEgg(winner, tier, false) -- (in their hands, from the inventory, to set down on their grass)
+	IslandService.holdEgg(winner, tostring(tier), false) -- (in their hands, from the inventory, to set down on their grass)
 	if root then
 		IslandService.fx("Home", root.Position - Vector3.new(0, 2, 0), prize.color)
 	end

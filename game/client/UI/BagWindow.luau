@@ -81,12 +81,13 @@ function BagWindow.mount(gui: Instance)
 		hint(1, "Eggs in your hotbar can be stolen outside your garden: set them down or store them at home")
 		local grid = Theme.grid(content, 2, 4, 196)
 		local kinds = 0
-		for tier = 11, 1, -1 do
-			local egg = Hatch.egg(tier)
-			for _, golden in { true, false } do
-				local held = if golden then data.golden else data.eggs
-				local count = held and held[tostring(tier)] or 0
-				if count > 0 and egg then
+		for _, golden in { true, false } do
+			local held = if golden then data.golden else data.eggs
+			for _, key in Hatch.sortedKeys(held) do
+				local tier, size = Hatch.parse(key)
+				local egg = if tier then Hatch.egg(tier) else nil
+				local count = held[key] or 0
+				if count > 0 and egg and tier then
 					kinds += 1
 					local color = if golden then Theme.gold else egg.color
 					local card = Theme.card(grid, Theme.lighten(color, 0.45), { LayoutOrder = kinds })
@@ -94,16 +95,16 @@ function BagWindow.mount(gui: Instance)
 					view.Size = UDim2.new(1, 0, 0, 96)
 					view.Position = UDim2.fromOffset(0, 4)
 					Theme.bold(card, { Text = "×" .. count, Size = UDim2.fromOffset(60, 28), Position = UDim2.new(1, -66, 0, 6), TextXAlignment = Enum.TextXAlignment.Right, MaxText = 26 })
-					Theme.bold(card, { Text = (if golden then "✨ Golden " else "") .. egg.name, Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 100), MaxText = 20 })
+					Theme.bold(card, { Text = Hatch.name(tier, size, golden), Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 100), MaxText = 20 })
 					Theme.text(card, { Text = "⏳ " .. Format.time(Hatch.seconds(tier)), Size = UDim2.new(1, -12, 0, 18), Position = UDim2.fromOffset(6, 124), TextColor3 = Theme.ink })
 					local down = Theme.button(card, "Set down", Theme.green, function()
-						Net.event("SetEgg"):FireServer(tier, golden)
+						Net.event("SetEgg"):FireServer(key, golden)
 					end)
 					down.AnchorPoint = Vector2.new(0, 1)
 					down.Position = UDim2.new(0, 8, 1, -8)
 					down.Size = UDim2.new(0.58, -10, 0, 34)
 					local keep = Theme.button(card, "📦 Store", Theme.blue, function()
-						Net.event("Store"):FireServer(if golden then "golden" else "egg", tier, false)
+						Net.event("Store"):FireServer(if golden then "golden" else "egg", key, false)
 					end)
 					keep.AnchorPoint = Vector2.new(1, 1)
 					keep.Position = UDim2.new(1, -8, 1, -8)
@@ -114,21 +115,22 @@ function BagWindow.mount(gui: Instance)
 		-- The barn: eggs kept there are safe anywhere (what's in the hotbar can be stolen outside the garden)
 		local stored = 0
 		local barn = Theme.grid(content, 5, 4, 150)
-		for tier = 11, 1, -1 do
-			local egg = Hatch.egg(tier)
-			for _, golden in { true, false } do
-				local held = if golden then data.storedGolden else data.storedEggs
-				local count = held and held[tostring(tier)] or 0
-				if count > 0 and egg then
+		for _, golden in { true, false } do
+			local held = if golden then data.storedGolden else data.storedEggs
+			for _, key in Hatch.sortedKeys(held) do
+				local tier, size = Hatch.parse(key)
+				local egg = if tier then Hatch.egg(tier) else nil
+				local count = held[key] or 0
+				if count > 0 and egg and tier then
 					stored += 1
 					local card = Theme.card(barn, Theme.lighten(if golden then Theme.gold else egg.color, 0.45), { LayoutOrder = stored })
 					local view = Theme.eggView(card, egg.color, golden)
 					view.Size = UDim2.new(1, 0, 0, 70)
 					view.Position = UDim2.fromOffset(0, 4)
 					Theme.bold(card, { Text = "×" .. count, Size = UDim2.fromOffset(60, 26), Position = UDim2.new(1, -66, 0, 6), TextXAlignment = Enum.TextXAlignment.Right, MaxText = 24 })
-					Theme.bold(card, { Text = (if golden then "✨ " else "") .. egg.name, Size = UDim2.new(1, -12, 0, 20), Position = UDim2.fromOffset(6, 76), MaxText = 17 })
+					Theme.bold(card, { Text = Hatch.name(tier, size, golden), Size = UDim2.new(1, -12, 0, 20), Position = UDim2.fromOffset(6, 76), MaxText = 17 })
 					cardButton(card, "Take out", Theme.blue, function()
-						Net.event("Withdraw"):FireServer(if golden then "golden" else "egg", tier, false)
+						Net.event("Withdraw"):FireServer(if golden then "golden" else "egg", key, false)
 					end)
 				end
 			end

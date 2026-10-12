@@ -26,7 +26,7 @@ type Data = DataService.Data
 type Creature = DataService.Creature
 
 -- Something on the ground: an egg (tier, golden) or a creature, whose owner lost it
-type Drop = { owner: Player, tier: number?, golden: boolean?, creature: Creature?, model: Model, expires: number }
+type Drop = { owner: Player, tier: number?, size: string?, golden: boolean?, creature: Creature?, model: Model, expires: number }
 local drops: { [Model]: Drop } = {}
 
 local rng = Random.new()
@@ -45,7 +45,7 @@ end
 -- What is carried
 
 -- What the player has in their hands, or else something they carry (picked at random)
-type Loot = { creature: string?, tier: number?, golden: boolean? }
+type Loot = { creature: string?, key: string?, golden: boolean? }
 local function lootOf(player: Player, data: Data): Loot?
 	local character = player.Character
 	if character then
@@ -58,10 +58,10 @@ local function lootOf(player: Player, data: Data): Loot?
 				local kind = tool:GetAttribute("EggKind")
 				if type(kind) == "string" then
 					local golden = string.sub(kind, 1, 1) == "g"
-					local tier = tonumber(if golden then string.sub(kind, 2) else kind)
+					local key = if golden then string.sub(kind, 2) else kind
 					local bag = if golden then data.golden else data.eggs
-					if tier and (bag[tostring(tier)] or 0) > 0 then
-						return { tier = tier, golden = golden }
+					if Hatch.parse(key) and (bag[key] or 0) > 0 then
+						return { key = key, golden = golden }
 					end
 				end
 			end
@@ -76,8 +76,8 @@ local function lootOf(player: Player, data: Data): Loot?
 	end
 	for _, golden in { false, true } do
 		for key, count in (if golden then data.golden else data.eggs) do
-			if count > 0 then
-				table.insert(all, { tier = tonumber(key), golden = golden })
+			if count > 0 and Hatch.parse(key) then
+				table.insert(all, { key = key, golden = golden })
 			end
 		end
 	end
@@ -91,8 +91,7 @@ local function title(drop: Drop): string
 	if drop.creature then
 		return drop.creature.s
 	end
-	local egg = if drop.tier then Hatch.egg(drop.tier) else nil
-	return (if drop.golden then "Golden " else "") .. (if egg then egg.name else "Egg")
+	return if drop.tier then Hatch.name(drop.tier, drop.size, drop.golden) else "Egg"
 end
 
 -- Hands the drop to a player (a thief, or its owner back), into their hotbar. False when there's no room.
@@ -112,10 +111,11 @@ local function give(drop: Drop, taker: Player): boolean
 		end
 		local id = tostring(data.nextId)
 		data.nextId += 1
-		data.creatures[id] = { s = drop.creature.s, m = drop.creature.m, g = drop.creature.g }
+		data.creatures[id] = { s = drop.creature.s, m = drop.creature.m, g = drop.creature.g, w = drop.creature.w }
 	elseif drop.tier then
 		local bag = if drop.golden then data.golden else data.eggs
-		bag[tostring(drop.tier)] = (bag[tostring(drop.tier)] or 0) + 1
+		local key = Hatch.key(drop.tier, drop.size)
+		bag[key] = (bag[key] or 0) + 1
 	end
 	IslandService.push(taker)
 	return true
@@ -167,7 +167,7 @@ local function lay(drop: Drop, at: Vector3)
 		body = Instance.new("Part")
 		body.Name = "Body"
 		body.Shape = Enum.PartType.Ball
-		body.Size = Vector3.one * 3
+		body.Size = Vector3.one * 3 * Hatch.size(drop.size).scale
 		body.CFrame = frame
 		body.Anchored = true
 		body.CanCollide = false
@@ -223,12 +223,13 @@ local function knock(victim: Player)
 	if loot.creature then
 		local creature = data.creatures[loot.creature]
 		data.creatures[loot.creature] = nil
-		drop = { owner = victim, creature = { s = creature.s, m = creature.m, g = creature.g }, model = Instance.new("Model"), expires = os.clock() + StealConfig.DROP_TIME }
+		drop = { owner = victim, creature = { s = creature.s, m = creature.m, g = creature.g, w = creature.w }, model = Instance.new("Model"), expires = os.clock() + StealConfig.DROP_TIME }
 	else
-		local key = tostring(loot.tier)
+		local key = loot.key :: string
 		local bag = if loot.golden then data.golden else data.eggs
 		bag[key] = if (bag[key] or 0) > 1 then bag[key] - 1 else nil
-		drop = { owner = victim, tier = loot.tier, golden = loot.golden, model = Instance.new("Model"), expires = os.clock() + StealConfig.DROP_TIME }
+		local tier, size = Hatch.parse(key)
+		drop = { owner = victim, tier = tier, size = size, golden = loot.golden, model = Instance.new("Model"), expires = os.clock() + StealConfig.DROP_TIME }
 	end
 	lay(drop, root.CFrame.Position)
 	IslandService.notify(victim, ("💥 Your %s was knocked out of your hands! Grab it back!"):format(title(drop)), "error")
