@@ -500,6 +500,45 @@ local function buildGarden(world: Instance, index: number)
 	local board = part(model, { Name = "OwnerSign", Size = Vector3.one, CFrame = Layout.gate(index) * CFrame.new(0, Layout.FENCE_HEIGHT + 2, 0), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(board, "Free garden", 16, 3, Vector3.zero)
 
+	-- The owner's avatar and name, high over the garden so it can be seen from far away (IslandService fills it
+	-- in and shows it when the garden has an owner)
+	local banner = part(model, { Name = "OwnerBanner", Size = Vector3.one, CFrame = Layout.garden(index) * CFrame.new(0, 60, 0), Transparency = 1, CanCollide = false, CanQuery = false })
+	local card = Instance.new("BillboardGui")
+	card.Name = "Card"
+	card.Size = UDim2.fromScale(36, 26)
+	card.AlwaysOnTop = true
+	card.MaxDistance = 3000
+	card.Enabled = false
+	local face = Instance.new("ImageLabel")
+	face.Name = "Avatar"
+	face.AnchorPoint = Vector2.new(0.5, 0)
+	face.Position = UDim2.fromScale(0.5, 0)
+	face.Size = UDim2.fromScale(16 / 36, 16 / 26)
+	face.BackgroundColor3 = rgb(40, 36, 56)
+	face.BorderSizePixel = 0
+	local faceRound = Instance.new("UICorner")
+	faceRound.CornerRadius = UDim.new(0.5, 0)
+	faceRound.Parent = face
+	local faceStroke = Instance.new("UIStroke")
+	faceStroke.Color = rgb(255, 221, 64)
+	faceStroke.Thickness = 5
+	faceStroke.Parent = face
+	face.Parent = card
+	local owner = Instance.new("TextLabel")
+	owner.Name = "Owner"
+	owner.AnchorPoint = Vector2.new(0.5, 1)
+	owner.Position = UDim2.fromScale(0.5, 1)
+	owner.Size = UDim2.fromScale(1, 8 / 26)
+	owner.BackgroundTransparency = 1
+	owner.TextScaled = true
+	owner.Font = Enum.Font.LuckiestGuy
+	owner.TextColor3 = rgb(255, 221, 64)
+	owner.TextStrokeColor3 = rgb(20, 18, 30)
+	owner.TextStrokeTransparency = 0
+	owner.Text = ""
+	owner.Parent = card
+	card.Parent = banner
+
 	local creatures = Instance.new("Model")
 	creatures.Name = "Creatures"
 	creatures.Parent = model

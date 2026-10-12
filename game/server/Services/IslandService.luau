@@ -368,6 +368,18 @@ local function render(index: number, player: Player?, data: Data?)
 	if text and text:IsA("TextLabel") then
 		text.Text = if player then ("🥚 %s's Nest"):format(player.DisplayName) else "Free garden"
 	end
+	-- The owner's avatar and name over the garden
+	local banner = island:FindFirstChild("OwnerBanner")
+	local card = banner and banner:FindFirstChild("Card")
+	if card and card:IsA("BillboardGui") then
+		card.Enabled = player ~= nil
+		local face = card:FindFirstChild("Avatar")
+		local owner = card:FindFirstChild("Owner")
+		if player and face and face:IsA("ImageLabel") and owner and owner:IsA("TextLabel") then
+			face.Image = ("rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150"):format(player.UserId)
+			owner.Text = player.DisplayName
+		end
+	end
 	-- The eggs set down on the grass: a pad for each (rebuilt only when they change)
 	local eggsFolder = island:FindFirstChild("Eggs")
 	local eggsKey = eggsOnGround(data)
