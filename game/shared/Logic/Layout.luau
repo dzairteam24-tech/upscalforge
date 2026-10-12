@@ -94,6 +94,7 @@ Layout.PASTURE = {
 	center = Vector3.new(0, 0, (PEN_FRONT + PEN_BACK) / 2),
 	size = Vector3.new(Layout.GARDEN_SIZE - 2, 0, PEN_BACK - PEN_FRONT),
 }
+Layout.GRASS_TOP = 0.65 -- (the top of the pen's grass over the garden's ground: what stands in it stands there)
 Layout.NEST_SIZE = 6 -- a nest's width (an egg in it is drawn to fit, whatever its tier)
 Layout.PATH_WIDTH = 6
 local YARD_Z = -HALF + 11 -- (the row the yard's things stand in)
@@ -172,7 +173,7 @@ end
 function Layout.pen(index: number, slot: number): Vector3
 	local count = IslandConfig.PENS + #IslandConfig.PEN_PRICES
 	local angle = (slot - 1) * 2 * math.pi / count
-	local inside = Layout.PASTURE.center + Vector3.new(math.sin(angle) * Layout.PASTURE.size.X * 0.32, 0, -math.cos(angle) * Layout.PASTURE.size.Z * 0.3)
+	local inside = Layout.PASTURE.center + Vector3.new(math.sin(angle) * Layout.PASTURE.size.X * 0.32, Layout.GRASS_TOP, -math.cos(angle) * Layout.PASTURE.size.Z * 0.3)
 	return Layout.garden(index):PointToWorldSpace(inside)
 end
 

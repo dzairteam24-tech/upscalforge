@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Sounds = require(Shared.Config.Sounds)
+local Knockdown = require(Shared.Knockdown)
 local Net = require(Shared.Net)
 
 local Effects = {}
@@ -138,15 +139,10 @@ local function knocked(push: Vector3, hard: boolean, stun: number)
 		return
 	end
 	if hard then
-		humanoid.PlatformStand = true -- (falls over, and can't walk)
-		task.delay(stun, function()
-			if humanoid.Parent then
-				humanoid.PlatformStand = false
-				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-			end
-		end)
+		Knockdown.fall(character :: Model, push, stun) -- (on their back a moment, then up)
+	else
+		root.AssemblyLinearVelocity = push
 	end
-	root.AssemblyLinearVelocity = push
 	task.spawn(function()
 		for i = 1, if hard then 10 else 5 do
 			local strength = (if hard then 0.5 else 0.25) * (1 - i / 11)

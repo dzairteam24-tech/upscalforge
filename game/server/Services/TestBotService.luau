@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local StealConfig = require(Shared.Config.Steal)
+local Knockdown = require(Shared.Knockdown)
 local Layout = require(Shared.Logic.Layout)
 
 local HeistService = require(script.Parent.HeistService)
@@ -109,15 +110,17 @@ end
 local function hit(model: Model, push: Vector3, hard: boolean)
 	for _, bot in bots do
 		if bot.model == model then
-			bot.root.AssemblyLinearVelocity = push
 			if hard then
 				if bot.carried then
 					WildService.botDrop(bot.carried, bot.root.Position)
 					bot.carried = nil
 				end
-				bot.humanoid.PlatformStand = true
+				bot.humanoid:MoveTo(bot.root.Position) -- (stops walking)
+				Knockdown.fall(bot.model, push, StealConfig.STUN) -- (on its back a moment, then up)
 				bot.state = "down"
-				bot.until_ = os.clock() + StealConfig.STUN
+				bot.until_ = os.clock() + StealConfig.STUN + 0.3
+			else
+				bot.root.AssemblyLinearVelocity = push
 			end
 			return
 		end
@@ -138,9 +141,7 @@ local function think(bot: Bot)
 		if now < bot.until_ then
 			return
 		end
-		humanoid.PlatformStand = false
-		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-		bot.state, bot.egg = "wild", nil
+		bot.state, bot.egg = "wild", nil -- (Knockdown got it up)
 		return
 	end
 	if now < bot.until_ then
