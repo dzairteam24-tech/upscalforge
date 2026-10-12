@@ -212,12 +212,12 @@ function Layout.wildNest(i: number, k: number, count: number?): Vector3
 	local toRoad = math.atan2(0, -math.sign(guardian.X - Layout.biome(i).X)) -- (the angle facing the road)
 	local spread = math.rad(150)
 	local angle = toRoad + (if n > 1 then -spread / 2 + (k - 1) * spread / (n - 1) else 0)
-	return guardian + Vector3.new(math.cos(angle), 0, math.sin(angle)) * 10
+	return guardian + Vector3.new(math.cos(angle), 0, math.sin(angle)) * 8
 end
 
 -- A biome's nests scattered by luck in front of its guardian (toward the road), apart from each other: a new
 -- layout each server (random gives numbers in [0, 1))
-Layout.WILD_NEST_GAP = 6.5 -- (studs between two nests' middles: close together, like Steal an Egg's)
+Layout.WILD_NEST_GAP = 4 -- (studs between two nests' middles: small, close together, like Steal an Egg's)
 function Layout.wildNests(i: number, count: number, random: () -> number): { Vector3 }
 	local guardian = Layout.wildGuardian(i)
 	local toRoad = math.atan2(0, -math.sign(guardian.X - Layout.biome(i).X))
@@ -227,7 +227,7 @@ function Layout.wildNests(i: number, count: number, random: () -> number): { Vec
 		local best, room = guardian, -1
 		for _ = 1, 200 do
 			local angle = toRoad + (random() - 0.5) * math.rad(140)
-			local spot = guardian + Vector3.new(math.cos(angle), 0, math.sin(angle)) * (6 + random() * 11)
+			local spot = guardian + Vector3.new(math.cos(angle), 0, math.sin(angle)) * (5 + random() * 8)
 			local nearest = math.huge
 			for _, other in spots do
 				nearest = math.min(nearest, (other - spot).Magnitude)

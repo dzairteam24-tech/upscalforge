@@ -15,6 +15,7 @@ local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
 local Nest = require(Shared.Nest)
 local EggModel = require(Shared.EggModel)
+local EggSizes = require(Shared.Config.EggSizes)
 local Wild = require(Shared.Logic.Wild)
 
 local WorldService = {}
@@ -750,14 +751,15 @@ local function buildWild(world: Instance)
 		for k = 1, WildConfig.NESTS do
 			local spot = spots[k]
 			-- (a nest in its biome's look: straw, petals, leaves, shells, stones, snow, lava, ice...)
-			Nest.build(wild, CFrame.new(spot + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, k, 0), biome.tier, 1)
-			local eggPart = part(wild, { Name = "WildEgg", Shape = Enum.PartType.Ball, Size = Vector3.one * 3.2, Position = spot + Vector3.new(0, 2.8, 0), Color = if egg then egg.color else GOLD, CanCollide = false })
+			Nest.build(wild, CFrame.new(spot + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, k, 0), biome.tier, EggSizes.NEST)
+			local eggPart = part(wild, { Name = "WildEgg", Shape = Enum.PartType.Ball, Size = Vector3.one * EggSizes.BASE, Position = spot + Vector3.new(0, EggSizes.SIT + EggSizes.BASE * 0.65, 0), Color = if egg then egg.color else GOLD, CanCollide = false })
 			local mesh = Instance.new("SpecialMesh")
 			mesh.MeshType = Enum.MeshType.Sphere
 			mesh.Scale = Vector3.new(1, 1.3, 1)
 			mesh.Parent = eggPart
 			EggModel.dress(eggPart, if egg then egg.color else GOLD) -- (stacked cube layers, like Steal an Egg's)
 			eggPart:SetAttribute("Biome", i)
+			eggPart:SetAttribute("Ground", spot) -- (where its nest stands: WildService sits each new egg there by its size)
 			eggPart:SetAttribute("Nest", k)
 			eggPart:AddTag("WildEgg")
 			local prompt = Instance.new("ProximityPrompt")

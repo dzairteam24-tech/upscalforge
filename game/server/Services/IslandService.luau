@@ -30,6 +30,7 @@ local Weather = require(Shared.Logic.Weather)
 local PetModel = require(Shared.PetModel)
 local Nest = require(Shared.Nest)
 local EggModel = require(Shared.EggModel)
+local EggSizes = require(Shared.Config.EggSizes)
 local Net = require(Shared.Net)
 
 local DailyService = require(script.Parent.DailyService)
@@ -111,7 +112,7 @@ local function eggTools(player: Player, data: Data)
 				local handle = Instance.new("Part")
 				handle.Name = "Handle"
 				handle.Shape = Enum.PartType.Ball
-				handle.Size = Vector3.one * 1.6 * Hatch.size(size).scale
+				handle.Size = Vector3.one * EggSizes.BASE * 0.8 * Hatch.size(size).scale
 				handle.Color = if golden then Color3.fromRGB(255, 205, 70) else egg.color
 				handle.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
 				handle.CanCollide = false
@@ -431,7 +432,7 @@ local function render(index: number, player: Player?, data: Data?)
 					prompt:SetAttribute("Island", index)
 					prompt:SetAttribute("Slot", slot)
 					prompt.Parent = pad
-					Nest.build(pad, pad.CFrame, egg.tier) -- (in its egg's look)
+					Nest.build(pad, pad.CFrame, egg.tier, EggSizes.NEST) -- (in its egg's look)
 					pad.Parent = eggsFolder
 					pad:AddTag("Incubator")
 				end

@@ -211,9 +211,9 @@ for i = 1, #WildConfig.BIOMES do
 		end)
 		local guardian = Layout.wildGuardian(i)
 		for k, nest in spots do
-			assert((nest - guardian).Magnitude < 18 and math.abs(nest.X) < math.abs(guardian.X), "in front of its guardian, toward the road")
+			assert((nest - guardian).Magnitude < 14 and math.abs(nest.X) < math.abs(guardian.X), "in front of its guardian, toward the road")
 			for other = k + 1, #spots do
-				assert((spots[other] - nest).Magnitude >= 5.6, "nests apart (each one 5.4 across)")
+				assert((spots[other] - nest).Magnitude >= 3.2, "nests apart (each one 3 across)")
 			end
 			assert(Layout.biomeAt(nest, #WildConfig.BIOMES) == i, "a scattered nest in its biome")
 			assert(math.abs(nest.X) - 4 > Layout.ROAD_WIDTH / 2 and math.abs(nest.X) + 4 < Layout.WILD_WIDTH / 2, "off the road, inside the walls")

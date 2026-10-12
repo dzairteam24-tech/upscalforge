@@ -14,6 +14,7 @@ local Format = require(Shared.Logic.Format)
 local Creatures = require(Shared.Config.Creatures)
 local Hatch = require(Shared.Logic.Hatch)
 local EggModel = require(Shared.EggModel)
+local EggSizes = require(Shared.Config.EggSizes)
 local Snap = require(Shared.Logic.Snap)
 local Night = require(Shared.Logic.Night)
 local Layout = require(Shared.Logic.Layout)
@@ -60,7 +61,7 @@ end
 
 -- Incubators: the egg in each (bobbing; it wobbles as it gets close, and bounces when it's ready), a bar of how
 -- far it's got and what's left, and the owner's prompt
-local EGG_SIZE = Layout.NEST_SIZE * 0.45
+local EGG_SIZE = EggSizes.BASE -- (small, like the Wild's: Config/EggSizes)
 type Pad = { egg: Part, text: TextLabel, bar: Frame, fill: Frame, progress: number, ready: boolean, has: boolean, scale: number, look: string }
 local pads: { [BasePart]: Pad } = {}
 
@@ -192,7 +193,7 @@ local function animateEggs()
 			continue
 		end
 		local seed = pad.Position.X + pad.Position.Z
-		local lift = EGG_SIZE * entry.scale * 0.6 + math.sin(clock * 2 + seed) * 0.08
+		local lift = EggSizes.SIT - 0.2 + EGG_SIZE * entry.scale * 0.65 + math.sin(clock * 2 + seed) * 0.05 -- (in its nest)
 		local tilt = CFrame.identity
 		if entry.ready then
 			lift += math.abs(math.sin(clock * 6 + seed)) * 0.6

@@ -21,6 +21,7 @@ local Carry = require(Shared.Carry)
 local PetModel = require(Shared.PetModel)
 local SleepPose = require(Shared.SleepPose)
 local EggModel = require(Shared.EggModel)
+local EggSizes = require(Shared.Config.EggSizes)
 local Net = require(Shared.Net)
 
 local DailyService = require(script.Parent.DailyService)
@@ -123,8 +124,8 @@ local function dress(nest: Nest)
 	local size = Hatch.size(nest.size)
 	egg.Color = if nest.golden then GOLD else nest.color
 	egg.Material = if nest.golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
-	egg.Size = Vector3.one * 3.2 * size.scale
-	egg.Position = nest.ground + Vector3.new(0, 0.7 + egg.Size.Y * 0.65, 0) -- (sitting in its nest: it's drawn 1.3 tall)
+	egg.Size = Vector3.one * EggSizes.BASE * size.scale
+	egg.Position = nest.ground + Vector3.new(0, EggSizes.SIT + egg.Size.Y * 0.65, 0) -- (sitting in its nest: it's drawn 1.3 tall)
 	EggModel.dress(egg, nest.color, nest.golden) -- (its layers redrawn for its size and gold)
 	local text = if not nest.full then "" else (if nest.golden then "✨ GOLDEN " else "") .. (if nest.size == "Huge" then "⭐ HUGE ⚖️" elseif nest.size == "Big" then "BIG ⚖️" else "")
 	local label = egg:FindFirstChild("EggLabel")
@@ -291,7 +292,7 @@ local function carriedEgg(nest: Nest, golden: boolean, size: string, at: Vector3
 	local part = Instance.new("Part")
 	part.Name = "CarriedEgg"
 	part.Shape = Enum.PartType.Ball
-	part.Size = Vector3.one * 2.6 * Hatch.size(size).scale
+	part.Size = Vector3.one * EggSizes.BASE * Hatch.size(size).scale
 	part.Color = if golden then GOLD else nest.color
 	part.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
 	part.Anchored = true
@@ -705,7 +706,7 @@ function WildService.init()
 			local biome, index = egg:GetAttribute("Biome"), egg:GetAttribute("Nest")
 			local prompt = egg:FindFirstChildOfClass("ProximityPrompt")
 			if egg:IsA("BasePart") and type(biome) == "number" and type(index) == "number" and prompt then
-				local nest: Nest = { egg = egg, prompt = prompt, full = true, golden = false, size = "Normal", ground = egg.Position - Vector3.new(0, 2.8, 0), color = egg.Color, biome = biome, index = index, respawnAt = nil }
+				local nest: Nest = { egg = egg, prompt = prompt, full = true, golden = false, size = "Normal", ground = (egg:GetAttribute("Ground") or egg.Position) :: Vector3, color = egg.Color, biome = biome, index = index, respawnAt = nil }
 				table.insert(nests, nest)
 				prompt.Triggered:Connect(function(player)
 					steal(player, nest)
