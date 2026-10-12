@@ -57,6 +57,16 @@ local function label(parent: Instance, text: string, width: number, height: numb
 	return textLabel
 end
 
+-- A shop's name in big yellow letters with a dark outline, floating over its stall
+local function bigName(parent: Instance, text: string, width: number, height: number): TextLabel
+	local name = label(parent, text, width, height, Vector3.zero)
+	name.Font = Enum.Font.LuckiestGuy
+	name.TextColor3 = rgb(255, 221, 64)
+	name.TextStrokeColor3 = rgb(20, 18, 30)
+	name.TextStrokeTransparency = 0
+	return name
+end
+
 local function disc(parent: Instance, name: string, center: Vector3, radius: number, height: number, color: Color3, material: Enum.Material): Part
 	return part(parent, {
 		Name = name,
@@ -72,42 +82,15 @@ end
 -- The town
 
 -- The shops, in the order of their stalls (Layout.shop), with their sign and colors
-type ShopSpot = { name: string, ui: string, color: Color3, sign: string?, icon: string?, machine: boolean? }
+type ShopSpot = { name: string, ui: string, color: Color3, sign: string?, machine: boolean? }
 local SHOPS: { ShopSpot } = {
 	{ name = "Fuse Machine", machine = true, ui = "Fuse", color = rgb(60, 130, 240) },
-	{ name = "Trail Shop", sign = "TRAILS", icon = "Trail", ui = "Trails", color = rgb(255, 200, 40) },
-	{ name = "Sell Shop", sign = "SELL", icon = "Coin", ui = "Shop", color = rgb(92, 200, 120) },
-	{ name = "Food Shop", sign = "FOOD", icon = "Apple", ui = "Food", color = rgb(240, 150, 50) },
+	{ name = "Trail Shop", sign = "TRAILS", ui = "Trails", color = rgb(255, 200, 40) },
+	{ name = "Sell Shop", sign = "SELL", ui = "Shop", color = rgb(92, 200, 120) },
+	{ name = "Food Shop", sign = "FOOD", ui = "Food", color = rgb(240, 150, 50) },
 	{ name = "Mutation Machine", machine = true, ui = "Mutate", color = rgb(90, 230, 110) },
 }
 
--- A shop's mark on top of its sign: a big coin, an apple, a streak of color (simple parts, the same for everyone)
-local function shopIcon(model: Instance, kind: string, at: CFrame, color: Color3)
-	if kind == "Egg" then
-		local egg = part(model, { Name = "Icon", Shape = Enum.PartType.Ball, Size = Vector3.one * 3, CFrame = at * CFrame.new(0, 1.9, 0), Color = rgb(250, 240, 215), CanCollide = false })
-		local mesh = Instance.new("SpecialMesh")
-		mesh.MeshType = Enum.MeshType.Sphere
-		mesh.Scale = Vector3.new(1, 1.3, 1)
-		mesh.Parent = egg
-		for i, spot in { Vector3.new(0.7, 2.4, -1.15), Vector3.new(-0.8, 1.6, -1.1), Vector3.new(0.1, 1.2, -1.4) } do
-			part(model, { Name = "IconSpot", Shape = Enum.PartType.Ball, Size = Vector3.one * (0.8 - i * 0.1), CFrame = at * CFrame.new(spot), Color = color, CanCollide = false })
-		end
-	elseif kind == "Trail" then
-		-- (a little runner's streak: three bars fading out)
-		for i, c in { rgb(92, 214, 110), rgb(80, 160, 255), rgb(176, 110, 255) } do
-			part(model, { Name = "Icon", Size = Vector3.new(3.6 - i * 0.7, 0.5, 0.4), CFrame = at * CFrame.new(-0.4 + i * 0.35, 1 + i * 0.7, 0), Color = c, Material = Enum.Material.Neon, CanCollide = false })
-		end
-	elseif kind == "Apple" then
-		part(model, { Name = "Icon", Shape = Enum.PartType.Ball, Size = Vector3.one * 3.2, CFrame = at * CFrame.new(0, 1.7, 0), Color = rgb(225, 60, 60), CanCollide = false })
-		part(model, { Name = "IconStem", Size = Vector3.new(0.3, 0.9, 0.3), CFrame = at * CFrame.new(0, 3.6, 0), Color = rgb(110, 75, 45), CanCollide = false })
-		part(model, { Name = "IconLeaf", Size = Vector3.new(1.1, 0.15, 0.6), CFrame = at * CFrame.new(0.55, 3.7, 0) * CFrame.Angles(0, 0, math.rad(20)), Color = rgb(90, 190, 90), CanCollide = false })
-	else
-		-- (a big standing coin with a raised rim)
-		local face = at * CFrame.new(0, 2.2, 0) * CFrame.Angles(0, math.rad(90), 0)
-		part(model, { Name = "Icon", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.7, 3.6, 3.6), CFrame = face, Color = rgb(255, 205, 60), Material = Enum.Material.Neon, CanCollide = false })
-		part(model, { Name = "IconRim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.9, 2.6, 2.6), CFrame = face, Color = rgb(235, 165, 30), CanCollide = false })
-	end
-end
 WorldService.SHOPS = SHOPS
 
 -- A machine in the market row (the Fuse Machine, the Mutation Machine): a big boxy body in its color with a
@@ -141,11 +124,8 @@ local function buildMachine(town: Instance, index: number)
 	end
 	part(model, { Name = "PipeTop", Size = Vector3.new(8.4, 1.4, 1.4), CFrame = frame * CFrame.new(0, 13.5, 5), Color = rgb(70, 75, 90), CanCollide = false })
 	local sign = part(model, { Name = "MachineSign", Size = Vector3.one, CFrame = frame * CFrame.new(0, 17, 5), Transparency = 1, CanCollide = false, CanQuery = false })
-	local name = label(sign, string.upper(shop.name), 20, 4, Vector3.zero)
-	name.Font = Enum.Font.LuckiestGuy
-	name.TextStrokeTransparency = 0
-	name.TextStrokeColor3 = rgb(20, 18, 30)
-	local status = label(sign, "", 12, 2.4, Vector3.new(0, -3.4, 0)) -- (each player's own: FuseWindow, MutateWindow)
+	bigName(sign, string.upper(shop.name), 22, 5)
+	local status = label(sign, "", 12, 2.4, Vector3.new(0, -4.4, 0)) -- (each player's own: FuseWindow, MutateWindow)
 	status.Name = "Status"
 	sign:AddTag(if shop.ui == "Fuse" then "FuseSign" else "MutateSign")
 	local prompt = Instance.new("ProximityPrompt")
@@ -190,28 +170,9 @@ local function buildShop(town: Instance, index: number)
 			CanCollide = false,
 		})
 	end
-	-- The sign over it: a big dark board with a thick edge in the shop's color and the shop's name in large white
-	-- letters, easy to read from the square; its mark on top
-	local signAt = frame * CFrame.new(0, 13.2, depth / 2)
-	part(model, { Name = "SignEdge", Size = Vector3.new(width - 0.6, 4.9, 0.3), CFrame = signAt * CFrame.new(0, 0, 0.2), Color = shop.color, CanCollide = false })
-	local board = part(model, { Name = "Sign", Size = Vector3.new(width - 1.6, 4.1, 0.4), CFrame = signAt, Color = rgb(34, 30, 48), CanCollide = false })
-	shopIcon(model, shop.icon or "", signAt * CFrame.new(0, 2.5, 0), shop.color)
-	local surface = Instance.new("SurfaceGui")
-	surface.Face = Enum.NormalId.Front
-	surface.PixelsPerStud = 50
-	local text = Instance.new("TextLabel")
-	text.Size = UDim2.fromScale(0.94, 0.88)
-	text.AnchorPoint = Vector2.new(0.5, 0.5)
-	text.Position = UDim2.fromScale(0.5, 0.5)
-	text.BackgroundTransparency = 1
-	text.Text = shop.sign or shop.name
-	text.TextScaled = true
-	text.Font = Enum.Font.LuckiestGuy
-	text.TextColor3 = Color3.new(1, 1, 1)
-	text.TextStrokeColor3 = shop.color:Lerp(rgb(10, 10, 20), 0.5)
-	text.TextStrokeTransparency = 0
-	text.Parent = surface
-	surface.Parent = board
+	-- The name over it in big letters, floating high so it reads from the square
+	local sign = part(model, { Name = "Sign", Size = Vector3.one, CFrame = frame * CFrame.new(0, 15, depth / 2), Transparency = 1, CanCollide = false, CanQuery = false })
+	bigName(sign, shop.sign or shop.name, 18, 6)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = if shop.ui == "Shop" then "Sell" else "Open"
 	prompt.ObjectText = shop.name
