@@ -1,5 +1,5 @@
 --!strict
--- Food for the creatures (bought at the Food Shop in town, put in the trough in the pasture): while they're fed,
+-- Food for the creatures (bought at the Shop in town, put in the trough in the pasture): while they're fed,
 -- the creatures in the garden earn BOOST times their coins. Unfed, they earn as usual; food is a bonus, never a
 -- chore. A food costs a share of what the boost earns (Logic/Food), so it always pays.
 

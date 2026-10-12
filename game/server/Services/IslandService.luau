@@ -856,7 +856,7 @@ local function feed(player: Player)
 	end
 	local food = IslandService.bestFood(data)
 	if not food then
-		IslandService.notify(player, "No food: buy some at the Food Shop in town", "error")
+		IslandService.notify(player, "No food: buy some at the Shop in town", "error")
 		return
 	end
 	local now = os.time()

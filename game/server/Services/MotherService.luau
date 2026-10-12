@@ -69,7 +69,7 @@ local function feed(player: Player)
 	if gave == 0 then
 		local price = Mother.snackPrice(Earn.islandRate(data.creatures, data.placed))
 		if data.coins < price then
-			IslandService.notify(player, ("A snack costs 🪙 %s: or bring food from the Food Shop"):format(Format.abbrev(price)), "error")
+			IslandService.notify(player, ("A snack costs 🪙 %s: or bring food from the Shop"):format(Format.abbrev(price)), "error")
 			return
 		end
 		data.coins -= price

@@ -85,9 +85,8 @@ end
 type ShopSpot = { name: string, ui: string, color: Color3, sign: string?, emoji: string, machine: boolean? }
 local SHOPS: { ShopSpot } = {
 	{ name = "Fuse Machine", machine = true, ui = "Fuse", emoji = "⚙️", color = rgb(60, 130, 240) },
+	{ name = "Shop", sign = "SHOP", ui = "Shop", emoji = "🛒", color = rgb(92, 200, 120) },
 	{ name = "Trail Shop", sign = "TRAILS", ui = "Trails", emoji = "✨", color = rgb(255, 200, 40) },
-	{ name = "Sell Shop", sign = "SELL", ui = "Shop", emoji = "💰", color = rgb(92, 200, 120) },
-	{ name = "Food Shop", sign = "FOOD", ui = "Food", emoji = "🍎", color = rgb(240, 150, 50) },
 	{ name = "Mutation Machine", machine = true, ui = "Mutate", emoji = "🧪", color = rgb(90, 230, 110) },
 }
 
@@ -154,14 +153,14 @@ local function goods(model: Instance, shop: ShopSpot, frame: CFrame, width: numb
 			part(model, { Name = "Goods", Size = Vector3.new(1.3, 1 + ((k + row) % 2) * 0.4, 1), CFrame = frame * CFrame.new(-(width - 3) / 2 + (k - 0.5) * (width - 3) / 5, y + 0.9, depth - 1), Color = tint, CanCollide = false })
 		end
 	end
-	-- On the counter: coins for the Sell Shop, apples for the Food Shop, colored bars for the Trails
+	-- On the counter: coins and an apple for the Shop, colored bars for the Trails
 	for k = 1, 3 do
 		local x = (k - 2) * 3.4
-		if shop.ui == "Shop" then
+		if shop.ui == "Shop" and k < 3 then
 			for h = 0, 2 do
 				part(model, { Name = "Coin", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.35, 1.7, 1.7), CFrame = frame * CFrame.new(x, 3.8 + h * 0.36, 1.5) * CFrame.Angles(0, 0, math.rad(90)), Color = rgb(255, 205, 60), Material = Enum.Material.Neon, CanCollide = false })
 			end
-		elseif shop.ui == "Food" then
+		elseif shop.ui == "Shop" then
 			part(model, { Name = "Apple", Shape = Enum.PartType.Ball, Size = Vector3.one * 1.7, CFrame = frame * CFrame.new(x, 4.3, 1.5), Color = rgb(225, 60, 60), CanCollide = false })
 		else
 			part(model, { Name = "Bar", Size = Vector3.new(2.4, 0.5, 1.2), CFrame = frame * CFrame.new(x, 3.9, 1.5), Color = shop.color:Lerp(Color3.new(1, 1, 1), (k - 1) * 0.3), Material = Enum.Material.Neon, CanCollide = false })
@@ -221,7 +220,7 @@ local function buildShop(town: Instance, index: number)
 	local sign = part(model, { Name = "Sign", Size = Vector3.one, CFrame = frame * CFrame.new(0, 15, depth / 2), Transparency = 1, CanCollide = false, CanQuery = false })
 	bigName(sign, shop.emoji .. " " .. (shop.sign or shop.name), 20, 6)
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = if shop.ui == "Shop" then "Sell" else "Open"
+	prompt.ActionText = "Open"
 	prompt.ObjectText = shop.name
 	prompt.MaxActivationDistance = 12
 	prompt.RequiresLineOfSight = false

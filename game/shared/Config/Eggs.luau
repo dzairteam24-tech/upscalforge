@@ -1,5 +1,5 @@
 --!strict
--- The eggs, from the first tier to the Legendary Egg: their price in the Sell Shop, how long they incubate
+-- The eggs, from the first tier to the Legendary Egg: their price in the Shop, how long they incubate
 -- (Logic/Hatch) and what hatches from them, with each creature's chance.
 
 export type Egg = {

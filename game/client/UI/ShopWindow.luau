@@ -1,6 +1,6 @@
 --!strict
--- The Sell Shop's window: the player's eggs (one or all of a kind) and creatures out of the garden, each with
--- what it pays.
+-- The Shop's window, in two tabs. Sell: the player's eggs (one or all of a kind) and creatures out of the garden,
+-- each with what it pays. Food: food for the trough (FoodWindow).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -14,15 +14,35 @@ local Format = require(Shared.Logic.Format)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
+local FoodWindow = require(script.Parent.FoodWindow)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
 
 local ShopWindow = {}
 
-function ShopWindow.mount(gui: Instance)
-	local window, content = Theme.window(gui, "💰 Sell Shop", Vector2.new(760, 640), Theme.green)
+local TABS = { "💰 Sell", "🍎 Food" }
 
-	local sellView = content
+function ShopWindow.mount(gui: Instance)
+	local window, content = Theme.window(gui, "🛒 Shop", Vector2.new(760, 640), Theme.green, true)
+
+	-- Each tab's views live in their own holder
+	local function holder(order: number): Frame
+		local frame = Instance.new("Frame")
+		frame.BackgroundTransparency = 1
+		frame.Size = UDim2.new(1, -8, 0, 0)
+		frame.AutomaticSize = Enum.AutomaticSize.Y
+		frame.LayoutOrder = order
+		local layout = Instance.new("UIListLayout")
+		layout.Padding = UDim.new(0, 8)
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		layout.Parent = frame
+		frame.Parent = content
+		return frame
+	end
+	local sellView = holder(1)
+	local foodView = holder(2)
+	local refreshFood = FoodWindow.build(foodView)
 
 	-- Rebuilt whenever the player's data changes
 	local function sellTab()
@@ -119,10 +139,28 @@ function ShopWindow.mount(gui: Instance)
 		end
 	end
 
-	Windows.register("Shop", window, sellTab)
+	local tab = TABS[1]
+	local select = Theme.tabs(window, TABS, Theme.green, function(name)
+		tab = name
+		sellView.Visible = name == TABS[1]
+		foodView.Visible = name == TABS[2]
+		content.CanvasPosition = Vector2.zero
+		if name == TABS[1] then
+			sellTab()
+		else
+			refreshFood()
+		end
+	end)
+	Windows.register("Shop", window, function()
+		select(tab)
+	end)
 	Store.Changed:Connect(function()
 		if window.Visible then
-			sellTab()
+			if tab == TABS[1] then
+				sellTab()
+			else
+				refreshFood()
+			end
 		end
 	end)
 end

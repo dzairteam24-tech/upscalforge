@@ -15,7 +15,7 @@ local Layout = {
 	GARDEN_STEP = 34, -- degrees between two gardens: they fill the whole south half round the square, east to west
 	GARDEN_ROAD_RADIUS = 260, -- the arc road past the gardens' gates
 	ROAD_WIDTH_TOWN = 20,
-	WILD_GATE_DISTANCE = 260, -- the big gate into the Wild, this far north of the square
+	WILD_GATE_DISTANCE = 290, -- the big gate into the Wild, this far north of the square
 	GARDEN_SIZE = 96,
 	GATE_WIDTH = 16, -- the opening in a garden's front fence
 	FENCE_HEIGHT = 10, -- the invisible wall behind the low picket fence (too tall to jump)
@@ -23,10 +23,10 @@ local Layout = {
 	SQUARE_CENTER = Vector3.new(0, 0, -110), -- the square itself, moved up toward the gate to leave room for the gardens
 }
 
--- The shops' stalls: on a ring inside the square's edge, fanned out over its north half, their fronts toward its
--- middle where the players appear (the Sell Shop right in front of them)
-Layout.SHOP_RING = 56 -- (the counters' distance from the square's middle)
-Layout.SHOP_ANGLES = { -60, -30, 0, 30, 60 } -- (degrees from north: the Fuse Machine, the Trail, Sell and Food Shops, the Mutation Machine)
+-- The shops' stalls: along the rim of the square's north half, their fronts toward its middle where the players
+-- appear; the middle of the square stays empty
+Layout.SHOP_RING = 60 -- (the counters' distance from the square's middle: the stalls stand on its rim)
+Layout.SHOP_ANGLES = { -54, -18, 18, 54 } -- (degrees from north: the Fuse Machine, the Shop, the Trail Shop, the Mutation Machine)
 Layout.SHOP_SPOTS = {}
 for _, degrees in Layout.SHOP_ANGLES do
 	local a = math.rad(degrees)

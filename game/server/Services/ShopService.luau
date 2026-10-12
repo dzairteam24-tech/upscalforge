@@ -1,6 +1,6 @@
 --!strict
--- The Sell stall in town: the player sells their creatures and the eggs they hold for coins. The Food Shop is
--- here too.
+-- The Shop in town: the player sells their creatures and the eggs they hold for coins, and buys food for the
+-- trough.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -54,7 +54,7 @@ local function sellEgg(player: Player, tier: any, golden: any, all: any)
 	IslandService.push(player)
 end
 
--- The Food Shop: food for the trough, priced on what the player's garden earns
+-- The Shop's food: for the trough, priced on what the player's garden earns
 local function buyFood(player: Player, id: any)
 	local data = DataService.get(player)
 	local food = if type(id) == "string" then FoodConfig.byId[id] else nil

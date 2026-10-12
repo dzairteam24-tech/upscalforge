@@ -2,7 +2,7 @@
 -- The bag, in three tabs. Eggs: each kind the player holds as a card with the egg in 3D, to set down on
 -- the grass where they stand (as its tool in the inventory does). Creatures: a card for each, its model in 3D,
 -- colored by rarity, with its mutation, what it earns, what it sells for, and a button to put it in the garden
--- or take it back to the inventory, or keep it in the barn (selling is at the Sell Shop in town). Garden: room for more eggs on the grass, creatures in the garden,
+-- or take it back to the inventory, or keep it in the barn (selling is at the Shop in town). Garden: room for more eggs on the grass, creatures in the garden,
 -- the storage barn and the pasture.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

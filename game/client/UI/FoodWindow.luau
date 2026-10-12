@@ -1,5 +1,5 @@
 --!strict
--- The Food Shop's window: each food with how long it feeds the creatures and its price (Logic/Food: a share of
+-- The Shop's Food tab: each food with how long it feeds the creatures and its price (Logic/Food: a share of
 -- what the boost earns the player's garden), and how much the player holds.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,12 +13,11 @@ local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
 local Theme = require(script.Parent.Theme)
-local Windows = require(script.Parent.Windows)
 
 local FoodWindow = {}
 
-function FoodWindow.mount(gui: Instance)
-	local window, content = Theme.window(gui, "🌾 Food Shop", Vector2.new(520, 380), Color3.fromRGB(240, 150, 50))
+-- Builds the tab's rows in `content`; returns the function that refreshes them
+function FoodWindow.build(content: Instance): () -> ()
 	Theme.text(content, {
 		Text = ("Put food in your trough: your creatures earn ×%d while they're fed"):format(FoodConfig.BOOST),
 		Size = UDim2.new(1, 0, 0, 24),
@@ -57,12 +56,7 @@ function FoodWindow.mount(gui: Instance)
 			Theme.recolor(row.buy, if Store.coins() >= price then Theme.green else Theme.gray)
 		end
 	end
-	Windows.register("Food", window, refresh)
-	Store.Changed:Connect(function()
-		if window.Visible then
-			refresh()
-		end
-	end)
+	return refresh
 end
 
 return FoodWindow

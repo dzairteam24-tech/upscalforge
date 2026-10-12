@@ -2,7 +2,7 @@
 -- Creatures in the hotbar, as in Steal an Egg: a hatched creature isn't set down by itself, it goes into the
 -- player's inventory (a tool each) unless it's kept in the barn. Held, it's carried up over their head as a ball
 -- (Shared/Ball) in its rarity's color, and can be knocked out of their hands (StealService); used in their own garden it's set
--- down in the pasture. They sell creatures at the Sell Shop (ShopService).
+-- down in the pasture. They sell creatures at the Shop (ShopService).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -82,7 +82,7 @@ local function lift(player: Player, id: string)
 end
 
 ---------------------------------------------------------------------------------------------------------------
--- Using a creature: in their own garden it's set down in the pasture (selling is at the Sell Shop: ShopService)
+-- Using a creature: in their own garden it's set down in the pasture (selling is at the Shop: ShopService)
 
 local function use(player: Player, id: string)
 	local root = rootOf(player)
