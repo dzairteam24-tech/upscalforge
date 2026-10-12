@@ -398,9 +398,9 @@ local function buildGarden(world: Instance, index: number)
 	gate:SetAttribute("Island", index)
 	gate:AddTag("Gate")
 
-	-- The path from the gate across the yard to the hatching field
+	-- The path from the gate across the yard and the hatching field to the pen's opening
 	local field, pasture = Layout.FIELD, Layout.PASTURE
-	local pathEnd = field.center.Z - field.size.Z / 2 + 2
+	local pathEnd = pasture.center.Z - pasture.size.Z / 2 + 2
 	local pathLength = pathEnd + half
 	part(model, { Name = "Path", Size = Vector3.new(Layout.PATH_WIDTH, 0.3, pathLength), CFrame = at(0, 0.85, -half + pathLength / 2), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
 
@@ -416,9 +416,19 @@ local function buildGarden(world: Instance, index: number)
 	eggs.Parent = model
 
 	-- The pen: a meadow at the back, behind a wooden fence, where the creatures live and roam
-	part(model, { Name = "Pasture", Size = pasture.size + Vector3.new(0, 0.3, 0), CFrame = at(pasture.center.X, 0.45, pasture.center.Z), Color = rgb(108, 186, 92), Material = Enum.Material.Grass, CanCollide = false })
+	part(model, { Name = "Pasture", Size = pasture.size + Vector3.new(0, 0.3, 0), CFrame = at(pasture.center.X, 0.5, pasture.center.Z), Color = rgb(108, 186, 92), Material = Enum.Material.Grass, CanCollide = false })
 	local function hedge(cf: CFrame, length: number, parent: Instance?)
 		part(parent or model, { Name = "Hedge", Size = Vector3.new(length, 1.6, 1.2), CFrame = cf * CFrame.new(0, 0.8, 0), Color = rgb(80, 150, 70), Material = Enum.Material.Grass, CanCollide = false })
+	end
+	-- (the pen's wooden fence: two rails between white posts)
+	local function penFence(cf: CFrame, length: number, parent: Instance?)
+		for _, y in { 1.2, 2.6 } do
+			part(parent or model, { Name = "PenRail", Size = Vector3.new(length, 0.35, 0.3), CFrame = cf * CFrame.new(0, y, 0), Color = WOOD, CanCollide = false })
+		end
+		local posts = math.max(1, math.round(length / 8))
+		for i = 0, posts do
+			part(parent or model, { Name = "PenPost", Size = Vector3.new(0.9, 3.6, 0.9), CFrame = cf * CFrame.new(-length / 2 + i * length / posts, 1.7, 0), Color = rgb(250, 240, 222), CanCollide = false })
+		end
 	end
 	local px, pz = pasture.center.X, pasture.center.Z
 	local hx, hz = pasture.size.X / 2, pasture.size.Z / 2
@@ -444,6 +454,7 @@ local function buildGarden(world: Instance, index: number)
 			part(grow, { Name = "Pasture", Size = Vector3.new(pasture.size.X, 0.3, length + 0.1), CFrame = at(px, 0.45, middle), Color = rgb(108, 186, 92), Material = Enum.Material.Grass, CanCollide = false })
 			for _, side in { -1, 1 } do
 				fence(at(side * half, 0, middle) * CFrame.Angles(0, math.rad(90), 0), length, grow)
+				penFence(at(px + side * hx, 0, middle) * CFrame.Angles(0, math.rad(90), 0), length, grow)
 			end
 		end
 		-- (how each part looks when shown)
@@ -463,15 +474,10 @@ local function buildGarden(world: Instance, index: number)
 	end
 	local fx, fz, fhx, fhz = field.center.X, field.center.Z, field.size.X / 2, field.size.Z / 2
 	for _, s in { -1, 1 } do
-		-- (the garden's fence is the sides of both halves) The pen's front: a wooden fence, open in the middle
+		-- The square pen's wooden fence: its sides, and its front, open in the middle (its back is the garden's)
+		penFence(at(px + s * hx, 0, pz) * CFrame.Angles(0, math.rad(90), 0), pasture.size.Z)
 		local piece = hx - Layout.PATH_WIDTH / 2 - 1
-		local penFront = at(px + s * (hx - piece / 2), 0, pz - hz)
-		for _, y in { 1.2, 2.6 } do
-			part(model, { Name = "PenRail", Size = Vector3.new(piece, 0.35, 0.3), CFrame = penFront * CFrame.new(0, y, 0), Color = WOOD, CanCollide = false })
-		end
-		for i = 0, 3 do
-			part(model, { Name = "PenPost", Size = Vector3.new(0.9, 3.6, 0.9), CFrame = penFront * CFrame.new(-piece / 2 + i * piece / 3, 1.7, 0), Color = rgb(250, 240, 222), CanCollide = false })
-		end
+		penFence(at(px + s * (hx - piece / 2), 0, pz - hz), piece)
 		-- The hatching field's front, along the yard (a low hedge, open where the path comes in)
 		local front = fhx - Layout.PATH_WIDTH / 2 - 1
 		hedge(at(fx + s * (fhx - front / 2), 0, fz - fhz), front)

@@ -93,14 +93,16 @@ for index = 1, IslandConfig.ISLANDS do
 		local p = frame:PointToObjectSpace(point) - area.center
 		return math.abs(p.X) <= area.size.X / 2 - 1 and math.abs(p.Z) <= area.size.Z / 2 - 1
 	end
-	-- Front yard (incubators left of the path, barn and trough right), then the hatching field, then the pen
+	-- Front yard (incubators left of the path, barn and trough right), then the hatching field with the square pen at its back
 	local field, pasture = Layout.FIELD, Layout.PASTURE
 	assert(Layout.eggSpot(Layout.START_SPOT, 1), "the first egg's spot is in the hatching field")
 	assert(not Layout.eggSpot(Vector3.new(0, 0, Layout.GARDEN_SIZE), 1), "not outside the garden")
 	assert(not Layout.eggSpot(pasture.center, 1), "no eggs in the pen")
 	assert(not Layout.eggSpot(Layout.BARN, 1), "no eggs in the yard")
-	assert(field.center.Z + field.size.Z / 2 <= pasture.center.Z - pasture.size.Z / 2, "the field before the pen")
-	assert(pasture.size.X * pasture.size.Z >= 1500, "a roomy pen")
+	assert(pasture.size.X == pasture.size.Z and pasture.size.X >= 36, "a square pen")
+	assert(pasture.center.Z - pasture.size.Z / 2 > field.center.Z - field.size.Z / 2 + 20 and pasture.size.X < field.size.X - 20, "the pen at the back of the field, room for eggs all round it")
+	assert(Layout.eggSpot(Vector3.new(pasture.size.X / 2 + 8, 0, pasture.center.Z), 1), "eggs beside the pen")
+	assert(not Layout.eggSpot(Vector3.new(0, 0, -5), 1), "no eggs on the path")
 	assert(pasture.center.Z + pasture.size.Z / 2 >= Layout.GARDEN_SIZE / 2 - 3, "the pen reaches the back fence")
 	for slot = 1, IslandConfig.PENS + #IslandConfig.PEN_PRICES do
 		assert(inside(Layout.pen(index, slot), Layout.PASTURE), ("creature %d in the pen"):format(slot))
