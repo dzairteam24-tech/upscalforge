@@ -85,10 +85,10 @@ end
 -- The shops, in the order of their stalls (Layout.shop), with their sign and colors
 type ShopSpot = { name: string, ui: string, color: Color3, sign: string?, emoji: string, machine: boolean?, menu: { string } }
 local SHOPS: { ShopSpot } = {
-	{ name = "Shop", sign = "SHOP", ui = "Shop", emoji = "🛒", color = rgb(92, 200, 120), menu = { "💰 Sell your eggs", "💰 Sell your creatures", "🍎 Food for the trough" } },
-	{ name = "Fuse Machine", machine = true, ui = "Fuse", emoji = "⚙️", color = rgb(60, 130, 240), menu = { ("%d the same → 1 Mega"):format(SnapConfig.NEED), ("%d Megas → 1 Rainbow"):format(SnapConfig.NEED), "Bigger, earns far more" } },
-	{ name = "Trail Shop", sign = "TRAILS", ui = "Trails", emoji = "✨", color = rgb(255, 200, 40), menu = { "A colored trail behind you", "More speed every step", "Green → Rainbow" } },
-	{ name = "Mutation Machine", machine = true, ui = "Mutate", emoji = "🧪", color = rgb(90, 230, 110), menu = { "Raise a creature's mutation", "Normal → Golden → Crystal", "→ Lava → Neon" } },
+	{ name = "Shop", sign = "SHOP", ui = "Shop", emoji = "🛒", color = rgb(92, 200, 120), menu = { "Sell eggs and creatures", "Buy food for the trough" } },
+	{ name = "Fuse Machine", machine = true, ui = "Fuse", emoji = "⚙️", color = rgb(60, 130, 240), menu = { ("%d of a kind  →  Mega"):format(SnapConfig.NEED), ("%d Megas  →  Rainbow"):format(SnapConfig.NEED) } },
+	{ name = "Trail Shop", sign = "TRAILS", ui = "Trails", emoji = "✨", color = rgb(255, 200, 40), menu = { "Colored trails behind you", "More speed with every step" } },
+	{ name = "Mutation Machine", machine = true, ui = "Mutate", emoji = "🧪", color = rgb(90, 230, 110), menu = { "Raise a creature's mutation", "Normal  →  Golden  →  Neon" } },
 }
 
 WorldService.SHOPS = SHOPS
@@ -129,21 +129,31 @@ local function menuBoard(model: Instance, shop: ShopSpot, size: Vector3, at: Vec
 		t.BackgroundTransparency = 1
 		t.Text = text
 		t.TextScaled = true
+		t.TextWrapped = false -- (one line each: the lines are short)
 		t.Font = font
 		t.TextColor3 = color
 		t.TextXAlignment = align
 		t.Parent = gui
 	end
+	local count = #shop.menu
 	if hanging then
-		-- (wide: the title on the left, the lines in a column to its right)
-		label("MENU", 0.02, 0.1, 0.24, 0.8, Enum.Font.LuckiestGuy, rgb(255, 221, 64), Enum.TextXAlignment.Center)
+		-- (wide: the title on the left, a thin divider in the shop's color, the lines in a column to its right)
+		label("MENU", 0.03, 0.12, 0.24, 0.76, Enum.Font.LuckiestGuy, rgb(255, 221, 64), Enum.TextXAlignment.Center)
+		local divider = Instance.new("Frame")
+		divider.Position = UDim2.fromScale(0.285, 0.14)
+		divider.Size = UDim2.fromScale(0.006, 0.72)
+		divider.BackgroundColor3 = shop.color
+		divider.BorderSizePixel = 0
+		divider.Parent = gui
+		local rowH = 0.72 / count
 		for i, text in shop.menu do
-			label(text, 0.29, 0.07 + (i - 1) * 0.3, 0.69, 0.27, Enum.Font.FredokaOne, Color3.new(1, 1, 1), Enum.TextXAlignment.Left)
+			label(text, 0.32, 0.14 + (i - 1) * rowH + rowH * 0.1, 0.65, rowH * 0.8, Enum.Font.GothamMedium, Color3.new(1, 1, 1), Enum.TextXAlignment.Left)
 		end
 	else
-		label("MENU", 0.04, 0.04, 0.92, 0.26, Enum.Font.LuckiestGuy, rgb(255, 221, 64), Enum.TextXAlignment.Center)
+		label("MENU", 0.04, 0.05, 0.92, 0.27, Enum.Font.LuckiestGuy, rgb(255, 221, 64), Enum.TextXAlignment.Center)
+		local rowH = 0.56 / count
 		for i, text in shop.menu do
-			label(text, 0.06, 0.32 + (i - 1) * 0.22, 0.88, 0.19, Enum.Font.FredokaOne, Color3.new(1, 1, 1), Enum.TextXAlignment.Center)
+			label(text, 0.07, 0.38 + (i - 1) * rowH + rowH * 0.1, 0.86, rowH * 0.7, Enum.Font.GothamMedium, Color3.new(1, 1, 1), Enum.TextXAlignment.Center)
 		end
 	end
 	gui.Parent = board

@@ -1,7 +1,7 @@
 --!strict
 -- Growing Eggs, as in Steal an Egg: a panel on the right with every egg hatching in the player's garden (on the
 -- grass or in an incubator), each with its bar and the time left (nights count: Logic/Night), and Grow All (the
--- Hatch All Now product, Config/Robux). A ready egg hatches from anywhere with its HATCH! button. The > button folds it away; it hides when nothing is hatching.
+-- Hatch All Now product, Config/Robux). A ready egg hatches from anywhere with its HATCH! button. The > button (at its top right corner) folds it away; it hides when nothing is hatching.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -42,13 +42,13 @@ function GrowingEggs.mount(gui: Instance)
 	Theme.gradient(header, Color3.fromRGB(210, 170, 120), 0.2, 0.1)
 	Theme.round(header, 12)
 	header.Parent = panel
-	Theme.bold(header, { Text = "Growing Eggs", Size = UDim2.new(0.62, -12, 1, -12), Position = UDim2.fromOffset(12, 6), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 30 })
+	Theme.bold(header, { Text = "Growing Eggs", Size = UDim2.new(0.42, -12, 1, -12), Position = UDim2.fromOffset(12, 6), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 28 })
 	local growAll = Theme.button(header, "Grow All", Color3.fromRGB(255, 170, 30), function()
 		Net.event("BuyRobux"):FireServer("HatchAll")
 	end)
 	growAll.AnchorPoint = Vector2.new(1, 0.5)
-	growAll.Position = UDim2.new(1, -8, 0.5, 0)
-	growAll.Size = UDim2.new(0.36, 0, 0, 36)
+	growAll.Position = UDim2.new(1, -54, 0.5, 0)
+	growAll.Size = UDim2.new(0.3, 0, 0, 36)
 	local list = Instance.new("Frame")
 	list.BackgroundTransparency = 1
 	list.Position = UDim2.fromOffset(8, 56)
@@ -59,11 +59,12 @@ function GrowingEggs.mount(gui: Instance)
 	layout.Parent = list
 	list.Parent = panel
 
-	-- The fold button, sticking out on the left
+	-- The fold button, at the panel's top right corner (it stays there, small and out of the way, when the panel is
+	-- folded away)
 	local open = true
 	local fold = Theme.button(holder, ">", Theme.red, function() end)
 	fold.AnchorPoint = Vector2.new(1, 0)
-	fold.Position = UDim2.new(0, -6, 0, 6)
+	fold.Position = UDim2.new(1, -6, 0, 4)
 	fold.Size = UDim2.fromOffset(40, 40)
 	fold.Activated:Connect(function()
 		open = not open
