@@ -10,6 +10,7 @@ local IslandConfig = require(script.Parent.Parent.Config.Island)
 local Layout = {
 	SQUARE_RADIUS = 55, -- the paved square where players arrive (the grass round it is open ground) -- the square where players arrive: the town square
 	SHOP_DEPTH = 10, -- a stall, from its counter back
+	SHOP_SCALE = 1.35, -- the shop buildings are drawn this much bigger than their base size below
 	SHOP_WIDTH = 18,
 	GARDEN_RADIUS = 330, -- the gardens' middles, this far from the square's
 	GARDEN_STEP = 34, -- degrees between two gardens: they fill the whole south half round the square, east to west
@@ -26,16 +27,16 @@ local Layout = {
 
 -- The shops: a straight row in line with the Wild's gate, two on each side of it, outside its towers, their fronts
 -- toward the square. The avenue and the grass round it stay open (room to fight).
-Layout.SHOP_Z = -Layout.WILD_GATE_DISTANCE + 16 -- (the counters' Z: just in front of the gate's line)
+Layout.SHOP_Z = -Layout.WILD_GATE_DISTANCE + 20 -- (the counters' Z: just in front of the gate's line, room behind them for the building)
 Layout.SHOP_SPOTS = {
 	Vector3.new(-138, 0, Layout.SHOP_Z), -- the Shop
-	Vector3.new(-176, 0, Layout.SHOP_Z), -- the Fuse Machine
+	Vector3.new(-184, 0, Layout.SHOP_Z), -- the Fuse Machine
 	Vector3.new(138, 0, Layout.SHOP_Z), -- the Trail Shop
-	Vector3.new(176, 0, Layout.SHOP_Z), -- the Mutation Machine
+	Vector3.new(184, 0, Layout.SHOP_Z), -- the Mutation Machine
 }
 -- The paved strip along the gate's line, under the shops: as wide as the row of them, in front of the gate
-Layout.GATE_PLAZA_HALF = 195 -- (half its width)
-Layout.GATE_PLAZA_DEPTH = 44 -- (from the gate's line toward the square)
+Layout.GATE_PLAZA_HALF = 215 -- (half its width)
+Layout.GATE_PLAZA_DEPTH = 50 -- (from the gate's line toward the square)
 -- Where players appear in the square, facing the stalls (north)
 Layout.SPAWN = CFrame.new(Layout.SQUARE_CENTER.X, 0.2, Layout.SQUARE_CENTER.Z - 4)
 
