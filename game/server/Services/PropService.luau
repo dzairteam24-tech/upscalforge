@@ -80,7 +80,7 @@ end
 local function spots(): { Vector3 }
 	local corner = Layout.GARDEN_SIZE / 2 - 2.5
 	return {
-		Vector3.new(-corner, 0, corner),
+		Vector3.new(-corner, 0, Layout.GARDEN_BACK - 2.5),
 		Vector3.new(corner, 0, -corner),
 		Vector3.new(-corner, 0, -corner),
 	}

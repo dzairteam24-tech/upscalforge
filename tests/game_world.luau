@@ -93,17 +93,18 @@ for index = 1, IslandConfig.ISLANDS do
 		local p = frame:PointToObjectSpace(point) - area.center
 		return math.abs(p.X) <= area.size.X / 2 - 1 and math.abs(p.Z) <= area.size.Z / 2 - 1
 	end
-	-- Front yard (incubators left of the path, barn and trough right), then the hatching field with the square pen at its back
+	-- Front yard (incubators left of the path, barn and trough right), then the hatching field, then the pen (twice as deep)
 	local field, pasture = Layout.FIELD, Layout.PASTURE
 	assert(Layout.eggSpot(Layout.START_SPOT, 1), "the first egg's spot is in the hatching field")
 	assert(not Layout.eggSpot(Vector3.new(0, 0, Layout.GARDEN_SIZE), 1), "not outside the garden")
 	assert(not Layout.eggSpot(pasture.center, 1), "no eggs in the pen")
 	assert(not Layout.eggSpot(Layout.BARN, 1), "no eggs in the yard")
-	assert(pasture.size.X == pasture.size.Z and pasture.size.X >= 36, "a square pen")
-	assert(pasture.center.Z - pasture.size.Z / 2 > field.center.Z - field.size.Z / 2 + 20 and pasture.size.X < field.size.X - 20, "the pen at the back of the field, room for eggs all round it")
-	assert(Layout.eggSpot(Vector3.new(pasture.size.X / 2 + 8, 0, pasture.center.Z), 1), "eggs beside the pen")
+	assert(field.center.Z + field.size.Z / 2 <= pasture.center.Z - pasture.size.Z / 2, "the field before the pen")
+	assert(pasture.size.Z >= 1.9 * field.size.Z and pasture.size.X >= field.size.X, "a pen twice as deep as the field, fence to fence")
+	assert(not Layout.eggSpot(pasture.center, 1), "no eggs in the pen")
 	assert(not Layout.eggSpot(Vector3.new(0, 0, -5), 1), "no eggs on the path")
-	assert(pasture.center.Z + pasture.size.Z / 2 >= Layout.GARDEN_SIZE / 2 - 3, "the pen reaches the back fence")
+	assert(pasture.center.Z + pasture.size.Z / 2 >= Layout.GARDEN_BACK - 3, "the pen reaches the back fence")
+	assert(Layout.gardenAt(frame:PointToWorldSpace(Vector3.new(0, 0, Layout.GARDEN_BACK - 1))) == index, "the whole pen is the garden")
 	for slot = 1, IslandConfig.PENS + #IslandConfig.PEN_PRICES do
 		assert(inside(Layout.pen(index, slot), Layout.PASTURE), ("creature %d in the pen"):format(slot))
 		assert(not Layout.blocked(frame:PointToObjectSpace(Layout.pen(index, slot))), "not in the trough or the barn")
@@ -125,7 +126,7 @@ for index = 1, IslandConfig.ISLANDS do
 	assert((gate - Layout.CENTER).Magnitude > Layout.GARDEN_ROAD_RADIUS + Layout.ROAD_WIDTH_TOWN / 2, "past the arc road")
 	-- (its corners, its treadmill and its pasture grown all the way in nobody else's garden)
 	local grown = Layout.pastureGrowth(#IslandConfig.PASTURE_GROWTH)
-	local spots = { frame:PointToWorldSpace(Layout.TREADMILL), frame:PointToWorldSpace(Vector3.new(-Layout.GARDEN_SIZE / 2, 0, Layout.GARDEN_SIZE / 2 + grown)), frame:PointToWorldSpace(Vector3.new(Layout.GARDEN_SIZE / 2, 0, Layout.GARDEN_SIZE / 2 + grown)) }
+	local spots = { frame:PointToWorldSpace(Layout.TREADMILL), frame:PointToWorldSpace(Vector3.new(-Layout.GARDEN_SIZE / 2, 0, Layout.GARDEN_BACK + grown)), frame:PointToWorldSpace(Vector3.new(Layout.GARDEN_SIZE / 2, 0, Layout.GARDEN_BACK + grown)) }
 	for _, corner in { Vector3.new(-1, 0, -1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, 1), Vector3.new(1, 0, 1) } do
 		table.insert(spots, frame:PointToWorldSpace(corner * (Layout.GARDEN_SIZE / 2 - 0.5)))
 	end

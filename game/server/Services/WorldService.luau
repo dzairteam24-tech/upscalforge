@@ -359,7 +359,8 @@ local function buildGarden(world: Instance, index: number)
 	model:SetAttribute("Island", index)
 	local size = Layout.GARDEN_SIZE
 	local half = size / 2
-	part(model, { Name = "Ground", Size = Vector3.new(size, 0.4, size), CFrame = at(0, 0.2, 0), Color = GRASS, Material = Enum.Material.Grass })
+	local backZ, extra0 = Layout.GARDEN_BACK, Layout.PEN_EXTRA -- (the garden is longer than wide: its pen)
+	part(model, { Name = "Ground", Size = Vector3.new(size, 0.4, size + extra0), CFrame = at(0, 0.2, extra0 / 2), Color = GRASS, Material = Enum.Material.Grass })
 
 	-- A low picket fence all round (open at the gate), with an invisible wall behind it nobody can jump
 	local function fence(cf: CFrame, length: number, parent: Instance?)
@@ -377,7 +378,7 @@ local function buildGarden(world: Instance, index: number)
 		part(into, { Name = "Wall", Size = Vector3.new(length, Layout.FENCE_HEIGHT, 0.6), CFrame = cf * CFrame.new(0, Layout.FENCE_HEIGHT / 2, 0), Transparency = 1 })
 	end
 	for _, side in { -1, 1 } do
-		fence(at(side * half, 0, 0) * CFrame.Angles(0, math.rad(90), 0), size)
+		fence(at(side * half, 0, extra0 / 2) * CFrame.Angles(0, math.rad(90), 0), size + extra0)
 		local piece = (size - Layout.GATE_WIDTH) / 2
 		fence(at(side * (Layout.GATE_WIDTH / 2 + piece / 2), 0, -half), piece)
 	end
@@ -444,21 +445,20 @@ local function buildGarden(world: Instance, index: number)
 		return m
 	end
 	for level, extra in IslandConfig.PASTURE_GROWTH do
-		local back = stage("Back" .. level, level, true)
-		fence(at(0, 0, half + extra), size, back)
+		local stageBack = stage("Back" .. level, level, true)
+		fence(at(0, 0, backZ + extra), size, stageBack)
 		local before = IslandConfig.PASTURE_GROWTH[level - 1]
 		if before then
 			local grow = stage("Grow" .. level, level, false)
-			local length, middle = extra - before, half + (before + extra) / 2
+			local length, middle = extra - before, backZ + (before + extra) / 2
 			part(grow, { Name = "Ground", Size = Vector3.new(size, 0.4, length), CFrame = at(0, 0.2, middle), Color = GRASS, Material = Enum.Material.Grass })
 			part(grow, { Name = "Pasture", Size = Vector3.new(pasture.size.X, 0.3, length + 0.1), CFrame = at(px, 0.45, middle), Color = rgb(108, 186, 92), Material = Enum.Material.Grass, CanCollide = false })
 			for _, side in { -1, 1 } do
 				fence(at(side * half, 0, middle) * CFrame.Angles(0, math.rad(90), 0), length, grow)
-				penFence(at(px + side * hx, 0, middle) * CFrame.Angles(0, math.rad(90), 0), length, grow)
 			end
 		end
 		-- (how each part looks when shown)
-		local stages: { Instance } = { back }
+		local stages: { Instance } = { stageBack }
 		local grown = model:FindFirstChild("Grow" .. level)
 		if grown then
 			table.insert(stages, grown)
@@ -474,8 +474,7 @@ local function buildGarden(world: Instance, index: number)
 	end
 	local fx, fz, fhx, fhz = field.center.X, field.center.Z, field.size.X / 2, field.size.Z / 2
 	for _, s in { -1, 1 } do
-		-- The square pen's wooden fence: its sides, and its front, open in the middle (its back is the garden's)
-		penFence(at(px + s * hx, 0, pz) * CFrame.Angles(0, math.rad(90), 0), pasture.size.Z)
+		-- The pen's front: a wooden fence, open in the middle (its sides and back are the garden's)
 		local piece = hx - Layout.PATH_WIDTH / 2 - 1
 		penFence(at(px + s * (hx - piece / 2), 0, pz - hz), piece)
 		-- The hatching field's front, along the yard (a low hedge, open where the path comes in)

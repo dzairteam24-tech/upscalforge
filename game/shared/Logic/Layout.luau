@@ -82,17 +82,17 @@ end
 --   the pen at the back, behind its own fence: every creature in the garden lives there. It grows back with
 --   the pasture's level (PASTURE_GROWTH).
 local HALF = Layout.GARDEN_SIZE / 2
--- Behind the yard, the rest of the garden fence to fence is the hatching field, with a square pen at the back
--- in the middle (the eggs go down all round it)
-local FIELD_FRONT, FIELD_BACK = -HALF + 16, HALF - 1
-local PEN_SIZE = 40
-local PEN_BACK = FIELD_BACK
-local PEN_FRONT = PEN_BACK - PEN_SIZE -- the creatures' pen
+-- The garden is longer than it is wide: its pen reaches PEN_EXTRA studs past the square's back edge
+Layout.PEN_EXTRA = 40
+Layout.GARDEN_BACK = HALF + Layout.PEN_EXTRA -- (its back fence, in its frame's space)
+-- Behind the yard, fence to fence: the hatching field, then the pen (twice as deep)
+local FIELD_FRONT, FIELD_BACK = -HALF + 16, 7
+local PEN_FRONT, PEN_BACK = FIELD_BACK + 1, Layout.GARDEN_BACK - 1 -- the creatures' pen
 Layout.FIELD = { center = Vector3.new(0, 0, (FIELD_FRONT + FIELD_BACK) / 2), size = Vector3.new(Layout.GARDEN_SIZE - 2, 0, FIELD_BACK - FIELD_FRONT) }
 -- (the pen: called the pasture in the rest of the game, it's where the creatures roam)
 Layout.PASTURE = {
 	center = Vector3.new(0, 0, (PEN_FRONT + PEN_BACK) / 2),
-	size = Vector3.new(PEN_SIZE, 0, PEN_BACK - PEN_FRONT),
+	size = Vector3.new(Layout.GARDEN_SIZE - 2, 0, PEN_BACK - PEN_FRONT),
 }
 Layout.NEST_SIZE = 6 -- a nest's width (an egg in it is drawn to fit, whatever its tier)
 Layout.PATH_WIDTH = 6
@@ -137,11 +137,10 @@ end
 -- Where a new player's free first egg is set down (at the front of the field, beside the path)
 Layout.START_SPOT = NESTS[1]
 
--- Whether an egg can be set down at this spot in a garden (its own space): only in the hatching field, not in the pen
+-- Whether an egg can be set down at this spot in a garden (its own space): only in the hatching field, off the path
 function Layout.eggSpot(inside: Vector3, _level: number): boolean
-	local inPen = math.abs(inside.X) <= PEN_SIZE / 2 + 2 and inside.Z >= PEN_FRONT - 2
 	local onPath = math.abs(inside.X) <= Layout.PATH_WIDTH / 2 + 1
-	return not inPen and not onPath and math.abs(inside.X) <= Layout.FIELD.size.X / 2 - 2 and inside.Z >= FIELD_FRONT + 2 and inside.Z <= FIELD_BACK - 2
+	return not onPath and math.abs(inside.X) <= Layout.FIELD.size.X / 2 - 2 and inside.Z >= FIELD_FRONT + 2 and inside.Z <= FIELD_BACK - 2
 end
 
 function Layout.incubator(index: number, slot: number, level: number?): Vector3
@@ -228,7 +227,7 @@ end
 -- and west of the square, and its north and south edges
 function Layout.ground(): (number, number, number)
 	local growth = IslandConfig.PASTURE_GROWTH
-	local south = Layout.GARDEN_RADIUS + Layout.GARDEN_SIZE / 2 + growth[#growth] + 30
+	local south = Layout.GARDEN_RADIUS + Layout.GARDEN_BACK + growth[#growth] + 30
 	return Layout.GARDEN_RADIUS + 150, -Layout.WILD_GATE_DISTANCE, south
 end
 
@@ -279,7 +278,7 @@ end
 function Layout.gardenAt(position: Vector3): number?
 	for index = 1, IslandConfig.ISLANDS do
 		local inside = Layout.garden(index):PointToObjectSpace(position)
-		if math.abs(inside.X) <= Layout.GARDEN_SIZE / 2 and math.abs(inside.Z) <= Layout.GARDEN_SIZE / 2 then
+		if math.abs(inside.X) <= Layout.GARDEN_SIZE / 2 and inside.Z >= -Layout.GARDEN_SIZE / 2 and inside.Z <= Layout.GARDEN_BACK then
 			return index
 		end
 	end
