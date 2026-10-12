@@ -103,6 +103,19 @@ for index = 1, IslandConfig.ISLANDS do
 	assert(pasture.size.Z >= 1.9 * field.size.Z and pasture.size.X >= field.size.X, "a pen twice as deep as the field, fence to fence")
 	assert(not Layout.eggSpot(pasture.center, 1), "no eggs in the pen")
 	assert(not Layout.eggSpot(Vector3.new(0, 0, -5), 1), "no eggs on the path")
+	-- The nests round the sleeping hen: one per egg the garden can hold, in the field, off the path, apart
+	assert(#Layout.NESTS == IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES, "a nest for every egg")
+	for k, spot in Layout.NESTS do
+		assert(Layout.eggSpot(spot, 1), ("nest %d in the hatching field, off the path"):format(k))
+		assert((spot - Layout.MOTHER).Magnitude >= 9, "clear of the hen")
+		if k > 1 then
+			assert((spot - Layout.MOTHER).Magnitude >= (Layout.NESTS[k - 1] - Layout.MOTHER).Magnitude, "nearest the hen first")
+		end
+		for other = k + 1, #Layout.NESTS do
+			assert((Layout.NESTS[other] - spot).Magnitude >= Layout.NEST_SIZE, "nests apart")
+		end
+	end
+	assert(Layout.eggSpot(Layout.MOTHER, 1), "the hen in the field")
 	assert(pasture.center.Z + pasture.size.Z / 2 >= Layout.GARDEN_BACK - 3, "the pen reaches the back fence")
 	assert(Layout.gardenAt(frame:PointToWorldSpace(Vector3.new(0, 0, Layout.GARDEN_BACK - 1))) == index, "the whole pen is the garden")
 	for slot = 1, IslandConfig.PENS + #IslandConfig.PEN_PRICES do

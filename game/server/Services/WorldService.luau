@@ -13,6 +13,7 @@ local WildConfig = require(Shared.Config.Wild)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
+local PetModel = require(Shared.PetModel)
 local Wild = require(Shared.Logic.Wild)
 
 local WorldService = {}
@@ -410,6 +411,27 @@ local function buildGarden(world: Instance, index: number)
 	part(model, { Name = "Field", Size = field.size + Vector3.new(0, 0.3, 0), CFrame = at(field.center.X, 0.45, field.center.Z), Color = rgb(132, 204, 104), Material = Enum.Material.Grass, CanCollide = false })
 	local hatchSign = part(model, { Name = "HatcherySign", Size = Vector3.one, CFrame = at(0, 5, field.center.Z - field.size.Z / 2 + 1), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(hatchSign, "🥚 Hatching field: set your eggs down here", 16, 2, Vector3.zero)
+	-- The mother hen asleep in the field's back corner, a big one, her eyes shut: the nests are round her
+	-- (IslandService draws them, one per egg the garden holds)
+	local hen = PetModel.build({ s = "Chicken", v = "Normal", z = "Huge" })
+	local grow = 1.7
+	for i, p in hen.parts do
+		p.Size *= grow
+		local offset = hen.offsets[i]
+		hen.offsets[i] = CFrame.new(offset.Position * grow) * offset.Rotation
+		if p.Name == "Eye" then
+			p.Size = Vector3.new(p.Size.X, p.Size.Y * 0.15, p.Size.Z) -- (shut)
+		elseif p.Name == "Shine" then
+			p.Transparency = 1
+		end
+	end
+	local mother = Layout.MOTHER
+	local facing = CFrame.lookAt(mother, mother + Vector3.new(1, 0, -1)) -- (toward her nests)
+	PetModel.place(hen, at(0, 0.45, 0) * facing * CFrame.new(0, hen.height * grow / 2 - 0.4, 0) * CFrame.Angles(math.rad(-8), 0, 0))
+	hen.model.Name = "MotherHen"
+	hen.model.Parent = model
+	local zzz = part(model, { Name = "MotherSleep", Size = Vector3.one, CFrame = at(mother.X, hen.height * grow + 3, mother.Z), Transparency = 1, CanCollide = false, CanQuery = false })
+	label(zzz, "💤 Zzz", 8, 2.5, Vector3.zero)
 	local nest = Layout.NEST_SIZE
 	-- (the eggs set down on the grass: IslandService puts each one's pad in here)
 	local eggs = Instance.new("Folder")

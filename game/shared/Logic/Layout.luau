@@ -124,17 +124,35 @@ function Layout.blocked(inside: Vector3, level: number?): boolean
 	return false
 end
 
--- A nest's spot (an egg's default place, by slot): in the hatching field, eight on each side of the path, in two
--- rows of four; the first ones beside the path, then outward
+-- The mother hen sleeping in the hatching field's back-left corner (WorldService), and the nests round her (one per
+-- egg slot, 1 to 16, nearest her first): eggs are set down in them, like in Steal an Egg
+Layout.MOTHER = Vector3.new(-Layout.FIELD.size.X / 2 + 6, 0, FIELD_BACK - 6)
 local NESTS: { Vector3 } = {}
-for column = 0, 3 do
-	for _, z in { FIELD_FRONT + 6, FIELD_FRONT + 15 } do
-		for _, side in { -1, 1 } do
-			table.insert(NESTS, Vector3.new(side * (7.5 + column * 7), 0, z))
+do
+	local count = IslandConfig.INCUBATORS + #IslandConfig.INCUBATOR_PRICES
+	local spacing, room = 7, Layout.FIELD.size.X / 2 - 3
+	local candidates: { Vector3 } = {}
+	for x = -room, room, spacing do
+		for z = FIELD_BACK - 3, FIELD_FRONT + 3, -spacing do
+			local spot = Vector3.new(x, 0, z)
+			if math.abs(x) - 2.7 > Layout.PATH_WIDTH / 2 + 1 and (spot - Layout.MOTHER).Magnitude >= 9 then
+				table.insert(candidates, spot)
+			end
 		end
 	end
+	table.sort(candidates, function(a, b)
+		local da, db = (a - Layout.MOTHER).Magnitude, (b - Layout.MOTHER).Magnitude
+		if math.abs(da - db) > 0.01 then
+			return da < db
+		end
+		return a.X < b.X or (a.X == b.X and a.Z < b.Z)
+	end)
+	for k = 1, count do
+		NESTS[k] = candidates[k]
+	end
 end
--- Where a new player's free first egg is set down (at the front of the field, beside the path)
+Layout.NESTS = NESTS
+-- Where a new player's free first egg is set down (the nest nearest the hen)
 Layout.START_SPOT = NESTS[1]
 
 -- Whether an egg can be set down at this spot in a garden (its own space): only in the hatching field, off the path
