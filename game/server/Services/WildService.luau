@@ -19,6 +19,7 @@ local Layout = require(Shared.Logic.Layout)
 local Wild = require(Shared.Logic.Wild)
 local Carry = require(Shared.Carry)
 local PetModel = require(Shared.PetModel)
+local SleepPose = require(Shared.SleepPose)
 local Net = require(Shared.Net)
 
 local DailyService = require(script.Parent.DailyService)
@@ -42,7 +43,9 @@ type Guardian = {
 	chasing: Player?,
 	text: TextLabel,
 	label: string,
-	asleep: boolean, -- (lying on its side)
+	asleep: boolean, -- (in its sleeping pose, Shared/SleepPose)
+	pose: string, -- (how it sleeps: its creature's, Config/Wild SLEEP_POSES)
+	sizes: { Vector3 }, -- (its parts' sizes awake: a pose may squash them)
 	wakeAt: number, -- (os.clock(): when the chase starts)
 	built: PetModel.Built?,
 	tag: Part,
@@ -438,10 +441,14 @@ local function place(guardian: Guardian, toward: Vector3)
 	local built = guardian.built
 	local facing = if (toward - guardian.position).Magnitude > 0.1 then Layout.facing(guardian.position, toward) else CFrame.new(guardian.position)
 	if built and guardian.asleep then
-		-- On its side: rolled over, its middle as high as half its width
-		PetModel.place(built, CFrame.new(guardian.position + Vector3.new(0, built.radius, 0)) * facing.Rotation * CFrame.Angles(0, 0, math.rad(90)))
+		-- In its sleeping pose, breathing slowly
+		SleepPose.place(built, CFrame.new(guardian.position) * facing.Rotation, guardian.pose, math.sin(os.clock() * 1.6), guardian.sizes)
 	elseif built then
+		SleepPose.wake(built, guardian.sizes)
 		PetModel.place(built, facing * CFrame.new(0, built.height / 2, 0))
+	end
+	if built and built.model:GetAttribute("Asleep") ~= guardian.asleep then
+		built.model:SetAttribute("Asleep", guardian.asleep) -- (the client's Zzz: GuardianClient)
 	end
 	guardian.tag.CFrame = CFrame.new(guardian.position + Vector3.new(0, 2, 0))
 end
@@ -457,14 +464,19 @@ local function draw(guardian: Guardian)
 	end
 	local biome = WildConfig.BIOMES[guardian.biome]
 	local egg = Hatch.egg(biome.tier)
-	local species = if egg then egg.creatures[#egg.creatures] else "Bear"
+	local species = biome.guardian or (if egg then egg.creatures[#egg.creatures] else "Bear")
 	local built = PetModel.build({ s = species, v = "Normal", z = "Huge" }) -- (big: it guards a whole ring of nests)
 	for _, p in built.parts do
 		p.Anchored = true
 		p.CanCollide = false
 		p.CanQuery = false
 	end
+	guardian.sizes = SleepPose.sizes(built.parts)
+	guardian.pose = WildConfig.SLEEP_POSES[species] or "side"
 	built.model.Name = "Guardian"
+	built.model.PrimaryPart = built.body
+	built.model:SetAttribute("Height", built.height)
+	built.model:AddTag("Guardian")
 	built.model.Parent = folder
 	guardian.built = built
 	place(guardian, Vector3.new(Layout.biome(guardian.biome).X, 0, guardian.position.Z)) -- (facing its nests and the road)
@@ -503,7 +515,7 @@ local function spawnGuardians()
 			text.Parent = gui
 			gui.Parent = tag
 			tag.Parent = folder
-			local guardian: Guardian = { biome = i, home = home, position = home, wander = home, rest = 0, chasing = nil, text = text, label = label, asleep = true, wakeAt = 0, built = nil, tag = tag }
+			local guardian: Guardian = { biome = i, home = home, position = home, wander = home, rest = 0, chasing = nil, text = text, label = label, asleep = true, pose = "side", sizes = {}, wakeAt = 0, built = nil, tag = tag }
 			table.insert(guardians, guardian)
 			draw(guardian)
 		end
@@ -593,10 +605,8 @@ local function tick(frame: number)
 			target = guardian.home
 			if (guardian.home - guardian.position).Magnitude < 0.5 then
 				guardian.text.Text = "💤 " .. guardian.label
-				if not guardian.asleep then
-					guardian.asleep = true -- (lies down, facing its nests again)
-					place(guardian, Vector3.new(Layout.biome(guardian.biome).X, 0, guardian.position.Z))
-				end
+				guardian.asleep = true -- (lies down, facing its nests again: breathing, each step)
+				place(guardian, Vector3.new(Layout.biome(guardian.biome).X, 0, guardian.position.Z))
 				continue
 			end
 		end

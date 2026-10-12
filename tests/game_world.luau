@@ -160,6 +160,31 @@ end
 local built = PetModel.build({ s = "Cat", v = "Golden", z = "Normal" })
 assert(#built.parts > 0 and built.height > 0, "a creature is drawn")
 
+-- A guardian asleep, in each pose: on the ground (not sunk into it, not floating), its eyes shut; awake, as made
+local SleepPose = Loader.require(Shared.SleepPose)
+for _, pose in { "side", "back", "loaf", "curl", "sit" } do
+	local bear = PetModel.build({ s = "Bear", v = "Normal", z = "Huge" })
+	local sizes = SleepPose.sizes(bear.parts)
+	SleepPose.place(bear, CFrame.new(10, 0, 10), pose, 0, sizes)
+	local lowest = math.huge
+	for _, p in bear.parts do
+		local half = p.Size / 2
+		for _, corner in { Vector3.new(-1, -1, -1), Vector3.new(1, -1, -1), Vector3.new(-1, 1, -1), Vector3.new(1, 1, -1), Vector3.new(-1, -1, 1), Vector3.new(1, -1, 1), Vector3.new(-1, 1, 1), Vector3.new(1, 1, 1) } do
+			lowest = math.min(lowest, (p.CFrame * (half * corner)).Y)
+		end
+		if p.Name == "Eye" then
+			assert(p.Size.Y < sizes[table.find(bear.parts, p) :: number].Y * 0.5, pose .. ": its eyes shut")
+		end
+	end
+	assert(math.abs(lowest) < 0.15, ("%s: on the ground (its lowest point at %.2f)"):format(pose, lowest))
+	SleepPose.wake(bear, sizes)
+	for i, p in bear.parts do
+		assert(p.Size == sizes[i], pose .. ": awake, as made")
+	end
+end
+local WildConfigPoses = WildConfig.SLEEP_POSES
+assert(WildConfigPoses.Bear == "back" and WildConfig.BIOMES[1].guardian == "Bear", "the Meadow's guardian: a bear, asleep on its back")
+
 -- A carried creature is a ball in its rarity's color
 local Ball = Loader.require(Shared.Ball)
 local ballModel, ballBody = Ball.build("Cat", roblox.CFrame.new(0, 5, 0), false)

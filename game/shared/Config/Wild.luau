@@ -7,7 +7,7 @@
 -- Further biomes have faster guardians: players train their speed on the treadmill in their garden to outrun
 -- them (the first biome's they outrun from the start). All the eggs come back every few minutes.
 
-export type Biome = { id: string, name: string, tier: number, need: number, color: Color3, theme: number }
+export type Biome = { id: string, name: string, tier: number, need: number, color: Color3, theme: number, guardian: string? }
 
 local function rgb(r: number, g: number, b: number): Color3
 	return Color3.fromRGB(r, g, b)
@@ -15,8 +15,9 @@ end
 
 local BIOMES: { Biome } = {
 	-- `tier`: its eggs (Config/Eggs); `need`: the speed (⚡) a player needs to outrun its guardian with an egg
-	-- (Logic/Wild turns it into the guardian's real pace); `theme`: its props (Config/PropLooks zones)
-	{ id = "Meadow", name = "Meadow", tier = 1, need = 0, color = rgb(132, 200, 110), theme = 1 },
+	-- (Logic/Wild turns it into the guardian's real pace); `theme`: its props (Config/PropLooks zones);
+	-- `guardian`: the creature that guards it (else its egg's last one)
+	{ id = "Meadow", name = "Meadow", tier = 1, need = 0, color = rgb(132, 200, 110), theme = 1, guardian = "Bear" },
 	{ id = "Flower", name = "Flower Field", tier = 2, need = 1000, color = rgb(190, 220, 120), theme = 2 },
 	{ id = "Forest", name = "Forest", tier = 3, need = 10000, color = rgb(84, 150, 84), theme = 3 },
 	{ id = "Beach", name = "Beach", tier = 4, need = 100000, color = rgb(240, 222, 160), theme = 4 },
@@ -28,6 +29,18 @@ local BIOMES: { Biome } = {
 
 return {
 	BIOMES = BIOMES,
+	-- How each creature sleeps, guarding its nests (Shared/SleepPose: side, back, loaf, curl, sit); "side" when not
+	-- listed
+	SLEEP_POSES = {
+		Bear = "back",
+		Horse = "loaf",
+		Cat = "loaf",
+		Sheep = "loaf",
+		Bunny = "loaf",
+		Dog = "curl",
+		Chicken = "sit",
+		Pig = "side",
+	} :: { [string]: string },
 	NESTS = 6, -- nests in each biome, in a half ring round its sleeping guardian (Layout.wildNest)
 	GUARDIANS = 1, -- predators in each biome
 	CATCH_RANGE = 4, -- a guardian this close catches the player
