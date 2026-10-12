@@ -307,27 +307,8 @@ end
 
 local drawnEggs: { [number]: string } = {}
 
--- The nests' looks, by the tier of the egg in them (Config/Eggs; an empty nest is a Meadow's straw one): a bed, the
--- soft inside, and a rim of twigs (or stones, petals, shells, ice...) in two colors
-type NestLook = { bed: Color3, inner: Color3, rim: { Color3 }, rimMaterial: Enum.Material, innerMaterial: Enum.Material }
-local rgb = Color3.fromRGB
-local NEST_LOOKS: { NestLook } = {
-	{ bed = rgb(116, 78, 44), inner = rgb(236, 200, 112), rim = { rgb(198, 146, 78), rgb(168, 116, 60) }, rimMaterial = Enum.Material.Wood, innerMaterial = Enum.Material.Fabric }, -- Meadow: straw
-	{ bed = rgb(96, 160, 80), inner = rgb(255, 228, 238), rim = { rgb(255, 160, 200), rgb(255, 205, 225) }, rimMaterial = Enum.Material.SmoothPlastic, innerMaterial = Enum.Material.Fabric }, -- Flower: petals
-	{ bed = rgb(84, 62, 40), inner = rgb(112, 170, 88), rim = { rgb(64, 132, 66), rgb(92, 160, 76) }, rimMaterial = Enum.Material.Grass, innerMaterial = Enum.Material.Grass }, -- Forest: leaves and moss
-	{ bed = rgb(232, 206, 142), inner = rgb(244, 226, 172), rim = { rgb(252, 242, 226), rgb(250, 196, 186) }, rimMaterial = Enum.Material.SmoothPlastic, innerMaterial = Enum.Material.Sand }, -- Beach: sand and shells
-	{ bed = rgb(70, 62, 80), inner = rgb(92, 72, 128), rim = { rgb(120, 112, 132), rgb(150, 110, 220) }, rimMaterial = Enum.Material.Slate, innerMaterial = Enum.Material.Slate }, -- Cave: stones and crystals
-	{ bed = rgb(196, 146, 84), inner = rgb(236, 200, 140), rim = { rgb(214, 164, 98), rgb(184, 128, 72) }, rimMaterial = Enum.Material.Sandstone, innerMaterial = Enum.Material.Sand }, -- Desert: sandstone
-	{ bed = rgb(200, 220, 236), inner = rgb(246, 250, 255), rim = { rgb(255, 255, 255), rgb(222, 236, 250) }, rimMaterial = Enum.Material.Snow, innerMaterial = Enum.Material.Snow }, -- Snow
-	{ bed = rgb(46, 40, 40), inner = rgb(255, 112, 40), rim = { rgb(66, 56, 56), rgb(96, 70, 62) }, rimMaterial = Enum.Material.Basalt, innerMaterial = Enum.Material.Neon }, -- Volcano: basalt round lava
-	{ bed = rgb(120, 180, 220), inner = rgb(214, 240, 255), rim = { rgb(160, 216, 246), rgb(200, 236, 255) }, rimMaterial = Enum.Material.Ice, innerMaterial = Enum.Material.Glacier }, -- Ice
-	{ bed = rgb(36, 28, 64), inner = rgb(60, 44, 110), rim = { rgb(160, 90, 255), rgb(70, 220, 255) }, rimMaterial = Enum.Material.Neon, innerMaterial = Enum.Material.SmoothPlastic }, -- Pixel
-	{ bed = rgb(150, 110, 40), inner = rgb(255, 238, 170), rim = { rgb(255, 204, 70), rgb(255, 232, 140) }, rimMaterial = Enum.Material.Metal, innerMaterial = Enum.Material.Fabric }, -- Legendary: gold
-}
-
--- A nest under (or waiting for) an egg on the grass, like Steal an Egg's, in its egg's look
-local function nest(pad: BasePart, tier: number?)
-	local look = NEST_LOOKS[tier or 1] or NEST_LOOKS[1]
+-- A straw nest under an egg on the grass (like Steal an Egg's): a dark bed, soft hay, and a rim of twigs
+local function strawNest(pad: BasePart)
 	local base = pad.CFrame
 	local function bit(props: { [string]: any })
 		local p = Instance.new("Part")
@@ -343,27 +324,26 @@ local function nest(pad: BasePart, tier: number?)
 		p.Parent = pad
 	end
 	local flat = CFrame.Angles(0, 0, math.rad(90)) -- (a cylinder's axis up)
-	bit({ Name = "NestBed", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 5.4, 5.4), CFrame = base * CFrame.new(0, 0.2, 0) * flat, Color = look.bed, Material = Enum.Material.Wood })
-	bit({ Name = "NestInside", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 4.2, 4.2), CFrame = base * CFrame.new(0, 0.42, 0) * flat, Color = look.inner, Material = look.innerMaterial })
+	bit({ Name = "NestBed", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 5.4, 5.4), CFrame = base * CFrame.new(0, 0.2, 0) * flat, Color = Color3.fromRGB(116, 78, 44), Material = Enum.Material.Wood })
+	bit({ Name = "NestHay", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 4.2, 4.2), CFrame = base * CFrame.new(0, 0.42, 0) * flat, Color = Color3.fromRGB(236, 200, 112), Material = Enum.Material.Fabric })
 	local twigs = 10
 	for i = 1, twigs do
 		local turn = (i - 1) * 2 * math.pi / twigs
 		local lean = if i % 2 == 0 then 1 else -1
 		bit({
-			Name = "NestRim",
+			Name = "NestTwig",
 			Size = Vector3.new(2, 0.75, 0.9),
 			CFrame = base * CFrame.Angles(0, turn, 0) * CFrame.new(0, 0.75, -2.35) * CFrame.Angles(math.rad(-14), 0, math.rad(9 * lean)),
-			Color = look.rim[i % 2 + 1],
-			Material = look.rimMaterial,
+			Color = if i % 2 == 0 then Color3.fromRGB(198, 146, 78) else Color3.fromRGB(168, 116, 60),
+			Material = Enum.Material.Wood,
 		})
 	end
 end
-
 local function eggsOnGround(data: Data?): string
 	if not data then
 		return ""
 	end
-	local keys = { tostring(data.incubators) }
+	local keys = {}
 	for key, egg in data.incubating do
 		table.insert(keys, ("%s:%d:%d"):format(key, egg.tier, egg.start))
 	end
@@ -447,42 +427,32 @@ local function render(index: number, player: Player?, data: Data?)
 		drawnEggs[index] = eggsKey
 		eggsFolder:ClearAllChildren()
 		if data then
-			-- A nest for each egg the garden holds at once (round the hen), and any egg set down elsewhere before
-			local slots: { number } = {}
-			for k = 1, math.min(data.incubators, #Layout.NESTS) do
-				table.insert(slots, k)
-			end
-			for key in data.incubating do
+			for key, egg in data.incubating do
 				local slot = tonumber(key)
-				if slot and not Hatch.isMachine(slot) and not table.find(slots, slot) then
-					table.insert(slots, slot)
+				if slot and not Hatch.isMachine(slot) then
+					local pad = Instance.new("Part")
+					pad.Name = "Incubator"
+					pad.Anchored = true
+					pad.CanCollide = false
+					pad.CanTouch = false
+					pad.Transparency = 1
+					pad.Size = Vector3.new(Layout.NEST_SIZE - 1, 0.2, Layout.NEST_SIZE - 1)
+					pad.CFrame = Layout.garden(index) * CFrame.new(egg.x or Layout.START_SPOT.X, 0.45, egg.z or Layout.START_SPOT.Z)
+					pad:SetAttribute("Island", index)
+					pad:SetAttribute("Slot", slot)
+					local prompt = Instance.new("ProximityPrompt")
+					prompt.ActionText = "Check"
+					prompt.ObjectText = "Egg"
+					prompt.MaxActivationDistance = 9
+					prompt.RequiresLineOfSight = false
+					prompt.Enabled = false -- GardenClient turns on the owner's
+					prompt:SetAttribute("Island", index)
+					prompt:SetAttribute("Slot", slot)
+					prompt.Parent = pad
+					strawNest(pad)
+					pad.Parent = eggsFolder
+					pad:AddTag("Incubator")
 				end
-			end
-			for _, slot in slots do
-				local egg = data.incubating[tostring(slot)]
-				local spot = if egg and egg.x and egg.z then Vector3.new(egg.x, 0, egg.z) else Layout.NESTS[slot] or Layout.START_SPOT
-				local pad = Instance.new("Part")
-				pad.Name = "Incubator"
-				pad.Anchored = true
-				pad.CanCollide = false
-				pad.CanTouch = false
-				pad.Transparency = 1
-				pad.Size = Vector3.new(Layout.NEST_SIZE - 1, 0.2, Layout.NEST_SIZE - 1)
-				pad.CFrame = Layout.garden(index) * CFrame.new(spot.X, 0.45, spot.Z)
-				pad:SetAttribute("Island", index)
-				pad:SetAttribute("Slot", slot)
-				local prompt = Instance.new("ProximityPrompt")
-				prompt.ActionText = "Check"
-				prompt.ObjectText = "Nest"
-				prompt.MaxActivationDistance = 9
-				prompt.RequiresLineOfSight = false
-				prompt.Enabled = false -- GardenClient turns on the owner's
-				prompt:SetAttribute("Island", index)
-				prompt:SetAttribute("Slot", slot)
-				prompt.Parent = pad
-				nest(pad, if egg then egg.tier else nil)
-				pad.Parent = eggsFolder
-				pad:AddTag("Incubator")
 			end
 		end
 	end
@@ -680,31 +650,20 @@ local function takeEgg(data: Data): (number?, string?)
 	return tier, nil
 end
 
--- The free nest nearest a spot in a garden (its own space), among the ones the garden has; nil when all are taken
-local function freeNest(data: Data, near: Vector3): number?
-	local best, bestDistance = nil, math.huge
-	for k = 1, math.min(data.incubators, #Layout.NESTS) do
-		local distance = (Layout.NESTS[k] - near).Magnitude
-		if not data.incubating[tostring(k)] and distance < bestDistance then
-			best, bestDistance = k, distance
+-- How many eggs the player has set down on the grass
+local function eggsDown(data: Data): number
+	local count = 0
+	for key in data.incubating do
+		local slot = tonumber(key)
+		if slot and not Hatch.isMachine(slot) then
+			count += 1
 		end
 	end
-	return best
+	return count
 end
 
--- Puts an egg (tier; least: the least mutation it hatches) in a nest by the hen
-local function putInNest(player: Player, data: Data, index: number, slot: number, tier: number, least: string?)
-	local spot = Layout.NESTS[slot]
-	data.incubating[tostring(slot)] = { tier = tier, start = os.time(), m = least, x = spot.X, z = spot.Z }
-	local egg = Hatch.egg(tier)
-	IslandService.fx("SetEgg", Layout.garden(index):PointToWorldSpace(spot), if least then Color3.fromRGB(255, 205, 70) elseif egg then egg.color else nil)
-	IslandService.notify(player, ("%s%s in its nest: %s"):format(if least then "✨ Golden " else "", if egg then egg.name else "Egg", Format.time(Hatch.seconds(tier))), "success")
-	IslandService.render(player)
-	IslandService.push(player)
-end
-
--- Sets an egg the player holds (the one in their hand: its tool) in the free nest nearest them, like in Steal an
--- Egg (in their own garden)
+-- Sets an egg the player holds (the one in their hand: its tool) down on the grass just in front of them, like
+-- in Steal an Egg
 local function setEgg(player: Player, tier: number, golden: boolean)
 	local data = DataService.get(player)
 	local index = islandOf[player]
@@ -712,22 +671,38 @@ local function setEgg(player: Player, tier: number, golden: boolean)
 	if not data or not index or not root or not throttle(player) then
 		return
 	end
-	if not IslandService.inOwnGarden(player) then
-		IslandService.notify(player, "Take your eggs home: they go in the nests in your garden", "error")
+	local frame = Layout.garden(index)
+	local inside = frame:PointToObjectSpace((root.CFrame * CFrame.new(0, 0, -2.5)).Position) -- (just in front of them)
+	if not Layout.eggSpot(Vector3.new(inside.X, 0, inside.Z), data.pasture) then
+		IslandService.notify(player, "Set your eggs down on your own garden's grass", "error")
 		return
 	end
-	local inside = Layout.garden(index):PointToObjectSpace(root.CFrame.Position)
-	local slot = freeNest(data, Vector3.new(inside.X, 0, inside.Z))
-	if not slot then
-		IslandService.notify(player, ("Your %d nests are full: get +1 in 🎒 Bag → 🥚 Eggs"):format(data.incubators), "error")
+	if eggsDown(data) >= data.incubators then
+		IslandService.notify(player, ("Your garden hatches %d eggs at once: get +1 in 🎒 Bag → 🥚 Eggs"):format(data.incubators), "error")
 		return
+	end
+	for _, egg in data.incubating do
+		if egg.x and egg.z and (Vector3.new(egg.x, 0, egg.z) - Vector3.new(inside.X, 0, inside.Z)).Magnitude < Layout.NEST_SIZE then
+			IslandService.notify(player, "Too close to another egg", "error")
+			return
+		end
+	end
+	local slot = 1
+	while data.incubating[tostring(slot)] do
+		slot += 1
 	end
 	local held = if golden then data.golden else data.eggs
 	if (held[tostring(tier)] or 0) <= 0 then
 		return
 	end
 	held[tostring(tier)] -= 1
-	putInNest(player, data, index, slot, tier, if golden then WildConfig.GOLDEN_MUTATION else nil)
+	local least = if golden then WildConfig.GOLDEN_MUTATION else nil
+	data.incubating[tostring(slot)] = { tier = tier, start = os.time(), m = least, x = inside.X, z = inside.Z }
+	local egg = Hatch.egg(tier)
+	IslandService.fx("SetEgg", frame:PointToWorldSpace(Vector3.new(inside.X, 0, inside.Z)), if least then Color3.fromRGB(255, 205, 70) elseif egg then egg.color else nil)
+	IslandService.notify(player, ("%s%s set down: %s"):format(if least then "✨ Golden " else "", if egg then egg.name else "Egg", Format.time(Hatch.seconds(tier))), "success")
+	IslandService.render(player)
+	IslandService.push(player)
 end
 
 setEggFrom = setEgg
@@ -779,18 +754,7 @@ local function useIncubator(player: Player, slot: any)
 		data.machines += 1
 		IslandService.notify(player, ("New incubator! Eggs hatch ×%d faster in it ⚡"):format(IslandConfig.MACHINE_SPEED), "success")
 	elseif not machine and not data.incubating[key] then
-		-- An empty nest: the best egg the player holds goes in it
-		local index = islandOf[player]
-		if not index or slot > math.min(data.incubators, #Layout.NESTS) then
-			return
-		end
-		local tier, least = takeEgg(data)
-		if not tier then
-			IslandService.notify(player, "You have no eggs: steal one from the Wild", "error")
-			return
-		end
-		putInNest(player, data, index, slot, tier, least)
-		return
+		return -- (eggs go down on the grass with the Egg tool)
 	else
 		local egg = data.incubating[key]
 		if egg then

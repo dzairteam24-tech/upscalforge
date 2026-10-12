@@ -147,14 +147,9 @@ local island = WorldService.island(1)
 local pads = 0
 for _, d in (island :: any).Eggs:GetChildren() do
 	pads += 1
-	if d:GetAttribute("Slot") == 1 then
-		assert(d:GetAttribute("Tier") == 1, "the first egg's nest shows it")
-	else
-		assert((d:GetAttribute("Tier") or 0) == 0, "the other nests wait empty")
-	end
-	assert(d:FindFirstChild("NestBed"), "a nest under it")
+	assert(d:GetAttribute("Tier") == 1, "the first egg's pad shows it")
 end
-assert(pads == data.incubators, "a nest for each egg the garden holds")
+assert(pads == 1, "one egg on the grass")
 
 -- Eggs held show in the inventory, one tool per kind
 data.eggs["1"] = 2
@@ -171,7 +166,7 @@ IslandService.push(player :: any)
 for _, tool in backpack:GetChildren() do
 	assert(tool:GetAttribute("EggKind") ~= "1", "no tool for eggs the player no longer holds")
 end
--- Using the egg tool sets the egg in the free nest nearest the player
+-- Using the egg tool sets the egg down on the grass in front of the player
 data.eggs["1"] = 1
 IslandService.push(player :: any)
 local tool
@@ -191,8 +186,6 @@ for _ in data.incubating do
 	down += 1
 end
 assert(down == 2, "the egg is down on the grass: " .. down)
-local nested = data.incubating["2"] or data.incubating["3"]
-assert(nested and Layout.NESTS[if data.incubating["2"] then 2 else 3].X == nested.x, "in a free nest by the hen")
 assert(data.eggs["1"] == 0, "and out of the inventory")
 -- The pasture grown all the way: the incubators move back with it, to its back edge
 local top = #(Loader.require(Shared.Config.Island)).PASTURE_GROWTH
