@@ -35,14 +35,11 @@ local function sellCreature(player: Player, id: any)
 end
 
 -- Sells eggs the player holds: one of a kind (ref: its key, Logic/Hatch.key, or a tier), or all of them; a bigger
--- egg sells for more
+-- egg, or a rarer creature in it, sells for more (Logic/Earn.eggKeySellPrice)
 local function sellEgg(player: Player, ref: any, golden: any, all: any)
 	local data = DataService.get(player)
 	local key = if type(ref) == "number" then tostring(ref) elseif type(ref) == "string" then ref else nil
-	local tier, size = nil, "Normal"
-	if key then
-		tier, size = Hatch.parse(key)
-	end
+	local tier = if key then Hatch.parse(key) else nil
 	local egg = if tier then Hatch.egg(tier) else nil
 	if not data or not egg or not key then
 		return
@@ -53,7 +50,7 @@ local function sellEgg(player: Player, ref: any, golden: any, all: any)
 		return
 	end
 	local count = if all == true then have else 1
-	local price = math.floor(Earn.eggSellPrice(egg.price, golden == true) * Hatch.size(size).mult) * count
+	local price = Earn.eggKeySellPrice(key, golden == true) * count -- (a bigger egg, a rarer creature in it: more)
 	bag[key] = if have - count > 0 then have - count else nil
 	data.coins += price
 	IslandService.push(player)

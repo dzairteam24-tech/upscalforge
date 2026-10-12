@@ -416,6 +416,44 @@ test("egg sizes: by luck, kept by tier and size, heavier eggs slow the thief and
 		found[species] = (found[species] or 0) + 1
 	end
 	assert((found.Dog or 0) > (found.Horse or 0) and (found.Horse or 0) > 0, "common creatures' eggs come up more often than rare ones'")
+	-- (a rarer creature in it, a bigger egg: it sells for more; the Mystery Egg too)
+	local dog, bear = Earn.eggKeySellPrice("1@Dog", false), Earn.eggKeySellPrice("1@Bear", false)
+	assert(bear > dog * 10 and dog > 0, "an Epic creature's egg sells for much more than a Common one's")
+	assert(Earn.eggKeySellPrice("1_Huge@Bear", false) > bear and Earn.eggKeySellPrice("1@Bear", true) > bear, "bigger, golden: more")
+	assert(Earn.eggKeySellPrice("1@Mystery", false) > Earn.eggKeySellPrice("1@Cat", false), "a Mystery Egg sells well")
+	eq(Earn.eggKeySellPrice("1", false), Earn.eggSellPrice(Hatch.egg(1).price, false), "an egg that shows nothing: as before")
+end)
+
+test("the Mystery Egg: rare, it shows no creature, and gives one of several things", function()
+	local Mystery = R(Shared.Config.Mystery)
+	local tier, size, species = Hatch.parse("1_Big@Mystery")
+	eq(tier, 1)
+	eq(size, "Big")
+	eq(species, Mystery.ID)
+	eq(Hatch.name(1, "Normal", false, Mystery.ID), "Mystery Egg")
+	assert(Mystery.CHANCE > 0 and Mystery.CHANCE < 0.1, "rare")
+	local kinds: { [string]: number } = {}
+	local seed = 11
+	for _ = 1, 4000 do
+		local reward = Hatch.mysteryReward(function()
+			seed = (seed * 1103515245 + 12345) % 2147483648
+			return seed / 2147483648
+		end)
+		kinds[reward.kind] = (kinds[reward.kind] or 0) + 1
+	end
+	for _, kind in { "creature", "coins", "power", "eggs" } do
+		assert((kinds[kind] or 0) > 200, "it can give " .. kind)
+	end
+	for _ = 1, 20 do
+		local epic = Hatch.ofRarity(1, "Epic", function()
+			seed = (seed * 1103515245 + 12345) % 2147483648
+			return seed / 2147483648
+		end)
+		assert(epic == "Bear" or epic == "Horse", "an Epic Meadow creature: " .. tostring(epic))
+	end
+	eq(Hatch.ofRarity(1, "Mythic", function()
+		return 0.5
+	end), nil, "none of that rarity")
 	eq(Hatch.name(1, "Huge", true), "✨ Golden Huge Meadow Egg")
 	local keys = Hatch.sortedKeys({ ["1"] = 2, ["1_Huge"] = 1, ["2_Small"] = 1, ["1_Small"] = 0 })
 	eq(table.concat(keys, ","), "2_Small,1_Huge,1", "the best first: by tier, then by size; none held, none shown")

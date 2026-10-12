@@ -69,7 +69,7 @@ function ShopWindow.mount(gui: Instance)
 					continue
 				end
 				sold += 1
-				local each = math.floor(Earn.eggSellPrice(egg.price, golden) * Hatch.size(size).mult)
+				local each = Earn.eggKeySellPrice(key, golden)
 				local row = Theme.card(sellView, Theme.lighten(egg.color, 0.5), { Size = UDim2.new(1, -8, 0, 84), LayoutOrder = sold })
 				local view = Theme.eggView(row, EggModel.colorOf(species) or egg.color, golden)
 				view.Size = UDim2.fromOffset(70, 70)

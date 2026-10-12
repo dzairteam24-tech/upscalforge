@@ -22,6 +22,7 @@ local PetModel = require(Shared.PetModel)
 local SleepPose = require(Shared.SleepPose)
 local EggModel = require(Shared.EggModel)
 local EggSizes = require(Shared.Config.EggSizes)
+local Mystery = require(Shared.Config.Mystery)
 local Net = require(Shared.Net)
 
 local DailyService = require(script.Parent.DailyService)
@@ -128,7 +129,7 @@ local function dress(nest: Nest)
 	egg.Size = Vector3.one * EggSizes.BASE * size.scale
 	egg.Position = nest.ground + Vector3.new(0, EggSizes.SIT + egg.Size.Y * 0.65, 0) -- (sitting in its nest: it's drawn 1.3 tall)
 	EggModel.dress(egg, nest.color, nest.golden, nest.species) -- (its layers redrawn: its size, gold and creature)
-	local text = if not nest.full then "" else (if nest.golden then "✨ GOLDEN " else "") .. (if nest.size == "Huge" then "⭐ HUGE ⚖️" elseif nest.size == "Big" then "BIG ⚖️" else "")
+	local text = if not nest.full then "" else (if nest.species == Mystery.ID then "🎁 MYSTERY " else "") .. (if nest.golden then "✨ GOLDEN " else "") .. (if nest.size == "Huge" then "⭐ HUGE ⚖️" elseif nest.size == "Big" then "BIG ⚖️" else "")
 	local label = egg:FindFirstChild("EggLabel")
 	if text ~= "" and not label then
 		local gui = Instance.new("BillboardGui")
@@ -154,7 +155,7 @@ local function dress(nest: Nest)
 	if label then
 		local textLabel = label:FindFirstChildOfClass("TextLabel") :: TextLabel
 		textLabel.Text = text
-		textLabel.TextColor3 = if nest.golden then GOLD elseif nest.size == "Huge" then Color3.fromRGB(255, 120, 230) else Color3.fromRGB(255, 255, 255)
+		textLabel.TextColor3 = if nest.golden then GOLD elseif nest.species == Mystery.ID then Color3.fromRGB(210, 140, 255) elseif nest.size == "Huge" then Color3.fromRGB(255, 120, 230) else Color3.fromRGB(255, 255, 255)
 	end
 	nest.prompt.ObjectText = Hatch.name(WildConfig.BIOMES[nest.biome].tier, nest.size, nest.golden, nest.species)
 end
@@ -413,15 +414,16 @@ local function newEgg(nest: Nest, announce: boolean)
 	nest.respawnAt = nil
 	setFull(nest, true)
 	nest.golden = rng:NextNumber() < WildConfig.GOLDEN_CHANCE
-	nest.species = Hatch.species(WildConfig.BIOMES[nest.biome].tier, function()
+	-- (the creature in it, which the egg shows: Shared/EggModel; now and then a Mystery Egg: Config/Mystery)
+	nest.species = if rng:NextNumber() < Mystery.CHANCE then Mystery.ID else Hatch.species(WildConfig.BIOMES[nest.biome].tier, function()
 		return rng:NextNumber()
-	end) -- (the egg shows it: Shared/EggModel)
+	end)
 	setSize(nest, Hatch.rollSize(function()
 		return rng:NextNumber()
 	end))
-	if nest.golden and announce then
+	if announce and (nest.golden or nest.species == Mystery.ID) then
 		for _, player in Players:GetPlayers() do
-			IslandService.notify(player, ("✨ A Golden Egg in the %s!"):format(WildConfig.BIOMES[nest.biome].name), "rare")
+			IslandService.notify(player, ("%s in the %s!"):format(if nest.species == Mystery.ID then "🎁 A Mystery Egg" else "✨ A Golden Egg", WildConfig.BIOMES[nest.biome].name), "rare")
 		end
 	end
 end

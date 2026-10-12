@@ -4,6 +4,7 @@
 
 local Creatures = require(script.Parent.Parent.Config.Creatures)
 local EggSizes = require(script.Parent.Parent.Config.EggSizes)
+local Mystery = require(script.Parent.Parent.Config.Mystery)
 local Eggs = require(script.Parent.Parent.Config.Eggs)
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 local Mutations = require(script.Parent.Parent.Config.Mutations)
@@ -28,14 +29,19 @@ end
 -- known (a Wild egg shows it: "1", "1_Big", "1@Cat", "1_Huge@Bear")
 function Hatch.key(tier: number, size: string?, species: string?): string
 	local key = if size and size ~= "Normal" and EggSizes.byId[size] then ("%d_%s"):format(tier, size) else tostring(tier)
-	return if species and Creatures.byId[species] then key .. "@" .. species else key
+	return if species and Hatch.known(species) then key .. "@" .. species else key
+end
+
+-- Whether this can be what an egg shows: a creature, or the Mystery Egg's mystery (Config/Mystery)
+function Hatch.known(species: string): boolean
+	return Creatures.byId[species] ~= nil or species == Mystery.ID
 end
 
 -- An egg key's tier, size and creature (nil tier when it's no egg key; nil creature when it's not known: it's
 -- rolled when it hatches)
 function Hatch.parse(key: string): (number?, string, string?)
 	local base, species = string.match(key, "^([^@]+)@(%a+)$")
-	if base and not Creatures.byId[species] then
+	if base and not Hatch.known(species) then
 		return nil, "Normal", nil
 	end
 	base = base or key
@@ -80,6 +86,35 @@ function Hatch.sortedKeys(bag: { [string]: number }?): { string }
 	return keys
 end
 
+-- A Mystery Egg's reward, by luck (Config/Mystery)
+function Hatch.mysteryReward(random: () -> number): Mystery.Reward
+	local total = 0
+	for _, reward in Mystery.REWARDS do
+		total += reward.weight
+	end
+	local roll = random() * total
+	for _, reward in Mystery.REWARDS do
+		if roll < reward.weight then
+			return reward
+		end
+		roll -= reward.weight
+	end
+	return Mystery.REWARDS[#Mystery.REWARDS]
+end
+
+-- One of a tier's creatures of a rarity, by luck (nil when it has none)
+function Hatch.ofRarity(tier: number, rarity: string, random: () -> number): string?
+	local egg = byTier[tier]
+	local found: { string } = {}
+	for _, id in (if egg then egg.creatures else {}) do
+		local creature = Creatures.byId[id]
+		if creature and creature.rarity == rarity then
+			table.insert(found, id)
+		end
+	end
+	return if #found > 0 then found[math.clamp(math.floor(random() * #found) + 1, 1, #found)] else nil
+end
+
 -- A size, by luck (random gives numbers in [0, 1))
 function Hatch.rollSize(random: () -> number): string
 	local roll = random()
@@ -95,7 +130,7 @@ end
 -- An egg's name with its size, gold and creature: "✨ Golden Big Meadow Egg", "Big Cat Egg"
 function Hatch.name(tier: number, size: string?, golden: boolean?, species: string?): string
 	local egg = byTier[tier]
-	local what = if species then species .. " Egg" elseif egg then egg.name else "Egg"
+	local what = if species then species .. " Egg" elseif egg then egg.name else "Egg" -- ("Mystery Egg" too)
 	return ("%s%s%s"):format(if golden then "✨ Golden " else "", if size and size ~= "Normal" then size .. " " else "", what)
 end
 

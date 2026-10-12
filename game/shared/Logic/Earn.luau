@@ -3,6 +3,8 @@
 
 local Creatures = require(script.Parent.Parent.Config.Creatures)
 local EggSizes = require(script.Parent.Parent.Config.EggSizes)
+local Mystery = require(script.Parent.Parent.Config.Mystery)
+local Hatch = require(script.Parent.Hatch)
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 local Mutations = require(script.Parent.Parent.Config.Mutations)
 local SnapConfig = require(script.Parent.Parent.Config.Snap)
@@ -46,6 +48,19 @@ end
 -- Coins for selling an egg of this price (a Golden Egg is worth more)
 function Earn.eggSellPrice(eggPrice: number, golden: boolean): number
 	return math.floor(eggPrice * IslandConfig.EGG_SELL_FRACTION * (if golden then IslandConfig.GOLDEN_SELL_MULT else 1))
+end
+
+-- Coins for selling an egg the player holds, by its key (Logic/Hatch.key): its tier's price, its size, and the
+-- creature it shows (a rare one sells for more: Config/Island EGG_RARITY_SELL), or a Mystery Egg
+function Earn.eggKeySellPrice(key: string, golden: boolean): number
+	local tier, size, species = Hatch.parse(key)
+	local egg = if tier then Hatch.egg(tier) else nil
+	if not egg then
+		return 0
+	end
+	local creature = if species then Creatures.byId[species] else nil
+	local rarity = if creature then IslandConfig.EGG_RARITY_SELL[creature.rarity] or 1 elseif species == Mystery.ID then Mystery.SELL else 1
+	return math.floor(Earn.eggSellPrice(egg.price, golden) * Hatch.size(size).mult * rarity)
 end
 
 -- The price of the next incubator or pen, or nil when there are no more

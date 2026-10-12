@@ -31,6 +31,7 @@ local PetModel = require(Shared.PetModel)
 local Nest = require(Shared.Nest)
 local EggModel = require(Shared.EggModel)
 local EggSizes = require(Shared.Config.EggSizes)
+local Mystery = require(Shared.Config.Mystery)
 local Net = require(Shared.Net)
 
 local DailyService = require(script.Parent.DailyService)
@@ -756,10 +757,47 @@ local function useIncubator(player: Player, slot: any)
 				return
 			end
 			local weather = Weather.at(done)
-			-- (the creature the egg showed, when it did; else by luck)
-			local species, mutation = Hatch.roll(egg.tier, function()
+			local function luck(): number
 				return rng:NextNumber()
-			end, Hatch.atLeast(weather.mutation, egg.m), egg.s)
+			end
+			-- A Mystery Egg: something by luck (Config/Mystery): a rare creature, or coins, speed, eggs
+			local shown = egg.s
+			if shown == Mystery.ID then
+				local reward = Hatch.mysteryReward(luck)
+				local purple = Color3.fromRGB(210, 140, 255)
+				shown = if reward.kind == "creature" then Hatch.ofRarity(egg.tier, reward.rarity or "Rare", luck) else nil
+				if not shown then
+					local text: string
+					if reward.kind == "coins" then
+						local coins = math.max(reward.min or 0, math.floor((reward.seconds or 0) * Earn.islandRate(data.creatures, data.placed)))
+						data.coins += coins
+						player:SetAttribute("Coins", data.coins)
+						text = ("+🪙 %s"):format(Format.abbrev(coins))
+					elseif reward.kind == "power" then
+						data.power += reward.amount or 0
+						IslandService.powerChanged(player)
+						text = ("+⚡ %s speed"):format(Format.abbrev(reward.amount or 0))
+					else
+						local count = reward.count or 1
+						local tierKey = tostring(egg.tier)
+						data.eggs[tierKey] = (data.eggs[tierKey] or 0) + count
+						text = ("+%d eggs"):format(count)
+					end
+					data.incubating[key] = nil
+					DailyService.add(player, "hatch")
+					IslandService.banner(player, "🎁 MYSTERY: " .. text, purple)
+					local index = islandOf[player]
+					if index and egg.x and egg.z then
+						IslandService.fx("Hatch", Layout.garden(index):PointToWorldSpace(Vector3.new(egg.x, 0, egg.z)), purple)
+					end
+					IslandService.render(player)
+					IslandService.push(player)
+					return
+				end
+				IslandService.banner(player, ("🎁 MYSTERY: a %s %s!"):format(Creatures.byId[shown].rarity, shown), purple)
+			end
+			-- (the creature the egg showed, when it did; else by luck)
+			local species, mutation = Hatch.roll(egg.tier, luck, Hatch.atLeast(weather.mutation, egg.m), shown)
 			local id = IslandService.addCreature(player, data, species, mutation, egg.w)
 			if not id then
 				return

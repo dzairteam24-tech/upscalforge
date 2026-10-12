@@ -16,8 +16,15 @@ local function signal()
 	return { Connect = function() return { Disconnect = function() end } end }
 end
 local remotes = {}
+local serverHandlers = {} -- (what the services listen for, by remote: the tests call them)
 local function remote(name)
-	remotes[name] = remotes[name] or { Name = name, FireClient = function() end, FireAllClients = function() end, OnServerEvent = signal(), OnClientEvent = signal() }
+	remotes[name] = remotes[name] or {
+		Name = name,
+		FireClient = function() end,
+		FireAllClients = function() end,
+		OnServerEvent = { Connect = function(_self, fn) serverHandlers[name] = fn return { Disconnect = function() end } end },
+		OnClientEvent = signal(),
+	}
 	return remotes[name]
 end
 local remotesFolder = { WaitForChild = function(_self, name) return remote(name) end, FindFirstChild = function(_self, name) return remote(name) end }
@@ -366,5 +373,22 @@ end
 assert(victimData.stored[keptId] == true and carried == 0, "a creature in the barn isn't in the hotbar")
 handlers.Withdraw(player, "creature", keptId)
 assert(victimData.stored[keptId] == nil, "and out again")
+-- A Mystery Egg hatched gives something: a rare creature, coins, speed or eggs (Config/Mystery)
+local useIncubator = assert(serverHandlers.UseIncubator, "the incubators listen")
+for round = 1, 6 do
+	local before = { coins = victimData.coins, power = victimData.power, eggs = victimData.eggs["1"] or 0, creatures = 0 }
+	for _ in victimData.creatures do
+		before.creatures += 1
+	end
+	victimData.incubating["9"] = { tier = 1, start = 0, s = "Mystery", x = 0, z = 0 }
+	task.wait(0.4) -- (past the throttle)
+	useIncubator(player, 9)
+	assert(victimData.incubating["9"] == nil, "the Mystery Egg hatched")
+	local creatures = 0
+	for _ in victimData.creatures do
+		creatures += 1
+	end
+	assert(creatures > before.creatures or victimData.coins > before.coins or victimData.power > before.power or (victimData.eggs["1"] or 0) > before.eggs, ("round %d: it gave something"):format(round))
+end
 print("island test passed")
 require("@lune/process").exit(0)
