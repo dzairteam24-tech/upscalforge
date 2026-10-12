@@ -234,7 +234,7 @@ local function buildTown(world: Instance)
 	local town = Instance.new("Model")
 	town.Name = "Town"
 	-- The square where players arrive (no fountain: room for the Mother Cube and the Heist Egg)
-	disc(town, "Plaza", Layout.CENTER + Vector3.new(0, 0.1, 0), Layout.SQUARE_RADIUS, 0.3, PAVING, Enum.Material.Pavement)
+	disc(town, "Plaza", Layout.SQUARE_CENTER + Vector3.new(0, 0.1, 0), Layout.SQUARE_RADIUS, 0.3, PAVING, Enum.Material.Pavement)
 	-- The market: paving under the stalls on the square's north side, joining the road to the Wild behind them
 	local lo, hi = math.huge, -math.huge
 	for _, spot in Layout.SHOP_SPOTS do
@@ -250,7 +250,7 @@ local function buildTown(world: Instance)
 		Material = Enum.Material.Pavement,
 		CanCollide = false,
 	})
-	local sign = part(town, { Name = "Sign", Size = Vector3.one, Position = Layout.CENTER + Vector3.new(0, 18, 0), Transparency = 1, CanCollide = false, CanQuery = false })
+	local sign = part(town, { Name = "Sign", Size = Vector3.one, Position = Layout.SQUARE_CENTER + Vector3.new(0, 18, 0), Transparency = 1, CanCollide = false, CanQuery = false })
 	label(sign, "🥚 Cubeling Nest", 22, 4, Vector3.zero)
 	for index = 1, #SHOPS do
 		buildShop(town, index)
@@ -616,6 +616,8 @@ local function buildWild(world: Instance)
 	-- The arch: as wide as the whole entrance of the Wild, a tower at each side, a green beam across and the
 	-- name over it in big letters
 	local half = Layout.WILD_WIDTH / 2
+	local approachFrom = Layout.SHOP_ROW - Layout.SHOP_DEPTH - 10
+	part(wild, { Name = "Approach", Size = Vector3.new(Layout.WILD_WIDTH, 0.3, approachFrom - gate.Z), Position = Vector3.new(gate.X, 0.12, (approachFrom + gate.Z) / 2), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
 	for _, side in { -1, 1 } do
 		part(wild, { Name = "GateTower", Size = Vector3.new(16, 56, 16), Position = gate + Vector3.new(side * (half - 8), 28, 0), Color = rgb(120, 116, 110), Material = Enum.Material.Slate })
 		part(wild, { Name = "GateTowerTop", Size = Vector3.new(19, 4, 19), Position = gate + Vector3.new(side * (half - 8), 58, 0), Color = rgb(90, 160, 90) })

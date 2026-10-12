@@ -122,7 +122,7 @@ local function land(start: number)
 	part.Material = Enum.Material.SmoothPlastic
 	part.Anchored = true
 	part.CanCollide = false
-	part.Position = Layout.CENTER + Vector3.new(0, MotherConfig.HEIGHT, 0)
+	part.Position = Layout.SQUARE_CENTER + Vector3.new(0, MotherConfig.HEIGHT, 0)
 	part:SetAttribute("Points", 0)
 	part:SetAttribute("Goal", goal)
 	part:SetAttribute("Ends", start + MotherConfig.LASTS)

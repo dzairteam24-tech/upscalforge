@@ -121,7 +121,7 @@ for index = 1, IslandConfig.ISLANDS do
 	local center = Layout.garden(index).Position
 	local gate = Layout.gate(index).Position
 	assert(center.Z > Layout.CENTER.Z, "south of the square")
-	assert((center - Layout.CENTER).Magnitude > Layout.SQUARE_RADIUS + Layout.GARDEN_SIZE, "well away from the square")
+	assert((center - Layout.SQUARE_CENTER).Magnitude > Layout.SQUARE_RADIUS + Layout.GARDEN_SIZE, "well away from the square")
 	assert((gate - Layout.CENTER).Magnitude < (center - Layout.CENTER).Magnitude - Layout.GARDEN_SIZE / 2 + 0.01, "its gate toward the square")
 	assert((gate - Layout.CENTER).Magnitude > Layout.GARDEN_ROAD_RADIUS + Layout.ROAD_WIDTH_TOWN / 2, "past the arc road")
 	-- (its corners, its treadmill and its pasture grown all the way in nobody else's garden)
@@ -138,12 +138,12 @@ for index = 1, IslandConfig.ISLANDS do
 		assert(Layout.garden(index).Position.X > Layout.garden(index - 1).Position.X, "from west to east")
 	end
 end
-assert(Layout.gardenAt(Layout.CENTER) == nil, "the square is no garden")
+assert(Layout.gardenAt(Layout.SQUARE_CENTER) == nil, "the square is no garden")
 -- The shops: a row of stalls by the square, facing it, the spawn and every garden, a little apart, off every road
 for shop = 1, #Layout.SHOP_SPOTS do
 	local frame = Layout.shop(shop)
 	local at = frame.Position
-	assert((at - Layout.CENTER).Magnitude < Layout.SQUARE_RADIUS + 60, "by the square")
+	assert((at - Layout.SQUARE_CENTER).Magnitude < Layout.SQUARE_RADIUS + 60, "by the square")
 	for index = 1, IslandConfig.ISLANDS do
 		assert(frame.LookVector:Dot((Layout.garden(index).Position - at).Unit) > 0.1, "every garden sees its front, none its back")
 	end

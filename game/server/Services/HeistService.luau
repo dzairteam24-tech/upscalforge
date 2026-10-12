@@ -122,7 +122,7 @@ local function startRound(start: number)
 	part.Anchored = true
 	part.CanCollide = false
 	part.CanTouch = false
-	part.Position = Layout.CENTER + Vector3.new(0, 3, 14) -- (south of the spawn)
+	part.Position = Layout.SQUARE_CENTER + Vector3.new(0, 3, 14) -- (south of the spawn)
 	local mesh = Instance.new("SpecialMesh")
 	mesh.MeshType = Enum.MeshType.Sphere
 	mesh.Scale = Vector3.new(1, 1.3, 1)

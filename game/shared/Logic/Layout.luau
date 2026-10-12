@@ -8,7 +8,7 @@
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 
 local Layout = {
-	SQUARE_RADIUS = 34, -- the square where players arrive: the town square
+	SQUARE_RADIUS = 60, -- the square where players arrive: the town square
 	SHOP_DEPTH = 8, -- a stall, from its counter back
 	SHOP_WIDTH = 15,
 	SHOP_STEP = 34, -- the distance between two stalls' middles (a good gap between them)
@@ -20,18 +20,19 @@ local Layout = {
 	GARDEN_SIZE = 96,
 	GATE_WIDTH = 16, -- the opening in a garden's front fence
 	FENCE_HEIGHT = 10, -- the invisible wall behind the low picket fence (too tall to jump)
-	CENTER = Vector3.new(0, 0, 0),
+	CENTER = Vector3.new(0, 0, 0), -- the town's middle: the gardens' arc and the way to the Wild are measured from it
+	SQUARE_CENTER = Vector3.new(0, 0, -110), -- the square itself, moved up toward the gate to leave room for the gardens
 }
 
 -- The shops' stalls: a row along the square's north edge, a little apart, their fronts south toward the square
 -- and the gardens (the road to the Wild starts behind them)
-Layout.SHOP_ROW = -40 -- (Z of the stalls' counters)
+Layout.SHOP_ROW = -170 -- (Z of the stalls' counters: on the square's north edge)
 Layout.SHOP_SPOTS = {}
 for k = 1, 5 do -- (the Fuse Machine, the Trail and Sell Shops, a gap for the road to the Wild, the Food Shop, the Mutation Machine)
 	table.insert(Layout.SHOP_SPOTS, Vector3.new((k - 3.5) * Layout.SHOP_STEP, 0, Layout.SHOP_ROW))
 end
 -- Where players appear in the square, facing the stalls (north)
-Layout.SPAWN = CFrame.new(0, 0.2, -4)
+Layout.SPAWN = CFrame.new(0, 0.2, -114)
 
 -- A frame at `at` (on the ground) turned about Y so its front (-Z) faces `target` (no lookAt: the same in
 -- every runtime)
@@ -236,7 +237,7 @@ function Layout.roads(): ({ Road }, { Arc })
 	local arcs: { Arc } = {}
 	-- (from behind the stalls)
 	table.insert(roads, { a = Layout.CENTER + Vector3.new(0, 0, Layout.SHOP_ROW - Layout.SHOP_DEPTH - 9), b = Layout.wildGate(), width = w })
-	table.insert(roads, { a = around(Layout.SQUARE_RADIUS - 2, 180), b = around(Layout.GARDEN_ROAD_RADIUS, 180), width = w })
+	table.insert(roads, { a = Layout.SQUARE_CENTER + Vector3.new(0, 0, Layout.SQUARE_RADIUS - 2), b = around(Layout.GARDEN_ROAD_RADIUS, 180), width = w })
 	local last = Layout.gardenAngle(IslandConfig.ISLANDS) + Layout.GARDEN_STEP * 0.3
 	table.insert(arcs, { radius = Layout.GARDEN_ROAD_RADIUS, from = 180 - last, to = 180 + last, width = w })
 	for index = 1, IslandConfig.ISLANDS do
