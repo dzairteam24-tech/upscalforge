@@ -123,7 +123,9 @@ local function updatePad(pad: BasePart)
 	local mine = owner == LOCAL.UserId
 	local open = pad:GetAttribute("Open") == true
 	local tier, start, duration, price = number(pad, "Tier"), number(pad, "Start"), number(pad, "Duration"), number(pad, "Price")
-	pad.Transparency = if open then 0 else 0.6
+	if pad:GetAttribute("Machine") then
+		pad.Transparency = if open then 0 else 0.6 -- (an egg on the grass sits in its nest: its pad stays unseen)
+	end
 	local egg = Hatch.egg(tier)
 	pad_.has = egg ~= nil
 	pad_.egg.Parent = if egg then pad else nil

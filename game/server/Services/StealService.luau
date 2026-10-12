@@ -299,15 +299,44 @@ local function giveBat(player: Player)
 	tool.Name = "Bat"
 	tool.CanBeDropped = false
 	tool.ToolTip = "Hit someone carrying eggs or creatures twice to knock them out of their hands (not in a garden)"
-	tool.GripForward, tool.GripPos, tool.GripRight, tool.GripUp = Vector3.new(-1, 0, 0), Vector3.new(0, 0, -1.5), Vector3.new(0, 1, 0), Vector3.new(0, 0, 1)
+	tool.GripForward, tool.GripPos, tool.GripRight, tool.GripUp = Vector3.new(-1, 0, 0), Vector3.new(0, 0, -0.2), Vector3.new(0, 1, 0), Vector3.new(0, 0, 1)
+	-- A baseball bat, from the hand up (+Z): a taped grip with a knob, a thin neck widening to a long barrel
+	-- with a red band, a rounded end
+	-- (the hand holds an unseen block along the bat; the round pieces are welded to it)
 	local handle = Instance.new("Part")
 	handle.Name = "Handle"
-	handle.Size = Vector3.new(0.8, 0.8, 3.6)
-	handle.Color = Color3.fromRGB(196, 140, 84)
-	handle.Material = Enum.Material.Wood
+	handle.Size = Vector3.new(0.42, 0.42, 1.9)
+	handle.CFrame = CFrame.identity
+	handle.Transparency = 1
 	handle.CanCollide = false
 	handle.Massless = true
 	handle.Parent = tool
+	local along = CFrame.Angles(0, math.rad(90), 0) -- (a cylinder's axis along the bat)
+	local function piece(name: string, length: number, width: number, z: number, color: Color3, material: Enum.Material, ball: boolean?)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Shape = if ball then Enum.PartType.Ball else Enum.PartType.Cylinder
+		p.Size = if ball then Vector3.one * width else Vector3.new(length, width, width)
+		p.CFrame = CFrame.new(0, 0, z) * along
+		p.Color = color
+		p.Material = material
+		p.CanCollide = false
+		p.CanQuery = false
+		p.Massless = true
+		p.Parent = tool
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = handle
+		weld.Part1 = p
+		weld.Parent = p
+	end
+	local wood, light = Color3.fromRGB(214, 160, 96), Color3.fromRGB(232, 186, 120)
+	piece("Grip", 1.9, 0.42, 0, Color3.fromRGB(34, 32, 40), Enum.Material.Fabric) -- (taped)
+	piece("Knob", 0.25, 0.7, -1.05, Color3.fromRGB(34, 32, 40), Enum.Material.Fabric)
+	piece("Neck", 1.2, 0.5, 1.5, wood, Enum.Material.Wood)
+	piece("Taper", 0.7, 0.68, 2.4, wood, Enum.Material.Wood)
+	piece("Barrel", 2.4, 0.86, 3.9, light, Enum.Material.Wood)
+	piece("Band", 0.22, 0.9, 3.0, Color3.fromRGB(214, 52, 52), Enum.Material.SmoothPlastic)
+	piece("End", 0, 0.86, 5.1, light, Enum.Material.Wood, true)
 	tool.Activated:Connect(function()
 		swing(player, tool)
 	end)
