@@ -2,7 +2,7 @@
 -- The Wild (Config/Wild, Logic/Wild, built by WorldService): the guardians sleep by their nests. A player steals
 -- an egg; a moment later that biome's guardian wakes and comes after them, inside its biome only (out of it
 -- they're safe). If it catches them they drop the egg right there and are sent back to the gate: the egg waits
--- a minute for whoever picks it up (then goes back to its nest). Once they carry it into their own garden the egg goes into their bag. The nests fill up again every few minutes, some biomes with a golden nest (a Golden Egg,
+-- a minute for whoever picks it up (then goes back to its nest). Once they carry it into their own garden the egg goes into their bag. A nest gets a new egg a little after its egg is taken (its size, and now and then gold, by luck: a Golden Egg is
 -- chased harder). Also: speed, trained on the treadmill in each
 -- garden (and upgraded at its console).
 
@@ -29,7 +29,8 @@ local IslandService = require(script.Parent.IslandService)
 local WildService = {}
 
 -- (size: its egg's, rolled at each refill, Config/EggSizes; ground: where the egg rests, under its middle)
-type Nest = { egg: BasePart, prompt: ProximityPrompt, full: boolean, golden: boolean, size: string, ground: Vector3, color: Color3, biome: number, index: number }
+-- (respawnAt: os.clock() when it gets a new egg, once its egg is taken)
+type Nest = { egg: BasePart, prompt: ProximityPrompt, full: boolean, golden: boolean, size: string, ground: Vector3, color: Color3, biome: number, index: number, respawnAt: number? }
 type Carry = { nest: Nest, part: Part, safe: boolean, golden: boolean, size: string }
 type Drop = { nest: Nest, part: Part, golden: boolean, size: string, expires: number }
 type Guardian = {
@@ -199,9 +200,13 @@ local function finish(player: Player, kept: boolean)
 			IslandService.fx("Home", root.Position - Vector3.new(0, 2, 0), if carry.golden then GOLD elseif egg then egg.color else nil)
 		end -- (still in their hands, now from the inventory)
 	else
-		setFull(carry.nest, true)
-		carry.nest.golden = carry.golden
-		setSize(carry.nest, carry.size)
+		-- (back in its nest, if the nest hasn't a new one by now)
+		if not carry.nest.full then
+			carry.nest.respawnAt = nil
+			setFull(carry.nest, true)
+			carry.nest.golden = carry.golden
+			setSize(carry.nest, carry.size)
+		end
 	end
 	applySpeed(player)
 end
@@ -288,6 +293,7 @@ local function steal(player: Player, nest: Nest)
 	local golden, size = nest.golden, nest.size
 	setFull(nest, false)
 	setGolden(nest, false)
+	nest.respawnAt = os.clock() + WildConfig.NEST_RESPAWN
 	IslandService.fx("Steal", nest.egg.Position, if golden then GOLD else nest.color)
 	local part = Instance.new("Part")
 	part.Name = "CarriedEgg"
@@ -340,44 +346,34 @@ function WildService.knock(player: Player)
 end
 
 -- Every nest gets its egg back (not the ones being carried)
+-- A nest gets a new egg: its size by luck (small, normal, big or, rarely, huge) and, now and then, golden
+local function newEgg(nest: Nest, announce: boolean)
+	nest.respawnAt = nil
+	setFull(nest, true)
+	nest.golden = rng:NextNumber() < WildConfig.GOLDEN_CHANCE
+	setSize(nest, Hatch.rollSize(function()
+		return rng:NextNumber()
+	end))
+	if nest.golden and announce then
+		for _, player in Players:GetPlayers() do
+			IslandService.notify(player, ("✨ A Golden Egg in the %s!"):format(WildConfig.BIOMES[nest.biome].name), "rare")
+		end
+	end
+end
+
+-- Every nest with its egg (the server starting)
 local function refill()
-	local carried: { [Nest]: boolean } = {}
-	for _, carry in carrying do
-		carried[carry.nest] = true
-	end
-	for _, dropped in drops do
-		carried[dropped.nest] = true
-	end
-	-- (each egg comes back by luck: small, normal, big or, rarely, huge)
 	for _, nest in nests do
-		if not carried[nest] then
-			setFull(nest, true)
-			nest.golden = false
-			setSize(nest, Hatch.rollSize(function()
-				return rng:NextNumber()
-			end))
-		end
+		newEgg(nest, false)
 	end
-	-- Some biomes get a golden nest
-	local goldenIn = {}
-	for i, biome in WildConfig.BIOMES do
-		if rng:NextNumber() < WildConfig.GOLDEN_CHANCE then
-			local free = {}
-			for _, nest in nests do
-				if nest.biome == i and not carried[nest] then
-					table.insert(free, nest)
-				end
-			end
-			if #free > 0 then
-				setGolden(free[rng:NextInteger(1, #free)], true)
-				table.insert(goldenIn, biome.name)
-			end
-		end
-	end
-	for _, player in Players:GetPlayers() do
-		IslandService.notify(player, "🌿 The Wild's nests are full of eggs again!", "info")
-		if #goldenIn > 0 then
-			IslandService.notify(player, ("✨ Golden Eggs in: %s!"):format(table.concat(goldenIn, ", ")), "rare")
+end
+
+-- The nests whose egg was taken a while ago get a new one
+local function respawn()
+	local now = os.clock()
+	for _, nest in nests do
+		if not nest.full and nest.respawnAt and now >= nest.respawnAt then
+			newEgg(nest, true)
 		end
 	end
 end
@@ -499,9 +495,12 @@ local function tick(frame: number)
 		if os.clock() >= dropped.expires then
 			drops[part] = nil
 			part:Destroy()
-			setFull(dropped.nest, true)
-			dropped.nest.golden = dropped.golden
-			setSize(dropped.nest, dropped.size)
+			if not dropped.nest.full then
+				dropped.nest.respawnAt = nil
+				setFull(dropped.nest, true)
+				dropped.nest.golden = dropped.golden
+				setSize(dropped.nest, dropped.size)
+			end
 		end
 	end
 	for _, guardian in guardians do
@@ -640,7 +639,7 @@ function WildService.init()
 			local biome, index = egg:GetAttribute("Biome"), egg:GetAttribute("Nest")
 			local prompt = egg:FindFirstChildOfClass("ProximityPrompt")
 			if egg:IsA("BasePart") and type(biome) == "number" and type(index) == "number" and prompt then
-				local nest: Nest = { egg = egg, prompt = prompt, full = true, golden = false, size = "Normal", ground = egg.Position - Vector3.new(0, 2.8, 0), color = egg.Color, biome = biome, index = index }
+				local nest: Nest = { egg = egg, prompt = prompt, full = true, golden = false, size = "Normal", ground = egg.Position - Vector3.new(0, 2.8, 0), color = egg.Color, biome = biome, index = index, respawnAt = nil }
 				table.insert(nests, nest)
 				prompt.Triggered:Connect(function(player)
 					steal(player, nest)
@@ -649,7 +648,7 @@ function WildService.init()
 		end
 	end
 	spawnGuardians()
-	refill() -- (the first golden nests)
+	refill() -- (every nest full to start with)
 	game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt, player)
 		local index = prompt:GetAttribute("Treadmill")
 		if type(index) == "number" then
@@ -676,14 +675,10 @@ function WildService.init()
 	end)
 	RunService.Heartbeat:Connect(tick)
 	task.spawn(function()
-		local last = os.clock()
 		while true do
 			task.wait(1)
 			train()
-			if os.clock() - last >= WildConfig.RESET then
-				last = os.clock()
-				refill()
-			end
+			respawn()
 		end
 	end)
 end

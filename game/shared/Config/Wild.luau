@@ -32,14 +32,14 @@ return {
 	GUARDIANS = 1, -- predators in each biome
 	CATCH_RANGE = 4, -- a guardian this close catches the player
 	WAKE = 1.5, -- seconds after an egg is taken before its guardian starts the chase
-	-- Golden nests: when the nests fill up again, each biome may get one, with a Golden Egg (what hatches from it
-	-- is Golden or better). Its guardian chases harder.
-	GOLDEN_CHANCE = 0.3, -- for each biome, at each refill
+	-- Golden Eggs: each new egg in a nest may be one (what hatches from it is Golden or better). Its guardian
+	-- chases harder.
+	GOLDEN_CHANCE = 0.04, -- for each new egg (with 6 nests, about one golden egg in 25 a biome)
 	GOLDEN_MUTATION = "Golden",
 	GOLDEN_GUARDIAN = 1.15, -- times the guardian's speed, chasing a Golden Egg
 	DROP_TIME = 60, -- a thief caught by a guardian drops the egg there: it waits this long, then goes home
 	GRAB_RANGE = 10, -- how close a player must be to grab a dropped egg
-	RESET = 300, -- every nest gets its egg back this often
+	NEST_RESPAWN = 40, -- seconds after its egg is taken, a nest gets a new one (its size and gold by luck)
 	CARRY = 0.9, -- a player carrying an egg runs this much of their speed
 	-- Speed (⚡) is a big number that grows without end (0, 1K, 1M, 1B...); how fast the player really walks
 	-- grows with it slowly (Logic/Wild.walk): START_SPEED studs a second at 0, WALK_PER_DOUBLING more each time
