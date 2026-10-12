@@ -128,8 +128,9 @@ local KINDS: { [string]: (Vector3, Color3?) -> () } = {
 	end,
 }
 
--- A bat hit this player: they're pushed back, the screen shakes; the knock-out hit knocks them down a moment
-local function knocked(push: Vector3, hard: boolean)
+-- A bat hit this player: they're pushed back, the screen shakes; the knock-down hit lays them out, stunned (no
+-- moving) for a moment
+local function knocked(push: Vector3, hard: boolean, stun: number)
 	local character = Players.LocalPlayer.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -137,10 +138,11 @@ local function knocked(push: Vector3, hard: boolean)
 		return
 	end
 	if hard then
-		humanoid.PlatformStand = true -- (falls over)
-		task.delay(0.9, function()
+		humanoid.PlatformStand = true -- (falls over, and can't walk)
+		task.delay(stun, function()
 			if humanoid.Parent then
 				humanoid.PlatformStand = false
+				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 			end
 		end)
 	end
@@ -192,9 +194,9 @@ local function hitMark(target: Model, hits: number, needed: number)
 end
 
 function Effects.init()
-	Net.event("Knocked").OnClientEvent:Connect(function(push: Vector3, hard: boolean)
+	Net.event("Knocked").OnClientEvent:Connect(function(push: Vector3, hard: boolean, stun: number?)
 		if typeof(push) == "Vector3" then
-			knocked(push, hard == true)
+			knocked(push, hard == true, if type(stun) == "number" then math.clamp(stun, 0, 5) else 2)
 		end
 	end)
 	Net.event("HitMark").OnClientEvent:Connect(function(target: Model, hits: number, needed: number)

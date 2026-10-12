@@ -21,6 +21,7 @@ local StealService = {}
 
 local lastSwing: { [Player]: number } = {}
 local combo: { [Player]: { target: Player, hits: number, expires: number } } = {}
+local downUntil: { [Player]: number } = {} -- (os.clock(): knocked down till then, and not hit again)
 
 local function rootOf(player: Player): BasePart?
 	return player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -81,7 +82,7 @@ local function swing(player: Player, tool: Tool?)
 		end
 	end
 	local targetRoot = if target then rootOf(target) else nil
-	if not target or not targetRoot or inGarden(targetRoot.CFrame.Position) then
+	if not target or not targetRoot or inGarden(targetRoot.CFrame.Position) or now < (downUntil[target] or 0) then
 		return
 	end
 	local run = combo[player]
@@ -97,7 +98,10 @@ local function swing(player: Player, tool: Tool?)
 	away = Vector3.new(away.X, 0, away.Z)
 	away = if away.Magnitude > 0.01 then away.Unit else root.CFrame.LookVector
 	local push = away * (if hard then StealConfig.KNOCK_PUSH else StealConfig.HIT_PUSH) + Vector3.new(0, if hard then 30 else 18, 0)
-	Net.event("Knocked"):FireClient(target, push, hard)
+	if hard then
+		downUntil[target] = now + StealConfig.STUN
+	end
+	Net.event("Knocked"):FireClient(target, push, hard, StealConfig.STUN)
 	if target.Character then
 		Net.event("HitMark"):FireClient(player, target.Character, math.min(run.hits, StealConfig.HITS), StealConfig.HITS)
 	end
@@ -178,7 +182,7 @@ function StealService.init()
 	end
 	Players.PlayerAdded:Connect(setUp)
 	Players.PlayerRemoving:Connect(function(player)
-		lastSwing[player], combo[player] = nil, nil
+		lastSwing[player], combo[player], downUntil[player] = nil, nil, nil
 	end)
 end
 

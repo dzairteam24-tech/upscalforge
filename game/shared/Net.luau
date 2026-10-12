@@ -34,7 +34,7 @@ local EVENTS = {
 	"SpeedUp", -- (gain): a step on the treadmill
 	"Fx", -- (kind, position, color?): an effect everyone near sees and hears (client Effects)
 	"Banner", -- (text, color?): a big moment, across the middle of the player's screen (client UI/Banner)
-	"Knocked", -- (push, hard): a bat hit this player: they fly back (and fall, on the knock-out hit)
+	"Knocked", -- (push, hard, stun seconds): a bat hit this player: they fly back (and lie stunned, on the knock-down hit)
 	"HitMark", -- (target's character, hits, needed): the swinger's count over the one they hit
 }
 
