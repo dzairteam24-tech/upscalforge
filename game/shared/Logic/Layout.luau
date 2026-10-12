@@ -8,10 +8,9 @@
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 
 local Layout = {
-	SQUARE_RADIUS = 60, -- the square where players arrive: the town square
+	SQUARE_RADIUS = 70, -- the square where players arrive: the town square
 	SHOP_DEPTH = 8, -- a stall, from its counter back
 	SHOP_WIDTH = 15,
-	SHOP_STEP = 34, -- the distance between two stalls' middles (a good gap between them)
 	GARDEN_RADIUS = 330, -- the gardens' middles, this far from the square's
 	GARDEN_STEP = 34, -- degrees between two gardens: they fill the whole south half round the square, east to west
 	GARDEN_ROAD_RADIUS = 260, -- the arc road past the gardens' gates
@@ -24,15 +23,17 @@ local Layout = {
 	SQUARE_CENTER = Vector3.new(0, 0, -110), -- the square itself, moved up toward the gate to leave room for the gardens
 }
 
--- The shops' stalls: a row along the square's north edge, a little apart, their fronts south toward the square
--- and the gardens (the road to the Wild starts behind them)
-Layout.SHOP_ROW = -170 -- (Z of the stalls' counters: on the square's north edge)
+-- The shops' stalls: on a ring inside the square's edge, fanned out over its north half, their fronts toward its
+-- middle where the players appear (the Sell Shop right in front of them)
+Layout.SHOP_RING = 56 -- (the counters' distance from the square's middle)
+Layout.SHOP_ANGLES = { -60, -30, 0, 30, 60 } -- (degrees from north: the Fuse Machine, the Trail, Sell and Food Shops, the Mutation Machine)
 Layout.SHOP_SPOTS = {}
-for k = 1, 5 do -- (the Fuse Machine, the Trail and Sell Shops, a gap for the road to the Wild, the Food Shop, the Mutation Machine)
-	table.insert(Layout.SHOP_SPOTS, Vector3.new((k - 3.5) * Layout.SHOP_STEP, 0, Layout.SHOP_ROW))
+for _, degrees in Layout.SHOP_ANGLES do
+	local a = math.rad(degrees)
+	table.insert(Layout.SHOP_SPOTS, Layout.SQUARE_CENTER + Vector3.new(math.sin(a) * Layout.SHOP_RING, 0, -math.cos(a) * Layout.SHOP_RING))
 end
 -- Where players appear in the square, facing the stalls (north)
-Layout.SPAWN = CFrame.new(0, 0.2, -114)
+Layout.SPAWN = CFrame.new(Layout.SQUARE_CENTER.X, 0.2, Layout.SQUARE_CENTER.Z - 4)
 
 -- A frame at `at` (on the ground) turned about Y so its front (-Z) faces `target` (no lookAt: the same in
 -- every runtime)
@@ -48,10 +49,10 @@ local function around(radius: number, degrees: number): Vector3
 end
 Layout.around = around
 
--- A shop's stall: its counter's middle, facing south (the square, the gardens)
+-- A shop's stall: its counter's middle, facing the square's middle
 function Layout.shop(index: number): CFrame
 	local at = Layout.SHOP_SPOTS[index]
-	return Layout.facing(at, at + Vector3.new(0, 0, 1))
+	return Layout.facing(at, Layout.SQUARE_CENTER)
 end
 
 -- How far round (degrees from south, west negative) a garden stands: the first in the west
@@ -236,7 +237,7 @@ function Layout.roads(): ({ Road }, { Arc })
 	local roads: { Road } = {}
 	local arcs: { Arc } = {}
 	-- (from behind the stalls)
-	table.insert(roads, { a = Layout.CENTER + Vector3.new(0, 0, Layout.SHOP_ROW - Layout.SHOP_DEPTH - 9), b = Layout.wildGate(), width = w })
+	table.insert(roads, { a = Layout.SQUARE_CENTER + Vector3.new(0, 0, -Layout.SQUARE_RADIUS - 2), b = Layout.wildGate(), width = w })
 	table.insert(roads, { a = Layout.SQUARE_CENTER + Vector3.new(0, 0, Layout.SQUARE_RADIUS - 2), b = around(Layout.GARDEN_ROAD_RADIUS, 180), width = w })
 	local last = Layout.gardenAngle(IslandConfig.ISLANDS) + Layout.GARDEN_STEP * 0.3
 	table.insert(arcs, { radius = Layout.GARDEN_ROAD_RADIUS, from = 180 - last, to = 180 + last, width = w })
