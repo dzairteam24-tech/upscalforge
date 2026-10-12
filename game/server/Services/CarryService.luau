@@ -1,8 +1,7 @@
 --!strict
 -- Creatures in the hotbar, as in Steal an Egg: a hatched creature isn't set down by itself, it goes into the
 -- player's inventory (a tool each). Held, it's carried up over their head; used in their own garden it's set
--- down in the pasture. To sell one they carry it to the Sell pad in the square, or sell it from the Sell stall
--- (SellService).
+-- down in the pasture. They sell creatures at the Sell Shop (ShopService).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -104,34 +103,7 @@ local function lift(player: Player, id: string)
 end
 
 ---------------------------------------------------------------------------------------------------------------
--- Selling, at the pad
-
-local function onPad(player: Player): boolean
-	local root = rootOf(player)
-	if not root then
-		return false
-	end
-	local flat = Vector3.new(root.CFrame.Position.X - Layout.SELL_SPOT.X, 0, root.CFrame.Position.Z - Layout.SELL_SPOT.Z)
-	return flat.Magnitude <= Layout.SELL_RADIUS + 4
-end
-
-local function sell(player: Player)
-	local holding = held[player]
-	local data = DataService.get(player)
-	if not holding or not data then
-		return
-	end
-	local creature = data.creatures[holding.id]
-	if not creature or table.find(data.placed, holding.id) then
-		return
-	end
-	local price = Earn.sellPrice(creature)
-	letGo(player)
-	data.creatures[holding.id] = nil
-	data.coins += price
-	IslandService.fx("Steal", Layout.SELL_SPOT + Vector3.new(0, 3, 0), Color3.fromRGB(255, 210, 70))
-	IslandService.push(player)
-end
+-- Using a creature: in their own garden it's set down in the pasture (selling is at the Sell Shop: ShopService)
 
 local function use(player: Player, id: string)
 	local root = rootOf(player)
@@ -140,8 +112,6 @@ local function use(player: Player, id: string)
 	end
 	if Layout.gardenAt(root.CFrame.Position) == IslandService.islandOf(player) then
 		IslandService.place(player, id)
-	elseif onPad(player) then
-		sell(player)
 	end
 end
 
@@ -203,7 +173,7 @@ local function tools(player: Player, data: Data)
 		local t = tool :: Tool
 		local mutation = Mutations.byId[creature.m]
 		t.Name = title(creature)
-		t.ToolTip = ("%s🪙 %s/s · set it down in your garden, or sell it at the Sell pad"):format(if mutation and mutation.id ~= "Normal" then mutation.id .. " · " else "", Format.abbrev(Earn.rate(creature)))
+		t.ToolTip = ("%s🪙 %s/s · set it down in your garden"):format(if mutation and mutation.id ~= "Normal" then mutation.id .. " · " else "", Format.abbrev(Earn.rate(creature)))
 	end
 	for id, leftover in have do
 		local holding = held[player]
@@ -216,49 +186,10 @@ end
 
 ---------------------------------------------------------------------------------------------------------------
 
--- The Sell pad in the square
-local function sellPad()
-	local pad = Instance.new("Part")
-	pad.Name = "SellPad"
-	pad.Shape = Enum.PartType.Cylinder
-	pad.Size = Vector3.new(0.4, Layout.SELL_RADIUS * 2, Layout.SELL_RADIUS * 2)
-	pad.CFrame = CFrame.new(Layout.SELL_SPOT + Vector3.new(0, 0.35, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	pad.Color = Color3.fromRGB(255, 200, 60)
-	pad.Material = Enum.Material.SmoothPlastic
-	pad.Anchored = true
-	pad.CanCollide = false
-	local sign = Instance.new("BillboardGui")
-	sign.Size = UDim2.fromOffset(260, 90)
-	sign.StudsOffset = Vector3.new(0, 7, 0)
-	sign.AlwaysOnTop = false
-	sign.MaxDistance = 160
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1, 1)
-	label.Font = Enum.Font.FredokaOne
-	label.TextScaled = true
-	label.TextColor3 = Color3.fromRGB(255, 225, 90)
-	label.TextStrokeTransparency = 0.2
-	label.Text = "💰 SELL"
-	label.Parent = sign
-	sign.Parent = pad
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Sell what you hold"
-	prompt.ObjectText = "💰 Sell"
-	prompt.HoldDuration = 0.4
-	prompt.MaxActivationDistance = Layout.SELL_RADIUS + 4
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = pad
-	prompt.Triggered:Connect(sell)
-	local world = workspace:FindFirstChild("World")
-	pad.Parent = world or workspace
-end
-
 function CarryService.init()
 	IslandService.toolsChanged = function(player, data)
 		task.defer(tools, player, data)
 	end
-	sellPad()
 	Players.PlayerRemoving:Connect(function(player)
 		letGo(player)
 	end)

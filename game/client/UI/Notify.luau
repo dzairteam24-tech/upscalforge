@@ -1,5 +1,6 @@
 --!strict
--- Short messages at the top of the screen (the server's Notify, and the client's own).
+-- Short messages at the top of the screen (the server's Notify, and the client's own). Only the ones that stop
+-- the player (errors) or announce something rare are shown: the chatty info and success ones are dropped.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -16,7 +17,7 @@ local list: Frame? = nil
 
 function Notify.show(text: string, kind: string?)
 	local holder = list
-	if not holder then
+	if not holder or (kind ~= "error" and kind ~= "rare") then
 		return
 	end
 	Effects.sound(if kind == "error" then "Error" elseif kind == "rare" then "Rare" elseif kind == "success" then "Success" else "Click")

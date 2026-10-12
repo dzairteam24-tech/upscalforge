@@ -2,7 +2,7 @@
 -- The bag, in three tabs. Eggs: each kind the player holds as a card with the egg in 3D, to set down on
 -- the grass where they stand (as its tool in the inventory does). Creatures: a card for each, its model in 3D,
 -- colored by rarity, with its mutation, what it earns, what it sells for, and a button to put it in the garden
--- or take it back to the inventory (selling is at the Sell Shop or the Sell pad in the square). Garden: room for more eggs on the grass, creatures in the garden,
+-- or take it back to the inventory (selling is at the Sell Shop in town). Garden: room for more eggs on the grass, creatures in the garden,
 -- the storage barn and the pasture.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -170,7 +170,7 @@ function BagWindow.mount(gui: Instance)
 			toggle.AnchorPoint = Vector2.new(0, 1)
 			toggle.Position = UDim2.new(0, 8, 1, -8)
 			toggle.Size = UDim2.new(0.6, -12, 0, 34)
-			-- (what it sells for, at the Sell pad in the square: carried there from the inventory)
+			-- (what it sells for, at the Sell Shop)
 			local worth = Theme.bold(card, { Text = "💰" .. Format.abbrev(Earn.sellPrice(creature)), Size = UDim2.new(0.4, -4, 0, 34), Position = UDim2.new(1, -8, 1, -8), TextColor3 = Color3.fromRGB(255, 220, 90), MaxText = 18 })
 			worth.AnchorPoint = Vector2.new(1, 1)
 		end

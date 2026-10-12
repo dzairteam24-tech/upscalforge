@@ -31,9 +31,6 @@ for k = 1, 5 do -- (the Fuse Machine, the Trail and Sell Shops, a gap for the ro
 end
 -- Where players appear in the square, facing the stalls (north)
 Layout.SPAWN = CFrame.new(0, 0.2, -4)
--- The Sell pad: in the square's south half, toward the gardens (creatures are carried there to sell)
-Layout.SELL_SPOT = Vector3.new(0, 0, 18)
-Layout.SELL_RADIUS = 9
 
 -- A frame at `at` (on the ground) turned about Y so its front (-Z) faces `target` (no lookAt: the same in
 -- every runtime)

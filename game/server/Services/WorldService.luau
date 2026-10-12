@@ -213,7 +213,7 @@ local function buildShop(town: Instance, index: number)
 	text.Parent = surface
 	surface.Parent = board
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Open"
+	prompt.ActionText = if shop.ui == "Shop" then "Sell" else "Open"
 	prompt.ObjectText = shop.name
 	prompt.MaxActivationDistance = 12
 	prompt.RequiresLineOfSight = false

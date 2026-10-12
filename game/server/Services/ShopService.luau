@@ -1,6 +1,6 @@
 --!strict
--- The Sell stall in town: the player sells their creatures and the eggs they hold for coins (creatures can also
--- be sold at the Sell pad: CarryService). The Food Shop is here too.
+-- The Sell stall in town: the player sells their creatures and the eggs they hold for coins. The Food Shop is
+-- here too.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
