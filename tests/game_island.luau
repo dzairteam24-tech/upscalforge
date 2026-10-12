@@ -78,6 +78,7 @@ Loader.transform = function(_path, source)
 	return source
 end
 
+local tagged: { [string]: { any } } = {} -- (CollectionService's tags, as the tests set them)
 Loader.extraEnv = {
 	__ignore = function() end,
 	__activated = function(tool, fn)
@@ -95,6 +96,8 @@ Loader.extraEnv = {
 				return { GetDataStore = function() error("no DataStore in tests") end }
 			elseif name == "ProximityPromptService" then
 				return { PromptTriggered = signal() }
+			elseif name == "CollectionService" then
+				return { GetTagged = function(_self, tag) return tagged[tag] or {} end }
 			end
 			error("service not stubbed: " .. name)
 		end,
@@ -279,6 +282,26 @@ swingBat()
 task.wait(0.6)
 swingBat()
 assert(victimData.eggs["1"] == 2, "the garden is safe")
+-- A Studio test bot in front of the swinger is hit too (TestBotService knocks it down)
+local botModel = roblox.Instance.new("Model")
+local botRoot = roblox.Instance.new("Part")
+botRoot.Name = "HumanoidRootPart"
+botRoot.Parent = botModel
+tagged.TestBot = { botModel }
+root.CFrame = roblox.CFrame.new(0, 3, -300) -- (the victim out of the way)
+thiefRoot.CFrame = roblox.CFrame.new(0, 3, -95)
+botRoot.CFrame = roblox.CFrame.new(0, 3, -100)
+local botHits = {}
+StealService.botHit = function(model, _push, hard)
+	table.insert(botHits, { model = model, hard = hard })
+end
+task.wait(0.6)
+swingBat()
+assert(#botHits == 1 and botHits[1].model == botModel and botHits[1].hard, "the bot is knocked down")
+task.wait(0.6)
+swingBat()
+assert(#botHits == 1, "and not hit again while it's down")
+tagged.TestBot = nil
 
 -- Storage: only in their own garden; the barn keeps eggs and creatures out of the hotbar
 local handlers = {}

@@ -281,6 +281,39 @@ function WildService.pickUp(player: Player, part: BasePart)
 	end
 end
 
+-- The egg taken from a nest, as it's carried off (its Grab prompt for when it's dropped: off till then)
+local function carriedEgg(nest: Nest, golden: boolean, size: string, at: Vector3): Part
+	local part = Instance.new("Part")
+	part.Name = "CarriedEgg"
+	part.Shape = Enum.PartType.Ball
+	part.Size = Vector3.one * 2.6 * Hatch.size(size).scale
+	part.Color = if golden then GOLD else nest.color
+	part.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Scale = Vector3.new(1, 1.3, 1)
+	mesh.Parent = part
+	part.Position = at
+	part.Parent = workspace
+	part:AddTag("WildCarry")
+	-- Anyone can grab it where it's dropped (caught by the guardian, knocked by a bat)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Grab"
+	prompt.ObjectText = Hatch.name(WildConfig.BIOMES[nest.biome].tier, size, golden)
+	prompt.HoldDuration = 0.5
+	prompt.MaxActivationDistance = WildConfig.GRAB_RANGE
+	prompt.RequiresLineOfSight = false
+	prompt.Enabled = false
+	prompt.Parent = part
+	prompt.Triggered:Connect(function(taker)
+		WildService.pickUp(taker, part)
+	end)
+	return part
+end
+
 local function steal(player: Player, nest: Nest)
 	local root = rootOf(player)
 	local data = DataService.get(player)
@@ -295,33 +328,7 @@ local function steal(player: Player, nest: Nest)
 	setGolden(nest, false)
 	nest.respawnAt = os.clock() + WildConfig.NEST_RESPAWN
 	IslandService.fx("Steal", nest.egg.Position, if golden then GOLD else nest.color)
-	local part = Instance.new("Part")
-	part.Name = "CarriedEgg"
-	part.Shape = Enum.PartType.Ball
-	part.Size = Vector3.one * 2.6 * Hatch.size(size).scale
-	part.Color = if golden then GOLD else nest.color
-	part.Material = if golden then Enum.Material.Neon else Enum.Material.SmoothPlastic
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	local mesh = Instance.new("SpecialMesh")
-	mesh.MeshType = Enum.MeshType.Sphere
-	mesh.Scale = Vector3.new(1, 1.3, 1)
-	mesh.Parent = part
-	part.Position = root.Position
-	part.Parent = workspace
-	part:AddTag("WildCarry")
-	-- Anyone can grab it where it's dropped (caught by the guardian)
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Grab"
-	prompt.ObjectText = Hatch.name(WildConfig.BIOMES[nest.biome].tier, size, golden)
-	prompt.HoldDuration = 0.5
-	prompt.MaxActivationDistance = WildConfig.GRAB_RANGE
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = part
-	prompt.Triggered:Connect(function(taker)
-		WildService.pickUp(taker, part)
-	end)
+	local part = carriedEgg(nest, golden, size, root.Position)
 	hold(player, { nest = nest, part = part, safe = false, golden = golden, size = size })
 	local biome = WildConfig.BIOMES[nest.biome]
 	-- (the moment, big: run! and why it's harder, when it is)
@@ -335,6 +342,50 @@ local function steal(player: Player, nest: Nest)
 	end
 	wake(nest.biome, player, root.Position)
 end
+
+---------------------------------------------------------------------------------------------------------------
+-- Studio test bots (TestBotService) steal eggs too: they carry one off, and a bat hit drops it for anyone
+
+local botCarry: { [BasePart]: { nest: Nest, golden: boolean, size: string } } = {}
+
+-- A bot takes the egg from this Wild nest (its egg part): the egg it now carries, or nil when the nest is empty
+function WildService.botTake(egg: BasePart): BasePart?
+	for _, nest in nests do
+		if nest.egg == egg and nest.full then
+			local golden, size = nest.golden, nest.size
+			setFull(nest, false)
+			setGolden(nest, false)
+			nest.respawnAt = os.clock() + WildConfig.NEST_RESPAWN
+			IslandService.fx("Steal", nest.egg.Position, if golden then GOLD else nest.color)
+			local part = carriedEgg(nest, golden, size, egg.Position)
+			botCarry[part] = { nest = nest, golden = golden, size = size }
+			return part
+		end
+	end
+	return nil
+end
+
+-- A bot carrying an egg was hit: it drops there, and anyone can grab it (and has to take it home)
+function WildService.botDrop(part: BasePart, at: Vector3)
+	local carried = botCarry[part]
+	if not carried then
+		return
+	end
+	botCarry[part] = nil
+	part.Position = Vector3.new(at.X, 1.8, at.Z)
+	local prompt = part:FindFirstChildOfClass("ProximityPrompt")
+	if prompt then
+		prompt.Enabled = true
+	end
+	drops[part] = { nest = carried.nest, part = part, golden = carried.golden, size = carried.size, expires = os.clock() + WildConfig.DROP_TIME }
+end
+
+-- A bot got its egg away: it's gone
+function WildService.botKeep(part: BasePart)
+	botCarry[part] = nil
+	part:Destroy()
+end
+
 
 -- A bat knocked the egg out of a carrier's hands (StealService): it drops right there
 function WildService.knock(player: Player)
