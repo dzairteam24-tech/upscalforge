@@ -7,7 +7,6 @@ return {
 	COMBO_WINDOW = 4, -- seconds the hits must come within
 	COOLDOWN = 0.5, -- seconds between two swings
 	REACH = 9, -- how close (studs) the target must be, in front of the swinger
-	NEW_PLAYER_SAFE = 10 * 60, -- a new player can't be hit for this long after they first play
 	DROP_TIME = 60, -- seconds a knocked-out egg or creature waits on the ground before going back to its owner
 	GRAB_RANGE = 10, -- how close to grab it
 }

@@ -6,7 +6,6 @@
 -- be safe. Nobody takes it in a minute, it goes back to its owner. Nothing happens inside any garden.
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -31,8 +30,6 @@ type Drop = { owner: Player, tier: number?, golden: boolean?, creature: Creature
 local drops: { [Model]: Drop } = {}
 
 local rng = Random.new()
--- (in Studio every test player is new: no new-player safety there, or nobody could ever be hit)
-local STUDIO = RunService:IsStudio()
 local lastSwing: { [Player]: number } = {}
 local combo: { [Player]: { target: Player, hits: number, expires: number } } = {}
 
@@ -272,12 +269,7 @@ local function swing(player: Player, tool: Tool?)
 		end
 	end
 	local targetRoot = if target then rootOf(target) else nil
-	local targetData = if target then DataService.get(target) else nil
-	if not target or not targetRoot or not targetData or inGarden(targetRoot.CFrame.Position) then
-		return
-	end
-	if not STUDIO and os.time() - targetData.firstPlayed < StealConfig.NEW_PLAYER_SAFE then
-		IslandService.notify(player, ("%s is new here: leave them be"):format(target.DisplayName), "error")
+	if not target or not targetRoot or inGarden(targetRoot.CFrame.Position) then
 		return
 	end
 	IslandService.fx("Hit", targetRoot.CFrame.Position)

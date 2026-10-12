@@ -244,8 +244,6 @@ victimData.placed = {}
 victimData.stored = {}
 victimData.eggs = { ["1"] = 2 }
 victimData.golden = {}
-victimData.firstPlayed = 0
-thiefData.firstPlayed = 0
 root.CFrame = roblox.CFrame.new(0, 3, -100)
 thiefRoot.CFrame = roblox.CFrame.new(0, 3, -95) -- (looking north, toward them)
 swingBat()
@@ -254,14 +252,6 @@ task.wait(0.6)
 swingBat()
 assert(victimData.eggs["1"] == 1, "two hits knock an egg out of their bag")
 assert(workspaceInstance:FindFirstChild("Dropped"), "the egg lies on the ground")
--- (a new player can't be hit)
-victimData.firstPlayed = os.time()
-task.wait(0.6)
-swingBat()
-task.wait(0.6)
-swingBat()
-assert(victimData.eggs["1"] == 1, "a new player is left alone")
-victimData.firstPlayed = 0
 -- (nor anyone in a garden)
 root.CFrame = Layout.garden(1) * roblox.CFrame.new(0, 3, 0)
 thiefRoot.CFrame = root.CFrame * roblox.CFrame.new(0, 0, 4)
