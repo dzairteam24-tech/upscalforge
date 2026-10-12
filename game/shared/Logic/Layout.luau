@@ -11,6 +11,7 @@ local Layout = {
 	SQUARE_RADIUS = 34, -- the square where players arrive: the town square
 	SHOP_DEPTH = 8, -- a stall, from its counter back
 	SHOP_WIDTH = 15,
+	SHOP_STEP = 34, -- the distance between two stalls' middles (a good gap between them)
 	GARDEN_RADIUS = 330, -- the gardens' middles, this far from the square's
 	GARDEN_STEP = 34, -- degrees between two gardens: they fill the whole south half round the square, east to west
 	GARDEN_ROAD_RADIUS = 260, -- the arc road past the gardens' gates
@@ -27,7 +28,7 @@ local Layout = {
 Layout.SHOP_ROW = -40 -- (Z of the stalls' counters)
 Layout.SHOP_SPOTS = {}
 for k = 1, 5 do -- (the Fuse Machine, the Trail and Sell Shops, a gap for the road to the Wild, the Food Shop, the Mutation Machine)
-	table.insert(Layout.SHOP_SPOTS, Vector3.new((k - 3.5) * 26, 0, Layout.SHOP_ROW))
+	table.insert(Layout.SHOP_SPOTS, Vector3.new((k - 3.5) * Layout.SHOP_STEP, 0, Layout.SHOP_ROW))
 end
 -- Where players appear in the square, facing the stalls (north)
 Layout.SPAWN = CFrame.new(0, 0.2, -4)
