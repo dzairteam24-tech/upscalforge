@@ -23,15 +23,15 @@ local Layout = {
 	SQUARE_CENTER = Vector3.new(0, 0, -110), -- the square itself, moved up toward the gate to leave room for the gardens
 }
 
--- The shops' stalls: along the rim of the square's north half, their fronts toward its middle where the players
--- appear; the middle of the square stays empty
-Layout.SHOP_RING = 60 -- (the counters' distance from the square's middle: the stalls stand on its rim)
-Layout.SHOP_ANGLES = { -54, -18, 18, 54 } -- (degrees from north: the Fuse Machine, the Shop, the Trail Shop, the Mutation Machine)
-Layout.SHOP_SPOTS = {}
-for _, degrees in Layout.SHOP_ANGLES do
-	local a = math.rad(degrees)
-	table.insert(Layout.SHOP_SPOTS, Layout.SQUARE_CENTER + Vector3.new(math.sin(a) * Layout.SHOP_RING, 0, -math.cos(a) * Layout.SHOP_RING))
-end
+-- The shops' stalls: two along each side edge of the paved ground in front of the Wild's gate, their fronts toward
+-- the open lane between them (the way from the square to the gate); the square and the lane stay empty
+Layout.SHOP_EDGE = 100 -- (the counters' distance from the lane's middle: just inside the paving's edge)
+Layout.SHOP_SPOTS = {
+	Vector3.new(-Layout.SHOP_EDGE, 0, -205), -- the Shop
+	Vector3.new(-Layout.SHOP_EDGE, 0, -250), -- the Fuse Machine
+	Vector3.new(Layout.SHOP_EDGE, 0, -205), -- the Trail Shop
+	Vector3.new(Layout.SHOP_EDGE, 0, -250), -- the Mutation Machine
+}
 -- Where players appear in the square, facing the stalls (north)
 Layout.SPAWN = CFrame.new(Layout.SQUARE_CENTER.X, 0.2, Layout.SQUARE_CENTER.Z - 4)
 
@@ -49,10 +49,10 @@ local function around(radius: number, degrees: number): Vector3
 end
 Layout.around = around
 
--- A shop's stall: its counter's middle, facing the square's middle
+-- A shop's stall: its counter's middle, facing the lane between the two rows
 function Layout.shop(index: number): CFrame
 	local at = Layout.SHOP_SPOTS[index]
-	return Layout.facing(at, Layout.SQUARE_CENTER)
+	return Layout.facing(at, Vector3.new(0, 0, at.Z))
 end
 
 -- How far round (degrees from south, west negative) a garden stands: the first in the west

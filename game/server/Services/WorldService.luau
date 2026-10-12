@@ -84,8 +84,8 @@ end
 -- The shops, in the order of their stalls (Layout.shop), with their sign and colors
 type ShopSpot = { name: string, ui: string, color: Color3, sign: string?, emoji: string, machine: boolean? }
 local SHOPS: { ShopSpot } = {
-	{ name = "Fuse Machine", machine = true, ui = "Fuse", emoji = "⚙️", color = rgb(60, 130, 240) },
 	{ name = "Shop", sign = "SHOP", ui = "Shop", emoji = "🛒", color = rgb(92, 200, 120) },
+	{ name = "Fuse Machine", machine = true, ui = "Fuse", emoji = "⚙️", color = rgb(60, 130, 240) },
 	{ name = "Trail Shop", sign = "TRAILS", ui = "Trails", emoji = "✨", color = rgb(255, 200, 40) },
 	{ name = "Mutation Machine", machine = true, ui = "Mutate", emoji = "🧪", color = rgb(90, 230, 110) },
 }
