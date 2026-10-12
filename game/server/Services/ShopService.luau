@@ -24,8 +24,8 @@ local function sellCreature(player: Player, id: any)
 	if not data or not creature then
 		return
 	end
-	if table.find(data.placed, id) then
-		IslandService.notify(player, "Take it out of the garden first (in your Bag)", "error")
+	if table.find(data.placed, id) or data.stored[id] then
+		IslandService.notify(player, "Take it out of the garden or the barn first (in your Bag)", "error")
 		return
 	end
 	local price = Earn.sellPrice(creature)

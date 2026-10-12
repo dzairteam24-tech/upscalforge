@@ -2,7 +2,7 @@
 -- The bag, in three tabs. Eggs: each kind the player holds as a card with the egg in 3D, to set down on
 -- the grass where they stand (as its tool in the inventory does). Creatures: a card for each, its model in 3D,
 -- colored by rarity, with its mutation, what it earns, what it sells for, and a button to put it in the garden
--- or take it back to the inventory (selling is at the Sell Shop in town). Garden: room for more eggs on the grass, creatures in the garden,
+-- or take it back to the inventory, or keep it in the barn (selling is at the Sell Shop in town). Garden: room for more eggs on the grass, creatures in the garden,
 -- the storage barn and the pasture.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -78,7 +78,7 @@ function BagWindow.mount(gui: Instance)
 		end
 		-- How many eggs can hatch at once, and the button for one more, right here
 		upgradeRow(0, "🥚", ("Hatching %d / %d"):format(down, data.incubators), "Eggs on your grass at once", Earn.nextPrice(IslandConfig.INCUBATOR_PRICES, data.incubators, IslandConfig.INCUBATORS), "+1 egg", "BuyIncubator")
-		hint(1, "Stand on your grass and tap Set down (or take the egg from your hotbar and click)")
+		hint(1, "Eggs in your hotbar can be stolen outside your garden: set them down or store them at home")
 		local grid = Theme.grid(content, 2, 4, 196)
 		local kinds = 0
 		for tier = 11, 1, -1 do
@@ -96,12 +96,44 @@ function BagWindow.mount(gui: Instance)
 					Theme.bold(card, { Text = "×" .. count, Size = UDim2.fromOffset(60, 28), Position = UDim2.new(1, -66, 0, 6), TextXAlignment = Enum.TextXAlignment.Right, MaxText = 26 })
 					Theme.bold(card, { Text = (if golden then "✨ Golden " else "") .. egg.name, Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 100), MaxText = 20 })
 					Theme.text(card, { Text = "⏳ " .. Format.time(Hatch.seconds(tier)), Size = UDim2.new(1, -12, 0, 18), Position = UDim2.fromOffset(6, 124), TextColor3 = Theme.ink })
-					cardButton(card, "Set down", Theme.green, function()
+					local down = Theme.button(card, "Set down", Theme.green, function()
 						Net.event("SetEgg"):FireServer(tier, golden)
+					end)
+					down.AnchorPoint = Vector2.new(0, 1)
+					down.Position = UDim2.new(0, 8, 1, -8)
+					down.Size = UDim2.new(0.58, -10, 0, 34)
+					local keep = Theme.button(card, "📦 Store", Theme.blue, function()
+						Net.event("Store"):FireServer(if golden then "golden" else "egg", tier, false)
+					end)
+					keep.AnchorPoint = Vector2.new(1, 1)
+					keep.Position = UDim2.new(1, -8, 1, -8)
+					keep.Size = UDim2.new(0.42, -10, 0, 34)
+				end
+			end
+		end
+		-- The barn: eggs kept there are safe anywhere (what's in the hotbar can be stolen outside the garden)
+		local stored = 0
+		local barn = Theme.grid(content, 5, 4, 150)
+		for tier = 11, 1, -1 do
+			local egg = Hatch.egg(tier)
+			for _, golden in { true, false } do
+				local held = if golden then data.storedGolden else data.storedEggs
+				local count = held and held[tostring(tier)] or 0
+				if count > 0 and egg then
+					stored += 1
+					local card = Theme.card(barn, Theme.lighten(if golden then Theme.gold else egg.color, 0.45), { LayoutOrder = stored })
+					local view = Theme.eggView(card, egg.color, golden)
+					view.Size = UDim2.new(1, 0, 0, 70)
+					view.Position = UDim2.fromOffset(0, 4)
+					Theme.bold(card, { Text = "×" .. count, Size = UDim2.fromOffset(60, 26), Position = UDim2.new(1, -66, 0, 6), TextXAlignment = Enum.TextXAlignment.Right, MaxText = 24 })
+					Theme.bold(card, { Text = (if golden then "✨ " else "") .. egg.name, Size = UDim2.new(1, -12, 0, 20), Position = UDim2.fromOffset(6, 76), MaxText = 17 })
+					cardButton(card, "Take out", Theme.blue, function()
+						Net.event("Withdraw"):FireServer(if golden then "golden" else "egg", tier, false)
 					end)
 				end
 			end
 		end
+		hint(4, if stored > 0 then "📦 In your barn: safe anywhere. Take eggs out in your garden to hatch them" else "📦 Your barn is empty. Keep eggs there to stop anyone stealing them")
 		if kinds == 0 then
 			local empty = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 120), LayoutOrder = 3 })
 			Theme.text(empty, { Text = "🥚", Size = UDim2.fromOffset(70, 70), Position = UDim2.fromOffset(16, 25) })
@@ -115,7 +147,7 @@ function BagWindow.mount(gui: Instance)
 		local count = 0
 		for id, creature in data.creatures do
 			count += 1
-			table.insert(list, { id = id, creature = creature, rate = Earn.rate(creature), placed = table.find(data.placed, id) ~= nil })
+			table.insert(list, { id = id, creature = creature, rate = Earn.rate(creature), placed = table.find(data.placed, id) ~= nil, stored = data.stored[id] == true })
 		end
 		table.sort(list, function(a, b)
 			if a.placed ~= b.placed then
@@ -164,15 +196,26 @@ function BagWindow.mount(gui: Instance)
 			Theme.bold(card, { Text = species and species.id or creature.s, Size = UDim2.new(1, -12, 0, 24), Position = UDim2.fromOffset(6, 104), MaxText = 22 })
 			Theme.bold(card, { Text = rarity, Size = UDim2.new(1, -12, 0, 16), Position = UDim2.fromOffset(6, 127), TextColor3 = Theme.RARITY[rarity] or Theme.gray, Font = Theme.font, MaxText = 15 })
 			Theme.bold(card, { Text = ("🪙 %s/s"):format(Format.abbrev(entry.rate)), Size = UDim2.new(1, -12, 0, 20), Position = UDim2.fromOffset(6, 144), TextColor3 = Color3.fromRGB(255, 230, 120), MaxText = 18 })
+			if entry.stored then
+				local mark = Theme.bold(card, { Text = "📦", Size = UDim2.fromOffset(28, 28), Position = UDim2.new(1, -32, 0, 4), MaxText = 24 })
+				mark.ZIndex = 2
+			end
 			local toggle = Theme.button(card, if entry.placed then "Take" else "Place", if entry.placed then Theme.blue else Theme.green, function()
 				Net.event(if entry.placed then "TakeCreature" else "PlaceCreature"):FireServer(entry.id)
 			end)
 			toggle.AnchorPoint = Vector2.new(0, 1)
 			toggle.Position = UDim2.new(0, 8, 1, -8)
-			toggle.Size = UDim2.new(0.6, -12, 0, 34)
-			-- (what it sells for, at the Sell Shop)
-			local worth = Theme.bold(card, { Text = "💰" .. Format.abbrev(Earn.sellPrice(creature)), Size = UDim2.new(0.4, -4, 0, 34), Position = UDim2.new(1, -8, 1, -8), TextColor3 = Color3.fromRGB(255, 220, 90), MaxText = 18 })
-			worth.AnchorPoint = Vector2.new(1, 1)
+			toggle.Size = UDim2.new(if entry.placed then 1 else 0.5, if entry.placed then -16 else -10, 0, 34)
+			if not entry.placed then
+				-- (what's in the hotbar can be stolen outside the garden; in the barn it's safe anywhere)
+				local keep = Theme.button(card, if entry.stored then "↩ Out" else "📦 Store", Theme.gray, function()
+					Net.event(if entry.stored then "Withdraw" else "Store"):FireServer("creature", entry.id, false)
+				end)
+				Theme.recolor(keep, if entry.stored then Theme.blue else Theme.gray)
+				keep.AnchorPoint = Vector2.new(1, 1)
+				keep.Position = UDim2.new(1, -8, 1, -8)
+				keep.Size = UDim2.new(0.5, -10, 0, 34)
+			end
 		end
 	end
 

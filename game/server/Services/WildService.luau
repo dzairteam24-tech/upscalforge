@@ -305,6 +305,15 @@ local function steal(player: Player, nest: Nest)
 	wake(nest.biome, player, root.Position)
 end
 
+-- A bat knocked the egg out of a carrier's hands (StealService): it drops right there
+function WildService.knock(player: Player)
+	local root = rootOf(player)
+	if carrying[player] and root then
+		IslandService.notify(player, "💥 Knocked out of your hands! Grab it back!", "error")
+		drop(player, root.Position)
+	end
+end
+
 -- Every nest gets its egg back (not the ones being carried)
 local function refill()
 	local carried: { [Nest]: boolean } = {}

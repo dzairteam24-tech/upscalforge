@@ -20,6 +20,9 @@ export type Data = {
 	gems: number,
 	eggs: { [string]: number }, -- egg tier -> how many the player holds
 	golden: { [string]: number }, -- egg tier -> how many Golden Eggs (from the Wild's golden nests) they hold
+	storedEggs: { [string]: number }, -- egg tier -> how many they keep in the barn (safe: the ones above are carried, and can be stolen)
+	storedGolden: { [string]: number }, -- the same for Golden Eggs
+	stored: { [string]: boolean }, -- creature ids kept in the barn (safe, not in the hotbar); the rest of those not in the garden are carried
 	creatures: { [string]: Creature }, -- creature id -> species and mutation
 	placed: { string }, -- the creatures living on the island (they earn)
 	incubators: number, -- nests on the ground
@@ -82,6 +85,9 @@ local function template(): Data
 		gems = 0,
 		eggs = {},
 		golden = {},
+		storedEggs = {},
+		storedGolden = {},
+		stored = {},
 		creatures = {},
 		placed = {},
 		incubators = IslandConfig.INCUBATORS,

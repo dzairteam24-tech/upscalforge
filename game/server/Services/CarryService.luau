@@ -1,6 +1,7 @@
 --!strict
 -- Creatures in the hotbar, as in Steal an Egg: a hatched creature isn't set down by itself, it goes into the
--- player's inventory (a tool each). Held, it's carried up over their head; used in their own garden it's set
+-- player's inventory (a tool each) unless it's kept in the barn. Held, it's carried up over their head as a ball
+-- (Shared/Ball) in its rarity's color, and can be knocked out of their hands (StealService); used in their own garden it's set
 -- down in the pasture. They sell creatures at the Sell Shop (ShopService).
 
 local Players = game:GetService("Players")
@@ -8,11 +9,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Mutations = require(Shared.Config.Mutations)
-local SnapConfig = require(Shared.Config.Snap)
 local Earn = require(Shared.Logic.Earn)
 local Format = require(Shared.Logic.Format)
 local Layout = require(Shared.Logic.Layout)
-local PetModel = require(Shared.PetModel)
+local Ball = require(Shared.Ball)
 
 local DataService = require(script.Parent.DataService)
 local HeistService = require(script.Parent.HeistService)
@@ -37,18 +37,6 @@ local function title(creature: Creature): string
 	local mutation = if creature.m ~= "Normal" then creature.m .. " " else ""
 	local grade = if creature.g then creature.g .. " " else ""
 	return grade .. mutation .. creature.s
-end
-
-local function build(creature: Creature): PetModel.Built
-	local grade = if creature.g then SnapConfig.byId[creature.g] else nil
-	local built = PetModel.build({ s = creature.s, v = creature.m, z = if grade then grade.size else "Normal" })
-	for _, p in built.parts do
-		p.CanCollide = false
-		p.CanQuery = false
-		p.CanTouch = false
-		p.Massless = true
-	end
-	return built
 end
 
 ---------------------------------------------------------------------------------------------------------------
@@ -81,23 +69,14 @@ local function lift(player: Player, id: string)
 		end
 		return
 	end
-	local built = build(creature)
-	PetModel.place(built, root.CFrame * CFrame.new(0, HEAD_TOP + 0.15 + built.height / 2, 0))
-	for _, p in built.parts do
-		p.Anchored = false
-		if p ~= built.body then
-			local weld = Instance.new("WeldConstraint")
-			weld.Part0, weld.Part1 = built.body, p
-			weld.Parent = p
-		end
-	end
+	local model, body = Ball.build(creature.s, root.CFrame * CFrame.new(0, HEAD_TOP + 0.2 + Ball.SIZE / 2, 0), false)
 	local weld = Instance.new("WeldConstraint")
 	weld.Name = "InHands"
-	weld.Part0, weld.Part1 = root, built.body
-	weld.Parent = built.body
-	built.model.Name = "CarriedCreature"
-	built.model.Parent = player.Character
-	held[player] = { id = id, model = built.model }
+	weld.Part0, weld.Part1 = root, body
+	weld.Parent = body
+	model.Name = "CarriedCreature"
+	model.Parent = player.Character
+	held[player] = { id = id, model = model }
 	player:SetAttribute("Holding", true) -- (EggHands raises their arms to it)
 	player:SetAttribute("CarryCreature", id)
 end
@@ -139,7 +118,7 @@ local function tools(player: Player, data: Data)
 	-- In the order they came (their ids count up)
 	local ids: { string } = {}
 	for id in data.creatures do
-		if not table.find(data.placed, id) then
+		if not table.find(data.placed, id) and not data.stored[id] then
 			table.insert(ids, id)
 		end
 	end

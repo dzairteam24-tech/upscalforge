@@ -201,6 +201,13 @@ function IslandService.islandOf(player: Player): number?
 	return islandOf[player]
 end
 
+-- Whether the player stands in their own garden (the only safe place: what they carry can't be stolen there,
+-- and the barn and the incubators only work there)
+function IslandService.inOwnGarden(player: Player): boolean
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	return root ~= nil and islandOf[player] ~= nil and Layout.gardenAt(root.CFrame.Position) == islandOf[player]
+end
+
 -- Puts an egg the player holds in their hand (its tool from the inventory), as one from the Wild arrives home
 function IslandService.holdEgg(player: Player, tier: number, golden: boolean)
 	local character = player.Character
@@ -766,10 +773,15 @@ function IslandService.place(player: Player, id: any)
 	if not data or type(id) ~= "string" or not data.creatures[id] or table.find(data.placed, id) then
 		return
 	end
+	if not IslandService.inOwnGarden(player) then
+		IslandService.notify(player, "Go to your garden first", "error")
+		return
+	end
 	if #data.placed >= data.pens then
 		IslandService.notify(player, "No room in your garden: take a creature back or buy more room", "error")
 		return
 	end
+	data.stored[id] = nil -- (out of the barn, if it was there)
 	table.insert(data.placed, id)
 	IslandService.render(player)
 	IslandService.push(player)

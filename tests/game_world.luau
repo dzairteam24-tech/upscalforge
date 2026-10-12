@@ -159,6 +159,12 @@ end
 local built = PetModel.build({ s = "Cat", v = "Golden", z = "Normal" })
 assert(#built.parts > 0 and built.height > 0, "a creature is drawn")
 
+-- A carried creature is a ball in its rarity's color
+local Ball = Loader.require(Shared.Ball)
+local ballModel, ballBody = Ball.build("Cat", roblox.CFrame.new(0, 5, 0), false)
+assert(#ballModel:GetChildren() >= 3 and ballBody.Name == "Body", "a ball: a body, a belt and a button")
+assert(Ball.color("Cat") ~= Ball.color("Dog"), "its rarity's color")
+
 print("world test passed")
 
 -- The Wild: past the street's far end, its biomes one after another, their nests off the road

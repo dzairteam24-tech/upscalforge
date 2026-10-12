@@ -56,7 +56,8 @@ local player = setmetatable({ UserId = 1, DisplayName = "Tester", Name = "Tester
 		return value
 	end,
 })
-local players = { GetPlayers = function() return { player } end, PlayerAdded = signal(), PlayerRemoving = signal(), GetPlayerByUserId = function() return player end }
+local roster = { player }
+local players = { GetPlayers = function() return roster end, PlayerAdded = signal(), PlayerRemoving = signal(), GetPlayerByUserId = function() return player end }
 
 -- (Lune's instances have no events: a tool's Activated is kept here, to fire by hand)
 local activated: { { tool: any, fn: () -> () } } = {}
@@ -108,6 +109,27 @@ Loader.extraEnv = {
 	tick = os.clock,
 	typeof = function(v) return typeof(v) end,
 }
+
+-- A second player, to steal from the first with a bat
+local thiefFolder = roblox.Instance.new("Folder")
+local thiefBackpack = roblox.Instance.new("Backpack")
+thiefBackpack.Parent = thiefFolder
+local thiefCharacter = roblox.Instance.new("Model")
+local thiefRoot = roblox.Instance.new("Part")
+thiefRoot.Name = "HumanoidRootPart"
+thiefRoot.Parent = thiefCharacter
+local thief = setmetatable({ UserId = 2, DisplayName = "Thief", Name = "Thief", Character = thiefCharacter, Parent = true, ChildAdded = signal(), CharacterAdded = { Connect = signal().Connect, Wait = function() return coroutine.yield() end } }, {
+	__index = function(_self, key)
+		local value = (thiefFolder :: any)[key]
+		if type(value) == "function" then
+			return function(_, ...)
+				return value(thiefFolder, ...)
+			end
+		end
+		return value
+	end,
+})
+table.insert(roster, thief)
 
 local WorldService = Loader.require(Server.Services.WorldService)
 WorldService.build()
@@ -207,5 +229,88 @@ root.CFrame = roblox.CFrame.new(roblox.Vector3.new(0, 3, 18))
 onActivated(again)()
 assert(data.creatures[id] and not table.find(data.placed, id), "away from the garden it isn't set down, nor sold")
 assert(not workspaceInstance:FindFirstChild("SellPad", true), "no Sell pad in the square")
+
+-- Stealing: two bat hits on a player carrying eggs outside any garden knock one out onto the ground
+local StealService = Loader.require(Server.Services.StealService)
+StealService.init()
+task.wait(0.5) -- (the bat comes to the backpack a moment later)
+local bat = thiefBackpack:FindFirstChild("Bat")
+assert(bat, "the thief has a bat")
+local swingBat = assert(onActivated(bat), "the bat can be swung")
+local victimData = assert(DataService.get(player :: any), "the victim's data")
+local thiefData = assert(DataService.get(thief :: any), "the thief's data")
+victimData.creatures = {}
+victimData.placed = {}
+victimData.stored = {}
+victimData.eggs = { ["1"] = 2 }
+victimData.golden = {}
+victimData.firstPlayed = 0
+thiefData.firstPlayed = 0
+root.CFrame = roblox.CFrame.new(0, 3, -100)
+thiefRoot.CFrame = roblox.CFrame.new(0, 3, -95) -- (looking north, toward them)
+swingBat()
+assert((victimData.eggs["1"] or 0) == 2, "one hit knocks nothing out")
+task.wait(0.6)
+swingBat()
+assert(victimData.eggs["1"] == 1, "two hits knock an egg out of their bag")
+assert(workspaceInstance:FindFirstChild("Dropped"), "the egg lies on the ground")
+-- (a new player can't be hit)
+victimData.firstPlayed = os.time()
+task.wait(0.6)
+swingBat()
+task.wait(0.6)
+swingBat()
+assert(victimData.eggs["1"] == 1, "a new player is left alone")
+victimData.firstPlayed = 0
+-- (nor anyone in a garden)
+root.CFrame = Layout.garden(1) * roblox.CFrame.new(0, 3, 0)
+thiefRoot.CFrame = root.CFrame * roblox.CFrame.new(0, 0, 4)
+task.wait(0.6)
+swingBat()
+task.wait(0.6)
+swingBat()
+assert(victimData.eggs["1"] == 1, "the garden is safe")
+
+-- Storage: only in their own garden; the barn keeps eggs and creatures out of the hotbar
+local handlers = {}
+for _, name in { "Store", "Withdraw" } do
+	remote(name).OnServerEvent = { Connect = function(_self, fn) handlers[name] = fn end }
+end
+local StorageService = Loader.require(Server.Services.StorageService)
+StorageService.init()
+local mine = IslandService.islandOf(player :: any)
+root.CFrame = roblox.CFrame.new(0, 3, -100)
+victimData.eggs = { ["1"] = 2 }
+victimData.storedEggs = {}
+handlers.Store(player, "egg", 1, true)
+assert((victimData.storedEggs["1"] or 0) == 0 and victimData.eggs["1"] == 2, "nothing is stored away from the garden")
+root.CFrame = Layout.garden(mine) * roblox.CFrame.new(0, 3, 0)
+handlers.Store(player, "egg", 1, false)
+assert(victimData.eggs["1"] == 1 and victimData.storedEggs["1"] == 1, "one egg into the barn at home")
+handlers.Store(player, "egg", 1, true)
+assert(victimData.eggs["1"] == nil and victimData.storedEggs["1"] == 2, "all of them, and none carried")
+handlers.Withdraw(player, "egg", 1, false)
+assert(victimData.eggs["1"] == 1 and victimData.storedEggs["1"] == 1, "one back out")
+local keptId = assert(IslandService.addCreature(player :: any, victimData, "Cat", "Normal"), "a creature")
+IslandService.push(player :: any)
+task.wait(0.1)
+local carried = 0
+for _, t in backpack:GetChildren() do
+	if t:GetAttribute("CreatureId") == keptId then
+		carried += 1
+	end
+end
+assert(carried == 1, "a creature not in the barn is in the hotbar")
+handlers.Store(player, "creature", keptId)
+task.wait(0.1)
+carried = 0
+for _, t in backpack:GetChildren() do
+	if t:GetAttribute("CreatureId") == keptId then
+		carried += 1
+	end
+end
+assert(victimData.stored[keptId] == true and carried == 0, "a creature in the barn isn't in the hotbar")
+handlers.Withdraw(player, "creature", keptId)
+assert(victimData.stored[keptId] == nil, "and out again")
 print("island test passed")
 require("@lune/process").exit(0)

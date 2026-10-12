@@ -9,6 +9,8 @@ local EVENTS = {
 	"SellCreature", -- (creature id): at the Sell stall
 	"SellEgg", -- (tier, golden, all): one egg of the kind the player holds, or all of them
 	"PlaceCreature", -- (id)
+	"Store", -- (what: "egg", "golden" or "creature", tier or id, all?): into the barn, in their own garden
+	"Withdraw", -- (what, tier or id, all?): out of the barn, in their own garden
 	"TakeCreature", -- (id)
 	"UseIncubator", -- (slot)
 	"BuyIncubator",

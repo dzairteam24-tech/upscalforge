@@ -67,7 +67,7 @@ function ShopWindow.mount(gui: Instance)
 		-- Creatures that aren't in the garden, the best first
 		local list = {}
 		for id, creature in data.creatures do
-			if not table.find(data.placed, id) then
+			if not table.find(data.placed, id) and not data.stored[id] then
 				table.insert(list, { id = id, creature = creature, price = Earn.sellPrice(creature) })
 			end
 		end

@@ -100,6 +100,9 @@ local KINDS: { [string]: (Vector3, Color3?) -> () } = {
 	Steal = function(at)
 		Effects.sound("Steal", at)
 	end,
+	Hit = function(at)
+		Effects.sound("Hit", at)
+	end,
 	Home = function(at, color)
 		Effects.burst(at + Vector3.new(0, 3, 0), { count = 24, colors = { color or CONFETTI[2], CONFETTI[1], CONFETTI[3] }, size = 0.6, speed = 22, life = 1.2, up = -30, spread = 50 })
 		Effects.sound("Home", at)
