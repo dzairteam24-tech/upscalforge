@@ -13,6 +13,7 @@ local WildConfig = require(Shared.Config.Wild)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
 local Layout = require(Shared.Logic.Layout)
+local Nest = require(Shared.Nest)
 local Wild = require(Shared.Logic.Wild)
 
 local WorldService = {}
@@ -742,9 +743,9 @@ local function buildWild(world: Instance)
 		end
 		local egg = Hatch.egg(biome.tier)
 		for k = 1, WildConfig.NESTS do
-			local spot = Layout.wildNest(i, k)
-			part(wild, { Name = "WildNestBase", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 7, 7), CFrame = CFrame.new(spot + Vector3.new(0, 0.6, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = STRAW, Material = Enum.Material.Fabric })
-			part(wild, { Name = "WildNestRim", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.2, 7.6, 7.6), CFrame = CFrame.new(spot + Vector3.new(0, 0.9, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color = WOOD_DARK, Transparency = 0.2, CanCollide = false })
+			local spot = Layout.wildNest(i, k, WildConfig.NESTS)
+			-- (a nest in its biome's look: straw, petals, leaves, shells, stones, snow, lava, ice...)
+			Nest.build(wild, CFrame.new(spot + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, k, 0), biome.tier, 1.3)
 			local eggPart = part(wild, { Name = "WildEgg", Shape = Enum.PartType.Ball, Size = Vector3.one * 3.2, Position = spot + Vector3.new(0, 2.8, 0), Color = if egg then egg.color else GOLD, CanCollide = false })
 			local mesh = Instance.new("SpecialMesh")
 			mesh.MeshType = Enum.MeshType.Sphere

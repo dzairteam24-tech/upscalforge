@@ -178,7 +178,11 @@ for i = 1, #WildConfig.BIOMES do
 	assert(Layout.biomeAt(Layout.biome(i), #WildConfig.BIOMES) == i, "a biome is where it says")
 	assert(not Layout.pastGate(Layout.biome(i)), "in the Wild")
 	for k = 1, WildConfig.NESTS do
-		local nest = Layout.wildNest(i, k)
+		local nest = Layout.wildNest(i, k, WildConfig.NESTS)
+		assert((nest - Layout.wildGuardian(i)).Magnitude < 20, "round its guardian")
+		for other = k + 1, WildConfig.NESTS do
+			assert((Layout.wildNest(i, other, WildConfig.NESTS) - nest).Magnitude >= 7.6, "nests apart")
+		end
 		assert(Layout.biomeAt(nest, #WildConfig.BIOMES) == i, "a nest in its biome")
 		assert(math.abs(nest.X) - 4 > Layout.ROAD_WIDTH / 2 and math.abs(nest.X) + 4 < Layout.WILD_WIDTH / 2, "off the road, inside the walls")
 	end

@@ -28,6 +28,7 @@ local Night = require(Shared.Logic.Night)
 local Snap = require(Shared.Logic.Snap)
 local Weather = require(Shared.Logic.Weather)
 local PetModel = require(Shared.PetModel)
+local Nest = require(Shared.Nest)
 local Net = require(Shared.Net)
 
 local DailyService = require(script.Parent.DailyService)
@@ -307,38 +308,6 @@ end
 
 local drawnEggs: { [number]: string } = {}
 
--- A straw nest under an egg on the grass (like Steal an Egg's): a dark bed, soft hay, and a rim of twigs
-local function strawNest(pad: BasePart)
-	local base = pad.CFrame
-	local function bit(props: { [string]: any })
-		local p = Instance.new("Part")
-		p.Anchored = true
-		p.CanCollide = false
-		p.CanQuery = false
-		p.CanTouch = false
-		p.TopSurface = Enum.SurfaceType.Smooth
-		p.BottomSurface = Enum.SurfaceType.Smooth
-		for key, value in props do
-			(p :: any)[key] = value
-		end
-		p.Parent = pad
-	end
-	local flat = CFrame.Angles(0, 0, math.rad(90)) -- (a cylinder's axis up)
-	bit({ Name = "NestBed", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 5.4, 5.4), CFrame = base * CFrame.new(0, 0.2, 0) * flat, Color = Color3.fromRGB(116, 78, 44), Material = Enum.Material.Wood })
-	bit({ Name = "NestHay", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 4.2, 4.2), CFrame = base * CFrame.new(0, 0.42, 0) * flat, Color = Color3.fromRGB(236, 200, 112), Material = Enum.Material.Fabric })
-	local twigs = 10
-	for i = 1, twigs do
-		local turn = (i - 1) * 2 * math.pi / twigs
-		local lean = if i % 2 == 0 then 1 else -1
-		bit({
-			Name = "NestTwig",
-			Size = Vector3.new(2, 0.75, 0.9),
-			CFrame = base * CFrame.Angles(0, turn, 0) * CFrame.new(0, 0.75, -2.35) * CFrame.Angles(math.rad(-14), 0, math.rad(9 * lean)),
-			Color = if i % 2 == 0 then Color3.fromRGB(198, 146, 78) else Color3.fromRGB(168, 116, 60),
-			Material = Enum.Material.Wood,
-		})
-	end
-end
 local function eggsOnGround(data: Data?): string
 	if not data then
 		return ""
@@ -449,7 +418,7 @@ local function render(index: number, player: Player?, data: Data?)
 					prompt:SetAttribute("Island", index)
 					prompt:SetAttribute("Slot", slot)
 					prompt.Parent = pad
-					strawNest(pad)
+					Nest.build(pad, pad.CFrame, egg.tier) -- (in its egg's look)
 					pad.Parent = eggsFolder
 					pad:AddTag("Incubator")
 				end

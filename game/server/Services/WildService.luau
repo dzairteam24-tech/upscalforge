@@ -377,7 +377,7 @@ local function draw(guardian: Guardian)
 	local biome = WildConfig.BIOMES[guardian.biome]
 	local egg = Hatch.egg(biome.tier)
 	local species = if egg then egg.creatures[#egg.creatures] else "Bear"
-	local built = PetModel.build({ s = species, v = "Normal", z = "Big" })
+	local built = PetModel.build({ s = species, v = "Normal", z = "Huge" }) -- (big: it guards a whole ring of nests)
 	for _, p in built.parts do
 		p.Anchored = true
 		p.CanCollide = false
@@ -397,7 +397,8 @@ local function spawnGuardians()
 			continue -- (Coming Soon: nobody guards it yet)
 		end
 		for g = 1, WildConfig.GUARDIANS do
-			local home = Layout.biome(i) + Vector3.new(if WildConfig.GUARDIANS == 1 then 0 elseif g % 2 == 1 then -10 else 10, 0, 0)
+			-- (asleep in its biome's far corner, its nests round it)
+			local home = Layout.wildGuardian(i) + Vector3.new(0, 0, (g - 1) * 8)
 			local tag = Instance.new("Part")
 			tag.Name = "GuardianTag"
 			tag.Size = Vector3.one

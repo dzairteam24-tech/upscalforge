@@ -197,14 +197,21 @@ function Layout.biome(i: number): Vector3
 	return Layout.wildGate() + Vector3.new(0, 0, -(i - 0.5) * Layout.BIOME_LENGTH)
 end
 
--- A nest in a biome: two each side of the road
-function Layout.wildNest(i: number, k: number): Vector3
-	local side = if k % 2 == 1 then -1 else 1
-	local row = (k - 1) // 2
-	-- (spread over the biome: halfway out from the road, a quarter of the way in from each end)
-	local out = Layout.ROAD_WIDTH / 2 + (Layout.WILD_WIDTH / 2 - Layout.ROAD_WIDTH / 2) * 0.5
-	local along = Layout.BIOME_LENGTH * 0.25
-	return Layout.biome(i) + Vector3.new(side * out, 0, if row == 0 then along else -along)
+-- Where a biome's guardian sleeps: in its far corner, by the wall (the left one, then the right one, biome after
+-- biome), with its nests round it (like Steal an Egg)
+function Layout.wildGuardian(i: number): Vector3
+	local side = if i % 2 == 1 then -1 else 1
+	return Layout.biome(i) + Vector3.new(side * (Layout.WILD_WIDTH / 2 - 26), 0, -Layout.BIOME_LENGTH * 0.3)
+end
+
+-- A nest in a biome (k of count): in a half ring round its sleeping guardian, open toward the road
+function Layout.wildNest(i: number, k: number, count: number?): Vector3
+	local n = count or 6
+	local guardian = Layout.wildGuardian(i)
+	local toRoad = math.atan2(0, -math.sign(guardian.X - Layout.biome(i).X)) -- (the angle facing the road)
+	local spread = math.rad(150)
+	local angle = toRoad + (if n > 1 then -spread / 2 + (k - 1) * spread / (n - 1) else 0)
+	return guardian + Vector3.new(math.cos(angle), 0, math.sin(angle)) * 15
 end
 
 -- Which biome a position is in, if any
