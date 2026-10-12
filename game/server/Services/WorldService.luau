@@ -129,7 +129,6 @@ local function menuBoard(model: Instance, shop: ShopSpot, size: Vector3, at: Vec
 		t.BackgroundTransparency = 1
 		t.Text = text
 		t.TextScaled = true
-		t.TextWrapped = false -- (one line each: the lines are short)
 		t.Font = font
 		t.TextColor3 = color
 		t.TextXAlignment = align
