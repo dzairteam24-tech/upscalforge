@@ -33,6 +33,9 @@ Layout.SHOP_SPOTS = {
 	Vector3.new(138, 0, Layout.SHOP_Z), -- the Trail Shop
 	Vector3.new(176, 0, Layout.SHOP_Z), -- the Mutation Machine
 }
+-- The paved strip along the gate's line, under the shops: as wide as the row of them, in front of the gate
+Layout.GATE_PLAZA_HALF = 195 -- (half its width)
+Layout.GATE_PLAZA_DEPTH = 44 -- (from the gate's line toward the square)
 -- Where players appear in the square, facing the stalls (north)
 Layout.SPAWN = CFrame.new(Layout.SQUARE_CENTER.X, 0.2, Layout.SQUARE_CENTER.Z - 4)
 
