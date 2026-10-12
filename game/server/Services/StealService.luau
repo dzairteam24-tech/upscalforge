@@ -6,6 +6,7 @@
 -- be safe. Nobody takes it in a minute, it goes back to its owner. Nothing happens inside any garden.
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -30,6 +31,8 @@ type Drop = { owner: Player, tier: number?, golden: boolean?, creature: Creature
 local drops: { [Model]: Drop } = {}
 
 local rng = Random.new()
+-- (in Studio every test player is new: no new-player safety there, or nobody could ever be hit)
+local STUDIO = RunService:IsStudio()
 local lastSwing: { [Player]: number } = {}
 local combo: { [Player]: { target: Player, hits: number, expires: number } } = {}
 
@@ -235,12 +238,22 @@ local function knock(victim: Player)
 	IslandService.push(victim) -- (its tool goes away)
 end
 
-local function swing(player: Player)
+local function swing(player: Player, tool: Tool?)
 	local now = os.clock()
 	if now - (lastSwing[player] or 0) < StealConfig.COOLDOWN then
 		return
 	end
 	lastSwing[player] = now
+	-- (the swing everyone sees: the bat swept forward and back)
+	if tool then
+		local rest = tool.Grip
+		tool.Grip = rest * CFrame.Angles(math.rad(-80), 0, 0)
+		task.delay(0.18, function()
+			if tool.Parent then
+				tool.Grip = rest
+			end
+		end)
+	end
 	local root = rootOf(player)
 	if not root or inGarden(root.CFrame.Position) then
 		return
@@ -263,7 +276,7 @@ local function swing(player: Player)
 	if not target or not targetRoot or not targetData or inGarden(targetRoot.CFrame.Position) then
 		return
 	end
-	if os.time() - targetData.firstPlayed < StealConfig.NEW_PLAYER_SAFE then
+	if not STUDIO and os.time() - targetData.firstPlayed < StealConfig.NEW_PLAYER_SAFE then
 		IslandService.notify(player, ("%s is new here: leave them be"):format(target.DisplayName), "error")
 		return
 	end
@@ -304,7 +317,7 @@ local function giveBat(player: Player)
 	handle.Massless = true
 	handle.Parent = tool
 	tool.Activated:Connect(function()
-		swing(player)
+		swing(player, tool)
 	end)
 	tool.Parent = backpack
 end
