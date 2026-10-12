@@ -267,14 +267,14 @@ end
 function WildService.pickUp(player: Player, part: BasePart)
 	local dropped = drops[part]
 	local root = rootOf(player)
-	if not dropped or not root or busy(player) or (root.Position - part.Position).Magnitude > WildConfig.GRAB_RANGE + 4 then
+	if not dropped or not root or busy(player) or (root.CFrame.Position - part.CFrame.Position).Magnitude > WildConfig.GRAB_RANGE + 4 then
 		return
 	end
 	drops[part] = nil
-	local safe = Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= dropped.nest.biome
+	local safe = Layout.biomeAt(root.CFrame.Position, #WildConfig.BIOMES) ~= dropped.nest.biome
 	hold(player, { nest = dropped.nest, part = dropped.part, safe = safe, golden = dropped.golden, size = dropped.size })
 	if not safe then
-		wake(dropped.nest.biome, player, root.Position)
+		wake(dropped.nest.biome, player, root.CFrame.Position)
 		IslandService.notify(player, "🥚 Got it back! Run before the guardian wakes up!", "success")
 	else
 		IslandService.notify(player, "🥚 Got it! Take it through the gate", "success")
@@ -358,6 +358,7 @@ function WildService.botTake(egg: BasePart): BasePart?
 			nest.respawnAt = os.clock() + WildConfig.NEST_RESPAWN
 			IslandService.fx("Steal", nest.egg.Position, if golden then GOLD else nest.color)
 			local part = carriedEgg(nest, golden, size, egg.Position)
+			part:SetAttribute("Carrier", -1) -- (a bot's: not to be grabbed yet; the client shows Grab once it's 0)
 			botCarry[part] = { nest = nest, golden = golden, size = size }
 			return part
 		end
@@ -372,7 +373,8 @@ function WildService.botDrop(part: BasePart, at: Vector3)
 		return
 	end
 	botCarry[part] = nil
-	part.Position = Vector3.new(at.X, 1.8, at.Z)
+	Carry.release(part, Vector3.new(at.X, 1.8, at.Z))
+	part:SetAttribute("Carrier", 0) -- (dropped: anyone's to grab)
 	local prompt = part:FindFirstChildOfClass("ProximityPrompt")
 	if prompt then
 		prompt.Enabled = true

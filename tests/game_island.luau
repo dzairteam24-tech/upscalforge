@@ -303,6 +303,28 @@ swingBat()
 assert(#botHits == 1, "and not hit again while it's down")
 tagged.TestBot = nil
 
+-- A bot's egg (TestBotService): taken from a Wild nest, dropped when the bot's hit, and anyone can grab it
+local WildService = Loader.require(Server.Services.WildService)
+WildService.init()
+task.wait(0.2)
+local wildEgg
+for _, d in workspaceInstance:GetDescendants() do
+	if d.Name == "WildEgg" and d:IsA("BasePart") and d.Transparency < 1 then
+		wildEgg = d
+		break
+	end
+end
+assert(wildEgg, "a full Wild nest")
+local botEgg = assert(WildService.botTake(wildEgg), "a bot takes its egg")
+assert(botEgg:GetAttribute("Carrier") == -1 and wildEgg.Transparency == 1, "the bot carries it, the nest is empty")
+assert(WildService.botTake(wildEgg) == nil, "an empty nest has nothing to take")
+local dropAt = roblox.Vector3.new(0, 0, -120)
+WildService.botDrop(botEgg, dropAt)
+assert(botEgg:GetAttribute("Carrier") == 0, "dropped: anyone's to grab (the client shows its Grab)")
+root.CFrame = roblox.CFrame.new(0, 3, -122)
+WildService.pickUp(player :: any, botEgg)
+assert(player:GetAttribute("WildEgg") == true, "the player picked it up and carries it home")
+
 -- Storage: only in their own garden; the barn keeps eggs and creatures out of the hotbar
 local handlers = {}
 for _, name in { "Store", "Withdraw" } do
