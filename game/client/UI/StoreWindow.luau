@@ -1,13 +1,12 @@
 --!strict
--- The Robux shop (Config/Robux): time, comfort and looks only. Fast Hatch (a game pass), Hatch All Now (each
--- time), and the floating seats (looks: every seat rides the same). Buying asks the server (RobuxService), which
+-- The Robux shop (Config/Robux): time, comfort and looks only. Fast Hatch (a game pass) and Hatch All Now (each
+-- time). Buying asks the server (RobuxService), which
 -- shows Roblox's purchase prompt; until an item's id is set on the website it says coming soon.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Robux = require(Shared.Config.Robux)
-local SeatLooks = require(Shared.Config.SeatLooks)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
@@ -31,7 +30,6 @@ function StoreWindow.mount(gui: Instance)
 				child:Destroy()
 			end
 		end
-		local data = Store.data
 		header(1, "-- SAVE TIME --")
 		local grid = Theme.grid(content, 2, 2, 230)
 		for i, entry in { { item = Robux.FAST_HATCH, key = "FastHatch", pass = true }, { item = Robux.HATCH_ALL, key = "HatchAll", pass = false } } do
@@ -46,24 +44,6 @@ function StoreWindow.mount(gui: Instance)
 			buy.AnchorPoint = Vector2.new(0.5, 1)
 			buy.Position = UDim2.new(0.5, 0, 1, -10)
 			buy.Size = UDim2.new(0.8, 0, 0, 48)
-		end
-		header(3, "-- FLOATING SEATS --")
-		Theme.text(content, { Text = "Looks only: every seat rides the same", Size = UDim2.new(1, -8, 0, 22), TextColor3 = Theme.soft, LayoutOrder = 4 })
-		local seats = Theme.grid(content, 5, 4, 120)
-		local owned = if data and data.seats then data.seats else {}
-		for i, look in SeatLooks do
-			local id = Robux.SEATS[look.name] or 0
-			local card = Theme.card(seats, Theme.lighten(look.light, 0.2), { LayoutOrder = i })
-			Theme.bold(card, { Text = look.title, Size = UDim2.new(1, -12, 0, 40), Position = UDim2.fromOffset(6, 8), TextWrapped = true, MaxText = 20 })
-			local has = owned[look.name] == true
-			local buy = Theme.button(card, if has then "Owned ✓" elseif id == 0 then "Soon" else ROBUX .. " " .. Robux.SEAT_PRICE, if has or id == 0 then Theme.gray else Theme.green, function()
-				if not has then
-					Net.event("BuyRobux"):FireServer("Seat:" .. look.name)
-				end
-			end)
-			buy.AnchorPoint = Vector2.new(0.5, 1)
-			buy.Position = UDim2.new(0.5, 0, 1, -8)
-			buy.Size = UDim2.new(1, -16, 0, 40)
 		end
 	end
 

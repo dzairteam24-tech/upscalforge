@@ -26,9 +26,8 @@ local EVENTS = {
 	"ClaimIndex", -- (egg tier): a complete Index page's reward
 	"Mutate", -- (creature id): its mutation one step up at the Mutation Machine
 	"BuyTrail", -- (trail id): buy it, or wear it if it's theirs (TrailService)
-	"BuyRobux", -- ("FastHatch", "HatchAll" or "Seat:<name>"): the Robux shop (RobuxService)
+	"BuyRobux", -- ("FastHatch" or "HatchAll"): the Robux shop (RobuxService)
 	"Sprint", -- (on)
-	"Seat", -- (seat name, or "" to stand): the floating seat the player rides (SeatModel)
 	-- server -> client
 	"Data", -- (snapshot)
 	"Notify", -- (text, kind)

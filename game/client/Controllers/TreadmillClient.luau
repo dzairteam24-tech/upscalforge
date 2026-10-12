@@ -153,8 +153,7 @@ local function step()
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local mill = if root then onTreadmill(root) else nil
-	local seated = LOCAL:GetAttribute("RideSeat")
-	local should = mill ~= nil and humanoid ~= nil and steering().Magnitude < 0.1 and (seated == nil or seated == "")
+	local should = mill ~= nil and humanoid ~= nil and steering().Magnitude < 0.1
 	if should and character and humanoid and root and mill then
 		-- Facing the console, as on a real treadmill, staying where they are
 		local facing = -mill.RightVector

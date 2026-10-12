@@ -122,6 +122,7 @@ local function menuBoard(model: Instance, shop: ShopSpot, size: Vector3, at: Vec
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
 	gui.PixelsPerStud = 50
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud -- (else PixelsPerStud is ignored and the text is stretched to the part's shape)
 	local function label(text: string, x: number, y: number, w: number, h: number, font: Enum.Font, color: Color3, align: Enum.TextXAlignment)
 		local t = Instance.new("TextLabel")
 		t.Position = UDim2.fromScale(x, y)
@@ -146,13 +147,28 @@ local function menuBoard(model: Instance, shop: ShopSpot, size: Vector3, at: Vec
 		divider.Parent = gui
 		local rowH = 0.72 / count
 		for i, text in shop.menu do
-			label(text, 0.32, 0.14 + (i - 1) * rowH + rowH * 0.1, 0.65, rowH * 0.8, Enum.Font.GothamMedium, Color3.new(1, 1, 1), Enum.TextXAlignment.Left)
+			local y = 0.14 + (i - 1) * rowH
+			local dot = Instance.new("Frame")
+			dot.AnchorPoint = Vector2.new(0.5, 0.5)
+			dot.Position = UDim2.fromScale(0.33, y + rowH / 2)
+			dot.Size = UDim2.fromScale(0.5, rowH * 0.22)
+			dot.BackgroundColor3 = shop.color
+			dot.BorderSizePixel = 0
+			local square = Instance.new("UIAspectRatioConstraint")
+			square.AspectRatio = 1
+			square.DominantAxis = Enum.DominantAxis.Height
+			square.Parent = dot
+			local round = Instance.new("UICorner")
+			round.CornerRadius = UDim.new(0.5, 0)
+			round.Parent = dot
+			dot.Parent = gui
+			label(text, 0.36, y + rowH * 0.15, 0.61, rowH * 0.7, Enum.Font.GothamBold, Color3.new(1, 1, 1), Enum.TextXAlignment.Left)
 		end
 	else
 		label("MENU", 0.04, 0.05, 0.92, 0.27, Enum.Font.LuckiestGuy, rgb(255, 221, 64), Enum.TextXAlignment.Center)
 		local rowH = 0.56 / count
 		for i, text in shop.menu do
-			label(text, 0.07, 0.38 + (i - 1) * rowH + rowH * 0.1, 0.86, rowH * 0.7, Enum.Font.GothamMedium, Color3.new(1, 1, 1), Enum.TextXAlignment.Center)
+			label(text, 0.07, 0.38 + (i - 1) * rowH + rowH * 0.1, 0.86, rowH * 0.7, Enum.Font.GothamBold, Color3.new(1, 1, 1), Enum.TextXAlignment.Center)
 		end
 	end
 	gui.Parent = board
@@ -174,6 +190,7 @@ local function buildMachine(town: Instance, index: number)
 	local glyph = Instance.new("SurfaceGui")
 	glyph.Face = Enum.NormalId.Front
 	glyph.PixelsPerStud = 30
+	glyph.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud -- (else PixelsPerStud is ignored and the text is stretched to the part's shape)
 	local mark = Instance.new("TextLabel")
 	mark.Size = UDim2.fromScale(1, 1)
 	mark.BackgroundTransparency = 1
@@ -696,6 +713,7 @@ local function buildWild(world: Instance)
 				local board = Instance.new("SurfaceGui")
 				board.Face = Enum.NormalId.Back
 				board.PixelsPerStud = 8
+				board.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud -- (else PixelsPerStud is ignored and the text is stretched to the part's shape)
 				local text = Instance.new("TextLabel")
 				text.Size = UDim2.fromScale(1, 1)
 				text.BackgroundTransparency = 1

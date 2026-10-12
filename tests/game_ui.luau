@@ -197,8 +197,6 @@ Store.data = {
 	daily = { day = -1, progress = {}, claimed = false },
 	food = {},
 	fedUntil = 0,
-	seat = "",
-	seats = { Cloud = true },
 	treadmill = 1,
 	storedEggs = { ["1"] = 2 },
 	storedGolden = {},

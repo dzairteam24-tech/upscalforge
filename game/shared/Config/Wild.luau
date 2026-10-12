@@ -50,10 +50,7 @@ return {
 	WALK_MAX = 120,
 	-- Sprint (Shift, or the button on a phone): walking this many times faster while it's held
 	SPRINT = 2,
-	-- On the floating seat (MoveService) the player goes this many times their own walk, up to SEAT_MAX_SPEED.
-	-- Not while carrying an egg: the chases stay fair.
-	SEAT_SPEED = 4,
-	SEAT_MAX_SPEED = 120,
+	MAX_SPEED = 120, -- sprinting never goes faster than this (and not while carrying an egg: the chases stay fair)
 	-- The treadmill in front of each garden (like Steal an Egg's): running on it, every TREADMILL_EVERY seconds
 	-- the player gets their level's ⚡. Its console upgrades it with coins (never Robux: speed isn't sold).
 	TREADMILL = {

@@ -10,7 +10,4 @@ return {
 	FAST_HATCH = { id = 0, price = 199, icon = "⏩", name = "Fast Hatch", text = "Every egg hatches ×2 faster, forever" } :: Item,
 	-- Developer products (bought each time)
 	HATCH_ALL = { id = 0, price = 49, icon = "🐣", name = "Hatch All Now", text = "Every egg in your garden ready to hatch, right now" } :: Item,
-	-- Floating seats (looks only: every seat rides the same): developer product ids by seat name (Config/SeatLooks)
-	SEAT_PRICE = 99,
-	SEATS = {} :: { [string]: number },
 }

@@ -1,6 +1,6 @@
 --!strict
 -- Players carrying an egg (marked Holding: Shared/Carry) hold it up over their head in both hands, on every
--- screen: their shoulders and elbows set after the animations each frame (not while sitting on a seat), so the
+-- screen: their shoulders and elbows set after the animations each frame, so the
 -- arms stay up while they run. R15 and R6 bodies both.
 
 local Players = game:GetService("Players")
@@ -42,8 +42,7 @@ function EggHands.init()
 	RunService.Stepped:Connect(function()
 		for _, player in Players:GetPlayers() do
 			local character = player.Character
-			local seat = player:GetAttribute("RideSeat")
-			if character and player:GetAttribute("Holding") == true and (seat == nil or seat == "") then
+			if character and player:GetAttribute("Holding") == true then
 				for name, joint in joints(character) do
 					(joint :: any).Transform = ARMS[name]
 				end

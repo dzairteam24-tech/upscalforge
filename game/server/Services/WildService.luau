@@ -62,7 +62,7 @@ local function humanoidOf(player: Player): Humanoid?
 	return character and character:FindFirstChildOfClass("Humanoid")
 end
 
--- The player's run speed, as it should be now (slower with an egg; faster on the floating seat, or sprinting:
+-- The player's run speed, as it should be now (slower with an egg; faster sprinting:
 -- MoveService)
 local function applySpeed(player: Player)
 	local data = DataService.get(player)
@@ -70,15 +70,12 @@ local function applySpeed(player: Player)
 	if not data or not humanoid then
 		return
 	end
-	local seat = player:GetAttribute("RideSeat")
 	local free = not HeistService.isCarrier(player)
-	local riding = type(seat) == "string" and seat ~= "" and free
 	local sprinting = player:GetAttribute("Sprinting") == true and free
 	local carry = carrying[player]
 	local walk = Wild.walk(data.power)
 	humanoid.WalkSpeed = if carry and not carry.safe then Wild.carrying(data.power)
-		elseif riding then math.max(walk, math.min(WildConfig.SEAT_MAX_SPEED, walk * WildConfig.SEAT_SPEED))
-		elseif sprinting then math.max(walk, math.min(WildConfig.SEAT_MAX_SPEED, walk * WildConfig.SPRINT))
+		elseif sprinting then math.max(walk, math.min(WildConfig.MAX_SPEED, walk * WildConfig.SPRINT))
 		else walk
 	player:SetAttribute("Speed", data.power)
 end

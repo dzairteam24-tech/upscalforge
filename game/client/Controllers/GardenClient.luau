@@ -430,6 +430,8 @@ local function updateMother(cube: BasePart)
 		text.TextColor3 = Color3.fromRGB(255, 220, 120)
 		local faces = Instance.new("SurfaceGui")
 		faces.Face = Enum.NormalId.Front
+		faces.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud -- (the text keeps its shape on the cube's face)
+		faces.PixelsPerStud = 20
 		faces.Parent = cube
 		local face = Instance.new("TextLabel")
 		face.Size = UDim2.fromScale(1, 1)

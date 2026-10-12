@@ -41,8 +41,6 @@ export type Data = {
 	pasture: number, -- how far the pasture has grown (Config/Island PASTURE_GROWTH)
 	starter: boolean, -- whether they got their free first egg (IslandService)
 	daily: { day: number, progress: { [string]: number }, claimed: boolean }, -- today's tasks (Logic/Daily)
-	seat: string, -- the floating seat they ride ("": none), one of `seats`
-	seats: { [string]: boolean }, -- the floating seats they own (Config/SeatLooks)
 	index: { [string]: boolean }, -- every species they've hatched (the Index, Logic/Index)
 	indexClaimed: { [string]: boolean }, -- the Index pages (egg tiers) whose reward they took
 	trails: { [string]: boolean }, -- the trails they bought (Config/Trails)...
@@ -106,8 +104,6 @@ local function template(): Data
 		pasture = 1,
 		starter = false,
 		daily = { day = -1, progress = {}, claimed = false },
-		seat = "",
-		seats = { Cloud = true },
 		index = {},
 		indexClaimed = {},
 		trails = {},

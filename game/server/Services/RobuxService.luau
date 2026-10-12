@@ -1,6 +1,6 @@
 --!strict
 -- Robux purchases (Config/Robux): the Fast Hatch game pass (checked when a player joins, and when they buy it),
--- the Hatch All Now product and the floating seats. Players ask for one with the BuyRobux remote; Roblox shows the
+-- and the Hatch All Now product. Players ask for one with the BuyRobux remote; Roblox shows the
 -- purchase prompt and calls ProcessReceipt once it's paid.
 
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -16,14 +16,6 @@ local IslandService = require(script.Parent.IslandService)
 
 local RobuxService = {}
 
--- Seat products by id (Config/Robux SEATS)
-local seatOf: { [number]: string } = {}
-for name, id in Robux.SEATS do
-	if id ~= 0 then
-		seatOf[id] = name
-	end
-end
-
 local function checkPass(player: Player)
 	if Robux.FAST_HATCH.id == 0 then
 		return
@@ -36,7 +28,7 @@ local function checkPass(player: Player)
 	end
 end
 
--- The player asks to buy something: "FastHatch", "HatchAll" or "Seat:<name>"
+-- The player asks to buy something: "FastHatch" or "HatchAll"
 local function buy(player: Player, what: any)
 	if type(what) ~= "string" then
 		return
@@ -45,8 +37,6 @@ local function buy(player: Player, what: any)
 		MarketplaceService:PromptGamePassPurchase(player, Robux.FAST_HATCH.id)
 	elseif what == "HatchAll" and Robux.HATCH_ALL.id ~= 0 then
 		MarketplaceService:PromptProductPurchase(player, Robux.HATCH_ALL.id)
-	elseif string.sub(what, 1, 5) == "Seat:" and (Robux.SEATS[string.sub(what, 6)] or 0) ~= 0 then
-		MarketplaceService:PromptProductPurchase(player, Robux.SEATS[string.sub(what, 6)])
 	else
 		IslandService.notify(player, "Coming soon! 🛠️", "info")
 	end
@@ -63,9 +53,6 @@ local function processReceipt(receipt: { [string]: any }): Enum.ProductPurchaseD
 	if id == Robux.HATCH_ALL.id then
 		IslandService.hatchAll(player)
 		IslandService.notify(player, "🐣 Every egg in your garden is ready to hatch!", "success")
-	elseif seatOf[id] then
-		data.seats[seatOf[id]] = true
-		IslandService.notify(player, ("☁️ New seat: %s!"):format(seatOf[id]), "success")
 		IslandService.push(player)
 	else
 		return Enum.ProductPurchaseDecision.NotProcessedYet

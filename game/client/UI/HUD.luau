@@ -1,6 +1,6 @@
 --!strict
 -- The always-on screen, laid out like Steal an Egg: big Shop, Index and Bag buttons on the left; speed, coins
--- (and what the garden earns a second) and the friend boost down the bottom left; Daily, Home, Wild and Seat
+-- (and what the garden earns a second) and the friend boost down the bottom left; Daily, Home and Wild
 -- down the right; the night's countdown in the bottom right; the weather over the top; and the server's players
 -- with their coins a second and speed in the top right.
 
@@ -75,7 +75,7 @@ function HUD.mount(gui: Instance)
 	local rate = Theme.bold(stats, { Size = UDim2.fromOffset(360, 24), Position = UDim2.fromOffset(4, 94), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(255, 240, 160), Font = Theme.font, MaxText = 22 })
 	local friends = Theme.bold(stats, { Size = UDim2.fromOffset(360, 28), Position = UDim2.fromOffset(0, 120), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 28 })
 
-	-- Right: Daily, Home, Wild, Seat
+	-- Right: Daily, Home, Wild
 	local right = Instance.new("Frame")
 	right.Name = "Right"
 	right.BackgroundTransparency = 1
@@ -102,15 +102,6 @@ function HUD.mount(gui: Instance)
 		Net.event("Travel"):FireServer("wild")
 	end)
 	wild.LayoutOrder = 3
-	local seat, seatName = Theme.iconButton(right, "☁️", "Seat", Theme.pink, function()
-		local data = Store.data
-		local riding = LOCAL:GetAttribute("RideSeat")
-		local on = type(riding) == "string" and riding ~= ""
-		local owned = if data then data.seats else {}
-		local first = if owned.Cloud then "Cloud" else next(owned)
-		Net.event("Seat"):FireServer(if on then "" else (if data and data.seat ~= "" then data.seat else first) or "")
-	end)
-	seat.LayoutOrder = 4
 
 	-- Bottom right: the night's countdown
 	local night = Theme.bold(gui, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -12), Size = UDim2.fromOffset(300, 46), TextXAlignment = Enum.TextXAlignment.Right, MaxText = 40 })
@@ -176,8 +167,6 @@ function HUD.mount(gui: Instance)
 			local ready = Daily.done(today) and not today.claimed
 			badge.Visible = ready
 			dailyName.Text = if ready then "Claim!" else "Daily"
-			local riding = LOCAL:GetAttribute("RideSeat")
-			seatName.Text = if type(riding) == "string" and riding ~= "" then "Walk" else "Seat"
 			-- The night
 			local now = workspace:GetServerTimeNow()
 			local nightFrom, nightTo = Night.window(now)
