@@ -1,6 +1,6 @@
 --!strict
--- The always-on screen, laid out like Steal an Egg: square Store, Index and Bag buttons on the left; speed, coins
--- (and what the garden earns a second) and the friend boost down the bottom left; Daily on the right; the night's countdown in the bottom right; the weather over the top; and the server's players
+-- The always-on screen, laid out like Steal an Egg: wide Store, Index and Bag buttons on the left; speed, coins
+-- (and what the garden earns a second) and the friend boost down the bottom left; small square Eggs and Daily buttons on the right; the night's countdown in the bottom right; the weather over the top; and the server's players
 -- with their coins a second and speed in the top right.
 
 local Players = game:GetService("Players")
@@ -19,6 +19,7 @@ local Store = require(script.Parent.Parent.Store)
 local Theme = require(script.Parent.Theme)
 local Windows = require(script.Parent.Windows)
 local DailyWindow = require(script.Parent.DailyWindow)
+local GrowingEggs = require(script.Parent.GrowingEggs)
 
 local HUD = {}
 
@@ -26,27 +27,27 @@ local LOCAL = Players.LocalPlayer
 local BOARD_ROWS = 6
 
 function HUD.mount(gui: Instance)
-	-- Left: Store, Index, Bag, square buttons like the right ones (the same size, look and spacing)
+	-- Left: Store, Index, Bag, wide flat buttons as in Steal an Egg
 	local left = Instance.new("Frame")
 	left.Name = "Left"
 	left.BackgroundTransparency = 1
 	left.AnchorPoint = Vector2.new(0, 0.5)
 	left.Position = UDim2.new(0, 16, 0.45, 0)
-	left.Size = UDim2.fromOffset(84, 260)
+	left.Size = UDim2.fromOffset(190, 200)
 	local leftLayout = Instance.new("UIListLayout")
-	leftLayout.Padding = UDim.new(0, 12)
+	leftLayout.Padding = UDim.new(0, 10)
 	leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	leftLayout.Parent = left
 	left.Parent = gui
-	local store = Theme.iconButton(left, "🛒", "Store", Theme.green, function()
+	local store = Theme.wideButton(left, "🛒", "Store", Color3.fromRGB(70, 200, 70), function()
 		Windows.toggle("Store")
 	end)
 	store.LayoutOrder = 1
-	local index = Theme.iconButton(left, "📖", "Index", Color3.fromRGB(60, 190, 240), function()
+	local index = Theme.wideButton(left, "📖", "Index", Color3.fromRGB(40, 170, 240), function()
 		Windows.toggle("Index")
 	end)
 	index.LayoutOrder = 2
-	local bag = Theme.iconButton(left, "🎒", "Bag", Color3.fromRGB(240, 150, 50), function()
+	local bag = Theme.wideButton(left, "🎒", "Bag", Color3.fromRGB(245, 150, 40), function()
 		Windows.toggle("Bag")
 	end)
 	bag.LayoutOrder = 3
@@ -64,25 +65,29 @@ function HUD.mount(gui: Instance)
 	local rate = Theme.bold(stats, { Size = UDim2.fromOffset(360, 24), Position = UDim2.fromOffset(4, 94), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(255, 240, 160), Font = Theme.font, MaxText = 22 })
 	local friends = Theme.bold(stats, { Size = UDim2.fromOffset(360, 28), Position = UDim2.fromOffset(0, 120), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 28 })
 
-	-- Right: Daily
+	-- Right: small square icon buttons, as in Steal an Egg: the eggs hatching (opens Growing Eggs), the daily tasks
 	local right = Instance.new("Frame")
 	right.Name = "Right"
 	right.BackgroundTransparency = 1
 	right.AnchorPoint = Vector2.new(1, 0.5)
 	right.Position = UDim2.new(1, -16, 0.5, 0)
-	right.Size = UDim2.fromOffset(84, 360)
+	right.Size = UDim2.fromOffset(70, 160)
 	local rightLayout = Instance.new("UIListLayout")
-	rightLayout.Padding = UDim.new(0, 12)
+	rightLayout.Padding = UDim.new(0, 10)
 	rightLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	rightLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 	rightLayout.Parent = right
 	right.Parent = gui
-	local daily, dailyName = Theme.iconButton(right, "📋", "Daily", Theme.purple, function()
+	local eggs = Theme.squareButton(right, "🥚", Color3.fromRGB(230, 60, 60), function()
+		GrowingEggs.toggle()
+	end)
+	eggs.LayoutOrder = 1
+	local eggsBadge = Theme.badge(eggs)
+	local daily = Theme.squareButton(right, "📋", Theme.purple, function()
 		Windows.toggle("Daily")
 	end)
-	daily.LayoutOrder = 1
-	local badge = Theme.bold(daily, { Text = "!", Size = UDim2.fromOffset(26, 26), Position = UDim2.new(0, -12, 0, -10), BackgroundTransparency = 0, BackgroundColor3 = Theme.red, MaxText = 22 })
-	Theme.round(badge, 13)
-	badge.ZIndex = 3
+	daily.LayoutOrder = 2
+	local badge = Theme.badge(daily)
 
 	-- Bottom right: the night's countdown
 	local night = Theme.bold(gui, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -12), Size = UDim2.fromOffset(300, 46), TextXAlignment = Enum.TextXAlignment.Right, MaxText = 40 })
@@ -105,24 +110,25 @@ function HUD.mount(gui: Instance)
 	board.Name = "Board"
 	board.AnchorPoint = Vector2.new(1, 0)
 	board.Position = UDim2.new(1, -12, 0, 8)
-	board.Size = UDim2.fromOffset(300, 30 + BOARD_ROWS * 26)
-	board.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-	board.BackgroundTransparency = 0.3
+	board.Size = UDim2.fromOffset(280, 30 + BOARD_ROWS * 22)
+	board.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
+	board.BackgroundTransparency = 0.45
 	Theme.round(board, 10)
 	board.Parent = gui
 	local function cell(row: number, column: number, text: string): TextLabel
 		local widths = { 0, 0.5, 0.75 }
 		return Theme.text(board, {
 			Text = text,
-			Position = UDim2.new(widths[column], 8, 0, 4 + row * 26),
-			Size = UDim2.new(if column == 1 then 0.5 else 0.25, -10, 0, 22),
+			Position = UDim2.new(widths[column], 8, 0, 4 + row * 22),
+			Size = UDim2.new(if column == 1 then 0.5 else 0.25, -10, 0, 17),
+			Font = Enum.Font.GothamMedium,
 			TextColor3 = if row == 0 then Color3.fromRGB(190, 190, 205) else Color3.new(1, 1, 1),
 			TextXAlignment = if column == 1 then Enum.TextXAlignment.Left else Enum.TextXAlignment.Right,
 		})
 	end
 	cell(0, 1, "People")
-	cell(0, 2, "🪙/s")
-	cell(0, 3, "⚡")
+	cell(0, 2, "Coins/s")
+	cell(0, 3, "Speed")
 	local rows: { { TextLabel } } = {}
 	for row = 1, BOARD_ROWS do
 		rows[row] = { cell(row, 1, ""), cell(row, 2, ""), cell(row, 3, "") }
@@ -147,7 +153,10 @@ function HUD.mount(gui: Instance)
 			local today = DailyWindow.state()
 			local ready = Daily.done(today) and not today.claimed
 			badge.Visible = ready
-			dailyName.Text = if ready then "Claim!" else "Daily"
+			local hatching, readyEggs = GrowingEggs.counts()
+			eggsBadge.Visible = hatching > 0
+			eggsBadge.Text = if readyEggs > 0 then tostring(readyEggs) else tostring(hatching)
+			eggsBadge.BackgroundColor3 = if readyEggs > 0 then Theme.green else Theme.red
 			-- The night
 			local now = workspace:GetServerTimeNow()
 			local nightFrom, nightTo = Night.window(now)
@@ -180,7 +189,7 @@ function HUD.mount(gui: Instance)
 				labels[2].Text = if player then Format.abbrev(math.floor(number(player, "Rate"))) else ""
 				labels[3].Text = if player then Format.abbrev(math.floor(number(player, "Speed"))) else ""
 			end
-			board.Size = UDim2.fromOffset(300, 34 + math.min(#everyone, BOARD_ROWS) * 26)
+			board.Size = UDim2.fromOffset(280, 30 + math.min(#everyone, BOARD_ROWS) * 22)
 			task.wait(0.5)
 		end
 	end)

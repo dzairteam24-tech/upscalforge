@@ -166,6 +166,48 @@ function Theme.button(parent: Instance, text: string, color: Color3, onClick: ()
 	return button
 end
 
+-- A flat HUD button, as in Steal an Egg: one solid color, a thick dark outline, no shine
+function Theme.flatButton(parent: Instance, color: Color3, onClick: () -> ()): TextButton
+	local button = Theme.button(parent, "", color, onClick)
+	local shine = button:FindFirstChildOfClass("UIGradient")
+	if shine then
+		shine:Destroy()
+	end
+	button.BackgroundColor3 = color
+	local corner = button:FindFirstChildOfClass("UICorner") :: UICorner
+	corner.CornerRadius = UDim.new(0, 10)
+	local stroke = button:FindFirstChildOfClass("UIStroke") :: UIStroke
+	stroke.Thickness = 3.5
+	return button
+end
+
+-- A wide HUD button: an icon on the left and a word (the left column)
+function Theme.wideButton(parent: Instance, icon: string, label: string, color: Color3, onClick: () -> ()): TextButton
+	local button = Theme.flatButton(parent, color, onClick)
+	button.Size = UDim2.fromOffset(180, 56)
+	Theme.text(button, { Text = icon, Size = UDim2.new(0, 40, 1, 0), Position = UDim2.fromOffset(2, 0) })
+	Theme.bold(button, { Text = label, Size = UDim2.new(1, -52, 1, -4), Position = UDim2.fromOffset(48, 2), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 32 })
+	return button
+end
+
+-- A small square HUD button with an icon only (the right column)
+function Theme.squareButton(parent: Instance, icon: string, color: Color3, onClick: () -> ()): TextButton
+	local button = Theme.flatButton(parent, color, onClick)
+	button.Size = UDim2.fromOffset(64, 64)
+	Theme.text(button, { Text = icon, Size = UDim2.fromScale(1, 1) })
+	return button
+end
+
+-- A red badge in a button's top right corner (a count, or "!")
+function Theme.badge(button: GuiObject): TextLabel
+	local badge = Theme.bold(button, { Text = "!", AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(26, 26), Position = UDim2.new(1, -2, 0, 2), BackgroundTransparency = 0, BackgroundColor3 = Theme.red, MaxText = 20 })
+	Theme.round(badge, 13)
+	Theme.stroke(badge, Color3.new(1, 1, 1), 2)
+	badge.ZIndex = 3
+	badge.Visible = false
+	return badge
+end
+
 -- A big square HUD button: an icon with its name under it
 function Theme.iconButton(parent: Instance, icon: string, label: string, color: Color3, onClick: () -> ()): (TextButton, TextLabel)
 	local button = Theme.button(parent, "", color, onClick)

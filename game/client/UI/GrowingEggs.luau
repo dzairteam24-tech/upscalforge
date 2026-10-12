@@ -1,7 +1,7 @@
 --!strict
--- Growing Eggs, as in Steal an Egg: a panel on the right with every egg hatching in the player's garden (on the
+-- Growing Eggs, as in Steal an Egg: a panel opened by the egg button on the right (HUD), beside it, with every egg hatching in the player's garden (on the
 -- grass or in an incubator), each with its bar and the time left (nights count: Logic/Night), and Grow All (the
--- Hatch All Now product, Config/Robux). A ready egg hatches from anywhere with its HATCH! button. The > button (at its top right corner) folds it away; it hides when nothing is hatching.
+-- Hatch All Now product, Config/Robux). A ready egg hatches from anywhere with its HATCH! button.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,6 +17,24 @@ local Theme = require(script.Parent.Theme)
 
 local GrowingEggs = {}
 
+local opened = false -- (the egg button toggles it)
+local holderRef: Frame? = nil
+local count = 0 -- eggs hatching
+local readyCount = 0 -- of them, ready to hatch
+
+-- Opens or closes the panel (the HUD's egg button)
+function GrowingEggs.toggle()
+	opened = not opened
+	if holderRef then
+		holderRef.Visible = opened
+	end
+end
+
+-- How many eggs are hatching, and how many are ready (for the egg button's badge)
+function GrowingEggs.counts(): (number, number)
+	return count, readyCount
+end
+
 local ROW = 58
 local MAX_ROWS = 6
 
@@ -26,8 +44,10 @@ function GrowingEggs.mount(gui: Instance)
 	local holder = Instance.new("Frame")
 	holder.Name = "GrowingEggs"
 	holder.BackgroundTransparency = 1
-	holder.AnchorPoint = Vector2.new(0.5, 1)
-	holder.Position = UDim2.new(0.5, 0, 1, -96) -- (bottom middle, just over the hotbar: it grows upward)
+	holder.AnchorPoint = Vector2.new(1, 0.5)
+	holder.Position = UDim2.new(1, -96, 0.5, 0) -- (beside the right column of buttons, where its egg button is)
+	holder.Visible = false
+	holderRef = holder
 	holder.Size = UDim2.fromOffset(330, 70)
 	holder.Parent = gui
 
@@ -47,7 +67,7 @@ function GrowingEggs.mount(gui: Instance)
 		Net.event("BuyRobux"):FireServer("HatchAll")
 	end)
 	growAll.AnchorPoint = Vector2.new(1, 0.5)
-	growAll.Position = UDim2.new(1, -54, 0.5, 0)
+	growAll.Position = UDim2.new(1, -8, 0.5, 0)
 	growAll.Size = UDim2.new(0.3, 0, 0, 36)
 	local list = Instance.new("Frame")
 	list.BackgroundTransparency = 1
@@ -58,19 +78,6 @@ function GrowingEggs.mount(gui: Instance)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = list
 	list.Parent = panel
-
-	-- The fold button, at the panel's top right corner (it stays there, small and out of the way, when the panel is
-	-- folded away)
-	local open = true
-	local fold = Theme.button(holder, ">", Theme.red, function() end)
-	fold.AnchorPoint = Vector2.new(1, 0)
-	fold.Position = UDim2.new(1, -6, 0, 4)
-	fold.Size = UDim2.fromOffset(40, 40)
-	fold.Activated:Connect(function()
-		open = not open
-		panel.Visible = open
-		fold.Text = if open then ">" else "<"
-	end)
 
 	local rows: { [string]: Row } = {}
 	local shown = ""
@@ -90,7 +97,8 @@ function GrowingEggs.mount(gui: Instance)
 		for _, key in keys do
 			signature ..= ":" .. eggs[key].tier .. "@" .. eggs[key].start
 		end
-		holder.Visible = #keys > 0
+		count = #keys
+		holder.Visible = opened and #keys > 0
 		if signature == shown then
 			return
 		end
@@ -142,6 +150,7 @@ function GrowingEggs.mount(gui: Instance)
 	task.spawn(function()
 		while true do
 			local now = workspace:GetServerTimeNow()
+			local ready = 0
 			for _, row in rows do
 				local done = math.ceil(Night.doneAt(row.start, row.seconds))
 				local left = done - now
@@ -149,7 +158,11 @@ function GrowingEggs.mount(gui: Instance)
 				row.fill.Size = UDim2.fromScale(progress, 1)
 				row.time.Text = if left <= 0 then "READY!" else Format.time(math.ceil(left))
 				row.hatch.Visible = left <= 0
+				if left <= 0 then
+					ready += 1
+				end
 			end
+			readyCount = ready
 			task.wait(0.5)
 		end
 	end)
