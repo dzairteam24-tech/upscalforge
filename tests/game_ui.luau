@@ -205,6 +205,7 @@ Store.data = {
 	indexClaimed = {},
 	trails = { Green = true },
 	trail = "Green",
+	stats = { hatched = 0, stolen = 0 },
 }
 for _, name in { "Bag", "Shop", "Index", "Fuse", "Trails", "Mutate", "Store", "Daily" } do
 	try("open " .. name, function()
@@ -244,6 +245,10 @@ assert(bag.Visible, "the Bag button opens the Bag")
 try("reveal", function()
 	Loader.require(UI.Reveal).show("Cat", "Golden", nil)
 	Loader.require(UI.Reveal).show("Dog", "Normal", nil, "Huge")
+end)
+-- The new player's guide starts (no character yet: it waits)
+try("guide", function()
+	Loader.require(Client.Controllers.Guide).init()
 end)
 -- A big moment across the screen
 try("banner", function()
