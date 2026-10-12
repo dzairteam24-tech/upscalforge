@@ -1,7 +1,7 @@
 --!strict
 -- A new player's first steps: a glowing line from them to what to do next, until they've hatched a few
--- creatures. First their free egg (already set down in their garden, IslandService), then the Sell Shop for more
--- eggs, then their garden to set the eggs down.
+-- creatures. First their free egg (already set down in their garden, IslandService), then their garden to set
+-- the eggs they hold down.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -32,21 +32,6 @@ local function myGarden(): BasePart?
 	return if sign and sign:IsA("BasePart") then sign else nil
 end
 
-local shop: BasePart? = nil
-local function eggShop(): BasePart?
-	if shop and shop.Parent then
-		return shop
-	end
-	shop = nil
-	for _, prompt in workspace:GetDescendants() do
-		if prompt:IsA("ProximityPrompt") and prompt:GetAttribute("OpenUI") == "Shop" and prompt.Parent and prompt.Parent:IsA("BasePart") then
-			shop = prompt.Parent :: BasePart
-			break
-		end
-	end
-	return shop
-end
-
 -- Where to go next, and what to tell the player there
 local function step(): (BasePart?, string)
 	local data = Store.data
@@ -70,7 +55,7 @@ local function step(): (BasePart?, string)
 			end
 		end
 	end
-	return eggShop(), "🥚 Buy an egg here"
+	return nil, ""
 end
 
 function Guide.init()

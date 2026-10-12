@@ -15,13 +15,11 @@ local HeistConfig = R(Shared.Config.Heist)
 local Earn = R(Shared.Logic.Earn)
 local Hatch = R(Shared.Logic.Hatch)
 local Heist = R(Shared.Logic.Heist)
-local Stock = R(Shared.Logic.Stock)
 local Weather = R(Shared.Logic.Weather)
 local FoodConfig = R(Shared.Config.Food)
 local Food = R(Shared.Logic.Food)
 local WildConfig = R(Shared.Config.Wild)
 local Wild = R(Shared.Logic.Wild)
-local ShopConfig = R(Shared.Config.Shop)
 local MotherConfig = R(Shared.Config.Mother)
 local Mother = R(Shared.Logic.Mother)
 local SnapConfig = R(Shared.Config.Snap)
@@ -260,22 +258,6 @@ test("the weather: steady through a window, every kind comes, clear sky most", f
 	assert(seen.Clear > seen.Neon * 4, "clear much more often than neon")
 end)
 
-test("the shop: the first egg is always in, rare eggs seldom, and the count stays in bounds", function()
-	local legendary = 0
-	for window = 0, 2000 do
-		assert(Stock.count(window, 1) >= 1, "Meadow Egg always in stock")
-		for tier = 1, 11 do
-			local count = Stock.count(window, tier)
-			assert(count >= 0 and count <= 6, "count in bounds")
-		end
-		if Stock.count(window, 11) > 0 then
-			legendary += 1
-		end
-	end
-	assert(legendary > 20 and legendary < 250, "Legendary in stock about 5%: " .. legendary)
-	eq(Stock.restockAt(301), 600)
-end)
-
 test("Heist: its prize is luck, the same for everyone: empty sometimes, mid tiers up, Legendary the rarest", function()
 	local counts: { [number]: number } = {}
 	local empty = 0
@@ -393,9 +375,6 @@ test("the Wild: biomes get harder, the treadmill trains speed, eggs 4-8 only com
 	end
 	eq(Wild.upgradePrice(1), WildConfig.TREADMILL[2].price)
 	eq(Wild.upgradePrice(#WildConfig.TREADMILL), nil, "the top")
-	for tier = 4, 8 do
-		assert(ShopConfig.STOCK[tier] == nil, "not in the Sell Shop")
-	end
 end)
 
 print(("%d passed, %d failed"):format(passed, failed))

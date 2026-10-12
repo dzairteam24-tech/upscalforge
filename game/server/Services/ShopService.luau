@@ -1,9 +1,7 @@
 --!strict
--- The Sell stall in town: the player sells their creatures and the eggs they hold for coins, or buys eggs in
--- stock (Logic/Stock, the same in every server, restocked every few minutes). Creatures can also be sold at the
--- Sell pad (CarryService). When a restock brings a rare egg, the whole server hears about it.
+-- The Sell stall in town: the player sells their creatures and the eggs they hold for coins (creatures can also
+-- be sold at the Sell pad: CarryService). The Food Shop is here too.
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -12,49 +10,12 @@ local Earn = require(Shared.Logic.Earn)
 local Food = require(Shared.Logic.Food)
 local Format = require(Shared.Logic.Format)
 local Hatch = require(Shared.Logic.Hatch)
-local Stock = require(Shared.Logic.Stock)
 local Net = require(Shared.Net)
 
-local DailyService = require(script.Parent.DailyService)
 local DataService = require(script.Parent.DataService)
 local IslandService = require(script.Parent.IslandService)
 
 local ShopService = {}
-
-local RARE_TIER = 9 -- eggs from this tier up are announced when they come in stock
-
-local function buyEgg(player: Player, tier: any)
-	local data = DataService.get(player)
-	local egg = if type(tier) == "number" then Hatch.egg(tier) else nil
-	if not data or not egg then
-		return
-	end
-	if not Hatch.open(egg.tier) then
-		IslandService.notify(player, "Coming soon! 🛠️", "info")
-		return
-	end
-	-- The player's buys count against the current restock only
-	local window = Stock.window(os.time())
-	if data.shop.window ~= window then
-		data.shop = { window = window, bought = {} }
-	end
-	local key = tostring(egg.tier)
-	local left = Stock.count(window, egg.tier) - (data.shop.bought[key] or 0)
-	if left <= 0 then
-		IslandService.notify(player, "Out of stock! Wait for the next restock", "error")
-		return
-	end
-	if data.coins < egg.price then
-		IslandService.notify(player, ("You need 🪙 %s"):format(Format.abbrev(egg.price)), "error")
-		return
-	end
-	data.coins -= egg.price
-	data.shop.bought[key] = (data.shop.bought[key] or 0) + 1
-	data.eggs[key] = (data.eggs[key] or 0) + 1
-	DailyService.add(player, "buy")
-	IslandService.notify(player, ("Bought a %s! Put it in an incubator in your garden"):format(egg.name), "success")
-	IslandService.push(player)
-end
 
 -- Sells one of the player's creatures (not one living in the garden) at the Sell stall
 local function sellCreature(player: Player, id: any)
@@ -116,29 +77,8 @@ end
 
 function ShopService.init()
 	Net.event("BuyFood").OnServerEvent:Connect(buyFood)
-	Net.event("BuyEgg").OnServerEvent:Connect(buyEgg)
 	Net.event("SellCreature").OnServerEvent:Connect(sellCreature)
 	Net.event("SellEgg").OnServerEvent:Connect(sellEgg)
-	-- Rare eggs in the new stock, told to everyone
-	task.spawn(function()
-		local seen = Stock.window(os.time())
-		while true do
-			task.wait(1)
-			local window = Stock.window(os.time())
-			if window ~= seen then
-				seen = window
-				for tier = 11, RARE_TIER, -1 do
-					local count = if Hatch.open(tier) then Stock.count(window, tier) else 0
-					local egg = Hatch.egg(tier)
-					if count > 0 and egg then
-						for _, player in Players:GetPlayers() do
-							IslandService.notify(player, ("🌟 %s IN STOCK at the Sell Shop! (%d)"):format(string.upper(egg.name), count), "rare")
-						end
-					end
-				end
-			end
-		end
-	end)
 end
 
 return ShopService

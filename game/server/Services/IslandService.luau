@@ -737,7 +737,7 @@ local function useIncubator(player: Player, slot: any)
 			-- Put the best egg the player holds into the incubator
 			local tier, least = takeEgg(data)
 			if not tier then
-				IslandService.notify(player, "You have no eggs: buy some at the Sell Shop in town (Buy Eggs tab)", "error")
+				IslandService.notify(player, "You have no eggs: steal one from the Wild", "error")
 				return
 			end
 			data.incubating[key] = { tier = tier, start = os.time(), m = least }

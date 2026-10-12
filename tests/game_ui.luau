@@ -194,7 +194,6 @@ Store.data = {
 	pens = 3,
 	storage = 1,
 	pasture = 1,
-	shop = { window = -1, bought = {} },
 	daily = { day = -1, progress = {}, claimed = false },
 	food = {},
 	fedUntil = 0,

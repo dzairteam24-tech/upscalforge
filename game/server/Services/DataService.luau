@@ -26,7 +26,6 @@ export type Data = {
 	machines: number, -- incubators at the back of the garden (Config/Island MACHINE_PRICES)
 	incubating: { [string]: { tier: number, start: number, m: string?, x: number?, z: number? } }, -- slot -> its egg and os.time() it went in (m: a Golden Egg's least mutation; x, z: where it was set down in the garden, for one on the grass)
 	pens: number,
-	shop: { window: number, bought: { [string]: number } }, -- eggs bought in the current restock window
 	nextId: number,
 	lastSeen: number,
 	stats: { hatched: number, earned: number, stolen: number },
@@ -89,7 +88,6 @@ local function template(): Data
 		machines = 0,
 		incubating = {},
 		pens = IslandConfig.PENS,
-		shop = { window = -1, bought = {} },
 		nextId = 1,
 		lastSeen = 0,
 		stats = { hatched = 0, earned = 0, stolen = 0 },
