@@ -93,31 +93,28 @@ for index = 1, IslandConfig.ISLANDS do
 		local p = frame:PointToObjectSpace(point) - area.center
 		return math.abs(p.X) <= area.size.X / 2 - 1 and math.abs(p.Z) <= area.size.Z / 2 - 1
 	end
-	-- A new player's first egg goes down on good grass
-	assert(Layout.eggSpot(Layout.START_SPOT, 1), "the first egg's spot is on the grass")
+	-- Front yard (incubators left of the path, barn and trough right), then the hatching field, then the pen
+	local field, pasture = Layout.FIELD, Layout.PASTURE
+	assert(Layout.eggSpot(Layout.START_SPOT, 1), "the first egg's spot is in the hatching field")
 	assert(not Layout.eggSpot(Vector3.new(0, 0, Layout.GARDEN_SIZE), 1), "not outside the garden")
-	local hatchery, pasture = Layout.HATCHERY, Layout.PASTURE
-	assert(hatchery.center.Z + hatchery.size.Z / 2 <= pasture.center.Z - pasture.size.Z / 2, "the hatchery before the pasture")
-	assert(pasture.size.X * pasture.size.Z >= 1900, "a roomy pasture")
-	assert(pasture.center.Z + pasture.size.Z / 2 >= Layout.GARDEN_SIZE / 2 - 3, "the pasture reaches the back fence")
+	assert(not Layout.eggSpot(pasture.center, 1), "no eggs in the pen")
+	assert(not Layout.eggSpot(Layout.BARN, 1), "no eggs in the yard")
+	assert(field.center.Z + field.size.Z / 2 <= pasture.center.Z - pasture.size.Z / 2, "the field before the pen")
+	assert(pasture.size.X * pasture.size.Z >= 1500, "a roomy pen")
+	assert(pasture.center.Z + pasture.size.Z / 2 >= Layout.GARDEN_SIZE / 2 - 3, "the pen reaches the back fence")
 	for slot = 1, IslandConfig.PENS + #IslandConfig.PEN_PRICES do
-		assert(inside(Layout.pen(index, slot), Layout.PASTURE), ("creature %d in the pasture"):format(slot))
+		assert(inside(Layout.pen(index, slot), Layout.PASTURE), ("creature %d in the pen"):format(slot))
 		assert(not Layout.blocked(frame:PointToObjectSpace(Layout.pen(index, slot))), "not in the trough or the barn")
 	end
+	local yardEnd = field.center.Z - field.size.Z / 2
 	for k = 1, #IslandConfig.MACHINE_PRICES do
-		local spot = Layout.incubator(index, IslandConfig.MACHINE_SLOT + k)
-		assert(inside(spot, Layout.PASTURE), ("incubator %d at the back, in the pasture"):format(k))
-		local local_ = frame:PointToObjectSpace(spot)
-		assert((local_ - Layout.BARN).Magnitude > 9, "clear of the barn")
-		-- (and at every level, at the back edge of the pasture grown that far)
-		for level = 1, #IslandConfig.PASTURE_GROWTH do
-			local center, size = Layout.pastureArea(level)
-			local grown = frame:PointToObjectSpace(Layout.incubator(index, IslandConfig.MACHINE_SLOT + k, level))
-			assert(math.abs(center.Z + size.Z / 2 - grown.Z) < 12, ("incubator %d at the back at level %d"):format(k, level))
-		end
+		local spot = frame:PointToObjectSpace(Layout.incubator(index, IslandConfig.MACHINE_SLOT + k))
+		assert(spot.X + 3.5 < -Layout.PATH_WIDTH / 2 and spot.Z + 3.5 < yardEnd and spot.Z - 3.5 > -Layout.GARDEN_SIZE / 2, ("incubator %d in the yard, left of the path"):format(k))
 	end
-	assert(inside(frame:PointToWorldSpace(Layout.TROUGH), Layout.PASTURE) and inside(frame:PointToWorldSpace(Layout.BARN), Layout.PASTURE), "the trough and the barn in the pasture")
-	assert(math.abs(Layout.TROUGH.X) - 3 >= Layout.PATH_WIDTH / 2, "the trough off the path")
+	for _, spot in { Layout.TROUGH, Layout.BARN } do
+		assert(spot.X - 3 > Layout.PATH_WIDTH / 2 and spot.Z < yardEnd, "the trough and the barn in the yard, right of the path")
+	end
+	assert((Layout.TROUGH - Layout.BARN).Magnitude > 9, "the trough clear of the barn")
 	local center = Layout.garden(index).Position
 	local gate = Layout.gate(index).Position
 	assert(center.Z > Layout.CENTER.Z, "south of the square")

@@ -741,7 +741,12 @@ local function useIncubator(player: Player, slot: any)
 			data.incubating[key] = nil
 			DailyService.add(player, "hatch")
 			Net.event("Hatched"):FireClient(player, id, species, mutation)
-			IslandService.notify(player, ("🐾 Your %s is in your inventory: set it down in your garden"):format(species), "info")
+			-- Straight into the pen if there is room (the hatching field stays clear), else into the inventory
+			if #data.placed < data.pens then
+				table.insert(data.placed, id)
+			else
+				IslandService.notify(player, ("🐾 The pen is full: your %s is in your inventory"):format(species), "info")
+			end
 			local index = islandOf[player]
 			if index then
 				local at = if egg.x and egg.z then Layout.garden(index):PointToWorldSpace(Vector3.new(egg.x, 0, egg.z)) else Layout.incubator(index, slot, data.pasture)

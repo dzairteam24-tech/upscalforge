@@ -398,24 +398,24 @@ local function buildGarden(world: Instance, index: number)
 	gate:SetAttribute("Island", index)
 	gate:AddTag("Gate")
 
-	-- The path from the gate over the hatchery into the pasture
-	local hatchery, pasture = Layout.HATCHERY, Layout.PASTURE
-	local pathEnd = pasture.center.Z - pasture.size.Z / 2 + 2
+	-- The path from the gate across the yard to the hatching field
+	local field, pasture = Layout.FIELD, Layout.PASTURE
+	local pathEnd = field.center.Z - field.size.Z / 2 + 2
 	local pathLength = pathEnd + half
 	part(model, { Name = "Path", Size = Vector3.new(Layout.PATH_WIDTH, 0.3, pathLength), CFrame = at(0, 0.85, -half + pathLength / 2), Color = PAVING, Material = Enum.Material.Pavement, CanCollide = false })
 
-	-- The eggs: the player sets them down anywhere on their garden's grass, like in Steal an Egg (IslandService
-	-- makes an invisible pad for each: GardenClient draws the egg and its timer there)
-	local hc = at(hatchery.center.X, 0, hatchery.center.Z)
-	local hatchSign = part(model, { Name = "HatcherySign", Size = Vector3.one, CFrame = hc * CFrame.new(0, 7, hatchery.size.Z / 2), Transparency = 1, CanCollide = false, CanQuery = false })
-	label(hatchSign, "🥚 Set your eggs down anywhere", 14, 2, Vector3.zero)
+	-- The hatching field: the player sets eggs down only here (IslandService makes an invisible pad for each:
+	-- GardenClient draws the egg and its timer there); no creature walks in it, so it stays clear
+	part(model, { Name = "Field", Size = field.size + Vector3.new(0, 0.3, 0), CFrame = at(field.center.X, 0.45, field.center.Z), Color = rgb(132, 204, 104), Material = Enum.Material.Grass, CanCollide = false })
+	local hatchSign = part(model, { Name = "HatcherySign", Size = Vector3.one, CFrame = at(0, 5, field.center.Z - field.size.Z / 2 + 1), Transparency = 1, CanCollide = false, CanQuery = false })
+	label(hatchSign, "🥚 Hatching field: set your eggs down here", 16, 2, Vector3.zero)
 	local nest = Layout.NEST_SIZE
 	-- (the eggs set down on the grass: IslandService puts each one's pad in here)
 	local eggs = Instance.new("Folder")
 	eggs.Name = "Eggs"
 	eggs.Parent = model
 
-	-- The pasture: a meadow behind a low hedge (open where the path comes in), where the creatures roam
+	-- The pen: a meadow at the back, behind a wooden fence, where the creatures live and roam
 	part(model, { Name = "Pasture", Size = pasture.size + Vector3.new(0, 0.3, 0), CFrame = at(pasture.center.X, 0.45, pasture.center.Z), Color = rgb(108, 186, 92), Material = Enum.Material.Grass, CanCollide = false })
 	local function hedge(cf: CFrame, length: number, parent: Instance?)
 		part(parent or model, { Name = "Hedge", Size = Vector3.new(length, 1.6, 1.2), CFrame = cf * CFrame.new(0, 0.8, 0), Color = rgb(80, 150, 70), Material = Enum.Material.Grass, CanCollide = false })
@@ -463,11 +463,22 @@ local function buildGarden(world: Instance, index: number)
 			end
 		end
 	end
+	local fx, fz, fhx, fhz = field.center.X, field.center.Z, field.size.X / 2, field.size.Z / 2
 	for _, s in { -1, 1 } do
+		-- The pen's sides (a hedge) and its front: a wooden fence with an opening in the middle
 		hedge(at(px + s * hx, 0, pz) * CFrame.Angles(0, math.rad(90), 0), pasture.size.Z)
-		-- (the front, toward the hatchery, open where the path comes in)
 		local piece = hx - Layout.PATH_WIDTH / 2 - 1
-		hedge(at(px + s * (hx - piece / 2), 0, pz - hz), piece)
+		local penFront = at(px + s * (hx - piece / 2), 0, pz - hz)
+		for _, y in { 1.2, 2.6 } do
+			part(model, { Name = "PenRail", Size = Vector3.new(piece, 0.35, 0.3), CFrame = penFront * CFrame.new(0, y, 0), Color = WOOD, CanCollide = false })
+		end
+		for i = 0, 3 do
+			part(model, { Name = "PenPost", Size = Vector3.new(0.9, 3.6, 0.9), CFrame = penFront * CFrame.new(-piece / 2 + i * piece / 3, 1.7, 0), Color = rgb(250, 240, 222), CanCollide = false })
+		end
+		-- The hatching field's sides and its front (a hedge, open where the path comes in)
+		hedge(at(fx + s * fhx, 0, fz) * CFrame.Angles(0, math.rad(90), 0), field.size.Z)
+		local front = fhx - Layout.PATH_WIDTH / 2 - 1
+		hedge(at(fx + s * (fhx - front / 2), 0, fz - fhz), front)
 	end
 	-- The trough, where the owner feeds the creatures
 	local trough = at(Layout.TROUGH.X, 0, Layout.TROUGH.Z)
@@ -513,13 +524,13 @@ local function buildGarden(world: Instance, index: number)
 	console:AddTag("TreadmillConsole")
 	console:SetAttribute("Island", index)
 
-	-- The back of the pasture (it moves back as the pasture grows: IslandService)
+	-- The yard's machines and barn (a model of their own, kept where it is)
 	local back = Instance.new("Model")
 	back.Name = "Back"
 	back:SetAttribute("Shift", 0)
 	back.Parent = model
 
-	-- The incubators along the back of the pasture: machines (bought one by one) where an egg hatches twice as
+	-- The incubators in the yard, left of the path: machines (bought one by one) where an egg hatches twice as
 	-- fast as in a nest: a metal base, a glowing ring and a glass dome
 	for k, spot in Layout.MACHINES do
 		local slot = IslandConfig.MACHINE_SLOT + k
@@ -550,8 +561,8 @@ local function buildGarden(world: Instance, index: number)
 		prompt.Parent = pad
 	end
 
-	-- The storage barn in the pasture's back corner: where the creatures not in the pasture are kept
-	local barn = at(Layout.BARN.X, 0, Layout.BARN.Z) * CFrame.Angles(0, math.rad(45), 0) -- (its door toward the pasture)
+	-- The storage barn in the yard's right corner, by the trough
+	local barn = at(Layout.BARN.X, 0, Layout.BARN.Z) * CFrame.Angles(0, math.rad(90), 0) -- (its door toward the path)
 	local shed = part(back, { Name = "Barn", Size = Vector3.new(9, 6, 7), CFrame = barn * CFrame.new(0, 3.4, 0), Color = rgb(206, 92, 72) })
 	part(back, { Name = "BarnRoof", Size = Vector3.new(10.4, 1.6, 8.4), CFrame = barn * CFrame.new(0, 7.2, 0), Color = rgb(250, 238, 214) })
 	part(back, { Name = "BarnDoor", Size = Vector3.new(3.4, 4.4, 0.3), CFrame = barn * CFrame.new(0, 2.6, -3.55), Color = rgb(250, 238, 214) })
@@ -566,7 +577,7 @@ local function buildGarden(world: Instance, index: number)
 	open.Parent = shed
 
 	local pastureSign = part(model, { Name = "PastureSign", Size = Vector3.one, CFrame = at(px, 5, pz - hz + 1), Transparency = 1, CanCollide = false, CanQuery = false })
-	label(pastureSign, "🌷 Pasture", 10, 2, Vector3.zero)
+	label(pastureSign, "🐾 Pen: your creatures live here", 14, 2, Vector3.zero)
 
 	-- The owner's name over the gate
 	local board = part(model, { Name = "OwnerSign", Size = Vector3.one, CFrame = Layout.gate(index) * CFrame.new(0, Layout.FENCE_HEIGHT + 2, 0), Transparency = 1, CanCollide = false, CanQuery = false })

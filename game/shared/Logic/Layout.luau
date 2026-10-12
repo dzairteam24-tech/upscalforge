@@ -76,78 +76,71 @@ function Layout.gate(index: number): CFrame
 	return Layout.garden(index) * CFrame.new(0, 0, -Layout.GARDEN_SIZE / 2)
 end
 
--- Inside a garden (its frame's space, front -Z toward the gate): the gate opens onto the hatchery, a wooden
--- deck across the front with the nests either side of a short path, so the owner guards them from the gate. The
--- path leads on into the pasture, which fills the rest of the garden, back to the fence, round a pond.
+-- Inside a garden (its frame's space, front -Z toward the gate), from the gate back:
+--   the yard: the incubators (machines) left of the path, the storage barn and the trough right of it;
+--   the hatching field behind a low hedge: eggs are set down only here, and it stays clear (nothing walks in it);
+--   the pen at the back, behind its own fence: every creature in the garden lives there. It grows back with
+--   the pasture's level (PASTURE_GROWTH).
 local HALF = Layout.GARDEN_SIZE / 2
-local PASTURE_FRONT, PASTURE_BACK = -HALF + 25, HALF - 2
-Layout.HATCHERY = { center = Vector3.new(0, 0, -HALF + 11), size = Vector3.new(66, 0, 20) }
+local FIELD_FRONT, FIELD_BACK = -HALF + 25, 13 -- the hatching field
+local PEN_FRONT, PEN_BACK = FIELD_BACK + 3, HALF - 2 -- the creatures' pen
+Layout.FIELD = { center = Vector3.new(0, 0, (FIELD_FRONT + FIELD_BACK) / 2), size = Vector3.new(Layout.GARDEN_SIZE - 8, 0, FIELD_BACK - FIELD_FRONT) }
+-- (the pen: called the pasture in the rest of the game, it's where the creatures roam)
 Layout.PASTURE = {
-	center = Vector3.new(0, 0, (PASTURE_FRONT + PASTURE_BACK) / 2),
-	size = Vector3.new(Layout.GARDEN_SIZE - 8, 0, PASTURE_BACK - PASTURE_FRONT),
+	center = Vector3.new(0, 0, (PEN_FRONT + PEN_BACK) / 2),
+	size = Vector3.new(Layout.GARDEN_SIZE - 8, 0, PEN_BACK - PEN_FRONT),
 }
 Layout.NEST_SIZE = 6 -- a nest's width (an egg in it is drawn to fit, whatever its tier)
 Layout.PATH_WIDTH = 6
-Layout.TROUGH = Vector3.new(-12, 0, PASTURE_FRONT + 5) -- in the pasture, beside where the path comes in
+local YARD_Z = -HALF + 11 -- (the row the yard's things stand in)
+Layout.TROUGH = Vector3.new(16, 0, YARD_Z) -- in the yard, right of the path
 -- The treadmill: outside, in front of the garden beside its gate, along the fence (it runs along X), where the
 -- road past the gardens sees its owner training
 Layout.TREADMILL = Vector3.new(Layout.GATE_WIDTH / 2 + 8, 0, -HALF - 4.5)
-Layout.BARN = Vector3.new(HALF - 11.5, 0, HALF - 8.5) -- the storage barn, in the pasture's back corner
--- The incubators (machines), in a row along the back of the pasture, west of the barn
+Layout.BARN = Vector3.new(33, 0, YARD_Z) -- the storage barn, in the yard's right corner
+-- The incubators (machines), in a row left of the path, from the path outward
 Layout.MACHINES = {}
 for k = 1, #IslandConfig.MACHINE_PRICES do
-	table.insert(Layout.MACHINES, Vector3.new(-HALF + 12 + (k - 1) * 11, 0, HALF - 9))
+	table.insert(Layout.MACHINES, Vector3.new(-12 - (k - 1) * 9.5, 0, YARD_Z))
 end
 
--- The barn and the incubators stand at the back of the pasture: as it grows back (pastureGrowth), they move back
--- with it, always at the back edge. These spots (Layout.BARN, Layout.MACHINES) are at the first level.
-function Layout.backShift(level: number?): Vector3
-	return Vector3.new(0, 0, Layout.pastureGrowth(level or 1))
+-- Nothing moves back with the pen any more (the yard stays by the gate): kept for callers, always zero
+function Layout.backShift(_level: number?): Vector3
+	return Vector3.zero
 end
 
--- What the creatures walk round (a spot in the garden's space and how far from it to keep; `back`: it moves
--- back with the pasture)
-Layout.OBSTACLES = {
-	{ center = Layout.TROUGH, radius = 4, back = false },
-	{ center = Layout.BARN, radius = 7, back = true },
-}
-for _, spot in Layout.MACHINES do
-	table.insert(Layout.OBSTACLES, { center = spot, radius = 5, back = true })
-end
+-- What the creatures walk round in the pen (nothing stands in it now)
+Layout.OBSTACLES = {} :: { { center: Vector3, radius: number, back: boolean } }
 function Layout.blocked(inside: Vector3, level: number?): boolean
-	local shift = Layout.backShift(level)
 	for _, obstacle in Layout.OBSTACLES do
-		local center = if obstacle.back then obstacle.center + shift else obstacle.center
-		if Vector3.new(inside.X - center.X, 0, inside.Z - center.Z).Magnitude < obstacle.radius then
+		if Vector3.new(inside.X - obstacle.center.X, 0, inside.Z - obstacle.center.Z).Magnitude < obstacle.radius then
 			return true
 		end
 	end
 	return false
 end
 
--- A nest's spot (an incubator): eight on each side of the path, in two rows of four; the first ones (the safe
--- one first) beside the path, then outward
+-- A nest's spot (an egg's default place, by slot): in the hatching field, eight on each side of the path, in two
+-- rows of four; the first ones beside the path, then outward
 local NESTS: { Vector3 } = {}
 for column = 0, 3 do
-	for _, z in { -HALF + 15.5, -HALF + 6.5 } do
+	for _, z in { FIELD_FRONT + 6, FIELD_FRONT + 15 } do
 		for _, side in { -1, 1 } do
 			table.insert(NESTS, Vector3.new(side * (7.5 + column * 7), 0, z))
 		end
 	end
 end
--- Where a new player's free first egg is set down (in front, beside the path)
+-- Where a new player's free first egg is set down (at the front of the field, beside the path)
 Layout.START_SPOT = NESTS[1]
 
--- Whether an egg can be set down at this spot in a garden (its own space): on its grass, the pasture grown to
--- `level`, clear of the trough, the barn and the incubators
-function Layout.eggSpot(inside: Vector3, level: number): boolean
-	local back = HALF + Layout.pastureGrowth(level) - 3
-	return math.abs(inside.X) <= HALF - 3 and inside.Z >= -HALF + 3 and inside.Z <= back and not Layout.blocked(inside, level)
+-- Whether an egg can be set down at this spot in a garden (its own space): only in the hatching field
+function Layout.eggSpot(inside: Vector3, _level: number): boolean
+	return math.abs(inside.X) <= Layout.FIELD.size.X / 2 - 2 and inside.Z >= FIELD_FRONT + 2 and inside.Z <= FIELD_BACK - 2
 end
 
 function Layout.incubator(index: number, slot: number, level: number?): Vector3
 	if slot > IslandConfig.MACHINE_SLOT then
-		return Layout.garden(index):PointToWorldSpace(Layout.MACHINES[slot - IslandConfig.MACHINE_SLOT] + Layout.backShift(level))
+		return Layout.garden(index):PointToWorldSpace(Layout.MACHINES[slot - IslandConfig.MACHINE_SLOT])
 	end
 	return Layout.garden(index):PointToWorldSpace(NESTS[slot])
 end
