@@ -127,18 +127,6 @@ function HUD.mount(gui: Instance)
 	local stroke = Theme.stroke(banner, Theme.gold, 3)
 	local weatherText = Theme.bold(banner, { Size = UDim2.new(1, -20, 1, -10), Position = UDim2.fromOffset(10, 5), Font = Theme.font, MaxText = 22 })
 	banner.Parent = gui
-	-- A Peaceful private server says so (no bats or traps there: GearService)
-	local peaceful = Instance.new("Frame")
-	peaceful.Name = "Peaceful"
-	peaceful.AnchorPoint = Vector2.new(0.5, 0)
-	peaceful.Position = UDim2.new(0.5, 0, 0, 52)
-	peaceful.Size = UDim2.fromOffset(300, 30)
-	Theme.gradient(peaceful, Theme.green, 0.2, 0.15)
-	peaceful.Visible = false
-	Theme.round(peaceful, 15)
-	Theme.stroke(peaceful, Theme.outline, 2)
-	Theme.bold(peaceful, { Text = "🕊️ Peaceful server: no bats or traps", Size = UDim2.new(1, -12, 1, -8), Position = UDim2.fromOffset(6, 4), Font = Theme.font, MaxText = 20 })
-	peaceful.Parent = gui
 
 	-- Top right: the server's players, best earners first
 	local board = Instance.new("Frame")
@@ -175,7 +163,6 @@ function HUD.mount(gui: Instance)
 
 	task.spawn(function()
 		while true do
-			peaceful.Visible = workspace:GetAttribute("Peaceful") == true
 			local playerSpeed = number(LOCAL, "Speed")
 			speed.Text = "⚡ " .. Format.abbrev(math.floor(playerSpeed))
 			coins.Text = "🪙 " .. Format.abbrev(Store.coins())

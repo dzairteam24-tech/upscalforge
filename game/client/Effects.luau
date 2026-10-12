@@ -1,6 +1,6 @@
 --!strict
 -- Sounds (Config/Sounds) and bursts of particles: the UI's clicks and messages, and what happens in the world
--- (the server's Fx and Bump events): an egg hatching, set down, stolen, brought home; a bat hit; a trap.
+-- (the server's Fx event): an egg hatching, set down, stolen, brought home.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
@@ -105,12 +105,6 @@ local KINDS: { [string]: (Vector3, Color3?) -> () } = {
 		Effects.sound("Home", at)
 		task.delay(0.15, Effects.sound, "Chime", at)
 	end,
-	Hit = function(at)
-		Effects.sound("Hit", at)
-	end,
-	Trap = function(at)
-		Effects.sound("Trap", at)
-	end,
 }
 
 function Effects.init()
@@ -118,12 +112,6 @@ function Effects.init()
 		local play = KINDS[kind]
 		if play and typeof(at) == "Vector3" and near(at) then
 			play(at, if typeof(color) == "Color3" then color else nil)
-		end
-	end)
-	Net.event("Bump").OnClientEvent:Connect(function(at: Vector3, kind: string)
-		local play = KINDS[kind]
-		if play and near(at) then
-			play(at)
 		end
 	end)
 end

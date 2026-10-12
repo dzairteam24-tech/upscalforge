@@ -2,9 +2,8 @@
 -- The Wild (Config/Wild, Logic/Wild, built by WorldService): the guardians sleep by their nests. A player steals
 -- an egg; a moment later that biome's guardian wakes and comes after them, inside its biome only (out of it
 -- they're safe). If it catches them they drop the egg right there and are sent back to the gate: the egg waits
--- a minute for whoever picks it up (then goes back to its nest). Once they carry it into their own garden (all the way there, others can knock it loose), the egg goes into their bag. The nests fill up again every few minutes, some biomes with a golden nest (a Golden Egg,
--- chased harder). On the way back, other players can knock the egg out of the carrier's hands with their bat
--- (GearService). Also: speed, trained on the treadmill in each
+-- a minute for whoever picks it up (then goes back to its nest). Once they carry it into their own garden the egg goes into their bag. The nests fill up again every few minutes, some biomes with a golden nest (a Golden Egg,
+-- chased harder). Also: speed, trained on the treadmill in each
 -- garden (and upgraded at its console), and the HUD's Home and Wild buttons.
 
 local Players = game:GetService("Players")
@@ -64,16 +63,11 @@ local function humanoidOf(player: Player): Humanoid?
 end
 
 -- The player's run speed, as it should be now (slower with an egg; faster on the floating seat, or sprinting:
--- MoveService; stuck in a trap: GearService)
-local stuckUntil: { [Player]: number } = {} -- (os.clock(): caught in a trap, GearService)
+-- MoveService)
 local function applySpeed(player: Player)
 	local data = DataService.get(player)
 	local humanoid = humanoidOf(player)
 	if not data or not humanoid then
-		return
-	end
-	if os.clock() < (stuckUntil[player] or 0) then
-		humanoid.WalkSpeed = 0
 		return
 	end
 	local seat = player:GetAttribute("RideSeat")
@@ -89,17 +83,6 @@ local function applySpeed(player: Player)
 	player:SetAttribute("Speed", data.power)
 end
 WildService.applySpeed = applySpeed
-
--- Holds the player where they are for a while (a trap)
-function WildService.stick(player: Player, seconds: number)
-	stuckUntil[player] = os.clock() + seconds
-	applySpeed(player)
-	task.delay(seconds + 0.05, function()
-		if player.Parent then
-			applySpeed(player)
-		end
-	end)
-end
 
 -- Whether the player is carrying an egg (from the Wild or the Heist)
 function WildService.busy(player: Player): boolean
@@ -301,7 +284,7 @@ local function steal(player: Player, nest: Nest)
 	part.Position = root.Position
 	part.Parent = workspace
 	part:AddTag("WildCarry")
-	-- Anyone can grab it where it's dropped (knocked out with a bat, or caught by the guardian)
+	-- Anyone can grab it where it's dropped (caught by the guardian)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Grab"
 	prompt.ObjectText = (if golden then "✨ Golden " else "") .. (Hatch.egg(WildConfig.BIOMES[nest.biome].tier) or { name = "Egg" }).name
@@ -320,15 +303,6 @@ local function steal(player: Player, nest: Nest)
 		IslandService.notify(player, ("Got it! But its guardian is faster than you (⚡ %s needed). Run!"):format(Format.abbrev(Wild.needs(biome))), "info")
 	end
 	wake(nest.biome, player, root.Position)
-end
-
--- A bat knocked the egg out of a carrier's hands (GearService): it drops right there
-function WildService.knock(player: Player)
-	local root = rootOf(player)
-	if carrying[player] and root then
-		IslandService.notify(player, "💥 Knocked out of your hands! Grab it back!", "error")
-		drop(player, root.Position)
-	end
 end
 
 -- Every nest gets its egg back (not the ones being carried)
@@ -470,14 +444,14 @@ local function tick(frame: number)
 			continue
 		end
 		Carry.keepHandsFree(player)
-		-- Home: into their garden (until then, through the town too, anyone's bat can knock it loose)
+		-- Home: into their garden
 		local home = IslandService.islandOf(player)
 		if home and Layout.gardenAt(root.Position) == home then
 			finish(player, true)
 		elseif not carry.safe and Layout.biomeAt(root.Position, #WildConfig.BIOMES) ~= carry.nest.biome then
 			carry.safe = true
 			applySpeed(player)
-			IslandService.notify(player, "😮‍💨 You got away! Now carry it home to your garden, and watch out for bats", "success")
+			IslandService.notify(player, "😮‍💨 You got away! Now carry it home to your garden", "success")
 		end
 	end
 	-- Dropped eggs nobody came for go back to their nest
@@ -658,7 +632,6 @@ function WildService.init()
 	Players.PlayerAdded:Connect(onCharacter)
 	Players.PlayerRemoving:Connect(function(player)
 		running[player] = nil
-		stuckUntil[player] = nil
 		finish(player, false)
 	end)
 	RunService.Heartbeat:Connect(tick)

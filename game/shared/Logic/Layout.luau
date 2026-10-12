@@ -8,7 +8,7 @@
 local IslandConfig = require(script.Parent.Parent.Config.Island)
 
 local Layout = {
-	SQUARE_RADIUS = 34, -- the square where players arrive: the Safe Zone (no bat hits there)
+	SQUARE_RADIUS = 34, -- the square where players arrive: the town square
 	SHOP_DEPTH = 8, -- a stall, from its counter back
 	SHOP_WIDTH = 15,
 	GARDEN_RADIUS = 330, -- the gardens' middles, this far from the square's
@@ -26,7 +26,7 @@ local Layout = {
 -- and the gardens (the road to the Wild starts behind them)
 Layout.SHOP_ROW = -40 -- (Z of the stalls' counters)
 Layout.SHOP_SPOTS = {}
-for k = 1, 6 do -- (the Fuse Machine, the Trail, Egg, Food and Gear Shops, the Mutation Machine)
+for k = 1, 5 do -- (the Fuse Machine, the Trail and Sell Shops, a gap for the road to the Wild, the Food Shop, the Mutation Machine)
 	table.insert(Layout.SHOP_SPOTS, Vector3.new((k - 3.5) * 26, 0, Layout.SHOP_ROW))
 end
 -- Where players appear in the square, facing the stalls (north)
@@ -34,12 +34,6 @@ Layout.SPAWN = CFrame.new(0, 0.2, -4)
 -- The Sell pad: in the square's south half, toward the gardens (creatures are carried there to sell)
 Layout.SELL_SPOT = Vector3.new(0, 0, 18)
 Layout.SELL_RADIUS = 9
-
--- Whether a position is in the Safe Zone (the square): nobody's hit there, so nothing's stolen
-function Layout.inSafeZone(position: Vector3): boolean
-	local flat = Vector3.new(position.X - Layout.CENTER.X, 0, position.Z - Layout.CENTER.Z)
-	return flat.Magnitude <= Layout.SQUARE_RADIUS
-end
 
 -- A frame at `at` (on the ground) turned about Y so its front (-Z) faces `target` (no lookAt: the same in
 -- every runtime)

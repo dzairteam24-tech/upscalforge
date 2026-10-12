@@ -21,7 +21,5 @@ return {
 	Chime = s(PING, 1.5, 0.6),
 	SetEgg = s("rbxasset://sounds/impact_water.mp3", 1.6, 0.5), -- an egg down on the grass
 	Steal = s("rbxasset://sounds/unsheath.wav", 1.3, 0.6), -- an egg grabbed from a nest
-	Hit = s("rbxasset://sounds/swordslash.wav", 1, 0.7), -- a bat hit
-	Trap = s("rbxasset://sounds/swordlunge.wav", 0.6, 0.7), -- a trap snapping shut
 	Home = s(PING, 1.2, 0.7), -- an egg brought home
 }

@@ -7,6 +7,8 @@ local RunService = game:GetService("RunService")
 local EVENTS = {
 	-- client -> server
 	"BuyEgg", -- (tier)
+	"SellCreature", -- (creature id): at the Sell stall
+	"SellEgg", -- (tier, golden, all): one egg of the kind the player holds, or all of them
 	"PlaceCreature", -- (id)
 	"TakeCreature", -- (id)
 	"UseIncubator", -- (slot)
@@ -19,8 +21,6 @@ local EVENTS = {
 	"Feed",
 	"Travel", -- ("home" or "wild")
 	"Snap", -- (id): it and matching creatures snap into one (Config/Snap)
-	"UpgradeBat", -- at the Gear Shop (Config/Gear)
-	"BuyTrap",
 	"ClaimDaily", -- the egg for doing all of today's tasks
 	"ClaimIndex", -- (egg tier): a complete Index page's reward
 	"Mutate", -- (creature id): its mutation one step up at the Mutation Machine
@@ -33,7 +33,6 @@ local EVENTS = {
 	"Notify", -- (text, kind)
 	"Hatched", -- (creature id, species, mutation, snap grade or nil)
 	"SpeedUp", -- (gain): a step on the treadmill
-	"Bump", -- (position, kind: "Hit" or "Trap"): a bat hit a carrier, or a trap caught one
 	"Fx", -- (kind, position, color?): an effect everyone near sees and hears (client Effects)
 }
 

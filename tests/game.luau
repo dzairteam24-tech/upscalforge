@@ -28,8 +28,6 @@ local SnapConfig = R(Shared.Config.Snap)
 local Snap = R(Shared.Logic.Snap)
 local DailyConfig = R(Shared.Config.Daily)
 local Daily = R(Shared.Logic.Daily)
-local GearConfig = R(Shared.Config.Gear)
-local Gear = R(Shared.Logic.Gear)
 
 local passed, failed = 0, 0
 local function test(name: string, fn: () -> ())
@@ -219,14 +217,14 @@ test("daily tasks: three different ones a day, they change, a new day starts fre
 	eq(Daily.day(86400 * 3 + 5), 3)
 end)
 
-test("the bat: a weak bat needs many hits on a strong one, a strong bat few", function()
-	eq(Gear.hitsNeeded(1, 1), GearConfig.HITS, "same bats")
-	eq(Gear.hitsNeeded(1, #GearConfig.BATS), math.min(GearConfig.MAX_HITS, GearConfig.HITS + #GearConfig.BATS - 1), "a new player on a strong one")
-	assert(Gear.hitsNeeded(1, #GearConfig.BATS) > Gear.hitsNeeded(#GearConfig.BATS, 1), "the stronger bat wins")
-	eq(Gear.hitsNeeded(#GearConfig.BATS, 1), 1, "never fewer than one")
-	eq(Gear.upgradePrice(#GearConfig.BATS), nil, "the top bat")
-	for level = 2, #GearConfig.BATS do
-		assert(GearConfig.BATS[level].price > GearConfig.BATS[level - 1].price, "better bats cost more")
+test("selling: a creature pays its earnings, an egg half its price, a Golden Egg more, and selling never beats buying", function()
+	local creature = { s = "Dog", m = "Normal" }
+	eq(Earn.sellPrice(creature), math.floor(Earn.rate(creature) * IslandConfig.SELL_SECONDS), "a creature")
+	for _, egg in Eggs do
+		local plain = Earn.eggSellPrice(egg.price, false)
+		eq(plain, math.floor(egg.price * IslandConfig.EGG_SELL_FRACTION), "half its price")
+		assert(plain < egg.price, "no profit buying an egg and selling it back")
+		assert(Earn.eggSellPrice(egg.price, true) > plain, "a Golden Egg is worth more")
 	end
 end)
 
@@ -396,7 +394,7 @@ test("the Wild: biomes get harder, the treadmill trains speed, eggs 4-8 only com
 	eq(Wild.upgradePrice(1), WildConfig.TREADMILL[2].price)
 	eq(Wild.upgradePrice(#WildConfig.TREADMILL), nil, "the top")
 	for tier = 4, 8 do
-		assert(ShopConfig.STOCK[tier] == nil, "not in the Egg Shop")
+		assert(ShopConfig.STOCK[tier] == nil, "not in the Sell Shop")
 	end
 end)
 

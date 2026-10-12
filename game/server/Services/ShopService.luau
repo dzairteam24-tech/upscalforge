@@ -1,7 +1,7 @@
 --!strict
--- The Egg Shop in town: eggs in stock (Logic/Stock, the same in every server, restocked every few minutes)
--- to buy with coins (creatures are sold at the Sell pad: CarryService). When a restock brings a rare egg, the whole server
--- hears about it.
+-- The Sell stall in town: the player sells their creatures and the eggs they hold for coins, or buys eggs in
+-- stock (Logic/Stock, the same in every server, restocked every few minutes). Creatures can also be sold at the
+-- Sell pad (CarryService). When a restock brings a rare egg, the whole server hears about it.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -56,6 +56,45 @@ local function buyEgg(player: Player, tier: any)
 	IslandService.push(player)
 end
 
+-- Sells one of the player's creatures (not one living in the garden) at the Sell stall
+local function sellCreature(player: Player, id: any)
+	local data = DataService.get(player)
+	local creature = if type(id) == "string" and data then data.creatures[id] else nil
+	if not data or not creature then
+		return
+	end
+	if table.find(data.placed, id) then
+		IslandService.notify(player, "Take it out of the garden first (in your Bag)", "error")
+		return
+	end
+	local price = Earn.sellPrice(creature)
+	data.creatures[id] = nil
+	data.coins += price
+	IslandService.notify(player, ("Sold %s for 🪙 %s"):format(creature.s, Format.abbrev(price)), "success")
+	IslandService.push(player)
+end
+
+-- Sells eggs the player holds: one of a kind, or all of them
+local function sellEgg(player: Player, tier: any, golden: any, all: any)
+	local data = DataService.get(player)
+	local egg = if type(tier) == "number" then Hatch.egg(tier) else nil
+	if not data or not egg then
+		return
+	end
+	local key = tostring(egg.tier)
+	local bag = if golden == true then data.golden else data.eggs
+	local have = bag[key] or 0
+	if have <= 0 then
+		return
+	end
+	local count = if all == true then have else 1
+	local price = Earn.eggSellPrice(egg.price, golden == true) * count
+	bag[key] = if have - count > 0 then have - count else nil
+	data.coins += price
+	IslandService.notify(player, ("Sold %d× %s%s for 🪙 %s"):format(count, if golden == true then "Golden " else "", egg.name, Format.abbrev(price)), "success")
+	IslandService.push(player)
+end
+
 -- The Food Shop: food for the trough, priced on what the player's garden earns
 local function buyFood(player: Player, id: any)
 	local data = DataService.get(player)
@@ -78,6 +117,8 @@ end
 function ShopService.init()
 	Net.event("BuyFood").OnServerEvent:Connect(buyFood)
 	Net.event("BuyEgg").OnServerEvent:Connect(buyEgg)
+	Net.event("SellCreature").OnServerEvent:Connect(sellCreature)
+	Net.event("SellEgg").OnServerEvent:Connect(sellEgg)
 	-- Rare eggs in the new stock, told to everyone
 	task.spawn(function()
 		local seen = Stock.window(os.time())
@@ -91,7 +132,7 @@ function ShopService.init()
 					local egg = Hatch.egg(tier)
 					if count > 0 and egg then
 						for _, player in Players:GetPlayers() do
-							IslandService.notify(player, ("🌟 %s IN STOCK at the Egg Shop! (%d)"):format(string.upper(egg.name), count), "rare")
+							IslandService.notify(player, ("🌟 %s IN STOCK at the Sell Shop! (%d)"):format(string.upper(egg.name), count), "rare")
 						end
 					end
 				end

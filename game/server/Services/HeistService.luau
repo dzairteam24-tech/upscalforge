@@ -185,7 +185,7 @@ local function schedule()
 	end
 end
 
--- Puts the egg down where it is (its carrier left, fell or was knocked out)
+-- Puts the egg down where it is (its carrier left or fell)
 local function drop()
 	local part = egg
 	setCarrier(nil)
@@ -212,13 +212,6 @@ local function follow()
 	local home = IslandService.islandOf(holder)
 	if home and Layout.gardenAt(root.Position) == home then
 		endRound(holder)
-	end
-end
-
--- A bat knocked the Heist Egg out of its carrier's hands (GearService)
-function HeistService.knock(player: Player)
-	if player == carrier then
-		drop()
 	end
 end
 

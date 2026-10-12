@@ -48,11 +48,8 @@ local rng = Random.new()
 
 -- Told when a player's speed (data.power) changed here (WildService sets it: their walk follows)
 function IslandService.powerChanged(_player: Player) end
--- Set by CarryService: the creatures in the inventory (hotbar) made again, and whether one lies on the ground
+-- Set by CarryService: the creatures in the inventory (hotbar) made again
 function IslandService.toolsChanged(_player: Player, _data: Data) end
-function IslandService.isAway(_player: Player, _id: string): boolean
-	return false
-end
 
 function IslandService.notify(player: Player, text: string, kind: string?)
 	Net.event("Notify"):FireClient(player, text, kind or "info")
@@ -254,7 +251,7 @@ function IslandService.bestFood(data: Data): FoodConfig.Food?
 	return nil
 end
 
--- Adds a hatched creature (into the inventory, after the bat: CarryService); nil when the player's storage is full
+-- Adds a hatched creature (into the inventory: CarryService); nil when the player's storage is full
 function IslandService.addCreature(player: Player, data: Data, species: string, mutation: string): string?
 	local count = 0
 	for _ in data.creatures do
@@ -740,7 +737,7 @@ local function useIncubator(player: Player, slot: any)
 			-- Put the best egg the player holds into the incubator
 			local tier, least = takeEgg(data)
 			if not tier then
-				IslandService.notify(player, "You have no eggs: buy some at the Egg Shop in town", "error")
+				IslandService.notify(player, "You have no eggs: buy some at the Sell Shop in town (Buy Eggs tab)", "error")
 				return
 			end
 			data.incubating[key] = { tier = tier, start = os.time(), m = least }
@@ -754,7 +751,7 @@ end
 
 function IslandService.place(player: Player, id: any)
 	local data = DataService.get(player)
-	if not data or type(id) ~= "string" or not data.creatures[id] or table.find(data.placed, id) or IslandService.isAway(player, id) then
+	if not data or type(id) ~= "string" or not data.creatures[id] or table.find(data.placed, id) then
 		return
 	end
 	if #data.placed >= data.pens then
@@ -893,12 +890,6 @@ local function snap(player: Player, id: any)
 	if not group or not made then
 		IslandService.notify(player, ("You need %d matching creatures to fuse"):format(SnapConfig.NEED), "error")
 		return
-	end
-	for _, other in group do
-		if IslandService.isAway(player, other) then
-			IslandService.notify(player, "One of them is lying on the ground: grab it back first", "error")
-			return
-		end
 	end
 	local wasPlaced = false
 	for _, other in group do

@@ -41,6 +41,11 @@ function Earn.sellPrice(creature: Owned): number
 	return math.floor(Earn.rate(creature) * IslandConfig.SELL_SECONDS)
 end
 
+-- Coins for selling an egg of this price (a Golden Egg is worth more)
+function Earn.eggSellPrice(eggPrice: number, golden: boolean): number
+	return math.floor(eggPrice * IslandConfig.EGG_SELL_FRACTION * (if golden then IslandConfig.GOLDEN_SELL_MULT else 1))
+end
+
 -- The price of the next incubator or pen, or nil when there are no more
 function Earn.nextPrice(prices: { number }, owned: number, start: number): number?
 	return prices[owned - start + 1]

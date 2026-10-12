@@ -1,5 +1,5 @@
 --!strict
--- The Egg Shop's stock (Config/Shop): which eggs are in, and how many, in each restock window. It follows the
+-- The Sell Shop's egg stock (Config/Shop): which eggs are in, and how many, in each restock window. It follows the
 -- clock, so it's the same in every server.
 
 local ShopConfig = require(script.Parent.Parent.Config.Shop)

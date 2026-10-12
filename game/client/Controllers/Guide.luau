@@ -1,6 +1,6 @@
 --!strict
 -- A new player's first steps: a glowing line from them to what to do next, until they've hatched a few
--- creatures. First their free egg (already set down in their garden, IslandService), then the Egg Shop for more
+-- creatures. First their free egg (already set down in their garden, IslandService), then the Sell Shop for more
 -- eggs, then their garden to set the eggs down.
 
 local CollectionService = game:GetService("CollectionService")

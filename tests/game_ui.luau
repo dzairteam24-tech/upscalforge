@@ -175,7 +175,7 @@ try("root", function()
 	root = Theme.root(gui)
 end)
 assert(gui.ZIndexBehavior == roblox.Enum.ZIndexBehavior.Sibling, "frames draw over their parents (a window never hides its content)")
-for _, name in { "HUD", "GrowingEggs", "ShopWindow", "BagWindow", "IndexWindow", "FuseWindow", "TrailWindow", "MutateWindow", "StoreWindow", "DailyWindow", "FoodWindow", "GearWindow", "Notify", "Reveal" } do
+for _, name in { "HUD", "GrowingEggs", "ShopWindow", "BagWindow", "IndexWindow", "FuseWindow", "TrailWindow", "MutateWindow", "StoreWindow", "DailyWindow", "FoodWindow", "Notify", "Reveal" } do
 	try(name .. ".mount", function()
 		Loader.require(UI[name]).mount(root)
 	end)
@@ -198,8 +198,6 @@ Store.data = {
 	daily = { day = -1, progress = {}, claimed = false },
 	food = {},
 	fedUntil = 0,
-	bat = 1,
-	traps = 0,
 	seat = "",
 	seats = { Cloud = true },
 	treadmill = 1,
@@ -208,7 +206,7 @@ Store.data = {
 	trails = { Green = true },
 	trail = "Green",
 }
-for _, name in { "Bag", "Shop", "Index", "Fuse", "Trails", "Mutate", "Store", "Daily", "Food", "Gear" } do
+for _, name in { "Bag", "Shop", "Index", "Fuse", "Trails", "Mutate", "Store", "Daily", "Food" } do
 	try("open " .. name, function()
 		assert(Windows.open(name), name .. " is registered")
 	end)

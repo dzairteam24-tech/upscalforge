@@ -2,7 +2,7 @@
 -- The bag, in three tabs. Eggs: each kind the player holds as a card with the egg in 3D, to set down on
 -- the grass where they stand (as its tool in the inventory does). Creatures: a card for each, its model in 3D,
 -- colored by rarity, with its mutation, what it earns, what it sells for, and a button to put it in the garden
--- or take it back to the inventory (selling is at the Sell pad in the square: CarryService). Garden: room for more eggs on the grass, creatures in the garden,
+-- or take it back to the inventory (selling is at the Sell Shop or the Sell pad in the square). Garden: room for more eggs on the grass, creatures in the garden,
 -- the storage barn and the pasture.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -106,7 +106,7 @@ function BagWindow.mount(gui: Instance)
 			local empty = Theme.card(content, Theme.cream, { Size = UDim2.new(1, -8, 0, 120), LayoutOrder = 3 })
 			Theme.text(empty, { Text = "🥚", Size = UDim2.fromOffset(70, 70), Position = UDim2.fromOffset(16, 25) })
 			Theme.bold(empty, { Text = "No eggs yet!", Size = UDim2.new(1, -110, 0, 36), Position = UDim2.fromOffset(96, 22), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 30 })
-			Theme.text(empty, { Text = "Buy some at the Egg Shop in town, or steal one from the Wild", Size = UDim2.new(1, -110, 0, 40), Position = UDim2.fromOffset(96, 60), TextColor3 = Theme.soft, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true })
+			Theme.text(empty, { Text = "Buy some at the Sell Shop in town (Buy Eggs tab), or steal one from the Wild", Size = UDim2.new(1, -110, 0, 40), Position = UDim2.fromOffset(96, 60), TextColor3 = Theme.soft, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true })
 		end
 	end
 

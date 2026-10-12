@@ -504,26 +504,6 @@ function GardenClient.init()
 			gui:Destroy()
 		end)
 	end)
-	Net.event("Bump").OnClientEvent:Connect(function(position: Vector3, kind: string)
-		local spot = Instance.new("Part")
-		spot.Anchored, spot.CanCollide, spot.CanQuery, spot.Transparency = true, false, false, 1
-		spot.Size = Vector3.one
-		spot.Position = position
-		spot.Parent = workspace
-		local text = billboard(spot, 6, 2, Vector3.new(0, 4, 0))
-		local gui = text.Parent :: BillboardGui
-		gui.AlwaysOnTop = true
-		text.Text = if kind == "Trap" then "🪤 TRAPPED!" else "💥 BONK!"
-		text.TextColor3 = if kind == "Trap" then Color3.fromRGB(120, 200, 245) else Color3.fromRGB(255, 225, 90)
-		task.spawn(function()
-			for i = 1, 16 do
-				gui.StudsOffsetWorldSpace = Vector3.new(0, 4 + i * 0.15, 0)
-				text.TextTransparency = math.max(0, (i - 8) / 8)
-				task.wait(0.04)
-			end
-			spot:Destroy()
-		end)
-	end)
 	Net.event("Hatched").OnClientEvent:Connect(function(_id, species, mutation, grade)
 		Reveal.show(species, mutation, grade)
 	end)

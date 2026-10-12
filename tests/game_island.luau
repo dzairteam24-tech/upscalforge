@@ -176,7 +176,7 @@ for _, d in island:GetDescendants() do
 		assert(math.abs(got.X - want.X) < 0.01 and math.abs(got.Z - want.Z) < 0.01, "an incubator at the grown pasture's back")
 	end
 end
--- A hatched creature goes to the inventory (after the bat), not into the garden; used in the garden, it's set
+-- A hatched creature goes to the inventory not into the garden; used in the garden, it's set
 -- down there; taken back, it's in the inventory again
 local function creatureTool(id)
 	for _, t in backpack:GetChildren() do
@@ -186,9 +186,6 @@ local function creatureTool(id)
 	end
 	return nil
 end
-local bat = roblox.Instance.new("Tool")
-bat.Name = "Bat"
-bat.Parent = backpack
 local id = assert(IslandService.addCreature(player :: any, data, "Cat", "Normal"), "a new creature")
 assert(not table.find(data.placed, id), "not set down by itself")
 IslandService.push(player :: any)
@@ -200,7 +197,7 @@ onActivated(catTool)()
 assert(table.find(data.placed, id), "used in the garden, it's set down there")
 task.wait(0.1)
 assert(creatureTool(id) == nil, "and out of the inventory")
--- Not in the garden: used elsewhere it stays in the inventory; the square is the Safe Zone with the Sell pad
+-- Not in the garden: used elsewhere it stays in the inventory; the square has the Sell pad
 local at = table.find(data.placed, id)
 table.remove(data.placed, at)
 IslandService.push(player :: any)
@@ -209,8 +206,6 @@ local again = assert(creatureTool(id), "back in the inventory")
 root.CFrame = roblox.CFrame.new(Layout.SELL_SPOT + roblox.Vector3.new(0, 3, 0))
 onActivated(again)()
 assert(data.creatures[id] and not table.find(data.placed, id), "away from the garden it isn't set down (nor sold unless held)")
-assert(Layout.inSafeZone(Layout.SELL_SPOT) and not Layout.inSafeZone(frame.Position), "the Sell pad in the Safe Zone, gardens out of it")
 assert(workspaceInstance:FindFirstChild("SellPad", true), "the Sell pad is there")
-assert(not CarryService.isCarrier(player :: any), "holding nothing, nobody can knock anything out of their hands")
 print("island test passed")
 require("@lune/process").exit(0)

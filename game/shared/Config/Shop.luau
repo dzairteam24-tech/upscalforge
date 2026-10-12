@@ -1,5 +1,5 @@
 --!strict
--- The Egg Shop's stock: it restocks every few minutes, the same in every server (Logic/Stock). Each egg is in
+-- The Sell Shop's egg stock: it restocks every few minutes, the same in every server (Logic/Stock). Each egg is in
 -- stock with a chance, and then with a few to buy (each player can buy that many). The eggs of tiers 4 to 8
 -- aren't sold: they're stolen from the Wild (Config/Wild).
 
