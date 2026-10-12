@@ -1,7 +1,6 @@
 --!strict
 -- The always-on screen, laid out like Steal an Egg: square Store, Index and Bag buttons on the left; speed, coins
--- (and what the garden earns a second) and the friend boost down the bottom left; Daily, Home and Wild
--- down the right; the night's countdown in the bottom right; the weather over the top; and the server's players
+-- (and what the garden earns a second) and the friend boost down the bottom left; Daily on the right; the night's countdown in the bottom right; the weather over the top; and the server's players
 -- with their coins a second and speed in the top right.
 
 local Players = game:GetService("Players")
@@ -65,7 +64,7 @@ function HUD.mount(gui: Instance)
 	local rate = Theme.bold(stats, { Size = UDim2.fromOffset(360, 24), Position = UDim2.fromOffset(4, 94), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(255, 240, 160), Font = Theme.font, MaxText = 22 })
 	local friends = Theme.bold(stats, { Size = UDim2.fromOffset(360, 28), Position = UDim2.fromOffset(0, 120), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 28 })
 
-	-- Right: Daily, Home, Wild
+	-- Right: Daily
 	local right = Instance.new("Frame")
 	right.Name = "Right"
 	right.BackgroundTransparency = 1
@@ -84,14 +83,6 @@ function HUD.mount(gui: Instance)
 	local badge = Theme.bold(daily, { Text = "!", Size = UDim2.fromOffset(26, 26), Position = UDim2.new(0, -12, 0, -10), BackgroundTransparency = 0, BackgroundColor3 = Theme.red, MaxText = 22 })
 	Theme.round(badge, 13)
 	badge.ZIndex = 3
-	local home = Theme.iconButton(right, "🏠", "Home", Theme.green, function()
-		Net.event("Travel"):FireServer("home")
-	end)
-	home.LayoutOrder = 2
-	local wild = Theme.iconButton(right, "🌿", "Wild", Color3.fromRGB(240, 150, 50), function()
-		Net.event("Travel"):FireServer("wild")
-	end)
-	wild.LayoutOrder = 3
 
 	-- Bottom right: the night's countdown
 	local night = Theme.bold(gui, { AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -12), Size = UDim2.fromOffset(300, 46), TextXAlignment = Enum.TextXAlignment.Right, MaxText = 40 })

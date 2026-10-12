@@ -4,7 +4,7 @@
 -- they're safe). If it catches them they drop the egg right there and are sent back to the gate: the egg waits
 -- a minute for whoever picks it up (then goes back to its nest). Once they carry it into their own garden the egg goes into their bag. The nests fill up again every few minutes, some biomes with a golden nest (a Golden Egg,
 -- chased harder). Also: speed, trained on the treadmill in each
--- garden (and upgraded at its console), and the HUD's Home and Wild buttons.
+-- garden (and upgraded at its console).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -572,23 +572,6 @@ local function train()
 	end
 end
 
-local function travel(player: Player, where: any)
-	local root = rootOf(player)
-	if not root then
-		return
-	end
-	if busy(player) then
-		IslandService.notify(player, "Not while you're carrying an egg: run!", "error")
-		return
-	end
-	if where == "home" then
-		IslandService.sendHome(player)
-	elseif where == "wild" then
-		root.CFrame = gateSpot()
-		root.AssemblyLinearVelocity = Vector3.zero
-	end
-end
-
 -- When the creature models arrive, the guardians are drawn again with them
 function WildService.redraw()
 	for _, guardian in guardians do
@@ -615,7 +598,6 @@ function WildService.init()
 	end
 	spawnGuardians()
 	refill() -- (the first golden nests)
-	Net.event("Travel").OnServerEvent:Connect(travel)
 	game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt, player)
 		local index = prompt:GetAttribute("Treadmill")
 		if type(index) == "number" then

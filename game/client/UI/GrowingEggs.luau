@@ -26,8 +26,8 @@ function GrowingEggs.mount(gui: Instance)
 	local holder = Instance.new("Frame")
 	holder.Name = "GrowingEggs"
 	holder.BackgroundTransparency = 1
-	holder.AnchorPoint = Vector2.new(1, 0)
-	holder.Position = UDim2.new(1, -116, 0, 200)
+	holder.AnchorPoint = Vector2.new(0.5, 1)
+	holder.Position = UDim2.new(0.5, 0, 1, -96) -- (bottom middle, just over the hotbar: it grows upward)
 	holder.Size = UDim2.fromOffset(330, 70)
 	holder.Parent = gui
 

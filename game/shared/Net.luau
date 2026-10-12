@@ -20,7 +20,6 @@ local EVENTS = {
 	"BuyPasture",
 	"BuyFood", -- (food id)
 	"Feed",
-	"Travel", -- ("home" or "wild")
 	"Snap", -- (id): it and matching creatures snap into one (Config/Snap)
 	"ClaimDaily", -- the egg for doing all of today's tasks
 	"ClaimIndex", -- (egg tier): a complete Index page's reward
