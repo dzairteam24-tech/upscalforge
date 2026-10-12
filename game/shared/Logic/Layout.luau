@@ -15,7 +15,7 @@ local Layout = {
 	GARDEN_STEP = 34, -- degrees between two gardens: they fill the whole south half round the square, east to west
 	GARDEN_ROAD_RADIUS = 260, -- the arc road past the gardens' gates
 	ROAD_WIDTH_TOWN = 20,
-	WILD_GATE_DISTANCE = 290, -- the big gate into the Wild, this far north of the square
+	WILD_GATE_DISTANCE = 380, -- the big gate into the Wild, this far north of the square
 	GARDEN_SIZE = 96,
 	GATE_WIDTH = 16, -- the opening in a garden's front fence
 	FENCE_HEIGHT = 10, -- the invisible wall behind the low picket fence (too tall to jump)
@@ -28,10 +28,10 @@ local Layout = {
 -- the lane stay empty
 Layout.SHOP_EDGE = 126 -- (the counters' distance from the lane's middle: the paving's edge is at WILD_WIDTH / 2 = 120)
 Layout.SHOP_SPOTS = {
-	Vector3.new(-Layout.SHOP_EDGE, 0, -205), -- the Shop
-	Vector3.new(-Layout.SHOP_EDGE, 0, -250), -- the Fuse Machine
-	Vector3.new(Layout.SHOP_EDGE, 0, -205), -- the Trail Shop
-	Vector3.new(Layout.SHOP_EDGE, 0, -250), -- the Mutation Machine
+	Vector3.new(-Layout.SHOP_EDGE, 0, -225), -- the Shop
+	Vector3.new(-Layout.SHOP_EDGE, 0, -295), -- the Fuse Machine
+	Vector3.new(Layout.SHOP_EDGE, 0, -225), -- the Trail Shop
+	Vector3.new(Layout.SHOP_EDGE, 0, -295), -- the Mutation Machine
 }
 -- Where players appear in the square, facing the stalls (north)
 Layout.SPAWN = CFrame.new(Layout.SQUARE_CENTER.X, 0.2, Layout.SQUARE_CENTER.Z - 4)
