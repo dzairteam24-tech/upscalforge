@@ -181,21 +181,91 @@ do
 		-- a full backpack: the cube stays, the gem stays in it
 		local full = newData()
 		full.shovel = 5
-		for i = 1, 20 do
+		for i = 1, Gear.PACKS[1].slots do
 			full.items[tostring(i)] = { g = "Quartz", s = "Normal" }
 		end
-		full.nextId = 21
+		full.nextId = Gear.PACKS[1].slots + 1
 		local m4 = Mine.new(2, 99, 5, workspaceInstance)
 		m4:ensure(1)
 		local refused = m4:swing(full, gemCell[1], gemCell[2], gemCell[3], standing, 1, random)
 		check("a full backpack refuses a gem cube", not refused.ok and refused.reason == "full")
 		check("the cube is still there", m4.blocks[gemCell[2] * 64 + gemCell[1] * 8 + gemCell[3]] ~= nil)
 		-- sell, then it works, and it's the same gem
-		local rolled = m4.items[gemCell[2] * 64 + gemCell[1] * 8 + gemCell[3]]
+		local rolled = m4.loot[gemCell[2] * 64 + gemCell[1] * 8 + gemCell[3]]
 		full.items = {}
 		local after = m4:swing(full, gemCell[1], gemCell[2], gemCell[3], standing, 5, random)
-		check("then it breaks, giving the gem that was rolled", after.broke and after.item == rolled)
+		check("then it breaks, giving the gem that was rolled", after.broke and rolled ~= nil and after.item == rolled[1] and #after.items == 1)
 		m4:destroy()
+	end
+	-- a shovel too weak for a zone: "too hard", and nothing is spent or broken
+	do
+		local weak = newData()
+		local m5 = Mine.new(2, 99, 5, workspaceInstance)
+		m5:ensure(9)
+		local zoneTop = MineConfig.ZONES[2].from
+		local out = m5:swing(weak, 3, zoneTop, 3, Layout.cellCenter(2, 3, zoneTop, 3), 1, random)
+		check("the wooden shovel can't break Stone", not out.ok and out.reason == "tooHard" and out.needs == 2)
+		check("the cube is untouched", m5.blocks[zoneTop * 64 + 3 * 8 + 3] ~= nil and weak.stats.dug == 0)
+		weak.shovel = 2
+		local ok = m5:swing(weak, 3, zoneTop, 3, Layout.cellCenter(2, 3, zoneTop, 3), 2, random)
+		check("the Stone Shovel can", ok.ok)
+		m5:destroy()
+	end
+	-- geodes: several gems in one cube
+	do
+		local geodeCell
+		local m6 = Mine.new(2, 99, 5, workspaceInstance)
+		local seed = 1
+		while not geodeCell and seed < 400 do
+			m6:reset(seed, 0)
+			m6:ensure(1)
+			for gx = 1, W do
+				for gz = 1, W do
+					for gl = 1, MineConfig.AHEAD do
+						if not geodeCell and m6.blocks[gl * 64 + gx * 8 + gz] and m6.blocks[gl * 64 + gx * 8 + gz]:GetAttribute("Geode") then
+							geodeCell = { gx, gl, gz, seed }
+						end
+					end
+				end
+			end
+			seed += 1
+		end
+		check("a mine with a geode in view exists", geodeCell ~= nil)
+		if geodeCell then
+			local g = newData()
+			g.shovel = 5
+			g.pack = 5
+			local out = m6:swing(g, geodeCell[1], geodeCell[2], geodeCell[3], Layout.cellCenter(2, geodeCell[1], geodeCell[2], geodeCell[3]), 1, random)
+			check("a geode breaks into several gems", out.broke and out.geode == true and #out.items == MineConfig.GEODE_GEMS)
+			local held = 0
+			for _ in g.items do
+				held += 1
+			end
+			check("all of them are in the backpack", held == MineConfig.GEODE_GEMS)
+		end
+		m6:destroy()
+	end
+	-- the elevator shaft and a reset
+	do
+		local m7 = Mine.new(2, 5, 9, workspaceInstance, 10)
+		m7:ensure(10)
+		local open = 0
+		for l = 1, 10 do
+			if m7.blocks[l * 64 + 3 * 8 + 3] == nil then
+				open += 1
+			end
+		end
+		check("a saved depth of 10 starts with the middle column open down to 10", open == 10)
+		check("and not below", m7.blocks[11 * 64 + 3 * 8 + 3] ~= nil)
+		local spot = m7:depthSpot()
+		check("Dig Down lands in the bottom of the shaft", spot ~= nil and (spot - Layout.cellCenter(2, 3, 10, 3)).Magnitude < 1)
+		local d = newData()
+		d.shovel = 5
+		m7:swing(d, 2, 10, 2, Layout.cellCenter(2, 2, 10, 2), 1, random)
+		check("a dug cube beside it is remembered", m7.dug[10 * 64 + 2 * 8 + 2] == true)
+		m7:reset(77, 5)
+		check("a reset puts every cube back and clears the shaft only to 5", m7.dug[10 * 64 + 2 * 8 + 2] == nil and m7.blocks[1 * 64 + 2 * 8 + 2] ~= nil and m7.blocks[5 * 64 + 3 * 8 + 3] == nil and m7.lastDug == nil and m7.seed == 77)
+		m7:destroy()
 	end
 	-- teleport to where they last dug: nothing yet for a fresh mine; and the spot is open
 	local fresh = Mine.new(4, 1, 8, workspaceInstance)

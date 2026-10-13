@@ -88,6 +88,9 @@ function PlotService.assign(player: Player): number?
 			owners[i] = player
 			assigned[player] = i
 			signs[i].Text = player.DisplayName .. "'s Mine"
+			if typeof(player) == "Instance" then
+				player:SetAttribute("Plot", i)
+			end
 			return i
 		end
 	end

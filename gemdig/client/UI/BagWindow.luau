@@ -56,7 +56,7 @@ function BagWindow.new(screen: ScreenGui)
 			value.TextXAlignment = Enum.TextXAlignment.Right
 			value.ZIndex = 13
 		end
-		heading(("Backpack  %d / %d"):format(data.used, data.capacity))
+		heading(("Backpack  %d / %d    (coins x%s)"):format(data.used, data.capacity, tostring(math.floor(data.multiplier * 100 + 0.5) / 100)))
 		if #data.groups == 0 then
 			local empty = Ui.label(scroll, "Empty: go and dig!", UDim2.new(1, -8, 0, 30), UDim2.new(), Color3.fromRGB(130, 120, 140))
 			empty.TextStrokeTransparency = 1
@@ -64,7 +64,7 @@ function BagWindow.new(screen: ScreenGui)
 		for _, group in data.groups do
 			local item = Gem.parseKey(group.key)
 			local kind = Gems.byId[item.g]
-			row(if kind then kind.color else Ui.gray, Gem.name(item) .. "  x" .. group.count, tostring(group.value * group.count))
+			row(if kind then kind.color else Ui.gray, Gem.name(item) .. "  x" .. group.count, tostring(math.floor(group.value * group.count * data.multiplier + 0.5)))
 		end
 		local found = 0
 		for _, gem in Gems.LIST do

@@ -54,6 +54,10 @@ function Effects.init()
 		elseif kind == "Break" then
 			burst(position, color, 16, 2, 26, 0)
 			sound("rbxasset://sounds/impact_water.mp3", 1.6, 0.5)
+		elseif kind == "Geode" then
+			burst(position, Color3.fromRGB(210, 120, 255), 34, 3, 32, 1)
+			sound("rbxasset://sounds/impact_water.mp3", 1.1, 0.7)
+			sound("rbxasset://sounds/electronicpingshort.wav", 1.0, 0.6)
 		elseif kind == "Gem" then
 			burst(position, color, 22, 2.4, 22, 1)
 			sound("rbxasset://sounds/electronicpingshort.wav", 1.4, 0.7)

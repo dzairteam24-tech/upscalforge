@@ -21,7 +21,7 @@ local WALL = 2 -- bedrock walls round the shaft, this thick
 local Mine = {}
 Mine.__index = Mine
 
-export type Outcome = { ok: boolean, reason: string?, broke: boolean?, item: Gem.Item?, position: Vector3?, color: Color3?, hpFraction: number? }
+export type Outcome = { ok: boolean, reason: string?, broke: boolean?, item: Gem.Item?, items: { Gem.Item }?, geode: boolean?, needs: number?, position: Vector3?, color: Color3?, hpFraction: number? }
 
 export type Mine = typeof(setmetatable(
 	{} :: {
@@ -31,7 +31,8 @@ export type Mine = typeof(setmetatable(
 		folder: Instance,
 		blocks: { [number]: Part },
 		hp: { [number]: number },
-		items: { [number]: Gem.Item },
+		loot: { [number]: { Gem.Item } },
+		shaft: number,
 		dug: { [number]: boolean },
 		built: { [number]: Instance },
 		lastDug: { x: number, l: number, z: number }?,
@@ -44,10 +45,22 @@ local function key(x: number, l: number, z: number): number
 	return l * 64 + x * 8 + z
 end
 
-function Mine.new(index: number, seed: number, owner: number, parent: Instance): Mine
+local MID = (WIDTH + 1) // 2
+
+-- The cleared shaft down the middle (the elevator): these cubes start already dug
+local function shaftCells(checkpoint: number): { [number]: boolean }
+	local dug: { [number]: boolean } = {}
+	for l = 1, checkpoint do
+		dug[key(MID, l, MID)] = true
+	end
+	return dug
+end
+
+function Mine.new(index: number, seed: number, owner: number, parent: Instance, checkpoint: number?): Mine
 	local folder = Instance.new("Folder")
 	folder.Name = "Mine_" .. owner
 	folder.Parent = parent
+	local shaft = checkpoint or 0
 	return setmetatable({
 		index = index,
 		seed = seed,
@@ -55,8 +68,9 @@ function Mine.new(index: number, seed: number, owner: number, parent: Instance):
 		folder = folder,
 		blocks = {},
 		hp = {},
-		items = {},
-		dug = {},
+		loot = {},
+		dug = shaftCells(shaft),
+		shaft = shaft,
 		built = {},
 		lastDug = nil,
 		lastSwing = -math.huge,
@@ -94,6 +108,28 @@ local function flecks(block: Part, position: Vector3, color: Color3)
 	end
 end
 
+-- A geode: a big glowing purple cluster on every face, and sparkles
+local function geodeFlecks(block: Part, position: Vector3)
+	local out = CELL / 2
+	for _, offset in { Vector3.new(0, out, 0), Vector3.new(out, 0, 0), Vector3.new(-out, 0, 0), Vector3.new(0, 0, out), Vector3.new(0, 0, -out) } do
+		local f = Instance.new("Part")
+		f.Name = "Fleck"
+		f.Size = Vector3.one * 2.2
+		f.CFrame = CFrame.new(position + offset * 0.97) * CFrame.Angles(0.8, 0.3, 0.6)
+		f.Anchored = true
+		f.CanCollide = false
+		f.CanQuery = false
+		f.CanTouch = false
+		f.Material = Enum.Material.Neon
+		f.Color = Color3.fromRGB(200, 90, 255)
+		f.CastShadow = false
+		f.Parent = block
+	end
+	local sparkles = Instance.new("Sparkles")
+	sparkles.SparkleColor = Color3.fromRGB(220, 140, 255)
+	sparkles.Parent = block
+end
+
 function Mine.build(self: Mine, layer: number)
 	if self.built[layer] then
 		return
@@ -128,6 +164,9 @@ function Mine.build(self: Mine, layer: number)
 				if gem then
 					block:SetAttribute("Gem", gem)
 					flecks(block, position, Gems.byId[gem].color)
+				elseif MineGen.geodeAt(self.seed, x, layer, z) then
+					block:SetAttribute("Geode", true)
+					geodeFlecks(block, position)
 				end
 				block.Parent = folder
 				self.blocks[k] = block
@@ -186,8 +225,25 @@ local function fail(reason: string): Outcome
 	return { ok = false, reason = reason }
 end
 
+-- What's inside a cube: a gem cube holds one gem, a geode several (rolled a bit deeper, so a bit rarer)
+local function rollLoot(block: Part, layer: number, random: any): { Gem.Item }?
+	local kind = block:GetAttribute("Gem")
+	if type(kind) == "string" then
+		return { Gem.roll(kind, random) }
+	end
+	if block:GetAttribute("Geode") == true then
+		local items = {}
+		for _ = 1, MineConfig.GEODE_GEMS do
+			local found = Gem.pick(math.min(MineConfig.MAX_LAYER, layer + MineConfig.GEODE_DEEPER), random) or "Quartz"
+			table.insert(items, Gem.roll(found, random))
+		end
+		return items
+	end
+	return nil
+end
+
 -- A swing of the shovel at cube (x, layer, z), by a player standing at `from`, at time `now` (seconds). `data` is
--- their saved data (shovel, backpack). The outcome says what happened; a gem that falls out goes to the backpack.
+-- their saved data (shovel, backpack). The outcome says what happened; gems that fall out go to the backpack.
 function Mine.swing(self: Mine, data: any, x: number, layer: number, z: number, from: Vector3, now: number, random: any): Outcome
 	if x < 1 or x > WIDTH or z < 1 or z > WIDTH or layer < 1 or layer > MineConfig.MAX_LAYER or x ~= math.floor(x) or z ~= math.floor(z) or layer ~= math.floor(layer) then
 		return fail("outside")
@@ -205,52 +261,79 @@ function Mine.swing(self: Mine, data: any, x: number, layer: number, z: number, 
 	if (position - from).Magnitude > MineConfig.REACH + CELL then
 		return fail("far")
 	end
-	-- a gem is rolled when its cube is first hit, and kept, so a full backpack doesn't change what's in it
-	local kind = block:GetAttribute("Gem")
-	local item: Gem.Item? = nil
-	if type(kind) == "string" then
-		item = self.items[k]
-		if not item then
-			item = Gem.roll(kind, random)
-			self.items[k] = item
+	local needs = MineGen.needs(layer)
+	if data.shovel < needs then
+		return { ok = false, reason = "tooHard", needs = needs }
+	end
+	-- what's inside is rolled when its cube is first hit, and kept, so a full backpack doesn't change it
+	local items = self.loot[k]
+	if not items then
+		items = rollLoot(block, layer, random)
+		if items then
+			self.loot[k] = items
 		end
-		if not Backpack.fits(data, item :: Gem.Item) then
-			return fail("full")
-		end
+	end
+	if items and not Backpack.fitsAll(data, items) then
+		return fail("full")
 	end
 	self.lastSwing = now
 	local hp = (self.hp[k] or 1) - shovel.power
 	local color = block.Color
+	local geode = block:GetAttribute("Geode") == true
 	if hp > 0 then
 		self.hp[k] = hp
 		local fraction = hp / MineGen.hp(layer)
 		block.Color = MineGen.zone(layer).color:Lerp(Color3.new(0, 0, 0), 0.5 * (1 - fraction))
-		return { ok = true, broke = false, position = position, color = block.Color, hpFraction = fraction }
+		return { ok = true, broke = false, position = position, color = block.Color, hpFraction = fraction, geode = geode }
 	end
 	-- broken
 	block:Destroy()
 	self.blocks[k] = nil
 	self.hp[k] = nil
-	self.items[k] = nil
+	self.loot[k] = nil
 	self.dug[k] = true
 	self.lastDug = { x = x, l = layer, z = z }
 	data.stats.dug += 1
 	data.deepest = math.max(data.deepest, layer)
-	if item then
-		Backpack.add(data, item)
+	if items then
+		for _, item in items do
+			Backpack.add(data, item)
+		end
 	end
 	self:ensure(layer)
-	return { ok = true, broke = true, item = item, position = position, color = color, hpFraction = 0 }
+	return { ok = true, broke = true, item = if items then items[1] else nil, items = items, geode = geode, position = position, color = color, hpFraction = 0 }
 end
 
--- Where a player lands to continue where they last dug: the middle of that cube (open: they dug it), or nil
+-- Where a player lands to continue: the middle of the cube they last dug, or the bottom of the cleared shaft
+-- (open both ways: they dug it); nil if there's neither
 function Mine.depthSpot(self: Mine): Vector3?
 	local last = self.lastDug
-	if not last then
-		return nil
+	if last then
+		self:ensure(last.l)
+		return Layout.cellCenter(self.index, last.x, last.l, last.z) + Vector3.new(0, 0.4, 0)
 	end
-	self:ensure(last.l)
-	return Layout.cellCenter(self.index, last.x, last.l, last.z) + Vector3.new(0, 0.4, 0)
+	if self.shaft >= 1 then
+		self:ensure(self.shaft)
+		return Layout.cellCenter(self.index, MID, self.shaft, MID) + Vector3.new(0, 0.4, 0)
+	end
+	return nil
+end
+
+-- Starts the mine again: every cube back, a new seed (so the gems are somewhere else), the shaft down to the
+-- saved depth cleared
+function Mine.reset(self: Mine, seed: number, checkpoint: number)
+	for _, folder in self.built do
+		folder:Destroy()
+	end
+	table.clear(self.built)
+	table.clear(self.blocks)
+	table.clear(self.hp)
+	table.clear(self.loot)
+	self.seed = seed
+	self.shaft = checkpoint
+	self.dug = shaftCells(checkpoint)
+	self.lastDug = nil
+	self:ensure(1)
 end
 
 function Mine.destroy(self: Mine)

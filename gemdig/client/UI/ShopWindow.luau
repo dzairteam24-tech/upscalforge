@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Gear = require(Shared.Config.Gear)
+local MineGen = require(Shared.Logic.MineGen)
 local Net = require(Shared.Net)
 
 local Store = require(script.Parent.Parent.Store)
@@ -38,7 +39,7 @@ function ShopWindow.new(screen: ScreenGui)
 				child:Destroy()
 			end
 		end
-		local function section(title: string, kind: string, items: { any }, owned: number, describe: (any) -> string)
+		local function section(title: string, kind: string, items: { any }, owned: number, describe: (any, number) -> string)
 			local head = Ui.label(scroll, title, UDim2.new(1, -8, 0, 28), UDim2.new(), Ui.gold)
 			head.TextXAlignment = Enum.TextXAlignment.Left
 			for i, item in items do
@@ -48,7 +49,7 @@ function ShopWindow.new(screen: ScreenGui)
 				name.TextStrokeTransparency = 1
 				name.TextXAlignment = Enum.TextXAlignment.Left
 				name.ZIndex = 13
-				local info = Ui.label(row, describe(item), UDim2.new(0.5, -10, 0, 18), UDim2.fromOffset(12, 28), Color3.fromRGB(130, 120, 140))
+				local info = Ui.label(row, describe(item, i), UDim2.new(0.5, -10, 0, 18), UDim2.fromOffset(12, 28), Color3.fromRGB(130, 120, 140))
 				info.TextStrokeTransparency = 1
 				info.TextXAlignment = Enum.TextXAlignment.Left
 				info.ZIndex = 13
@@ -66,8 +67,8 @@ function ShopWindow.new(screen: ScreenGui)
 				button.ZIndex = 13
 			end
 		end
-		section("Shovels", "shovel", Gear.SHOVELS, data.shovel, function(s)
-			return ("Power %d  -  swing every %.2fs"):format(s.power, s.cooldown)
+		section("Shovels", "shovel", Gear.SHOVELS, data.shovel, function(s, i)
+			return ("Power %d, swing every %.2fs, digs down to layer %d"):format(s.power, s.cooldown, MineGen.reach(i))
 		end)
 		section("Backpacks", "pack", Gear.PACKS, data.pack, function(p)
 			return p.slots .. " gem slots"

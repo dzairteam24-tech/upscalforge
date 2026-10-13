@@ -25,6 +25,12 @@ export type Data = {
 	deepest: number, -- the deepest layer they've dug
 	seed: number, -- their mine's seed
 	lastSeen: number,
+	rebirths: number,
+	checkpoint: number, -- the elevator: the saved depth (Logic/Depth)
+	passes: { [string]: boolean }, -- the passes they own (Config/Passes)
+	boostUntil: number, -- os.time() their double-coins boost ends
+	daily: { last: number, streak: number }, -- the daily reward (Logic/Daily)
+	receipts: { string }, -- the last purchases handled (so a receipt is never paid twice)
 }
 
 local DataService = {}
@@ -60,6 +66,12 @@ local function fresh(): Data
 		deepest = 0,
 		seed = math.random(1, 1000000),
 		lastSeen = os.time(),
+		rebirths = 0,
+		checkpoint = 0,
+		passes = {},
+		boostUntil = 0,
+		daily = { last = 0, streak = 0 },
+		receipts = {},
 	}
 end
 
@@ -74,6 +86,9 @@ local function reconcile(saved: any): Data
 		if type(v) == type(default) then
 			(data :: any)[k] = v
 		end
+	end
+	if type(saved.daily) == "table" then
+		data.daily = { last = if type(saved.daily.last) == "number" then saved.daily.last else 0, streak = if type(saved.daily.streak) == "number" then saved.daily.streak else 0 }
 	end
 	for k, default in data.stats :: any do
 		if type(saved.stats) == "table" and type(saved.stats[k]) == "number" then
@@ -107,7 +122,20 @@ function DataService.push(player: Player)
 		pushing[player] = nil
 		local data = loaded[player]
 		if data and player.Parent then
-			Net.event("Data"):FireClient(player, Snapshot.of(data))
+			Net.event("Data"):FireClient(player, Snapshot.of(data, os.time()))
+			-- (the player list: how deep and how reborn)
+			if typeof(player) == "Instance" then
+				local board = player:FindFirstChild("leaderstats")
+				if board then
+					local depth, rebirths = board:FindFirstChild("Depth") :: IntValue?, board:FindFirstChild("Rebirths") :: IntValue?
+					if depth then
+						depth.Value = data.deepest
+					end
+					if rebirths then
+						rebirths.Value = data.rebirths
+					end
+				end
+			end
 		end
 	end)
 end
@@ -155,6 +183,16 @@ local function load(player: Player)
 	end
 	local data = reconcile(saved)
 	loaded[player] = data
+	if typeof(player) == "Instance" then
+		local board = Instance.new("Folder")
+		board.Name = "leaderstats"
+		for _, name in { "Depth", "Rebirths" } do
+			local value = Instance.new("IntValue")
+			value.Name = name
+			value.Parent = board
+		end
+		board.Parent = player
+	end
 	for _, fn in onLoaded do
 		task.spawn(fn, player, data)
 	end

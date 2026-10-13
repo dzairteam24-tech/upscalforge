@@ -8,12 +8,18 @@ local EVENTS = {
 	-- client -> server
 	"Dig", -- (x, layer, z): swing the shovel at a cube of their own mine
 	"Teleport", -- ("surface": the town, "plot": their mine's top, "depth": back to where they last dug)
-	"Buy", -- ("shovel" or "pack", index)
+	"Buy", -- ("shovel" or "pack", index): with coins
+	"BuyRobux", -- ("pass" or "product", key): the Robux shop (RobuxService)
+	"Rebirth",
+	"Daily", -- claim today's reward
+	"RemoteSell", -- sell from anywhere (the Sell Anywhere pass)
+	"ResetMine",
 	-- server -> client
 	"Data", -- (snapshot: Logic/Snapshot)
 	"Notify", -- (text, kind: "info", "good", "bad" or a rarity name)
 	"Fx", -- (kind: "Hit" or "Break" or "Gem", position, color)
 	"OpenShop",
+	"Offline", -- (coins, seconds, whether it hit the cap): what the drone earned while they were away
 }
 
 local FOLDER = "Remotes"

@@ -15,12 +15,12 @@ local RARITY_COLORS: { [string]: Color3 } = {
 }
 
 local LIST: { Gem } = {
-	{ id = "Quartz", rarity = "Common", color = rgb(235, 238, 245), value = 5, from = 1, to = 14, weight = 60 },
-	{ id = "Amber", rarity = "Common", color = rgb(255, 160, 40), value = 12, from = 3, to = 20, weight = 40 },
-	{ id = "Ruby", rarity = "Uncommon", color = rgb(235, 40, 70), value = 40, from = 9, to = 30, weight = 25 },
-	{ id = "Sapphire", rarity = "Rare", color = rgb(50, 110, 255), value = 140, from = 14, to = 40, weight = 12 },
-	{ id = "Emerald", rarity = "Epic", color = rgb(40, 220, 110), value = 600, from = 22, to = 40, weight = 5 },
-	{ id = "Void", rarity = "Legendary", color = rgb(150, 60, 255), value = 4000, from = 30, to = 40, weight = 1.5 },
+	{ id = "Quartz", rarity = "Common", color = rgb(235, 238, 245), value = 5, from = 1, to = 12, weight = 60 },
+	{ id = "Amber", rarity = "Common", color = rgb(255, 160, 40), value = 12, from = 3, to = 16, weight = 40 },
+	{ id = "Ruby", rarity = "Uncommon", color = rgb(235, 40, 70), value = 40, from = 9, to = 24, weight = 25 },
+	{ id = "Sapphire", rarity = "Rare", color = rgb(50, 110, 255), value = 140, from = 17, to = 36, weight = 12 },
+	{ id = "Emerald", rarity = "Epic", color = rgb(40, 220, 110), value = 600, from = 25, to = 40, weight = 5 },
+	{ id = "Void", rarity = "Legendary", color = rgb(150, 60, 255), value = 4000, from = 33, to = 40, weight = 1.5 },
 }
 
 local byId: { [string]: Gem } = {}

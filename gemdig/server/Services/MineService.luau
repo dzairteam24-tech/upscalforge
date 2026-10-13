@@ -6,9 +6,12 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Depth = require(Shared.Logic.Depth)
+local Gear = require(Shared.Config.Gear)
 local Gems = require(Shared.Config.Gems)
 local Gem = require(Shared.Logic.Gem)
 local Layout = require(Shared.Logic.Layout)
+local MineConfig = require(Shared.Config.Mine)
 local Net = require(Shared.Net)
 
 local DataService = require(script.Parent.DataService)
@@ -19,6 +22,8 @@ local MineService = {}
 
 local mines: { [Player]: Mine.Mine } = {}
 local random = Random.new()
+local lastReset: { [Player]: number } = {}
+local lastWarning: { [Player]: number } = {} -- (a message about a cube that's too hard isn't repeated every swing)
 
 local MESSAGES = {
 	full = "Backpack full! Sell your gems at the town",
@@ -47,25 +52,75 @@ local function onDig(player: Player, x: any, layer: any, z: any)
 	if not mine or not data or not root or type(x) ~= "number" or type(layer) ~= "number" or type(z) ~= "number" then
 		return
 	end
-	local outcome = mine:swing(data, x, layer, z, root.Position, os.clock(), random)
+	local now = os.clock()
+	local outcome = mine:swing(data, x, layer, z, root.Position, now, random)
 	if not outcome.ok then
+		local text: string? = nil
 		if outcome.reason == "full" then
-			Net.event("Notify"):FireClient(player, MESSAGES.full, "bad")
+			text = MESSAGES.full
+		elseif outcome.reason == "tooHard" then
+			local needed = Gear.SHOVELS[outcome.needs or 1]
+			text = "Too hard! You need the " .. (if needed then needed.name else "next shovel")
+		end
+		if text and now - (lastWarning[player] or -math.huge) > 1.5 then
+			lastWarning[player] = now
+			Net.event("Notify"):FireClient(player, text, "bad")
 		end
 		return
 	end
 	local fx = Net.event("Fx")
 	if outcome.broke then
-		fx:FireClient(player, "Break", outcome.position, outcome.color)
-		local item = outcome.item
-		if item then
-			fx:FireClient(player, "Gem", outcome.position, Gems.byId[item.g].color)
-			local rarity = Gems.byId[item.g].rarity
-			Net.event("Notify"):FireClient(player, "+ " .. Gem.name(item) .. " (" .. Gem.value(item) .. " coins)", if rarity == "Common" then "info" else rarity)
+		fx:FireClient(player, if outcome.geode then "Geode" else "Break", outcome.position, outcome.color)
+		local items = outcome.items
+		if items then
+			local rarest = items[1]
+			for _, item in items do
+				local gem = Gems.byId[item.g]
+				fx:FireClient(player, "Gem", outcome.position, gem.color)
+				if Gem.value(item) > Gem.value(rarest) then
+					rarest = item
+				end
+				local rarity = gem.rarity
+				Net.event("Notify"):FireClient(player, "+ " .. Gem.name(item) .. " (" .. Gem.value(item) .. " coins)", if rarity == "Common" then "info" else rarity)
+			end
 		end
+		data.checkpoint = Depth.checkpoint(data.deepest)
 		DataService.push(player)
 	else
 		fx:FireClient(player, "Hit", outcome.position, outcome.color)
+	end
+end
+
+-- Starts the player's mine again (a new seed: the gems are somewhere else; the elevator shaft down to their saved
+-- depth cleared) and puts them on their plot. `force`: no cooldown (a rebirth)
+function MineService.resetMine(player: Player, force: boolean?): boolean
+	local mine, data, index = mines[player], DataService.get(player), PlotService.index(player)
+	if not mine or not data or not index then
+		return false
+	end
+	local now = os.clock()
+	if not force and now - (lastReset[player] or -math.huge) < MineConfig.RESET_COOLDOWN then
+		Net.event("Notify"):FireClient(player, "The mine was just reset: a moment", "bad")
+		return false
+	end
+	lastReset[player] = now
+	data.seed = random:NextInteger(1, 1000000)
+	data.checkpoint = Depth.checkpoint(data.deepest)
+	mine:reset(data.seed, data.checkpoint)
+	teleport(player, Layout.plotSpawn(index))
+	Net.event("Notify"):FireClient(player, "New mine: fresh gems!", "good")
+	return true
+end
+
+-- Builds the layers round wherever the player is (they may be falling down the elevator shaft)
+function MineService.follow(player: Player)
+	local mine, index, root = mines[player], PlotService.index(player), rootOf(player)
+	if not mine or not index or not root then
+		return
+	end
+	local _, layer = Layout.cellAt(index, root.Position)
+	if layer then
+		mine:ensure(math.min(layer, MineConfig.MAX_LAYER))
 	end
 end
 
@@ -102,15 +157,30 @@ local function lamp(character: Model)
 end
 
 function MineService.init()
+	task.spawn(function()
+		while true do
+			task.wait(0.25)
+			for player in mines do
+				local ok, err = pcall(MineService.follow, player)
+				if not ok then
+					warn("[Mine] " .. tostring(err))
+				end
+			end
+		end
+	end)
 	Net.event("Dig").OnServerEvent:Connect(onDig)
 	Net.event("Teleport").OnServerEvent:Connect(onTeleport)
+	Net.event("ResetMine").OnServerEvent:Connect(function(player)
+		MineService.resetMine(player, false)
+	end)
 	DataService.onLoaded(function(player, data)
 		local index = PlotService.assign(player)
 		if not index then
 			Net.event("Notify"):FireClient(player, "The server is full", "bad")
 			return
 		end
-		local mine = Mine.new(index, data.seed, player.UserId, workspace)
+		data.checkpoint = Depth.checkpoint(data.deepest)
+		local mine = Mine.new(index, data.seed, player.UserId, workspace, data.checkpoint)
 		mine:ensure(1)
 		mines[player] = mine
 		-- (a character already here goes to the plot; later ones, on every respawn)
@@ -124,6 +194,8 @@ function MineService.init()
 			mine:destroy()
 			mines[player] = nil
 		end
+		lastReset[player] = nil
+		lastWarning[player] = nil
 		PlotService.release(player)
 	end)
 	local function track(player: Player)

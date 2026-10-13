@@ -30,8 +30,40 @@ function MineGen.hp(layer: number): number
 	return math.floor(zone.hp + zone.perLayer * (layer - zone.from) + 0.5)
 end
 
--- The gem kind in a cube, or nil
+-- The number of the shovel (Config/Gear) that can break cubes at this layer
+function MineGen.needs(layer: number): number
+	return MineGen.zone(layer).needs
+end
+
+-- The deepest layer a shovel can break
+function MineGen.reach(shovel: number): number
+	local deepest = 0
+	for layer = 1, MineConfig.MAX_LAYER do
+		if MineGen.needs(layer) <= shovel then
+			deepest = layer
+		end
+	end
+	return deepest
+end
+
+local function isTutorial(x: number, l: number, z: number): boolean
+	local t = MineConfig.TUTORIAL
+	return x == t.x and l == t.l and z == t.z
+end
+
+-- Whether a cube is a geode: it breaks into several gems at once
+function MineGen.geodeAt(seed: number, x: number, l: number, z: number): boolean
+	if isTutorial(x, l, z) then
+		return false
+	end
+	return hash(seed, x, l, z, 4) < MineConfig.GEODE_CHANCE and hash(seed, x, l, z, 1) >= MineConfig.GEM_CHANCE
+end
+
+-- The gem kind in a cube, or nil. (The cube under the first one dug down the middle is always a gem.)
 function MineGen.gemAt(seed: number, x: number, l: number, z: number): string?
+	if isTutorial(x, l, z) then
+		return "Quartz"
+	end
 	if hash(seed, x, l, z, 1) >= MineConfig.GEM_CHANCE then
 		return nil
 	end

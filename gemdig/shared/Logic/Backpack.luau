@@ -27,6 +27,15 @@ function Backpack.fits(data: Holder, item: Item): boolean
 	return Backpack.used(data) + Gem.slots(item) <= Backpack.capacity(data)
 end
 
+-- Whether all of these gems fit together
+function Backpack.fitsAll(data: Holder, items: { Item }): boolean
+	local slots = 0
+	for _, item in items do
+		slots += Gem.slots(item)
+	end
+	return Backpack.used(data) + slots <= Backpack.capacity(data)
+end
+
 -- Adds a gem; false if it doesn't fit
 function Backpack.add(data: Holder, item: Item): boolean
 	if not Backpack.fits(data, item) then
@@ -38,14 +47,15 @@ function Backpack.add(data: Holder, item: Item): boolean
 	return true
 end
 
--- Sells every gem: how many and how many coins
-function Backpack.sellAll(data: Holder): (number, number)
-	local count, coins = 0, 0
+-- Sells every gem at `multiplier` times its value (Logic/Multiplier): how many and how many coins
+function Backpack.sellAll(data: Holder, multiplier: number?): (number, number)
+	local count, base = 0, 0
 	for id, item in data.items do
-		coins += Gem.value(item)
+		base += Gem.value(item)
 		count += 1
 		data.items[id] = nil
 	end
+	local coins = math.floor(base * (multiplier or 1) + 0.5)
 	data.coins += coins
 	data.stats.sold += count
 	data.stats.earned += coins
