@@ -1,0 +1,26 @@
+{
+  "name": "Glowspire",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": { "$path": "glowspire/shared" }
+    },
+    "ServerScriptService": {
+      "Server": { "$path": "glowspire/server" }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": { "$path": "glowspire/client" }
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "ClockTime": 0,
+        "Brightness": 1,
+        "GlobalShadows": false,
+        "Ambient": [0.25, 0.25, 0.35],
+        "OutdoorAmbient": [0.2, 0.2, 0.3]
+      }
+    }
+  }
+}
