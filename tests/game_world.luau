@@ -240,3 +240,40 @@ end
 assert(wildEggs == openBiomes * WildConfig.NESTS, "an egg in every nest of the open biomes (the others: Coming Soon)")
 print("wild test passed")
 
+
+-- The 3D eggs: with ReplicatedStorage.EggModels, a known creature's egg is a clone of its mesh (as tall as the
+-- brick egg, on the same spot), a golden one all gold; without one for the creature, still bricks
+do
+	local EggModel = Loader.require(Shared.EggModel)
+	local folder = roblox.Instance.new("Folder")
+	local source = roblox.Instance.new("Part")
+	source.Name = "Egg_Cat.001"
+	source.Size = Vector3.new(2, 4, 2)
+	source.Parent = folder
+	EggModel.useModels(folder)
+	local function layers(part): { any }
+		local found = {}
+		for _, child in part:GetChildren() do
+			if child.Name == "EggLayer" then
+				table.insert(found, child)
+			end
+		end
+		return found
+	end
+	local egg = roblox.Instance.new("Part")
+	egg.Size = Vector3.new(2, 2, 2)
+	egg.CFrame = CFrame.new(0, 10, 0)
+	EggModel.dress(egg, roblox.Color3.new(1, 1, 1), false, "Cat")
+	local drawn = layers(egg)
+	assert(#drawn == 1 and drawn[1].Size.Y > 2.59 and drawn[1].Size.Y < 2.61, "the Cat egg is its mesh, 1.3 times as tall")
+	assert(math.abs(drawn[1].CFrame.Position.Y - 10) < 1e-3, "standing where the brick egg would")
+	EggModel.setVisible(egg, false)
+	assert(drawn[1].Transparency == 1, "hidden with its egg")
+	EggModel.dress(egg, roblox.Color3.new(1, 1, 1), true, "Cat")
+	drawn = layers(egg)
+	assert(#drawn == 1 and drawn[1].Material == roblox.Enum.Material.Foil, "a golden one: all gold")
+	EggModel.dress(egg, roblox.Color3.new(1, 1, 1), false, "Dog")
+	assert(#layers(egg) > 1, "no mesh for the Dog: bricks")
+	EggModel.useModels(nil)
+	print("3D egg test passed")
+end

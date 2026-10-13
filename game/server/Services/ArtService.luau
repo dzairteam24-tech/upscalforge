@@ -1,6 +1,6 @@
 --!strict
 -- Loads the 3D art (Config/Art) from Roblox into ReplicatedStorage: the creatures (for PetModel),
--- the decor props and the town. A model that fails to load is only a warning: the game draws stand-ins.
+-- the eggs (for EggModel), the decor props and the town. A model that fails to load is only a warning: the game draws stand-ins.
 
 local InsertService = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -54,6 +54,7 @@ end
 function ArtService.init(onLoaded: (string, Instance) -> ())
 	local models: { [string]: number } = {
 		CreatureModels = Art.CREATURE_MODELS_ASSET_ID,
+		EggModels = Art.EGG_MODELS_ASSET_ID,
 		PropsModel = Art.PROPS_ASSET_ID,
 		TownModel = Art.TOWN_ASSET_ID,
 	}

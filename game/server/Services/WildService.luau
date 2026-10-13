@@ -699,6 +699,13 @@ local function train()
 end
 
 -- When the creature models arrive, the guardians are drawn again with them
+-- Every nest's egg drawn again (the 3D eggs arrived)
+function WildService.redressEggs()
+	for _, nest in nests do
+		dress(nest)
+	end
+end
+
 function WildService.redraw()
 	for _, guardian in guardians do
 		draw(guardian)

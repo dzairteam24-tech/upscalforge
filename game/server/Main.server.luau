@@ -50,7 +50,8 @@ ArtService.init(function(name, model)
 		PropService.decorate()
 	elseif name == "CreatureModels" then
 		IslandService.redraw()
-		WildService.redraw()
+		WildService.redraw()	elseif name == "EggModels" then
+		WildService.redressEggs() -- (the nests' eggs drawn again, now as the 3D eggs)
 	end
 end)
 

@@ -5,11 +5,37 @@
 -- Transparency still says whether it's there (a Wild nest's empty egg): setVisible follows it to the bricks.
 -- An egg with a known creature in it (Logic/Hatch) is painted like it: its shell's colors and pattern, and a
 -- little of it poking out of the shell (ears, a comb, a tail). It's an egg, not the creature: no face.
+-- With the 3D eggs (ReplicatedStorage.EggModels, imported from art/models/EggModels.glb: "Egg_Dog"...
+-- "Egg_Mystery", their face toward -Z) a known creature's egg is a clone of its mesh instead of bricks.
 
 local Creatures = require(script.Parent.Config.Creatures)
 local Mystery = require(script.Parent.Config.Mystery)
 
 local EggModel = {}
+
+local override: Instance? = nil -- tests point this at a fake EggModels folder
+
+-- The 3D egg for this creature ("Egg_Cat", or "Egg_Cat.001" as the importer may name it), if there is one
+local function meshFor(species: string): BasePart?
+	local ok, root = pcall(function()
+		return override or game:GetService("ReplicatedStorage"):FindFirstChild("EggModels")
+	end)
+	if not ok or not root then
+		return nil
+	end
+	local want = "Egg_" .. species
+	for _, d in (root :: Instance):GetDescendants() do
+		if d:IsA("BasePart") and string.gsub(d.Name, "%.%d+$", "") == want then
+			return d
+		end
+	end
+	return nil
+end
+
+-- Tests: use this folder instead of ReplicatedStorage.EggModels (nil to go back)
+function EggModel.useModels(root: Instance?)
+	override = root
+end
 
 -- (the shell's layers, bottom to top: each one's width as a share of the egg's)
 local WIDTHS = { 0.6, 0.82, 0.95, 1, 1, 0.96, 0.86, 0.7, 0.45 }
@@ -215,14 +241,50 @@ function EggModel.dress(part: BasePart, color: Color3, golden: boolean?, species
 	local function layerY(i: number): number
 		return -height / 2 + step * (i - 0.5)
 	end
+	-- The 3D egg, when there's one for this creature: as tall as the bricks would be, standing on the same spot
+	local source = if species then meshFor(species) else nil
+	if source then
+		local egg = source:Clone()
+		egg.Name = "EggLayer"
+		egg:ClearAllChildren()
+		for _, look in source:GetChildren() do
+			if look:IsA("SurfaceAppearance") and not golden then
+				look:Clone().Parent = egg -- (its colors; a golden egg is all gold instead)
+			end
+		end
+		egg.Size = source.Size * (height / source.Size.Y)
+		egg.CFrame = frame * CFrame.new(0, egg.Size.Y / 2 - height / 2, 0)
+		if golden then
+			if egg:IsA("MeshPart") then
+				egg.TextureID = ""
+			end
+			egg.Color = rgb(255, 205, 70)
+			egg.Material = Enum.Material.Foil
+		end
+		egg.Anchored = false
+		egg.CanCollide = false
+		egg.CanQuery = false
+		egg.CanTouch = false
+		egg.Massless = true
+		egg.CastShadow = false
+		egg.Transparency = if hidden then 1 else 0
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = part
+		weld.Part1 = egg
+		weld.Parent = egg
+		egg.Parent = part
+	end
 	-- The shell: a layer of bricks each, studs on top
-	for i, share in WIDTHS do
+	for i, share in if source then {} else WIDTHS do
 		local own = if design and design.layers then design.layers[i] else nil
 		local layerColor = own or shell:Lerp(Color3.new(1, 1, 1), (i - 1) / #WIDTHS * 0.12)
 		brick(part, "EggLayer", Vector3.new(width * share, step, width * share), frame * CFrame.new(0, layerY(i), 0), layerColor, golden, hidden, true)
 	end
 	if not design then
 		return
+	end
+	if source then
+		design = { shell = design.shell, sparkle = design.sparkle } -- (the mesh has its own pattern and pieces)
 	end
 	-- Its pattern: bricks set into the shell's sides, each on its own layer's face (so it hugs the shell, stepped)
 	local SIDES: { [string]: CFrame } = { front = CFrame.identity, back = CFrame.Angles(0, math.pi, 0), left = CFrame.Angles(0, math.pi / 2, 0), right = CFrame.Angles(0, -math.pi / 2, 0) }
@@ -253,7 +315,7 @@ function EggModel.dress(part: BasePart, color: Color3, golden: boolean?, species
 		end
 	end
 	-- The Mystery Egg's "?": a pixel letter on its front, following the shell
-	if species == Mystery.ID then
+	if species == Mystery.ID and not source then
 		local QUESTION = { ".###.", "#...#", "....#", "...#.", "..#..", ".....", "..#.." }
 		local cell = width * 0.12
 		for row, line in QUESTION do
@@ -274,7 +336,7 @@ function EggModel.dress(part: BasePart, color: Color3, golden: boolean?, species
 		brick(part, "EggLayer", piece.size * width, at, piece.color, golden, hidden, true)
 	end
 	-- (the sheep's wool: bumpy bricks all over its sides)
-	if species == "Sheep" then
+	if species == "Sheep" and not source then
 		for i = 2, 7 do
 			local half = WIDTHS[i] * width / 2
 			for k = 0, 3 do
