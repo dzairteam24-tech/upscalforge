@@ -42,7 +42,8 @@ local function open(window: any)
 	window.toggle()
 end
 
-local hud = Hud.new(screen, {
+local hud
+hud = Hud.new(screen, {
 	seeds = function()
 		open(seeds)
 	end,
@@ -50,7 +51,8 @@ local hud = Hud.new(screen, {
 		open(barn)
 	end,
 	land = function()
-		Net.event("Expand"):FireServer()
+		FarmController.setLandMode(not FarmController.landMode)
+		hud.landMode(FarmController.landMode)
 	end,
 	tractor = function()
 		Net.event("CallTractor"):FireServer()

@@ -19,8 +19,8 @@ local Snapshot = require(Shared.Logic.Snapshot)
 export type Data = {
 	coins: number,
 	xp: number,
-	tiles: number, -- how many tiles of land (Logic/Land)
-	plots: { [string]: { c: string, t: number } }, -- what grows on each tile, and when it was planted (os.time)
+	lots: { [string]: boolean }, -- the lots of land they have ("cx,cz", Logic/Land)
+	plots: { [string]: { c: string, t: number } }, -- what grows on each tile ("x,z"), and when it was planted (os.time)
 	seeds: { [string]: number },
 	barn: { [string]: number }, -- harvested, not sold yet
 	stand: { [string]: { n: number, p: number } }, -- on their farm stand for visitors (Logic/Stand)
@@ -66,7 +66,7 @@ local function fresh(): Data
 	return {
 		coins = if TESTING then Game.STUDIO_COINS else DataService.START_COINS,
 		xp = 0,
-		tiles = Land.START,
+		lots = { [Land.FIRST] = true },
 		plots = {},
 		seeds = { carrot = DataService.START_SEEDS },
 		barn = {},
@@ -126,12 +126,18 @@ local function reconcile(saved: any): Data
 			end
 		end
 	end
-	data.tiles = math.clamp(math.floor(data.tiles), Land.START, Land.MAX)
+	if type(saved.lots) == "table" then
+		for k, v in saved.lots do
+			local cx, cz = Land.parse(k)
+			if v == true and cx and cz and Land.inBounds(cx, cz) then
+				data.lots[k] = true
+			end
+		end
+	end
 	if type(saved.plots) == "table" then
 		for k, v in saved.plots do
-			local n = tonumber(k)
-			if n and n >= 1 and n <= data.tiles and type(v) == "table" and type(v.c) == "string" and Crops.byKey[v.c] and type(v.t) == "number" then
-				data.plots[tostring(math.floor(n))] = { c = v.c, t = v.t }
+			if Land.owns(data.lots, k) and type(v) == "table" and type(v.c) == "string" and Crops.byKey[v.c] and type(v.t) == "number" then
+				data.plots[k] = { c = v.c, t = v.t }
 			end
 		end
 	end

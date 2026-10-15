@@ -174,12 +174,16 @@ end
 local function wait()
 	task.wait(0.05)
 end
+-- tile n of the first lot ("x,z"), and standing by it
+local function K(n: number): string
+	return Land.key((n - 1) % 4, (n - 1) // 4)
+end
 local function standBy(player: any, farm: number, tile: number)
-	player.root.CFrame = Layout.tile(farm, tile) * CFrame.new(0, 3, 0)
+	player.root.CFrame = Layout.tile(farm, (tile - 1) % 4, (tile - 1) // 4) * CFrame.new(0, 3, 0)
 end
 
 local village = workspaceInstance:FindFirstChild("Village")
-check("the village is built", village ~= nil and village:FindFirstChild("Farm6") ~= nil and village:FindFirstChild("Farm7") == nil and village.Farm1.Tiles:FindFirstChild("Tile36") ~= nil and village:FindFirstChild("Town") ~= nil)
+check("the village is built", village ~= nil and village:FindFirstChild("Farm6") ~= nil and village:FindFirstChild("Farm7") == nil and #village.Farm1.Tiles:GetChildren() == 0 and village:FindFirstChild("Town") ~= nil)
 check("it's a sunny day", lighting.ClockTime == 14 and lighting:FindFirstChildOfClass("Atmosphere") ~= nil)
 
 local alice = newPlayer(1, "Alice")
@@ -187,30 +191,30 @@ table.insert(players, alice)
 playerAdded:fire(alice)
 wait()
 local data = DataService.get(alice)
-check("a fresh farmer: some coins and carrot seeds", data ~= nil and data.coins == 20 and data.seeds.carrot == 6 and data.tiles == Land.START)
+check("a fresh farmer: some coins and carrot seeds", data ~= nil and data.coins == 20 and data.seeds.carrot == 6 and Land.count(data.lots) == 1)
 check("gets farm 1", FarmService.farmOf(alice) == 1 and village.Farm1:GetAttribute("Owner") == 1)
 check("their name is on its sign", village.Farm1.NameBoard:FindFirstChildOfClass("SurfaceGui").Owner.Text == "Alice's Farm")
 check("stands in front of it", (alice.root.CFrame.Position - Layout.spawn(1).Position).Magnitude < 0.01)
-check("their land shows", village.Farm1.Tiles.Tile6:GetAttribute("Owned") == true and village.Farm1.Tiles.Tile7:GetAttribute("Owned") == false)
+check("their land shows: one lot of tiles", #village.Farm1.Tiles:GetChildren() == 16 and village.Farm1.Tiles:FindFirstChild("T3,3") ~= nil and village.Farm1.Tiles:FindFirstChild("T4,0") == nil)
 local snap = sent("Data", alice)
 check("the client knows which farm is theirs", #snap >= 1 and snap[#snap].args[1].farm == 1 and snap[#snap].args[1].level == 1)
 
 -- plant
 alice.root.CFrame = CFrame.new(0, 3, 0) -- (the square, far from the farm)
-check("too far away: no", FarmService.tap(alice, 1, "carrot") == nil and data.seeds.carrot == 6)
+check("too far away: no", FarmService.tap(alice, K(1), "carrot") == nil and data.seeds.carrot == 6)
 standBy(alice, 1, 1)
-check("plant a carrot", FarmService.tap(alice, 1, "carrot") == "plant" and data.seeds.carrot == 5)
-check("the tile shows it", village.Farm1.Tiles.Tile1:GetAttribute("Crop") == "carrot" and village.Farm1.Tiles.Tile1:GetAttribute("Planted") == clock)
-check("not on land they don't have", FarmService.tap(alice, 7, "carrot") == nil)
-check("not a crop they can't grow yet (no seeds)", FarmService.tap(alice, 2, "goldcorn") == nil)
-check("tapping it while it grows does nothing", FarmService.tap(alice, 1, "carrot") == nil and data.seeds.carrot == 5)
-check("nonsense is ignored", FarmService.tap(alice, "x", "carrot") == nil and FarmService.tap(alice, 1.5, "carrot") == nil and FarmService.tap(alice, 99, "carrot") == nil)
+check("plant a carrot", FarmService.tap(alice, K(1), "carrot") == "plant" and data.seeds.carrot == 5)
+check("the tile shows it", village.Farm1.Tiles:FindFirstChild("T" .. K(1)):GetAttribute("Crop") == "carrot" and village.Farm1.Tiles:FindFirstChild("T" .. K(1)):GetAttribute("Planted") == clock)
+check("not on land they don't have", FarmService.tap(alice, "4,0", "carrot") == nil)
+check("not a crop they can't grow yet (no seeds)", FarmService.tap(alice, K(2), "goldcorn") == nil)
+check("tapping it while it grows does nothing", FarmService.tap(alice, K(1), "carrot") == nil and data.seeds.carrot == 5)
+check("nonsense is ignored", FarmService.tap(alice, "x", "carrot") == nil and FarmService.tap(alice, 1.5, "carrot") == nil and FarmService.tap(alice, "99,99", "carrot") == nil)
 
 -- harvest
 clock += Crops.byKey.carrot.grow
-check("ready: harvest", FarmService.tap(alice, 1, "carrot") == "harvest" and data.barn.carrot == Crops.byKey.carrot.yield and data.xp == Crops.byKey.carrot.xp)
+check("ready: harvest", FarmService.tap(alice, K(1), "carrot") == "harvest" and data.barn.carrot == Crops.byKey.carrot.yield and data.xp == Crops.byKey.carrot.xp)
 check("the client sees it", #sent("Harvested", alice) == 1 and sent("Harvested", alice)[1].args[2] == "carrot")
-check("the tile is empty again", village.Farm1.Tiles.Tile1:GetAttribute("Crop") == "")
+check("the tile is empty again", village.Farm1.Tiles:FindFirstChild("T" .. K(1)):GetAttribute("Crop") == "")
 
 -- sell
 check("sell all", FarmService.sell(alice, "all") == Crops.byKey.carrot.sell * Crops.byKey.carrot.yield and data.coins == 20 + Crops.byKey.carrot.sell * Crops.byKey.carrot.yield)
@@ -223,15 +227,18 @@ check("not locked ones", not FarmService.buySeeds(alice, "corn", 1))
 -- a level up
 data.xp = Level.toNext(1) - 1
 standBy(alice, 1, 2)
-FarmService.tap(alice, 2, "carrot")
+FarmService.tap(alice, K(2), "carrot")
 clock += 60
-FarmService.tap(alice, 2)
+FarmService.tap(alice, K(2))
 check("a level up is told", #sent("LevelUp", alice) == 1 and sent("LevelUp", alice)[1].args[1] == 2 and sent("LevelUp", alice)[1].args[2][1] == "radish")
 
 -- land
-data.coins = Land.cost(Land.START + 1)
-check("buy land", FarmService.expand(alice) and data.tiles == Land.START + 1 and village.Farm1.Tiles.Tile7:GetAttribute("Owned") == true)
-check("can't without coins", not FarmService.expand(alice))
+data.coins = Land.cost(1)
+check("buy the lot next door", FarmService.expand(alice, 1, 0) and Land.count(data.lots) == 2 and #village.Farm1.Tiles:GetChildren() == 32 and village.Farm1.Tiles:FindFirstChild("T4,0") ~= nil)
+check("can't without coins", not FarmService.expand(alice, 0, 1))
+data.coins = 1e9
+check("not a lot away from their land", not FarmService.expand(alice, 5, 5))
+data.coins = 0
 
 -- a second player: their own farm, can't touch Alice's
 local bob = newPlayer(2, "Bob")
@@ -240,10 +247,10 @@ playerAdded:fire(bob)
 wait()
 check("Bob gets farm 2", FarmService.farmOf(bob) == 2)
 standBy(alice, 1, 3)
-FarmService.tap(alice, 3, "carrot")
+FarmService.tap(alice, K(3), "carrot")
 bob.root.CFrame = alice.root.CFrame
 clock += 100
-check("Bob can't harvest Alice's carrots", FarmService.tap(bob, 3) == nil and village.Farm1.Tiles.Tile3:GetAttribute("Crop") == "carrot")
+check("Bob can't harvest Alice's carrots", FarmService.tap(bob, K(3)) == nil and village.Farm1.Tiles:FindFirstChild("T" .. K(3)):GetAttribute("Crop") == "carrot")
 
 -- the barn
 promptTriggered:fire({ Name = "BarnPrompt" }, alice)
@@ -285,7 +292,7 @@ check("Alice stocks her stand", MarketService.put(alice, "corn", 6, 60) and data
 check("the corn shows on her counter", village.Farm1.Stand:FindFirstChild("Goods") ~= nil and #village.Farm1.Stand.Goods:GetChildren() == 2)
 local bdata2 = DataService.get(bob)
 bdata2.coins = 1000
-bob.root.CFrame = Layout.tile(2, 1) * CFrame.new(0, 3, 0)
+bob.root.CFrame = Layout.tile(2, 0, 0) * CFrame.new(0, 3, 0)
 check("Bob can't buy from afar", not MarketService.buy(bob, 1, "corn", 2))
 bob.root.CFrame = Layout.stand(1) * CFrame.new(0, 3, -6)
 local aliceCoins = data.coins
@@ -332,12 +339,12 @@ check("Bob has his own", TractorService.of(bob) ~= nil and TractorService.of(bob
 
 -- Alice leaves with a corn planted; her farm is freed and saved
 standBy(alice, 1, 4)
-FarmService.tap(alice, 4, "corn")
+FarmService.tap(alice, K(4), "corn")
 playerRemoving:fire(alice)
 wait()
-check("saved", saved["p1"] ~= nil and saved["p1"].plots["4"].c == "corn")
+check("saved", saved["p1"] ~= nil and saved["p1"].plots[K(4)].c == "corn")
 check("her tractor is gone", TractorService.of(alice) == nil and tractor.Parent == nil)
-check("her farm is freed", village.Farm1:GetAttribute("Owner") == 0 and village.Farm1.Tiles.Tile4:GetAttribute("Crop") == "" and village.Farm1.NameBoard:FindFirstChildOfClass("SurfaceGui").Owner.Text == "Free farm")
+check("her farm is freed", village.Farm1:GetAttribute("Owner") == 0 and #village.Farm1.Tiles:GetChildren() == 0 and village.Farm1.NameBoard:FindFirstChildOfClass("SurfaceGui").Owner.Text == "Free farm")
 
 -- she comes back the next day: the corn grew while she was away
 clock += 86400
@@ -346,22 +353,22 @@ players = { bob, alice2 }
 playerAdded:fire(alice2)
 wait()
 local again = DataService.get(alice2)
-check("back with her farm as it was", again ~= nil and again.plots["4"].c == "corn" and again.tiles == Land.START + 1)
+check("back with her farm as it was", again ~= nil and again.plots[K(4)].c == "corn" and Land.count(again.lots) == 2)
 check("on the free farm", FarmService.farmOf(alice2) == 1)
 local welcome = sent("Notify", alice2)
 check("told what's ready", #welcome > 0 and string.find(welcome[#welcome].args[1], "ready") ~= nil)
 standBy(alice2, 1, 4)
 local cornBefore = again.barn.corn or 0
-check("and harvests it", FarmService.tap(alice2, 4) == "harvest" and again.barn.corn == cornBefore + Crops.byKey.corn.yield)
+check("and harvests it", FarmService.tap(alice2, K(4)) == "harvest" and again.barn.corn == cornBefore + Crops.byKey.corn.yield)
 
 -- a broken save is mended
-saved["p3"] = { coins = "lots", tiles = 999, seeds = { carrot = 5, banana = 3, corn = -2 }, plots = { ["1"] = { c = "corn", t = 5 }, ["2"] = { c = "nope", t = 1 }, ["50"] = { c = "corn", t = 1 } } }
+saved["p3"] = { coins = "lots", lots = { ["0,0"] = true, ["1,0"] = true, ["99,0"] = true, ["0,1"] = "yes" }, seeds = { carrot = 5, banana = 3, corn = -2 }, plots = { ["0,0"] = { c = "corn", t = 5 }, ["1,0"] = { c = "nope", t = 1 }, ["0,9"] = { c = "corn", t = 1 } } }
 local cara = newPlayer(3, "Cara")
 table.insert(players, cara)
 playerAdded:fire(cara)
 wait()
 local c = DataService.get(cara)
-check("a broken save is mended", c ~= nil and c.coins == 20 and c.tiles == Land.MAX and c.seeds.carrot == 5 and c.seeds.banana == nil and c.seeds.corn == nil and c.plots["1"].c == "corn" and c.plots["2"] == nil and c.plots["50"] == nil)
+check("a broken save is mended", c ~= nil and c.coins == 20 and Land.count(c.lots) == 2 and c.lots["99,0"] == nil and c.seeds.carrot == 5 and c.seeds.banana == nil and c.seeds.corn == nil and c.plots["0,0"].c == "corn" and c.plots["1,0"] == nil and c.plots["0,9"] == nil)
 check("Cara gets farm 3", FarmService.farmOf(cara) == 3)
 local _ = Vector3
 

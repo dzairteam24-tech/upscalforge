@@ -19,7 +19,7 @@ local STEPS = {
 	{ text = "Watch it grow... when it bounces, it's ready: tap it to harvest!", done = function(d: any) return d.stats.harvested >= 1 end },
 	{ text = "Open the BARN and sell your carrots for coins.", done = function(d: any) return d.stats.sold >= 1 end },
 	{ text = "Buy more seeds in SEEDS. Drag across tiles to plant many at once!", done = function(d: any) return d.stats.planted >= 10 end },
-	{ text = "Your farm can grow: buy more land with LAND.", done = function(d: any) return d.tiles > Land.START end },
+	{ text = "Your farm can grow as big as you like: tap LAND, then a yellow lot.", done = function(d: any) return Land.count(d.lots or {}) > 1 end },
 	{ text = "Hop in your TRACTOR and drive to town: the ORDERS board pays well!", done = function(d: any) return (d.stats.orders or 0) >= 1 end },
 	{ text = "Put crops on your FARM STAND (by your gate): neighbours buy them, even while you're away.", done = function(d: any) return next(d.stand or {}) ~= nil or (d.stats.standSold or 0) > 0 end },
 }

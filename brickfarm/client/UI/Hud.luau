@@ -22,6 +22,7 @@ export type Hud = {
 	banner: (title: string, sub: string?, color: Color3?) -> (),
 	info: (text: string) -> (),
 	selected: (key: string) -> (),
+	landMode: (on: boolean) -> (),
 }
 
 function Hud.new(screen: ScreenGui, buttons: Buttons): Hud
@@ -212,14 +213,8 @@ function Hud.new(screen: ScreenGui, buttons: Buttons): Hud
 		end
 		barnCount.Visible = inBarn > 0
 		barnCountLabel.Text = if inBarn > 99 then "99+" else tostring(inBarn)
-		if data.nextTileCost then
-			local ready = data.level >= data.nextTileLevel
-			landCost.Text = if ready then ("+1 tile: %s"):format(Format.short(data.nextTileCost)) else ("next at level %d"):format(data.nextTileLevel)
-			Ui.setEnabled(landButton, Ui.orange, ready and data.coins >= data.nextTileCost)
-		else
-			landCost.Text = "all land is yours"
-			Ui.setEnabled(landButton, Ui.orange, false)
-		end
+		landCost.Text = ("next lot: %s"):format(Format.short(data.lotCost))
+		landCost.TextColor3 = if data.coins >= data.lotCost then Ui.yellow else Color3.new(1, 1, 1)
 		for _, crop in Crops.LIST do
 			local slot = slots[crop.key]
 			local count = data.seeds[crop.key] or 0
@@ -253,7 +248,16 @@ function Hud.new(screen: ScreenGui, buttons: Buttons): Hud
 		end
 	end)
 
-	return { banner = showBanner, info = showInfo, selected = selected }
+	-- buying land: the button says how to stop, and a hint shows
+	local function landMode(on: boolean)
+		Ui.setText(landButton, if on then "DONE" else "LAND")
+		landButton.BackgroundColor3 = if on then Ui.green else Ui.orange
+		if on then
+			showInfo("Tap a yellow lot next to your land to buy it")
+		end
+	end
+
+	return { banner = showBanner, info = showInfo, selected = selected, landMode = landMode }
 end
 
 return Hud

@@ -8,14 +8,14 @@ local Snapshot = {}
 
 function Snapshot.of(data: any, farm: number?): any
 	local level, share = Level.of(data.xp)
-	local full = data.tiles >= Land.MAX
 	return {
 		farm = farm, -- which farm of the village is theirs
 		coins = data.coins,
 		xp = data.xp,
 		level = level,
 		levelShare = share,
-		tiles = data.tiles,
+		lots = data.lots,
+		lotCost = Land.cost(Land.count(data.lots)),
 		plots = data.plots,
 		seeds = data.seeds,
 		barn = data.barn,
@@ -24,8 +24,6 @@ function Snapshot.of(data: any, farm: number?): any
 		swapAt = data.swapAt,
 		stats = data.stats,
 		guide = data.guide,
-		nextTileCost = if full then nil else Land.cost(data.tiles + 1),
-		nextTileLevel = if full then nil else Land.level(data.tiles + 1),
 	}
 end
 

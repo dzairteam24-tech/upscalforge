@@ -7,7 +7,7 @@ Level.MAX = 50
 
 -- XP from one level to the next
 function Level.toNext(level: number): number
-	return math.floor(30 * level ^ 1.85)
+	return math.floor(20 * level ^ 2.7)
 end
 
 -- The level of a total of XP, and how far into it (0..1)

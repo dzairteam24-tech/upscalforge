@@ -1,7 +1,7 @@
 --!strict
 -- Builds the world everyone shares, all of bricks: a green baseplate, the market town in the middle (fountain,
 -- orders board, signposts), roads out to the farms, trees, and each farm: a big square of land walled by a hedge
--- with a gate facing the town, the grid of tiles, the barn, a house to walk into, the stand where visitors buy,
+-- with a gate facing the town, its land (built as it grows), the barn, a house to walk into, the stand where visitors buy,
 -- and the name over the gate. A farm's tiles carry what grows on them as attributes (Crop, Planted); each phone
 -- builds and animates the crops from those.
 
@@ -140,13 +140,13 @@ function Village.farm(parent: Instance, index: number): Model
 	model:SetAttribute("Index", index)
 	model:SetAttribute("Owner", 0)
 	local frame = Layout.farm(index)
-	local half = FarmConfig.ENCLOSURE / 2
+	local half = FarmConfig.TERRITORY / 2
 	local function at(x: number, z: number): Vector3
 		return (frame * CFrame.new(x, 0, z)).Position
 	end
 
 	-- the land inside the hedge is a lighter green (so the farm reads as its own place)
-	brick(model, "Yard", Vector3.new(FarmConfig.ENCLOSURE, 0.2, FarmConfig.ENCLOSURE), frame * CFrame.new(0, 0.1, 0), rgb(98, 166, 80), false)
+	brick(model, "Yard", Vector3.new(FarmConfig.TERRITORY, 0.2, FarmConfig.TERRITORY), frame * CFrame.new(0, 0.1, 0), rgb(98, 166, 80), false)
 	-- the hedge, with the gate
 	local h = FarmConfig.WALL
 	local gap = FarmConfig.GATE / 2
@@ -184,33 +184,10 @@ function Village.farm(parent: Instance, index: number): Model
 	farText.Parent = far
 	far.Parent = arch
 
-	-- the tiles, and a low white fence around them
+	-- the tiles: built a lot at a time as the farm grows (FarmService)
 	local tiles = Instance.new("Folder")
 	tiles.Name = "Tiles"
 	tiles.Parent = model
-	for n = 1, Land.MAX do
-		local tile = brick(tiles, "Tile" .. n, Vector3.new(FarmConfig.TILE, 1, FarmConfig.TILE), Layout.tile(index, n) * CFrame.new(0, 0.5, 0), Village.FOR_SALE)
-		tile:SetAttribute("Farm", index)
-		tile:SetAttribute("Index", n)
-		tile:SetAttribute("Owned", false)
-		tile:SetAttribute("Crop", "")
-		tile:SetAttribute("Planted", 0)
-	end
-	local fx = FarmConfig.COLUMNS * Layout.STEP / 2 + 3
-	local fz = FarmConfig.ROWS * Layout.STEP / 2 + 3
-	local function fence(from: Vector3, to: Vector3)
-		run(model, "Rail", from, to, 0.6, 0.6, 2.2, WHITE)
-		run(model, "Rail", from, to, 0.6, 0.6, 1.0, WHITE)
-		local posts = math.max(1, math.floor((to - from).Magnitude / 6))
-		for i = 0, posts do
-			brick(model, "Post", Vector3.new(1, 3, 1), CFrame.new(from:Lerp(to, i / posts)) * CFrame.new(0, 1.5, 0), WHITE)
-		end
-	end
-	fence(at(-fx, -fz), at(-fx, fz))
-	fence(at(-fx, fz), at(fx, fz))
-	fence(at(fx, fz), at(fx, -fz))
-	fence(at(-fx, -fz), at(-6, -fz))
-	fence(at(6, -fz), at(fx, -fz))
 
 	-- the barn
 	local barnFrame = Layout.barn(index)
@@ -290,9 +267,20 @@ function Village.farm(parent: Instance, index: number): Model
 	local from = gate.Position
 	local to = frame.Position + frame.LookVector * (FarmConfig.RING - FarmConfig.TOWN + 2)
 	run(model, "Road", from, to, 14, 0.4, 0.2, TAN, false)
-	run(model, "RoadIn", from, at(0, -FarmConfig.ROWS * Layout.STEP / 2 - 4), 10, 0.4, 0.3, TAN, false)
+	run(model, "RoadIn", from, at(0, -half + FarmConfig.YARD - 4), 10, 0.4, 0.3, TAN, false)
 	model.Parent = parent
 	return model
+end
+
+-- One tile of a farm's land, at column tx, row tz (FarmService builds them as lots are bought)
+function Village.tile(folder: Instance, farm: number, tx: number, tz: number): Part
+	local key = Land.key(tx, tz)
+	local tile = brick(folder, "T" .. key, Vector3.new(FarmConfig.TILE, 1, FarmConfig.TILE), Layout.tile(farm, tx, tz) * CFrame.new(0, 0.5, 0), Village.SOIL)
+	tile:SetAttribute("Farm", farm)
+	tile:SetAttribute("Key", key)
+	tile:SetAttribute("Crop", "")
+	tile:SetAttribute("Planted", 0)
+	return tile
 end
 
 -- A farm's name over its gate (and on the town's signpost for it)
@@ -335,8 +323,15 @@ end
 function Village.build(parent: Instance): { Model }
 	local folder = Instance.new("Folder")
 	folder.Name = "Village"
-	local size = (FarmConfig.RING + FarmConfig.ENCLOSURE) * 2 + 300
-	brick(folder, "Ground", Vector3.new(size, 2, size), CFrame.new(0, -1, 0), Village.GRASS)
+	-- the ground: a grid of big baseplates (one part can't be bigger than 2048)
+	local reach = FarmConfig.RING + FarmConfig.TERRITORY * 0.75 + 150
+	local pieces = math.ceil(reach * 2 / 2000)
+	local piece = reach * 2 / pieces
+	for i = 0, pieces - 1 do
+		for j = 0, pieces - 1 do
+			brick(folder, "Ground", Vector3.new(piece, 2, piece), CFrame.new(-reach + (i + 0.5) * piece, -1, -reach + (j + 0.5) * piece), Village.GRASS)
+		end
+	end
 	town(folder)
 	local farms = {}
 	for i = 1, FarmConfig.FARMS do
@@ -354,7 +349,7 @@ function Village.build(parent: Instance): { Model }
 		end
 		for i = 1, FarmConfig.FARMS do
 			local local_ = Layout.farm(i):PointToObjectSpace(p)
-			local half = FarmConfig.ENCLOSURE / 2 + 12
+			local half = FarmConfig.TERRITORY / 2 + 12
 			if math.abs(local_.X) < half and math.abs(local_.Z) < half then
 				return false
 			end
@@ -366,12 +361,12 @@ function Village.build(parent: Instance): { Model }
 		return true
 	end
 	local planted = 0
-	for _ = 1, 600 do
-		if planted >= 140 then
+	for _ = 1, 1500 do
+		if planted >= 260 then
 			break
 		end
 		local a = rand() * math.pi * 2
-		local r = FarmConfig.TOWN + 20 + rand() * (FarmConfig.RING + FarmConfig.ENCLOSURE)
+		local r = FarmConfig.TOWN + 20 + rand() * (FarmConfig.RING + FarmConfig.TERRITORY / 2)
 		local p = Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
 		if clear(p) then
 			tree(folder, p, 0.8 + rand() * 0.9)

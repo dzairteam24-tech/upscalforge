@@ -136,6 +136,7 @@ end)
 local Snapshot = Loader.require(Shared.Logic.Snapshot)
 local Crops = Loader.require(Shared.Config.Crops)
 local Land = Loader.require(Shared.Logic.Land)
+local Format = Loader.require(Shared.Logic.Format)
 local Level = Loader.require(Shared.Logic.Level)
 
 try("Main", function()
@@ -150,7 +151,7 @@ check("the screen is made", screen ~= nil)
 
 local function dataFor(overrides: any?): any
 	local data: any = {
-		coins = 250, xp = Level.total(3) + 10, tiles = 8, plots = {}, seeds = { carrot = 6, radish = 2 }, barn = { carrot = 4 },
+		coins = 250, xp = Level.total(3) + 10, lots = { ["0,0"] = true, ["1,0"] = true }, plots = {}, seeds = { carrot = 6, radish = 2 }, barn = { carrot = 4 },
 		stats = { planted = 0, harvested = 0, sold = 0, earned = 0 }, receipts = {}, guide = 0, lastSeen = 0,
 	}
 	for k, v in overrides or {} do
@@ -197,7 +198,7 @@ check("the level shows", has(screen, "LEVEL 3"))
 check("the guide's first hint", has(screen, "Tap a brown tile"))
 check("the seed bar shows the seeds they have", screen:FindFirstChild("carrot", true) ~= nil and screen:FindFirstChild("carrot", true).Visible and not screen:FindFirstChild("tomato", true).Visible)
 check("the barn shows how much is in it", has(screen, "4"))
-check("land shows its price", has(screen, "+1 tile: " .. Land.cost(9)))
+check("land shows its price", has(screen, "next lot: " .. Format.short(Land.cost(2))))
 
 -- the windows and buttons
 local seedsButton = button(screen, "SEEDS")
@@ -228,7 +229,15 @@ local land = button(screen, "LAND")
 if land then
 	fire(land, "Activated")
 end
-check("LAND asks for land", lastSent().name == "Expand")
+local FarmCtl = Loader.require(Client.Controllers.FarmController)
+local ghosts = FarmCtl._ghosts()
+check("LAND shows the lots for sale (next to theirs)", ghosts ~= nil and #ghosts:GetChildren() == #Land.frontier({ ["0,0"] = true, ["1,0"] = true }))
+check("with their price on them", ghosts ~= nil and has(ghosts, "+ " .. Format.short(Land.cost(2))))
+check("and the button says DONE", button(screen, "DONE") ~= nil)
+if button(screen, "DONE") then
+	fire(button(screen, "DONE"), "Activated")
+end
+check("DONE hides them", FarmCtl._ghosts() == nil and button(screen, "LAND") ~= nil)
 -- choosing a seed
 local radishSlot = screen:FindFirstChild("radish", true)
 fire(radishSlot, "Activated")
@@ -236,10 +245,7 @@ check("tapping a seed chooses it", FarmController.selected == "radish")
 
 -- the farm
 local tiles = workspaceInstance.Village.Farm1.Tiles
-local t1, t2, t3 = tiles.Tile1, tiles.Tile2, tiles.Tile3
-t1:SetAttribute("Owned", true)
-t2:SetAttribute("Owned", true)
-t3:SetAttribute("Owned", true)
+local t1, t2, t3 = Village.tile(tiles, 1, 0, 0), Village.tile(tiles, 1, 1, 0), Village.tile(tiles, 1, 2, 0)
 -- a carrot planted just now, a radish nearly ready
 t1:SetAttribute("Crop", "carrot")
 t1:SetAttribute("Planted", now)
@@ -261,7 +267,7 @@ local before = #sent
 try("tap ready", function()
 	FarmController._act(t2)
 end)
-check("a ready crop is harvested", #sent == before + 1 and lastSent().name == "Tile" and lastSent().args[1] == 2 and lastSent().args[2] == nil)
+check("a ready crop is harvested", #sent == before + 1 and lastSent().name == "Tile" and lastSent().args[1] == "1,0" and lastSent().args[2] == nil)
 check("and gone from the farm at once", views[t2] == nil)
 try("refresh", FarmController._refresh)
 check("not built again while the server catches up", views[t2] == nil)
@@ -269,7 +275,7 @@ FarmController.select("carrot")
 try("tap empty", function()
 	FarmController._act(t3)
 end)
-check("an empty tile is planted with the chosen seed", lastSent().name == "Tile" and lastSent().args[1] == 3 and lastSent().args[2] == "carrot")
+check("an empty tile is planted with the chosen seed", lastSent().name == "Tile" and lastSent().args[1] == "2,0" and lastSent().args[2] == "carrot")
 t1:SetAttribute("Planted", now) -- (planted again just now: growing)
 local count = #sent
 try("tap growing", function()
@@ -277,10 +283,6 @@ try("tap growing", function()
 end)
 check("a growing crop isn't sent", #sent == count)
 check("it says when it'll be ready", has(screen, "ready in"))
-try("tap not owned", function()
-	FarmController._act(tiles.Tile20)
-end)
-check("land they don't have says how to get it", has(screen, "LAND button"))
 -- the server's harvest message: the "+N" effect and a level up banner
 fire(remote("Harvested"), "OnClientEvent", 2, "radish", 2, 4)
 fire(remote("LevelUp"), "OnClientEvent", 4, { "corn" })

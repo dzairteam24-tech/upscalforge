@@ -61,45 +61,48 @@ function FarmService.model(index: number): Model?
 	return farms[index]
 end
 
--- The tile part of a farm
-function FarmService.tile(index: number, n: number): BasePart?
+-- The tile part of a farm ("x,z")
+function FarmService.tile(index: number, key: string): BasePart?
 	local model = farms[index]
 	local folder = model and model:FindFirstChild("Tiles")
-	return folder and folder:FindFirstChild("Tile" .. n) :: BasePart?
+	return folder and folder:FindFirstChild("T" .. key) :: BasePart?
 end
 
--- Puts a player's land and crops on their farm's tiles
+-- Puts a player's land and crops on their farm: a tile for every tile of every lot they have, each carrying what
+-- grows on it
 function FarmService.show(player: Player)
 	local data = DataService.get(player)
 	local index = farmOf[player]
-	if not data or not index then
+	local model = index and farms[index]
+	local folder = model and model:FindFirstChild("Tiles")
+	if not data or not index or not folder then
 		return
 	end
-	for n = 1, Land.MAX do
-		local tile = FarmService.tile(index, n)
-		if tile then
-			local owned = n <= data.tiles
-			local planted = data.plots[tostring(n)]
-			tile:SetAttribute("Owned", owned)
-			tile:SetAttribute("Crop", if planted then planted.c else "")
-			tile:SetAttribute("Planted", if planted then planted.t else 0)
-			tile.Color = if owned then Village.SOIL else Village.FOR_SALE
+	for lot in data.lots do
+		local cx, cz = Land.parse(lot)
+		if cx and cz then
+			for _, key in Land.tiles(cx, cz) do
+				local tile = folder:FindFirstChild("T" .. key) :: BasePart?
+				if not tile then
+					local tx, tz = Land.parse(key)
+					tile = Village.tile(folder, index, tx :: number, tz :: number)
+				end
+				local planted = data.plots[key]
+				local t = tile :: BasePart
+				t:SetAttribute("Crop", if planted then planted.c else "")
+				t:SetAttribute("Planted", if planted then planted.t else 0)
+			end
 		end
 	end
 end
 
 local function clear(index: number)
-	for n = 1, Land.MAX do
-		local tile = FarmService.tile(index, n)
-		if tile then
-			tile:SetAttribute("Owned", false)
-			tile:SetAttribute("Crop", "")
-			tile:SetAttribute("Planted", 0)
-			tile.Color = Village.FOR_SALE
-		end
-	end
 	local model = farms[index]
 	if model then
+		local folder = model:FindFirstChild("Tiles")
+		if folder then
+			folder:ClearAllChildren()
+		end
 		model:SetAttribute("Owner", 0)
 		Village.setOwner(model, nil)
 		local stand = model:FindFirstChild("Stand")
@@ -164,11 +167,11 @@ function FarmService.rescue(data: any): boolean
 	return false
 end
 
--- A tap on a tile of their farm: harvest it if it's ready, plant `key` if it's empty
+-- A tap on a tile of their farm ("x,z"): harvest it if it's ready, plant `key` if it's empty
 function FarmService.tap(player: Player, n: any, key: any): string?
 	local data = DataService.get(player)
 	local index = farmOf[player]
-	if not data or not index or type(n) ~= "number" then
+	if not data or not index or type(n) ~= "string" then
 		return nil
 	end
 	local tile = FarmService.tile(index, n)
@@ -177,7 +180,7 @@ function FarmService.tap(player: Player, n: any, key: any): string?
 		return nil
 	end
 	local now = os.time()
-	if data.plots[tostring(n)] then
+	if data.plots[n] then
 		local before = data.xp
 		local crop, amount, xp = Farm.harvest(data, n, now)
 		if not crop then
@@ -232,17 +235,18 @@ function FarmService.sell(player: Player, key: any): number
 	return coins
 end
 
-function FarmService.expand(player: Player): boolean
+-- Buys the lot cx, cz of their farm
+function FarmService.expand(player: Player, cx: any, cz: any): boolean
 	local data = DataService.get(player)
 	if not data then
 		return false
 	end
-	local ok, why = Farm.expand(data)
+	local ok, why = Farm.expand(data, cx, cz)
 	if not ok then
 		notify(player, why or "Not yet", "bad")
 		return false
 	end
-	notify(player, "More land!", "good")
+	notify(player, "More land! Your farm grows.", "good")
 	FarmService.show(player)
 	DataService.push(player)
 	return true

@@ -5,6 +5,7 @@ local process = require("@lune/process")
 local roblox = require("@lune/roblox")
 local Loader = require("./loader")
 local Vector3 = roblox.Vector3
+local CFrame = roblox.CFrame
 
 local Shared = Loader.root("brickfarm/shared", "Shared")
 local Crops = Loader.require(Shared.Config.Crops)
@@ -65,13 +66,23 @@ end
 
 -- land
 do
-	check("starts with the configured land", Land.START == FarmConfig.START_TILES and Land.MAX == 36)
-	check("more land costs more", Land.cost(20) > Land.cost(10) and Land.cost(Land.START + 1) > 0)
-	check("and needs a higher level", Land.level(Land.MAX) > Land.level(Land.START + 1) and Land.level(Land.START + 1) == 1)
-	check("can't buy without coins", not Land.canExpand(6, 0, 1))
-	check("can buy with them", Land.canExpand(6, 1e6, 1))
-	check("not past the top", not Land.canExpand(Land.MAX, 1e9, 99))
-	check("not before its level", not Land.canExpand(20, 1e9, 1))
+	local lots = { [Land.FIRST] = true }
+	check("a lot is named and read back", Land.key(3, -2) == "3,-2" and select(1, Land.parse("3,-2")) == 3 and select(2, Land.parse("3,-2")) == -2 and Land.parse("x") == nil and Land.parse(5) == nil)
+	check("tiles belong to lots", Land.owns(lots, "0,0") and Land.owns(lots, "3,3") and not Land.owns(lots, "4,0") and not Land.owns(lots, "-1,0") and not Land.owns(lots, "nope"))
+	check("a lot has LOT x LOT tiles", #Land.tiles(0, 0) == Land.LOT * Land.LOT and #Land.tiles(-2, 5) == 16)
+	check("only next to land they have", Land.buyable(lots, 1, 0) and Land.buyable(lots, -1, 0) and Land.buyable(lots, 0, 1) and not Land.buyable(lots, 2, 0) and not Land.buyable(lots, 1, 1))
+	check("not outside the walls", not Land.buyable(lots, 0, -1) and not Land.inBounds(FarmConfig.LOTS_WIDE + 1, 0) and not Land.inBounds(0, FarmConfig.LOTS_DEEP + 1))
+	check("not what they have", not Land.buyable(lots, 0, 0))
+	check("the frontier: every lot they could buy", #Land.frontier(lots) == 3)
+	local previous, rising = 0, true
+	for n = 1, 30 do
+		if Land.cost(n) <= previous then
+			rising = false
+		end
+		previous = Land.cost(n)
+	end
+	check("every lot costs more than the one before, with no end", rising and Land.cost(30) > Land.cost(29))
+	check("prices are round", Land.cost(2) % 100 == 0)
 end
 
 -- growth
@@ -86,24 +97,24 @@ end
 
 -- the farm's rules
 local function newData(): any
-	return { coins = 0, xp = 0, tiles = 6, plots = {}, seeds = {}, barn = {}, stats = { planted = 0, harvested = 0, sold = 0, earned = 0 } }
+	return { coins = 0, xp = 0, lots = { [Land.FIRST] = true }, plots = {}, seeds = {}, barn = {}, stats = { planted = 0, harvested = 0, sold = 0, earned = 0 } }
 end
 do
 	local d = newData()
-	check("no seeds, no planting", select(2, Farm.plant(d, 1, "carrot", 0)) == "seeds")
+	check("no seeds, no planting", select(2, Farm.plant(d, "0,0", "carrot", 0)) == "seeds")
 	d.coins = 100
 	check("buy carrot seeds", Farm.buySeeds(d, "carrot", 5) and d.seeds.carrot == 5 and d.coins == 100 - 5 * Crops.byKey.carrot.seed)
 	check("not a locked crop", select(2, Farm.buySeeds(d, "goldcorn", 1)) == "level")
 	check("not a silly amount", not Farm.buySeeds(d, "carrot", 0) and not Farm.buySeeds(d, "carrot", 1.5) and not Farm.buySeeds(d, "carrot", 1000) and not Farm.buySeeds(d, "carrot", "x"))
 	check("not more than they can pay", select(2, Farm.buySeeds(d, "carrot", 99)) == "coins")
-	check("plant", Farm.plant(d, 1, "carrot", 1000) and d.seeds.carrot == 4 and d.plots["1"].c == "carrot" and d.stats.planted == 1)
-	check("not on a planted tile", select(2, Farm.plant(d, 1, "carrot", 1000)) == "taken")
-	check("not on land they don't have", select(2, Farm.plant(d, 7, "carrot", 1000)) == "tile" and not Farm.plant(d, 0, "carrot", 0) and not Farm.plant(d, 2.5, "carrot", 0))
-	check("not a crop that isn't", select(2, Farm.plant(d, 2, "banana", 1000)) == "crop")
-	check("not ready, no harvest", Farm.harvest(d, 1, 1010) == nil and d.plots["1"] ~= nil)
-	check("nothing to harvest on an empty tile", Farm.harvest(d, 2, 5000) == nil)
-	local crop, amount, xp = Farm.harvest(d, 1, 1000 + Crops.byKey.carrot.grow)
-	check("ready: harvested into the barn", crop ~= nil and crop.key == "carrot" and amount == crop.yield and d.barn.carrot == crop.yield and d.plots["1"] == nil)
+	check("plant", Farm.plant(d, "0,0", "carrot", 1000) and d.seeds.carrot == 4 and d.plots["0,0"].c == "carrot" and d.stats.planted == 1)
+	check("not on a planted tile", select(2, Farm.plant(d, "0,0", "carrot", 1000)) == "taken")
+	check("not on land they don't have", select(2, Farm.plant(d, "4,0", "carrot", 1000)) == "tile" and not Farm.plant(d, 1, "carrot", 0) and not Farm.plant(d, "a,b", "carrot", 0))
+	check("not a crop that isn't", select(2, Farm.plant(d, "1,0", "banana", 1000)) == "crop")
+	check("not ready, no harvest", Farm.harvest(d, "0,0", 1010) == nil and d.plots["0,0"] ~= nil)
+	check("nothing to harvest on an empty tile", Farm.harvest(d, "1,0", 5000) == nil)
+	local crop, amount, xp = Farm.harvest(d, "0,0", 1000 + Crops.byKey.carrot.grow)
+	check("ready: harvested into the barn", crop ~= nil and crop.key == "carrot" and amount == crop.yield and d.barn.carrot == crop.yield and d.plots["0,0"] == nil)
 	check("with XP", xp == Crops.byKey.carrot.xp and d.xp == xp)
 	local coins = d.coins
 	local got = Farm.sell(d, "all")
@@ -111,55 +122,79 @@ do
 	check("selling an empty barn gives nothing", Farm.sell(d, "all") == 0)
 	d.barn = { carrot = 3, radish = 2 }
 	check("sell one kind", Farm.sell(d, "radish") == Crops.byKey.radish.sell * 2 and d.barn.carrot == 3 and d.barn.radish == nil)
-	-- the last seed
 	d.seeds = { carrot = 1 }
-	Farm.plant(d, 3, "carrot", 0)
+	Farm.plant(d, "2,2", "carrot", 0)
 	check("the last seed used leaves none", d.seeds.carrot == nil)
-	-- a level up
 	local e = newData()
 	e.xp = Level.toNext(1) - 1
-	e.plots["1"] = { c = "carrot", t = 0 }
-	local _, _, _, up = Farm.harvest(e, 1, 1e6)
+	e.plots["0,0"] = { c = "carrot", t = 0 }
+	local _, _, _, up = Farm.harvest(e, "0,0", 1e6)
 	check("a harvest can level them up", up and Farm.level(e) == 2)
 	check("and unlock the next crop", Farm.unlocked(e, "radish") and not Farm.unlocked(e, "tomato"))
 	-- land
 	local f = newData()
-	f.coins = Land.cost(7)
-	check("buy land", Farm.expand(f) and f.tiles == 7 and f.coins == 0)
-	check("now they can plant there", select(2, Farm.plant(f, 7, "carrot", 0)) == "seeds")
-	check("can't buy land without coins", not Farm.expand(f))
-	f.plots = { ["1"] = { c = "carrot", t = 0 }, ["2"] = { c = "carrot", t = 100 }, ["3"] = { c = "corn", t = 0 } }
+	check("a farm starts with one lot (16 tiles)", Farm.tiles(f) == 16)
+	f.coins = Land.cost(1)
+	check("buy the lot next door", Farm.expand(f, 1, 0) and f.lots["1,0"] and f.coins == 0 and Farm.tiles(f) == 32)
+	check("now they can plant there", select(2, Farm.plant(f, "5,1", "carrot", 0)) == "seeds")
+	f.coins = 1e12
+	check("not a lot away from their land", select(2, Farm.expand(f, 5, 5)) ~= nil and f.lots["5,5"] == nil)
+	check("nonsense", not Farm.expand(f, "x", 0) and not Farm.expand(f, 0.5, 1))
+	local before = f.coins
+	check("each lot costs more", Farm.expand(f, 2, 0) and before - f.coins == Land.cost(2))
+	f.coins = 0
+	check("can't buy land without coins", not Farm.expand(f, 0, 1))
+	f.plots = { ["0,0"] = { c = "carrot", t = 0 }, ["1,0"] = { c = "carrot", t = 100 }, ["2,0"] = { c = "corn", t = 0 } }
 	check("counts the ready tiles", Farm.readyCount(f, 120) == 1)
 end
 
--- the village
+-- the world
 do
+	local half = FarmConfig.TERRITORY / 2
 	local apart = true
 	for a = 1, FarmConfig.FARMS do
 		for b = a + 1, FarmConfig.FARMS do
-			if (Layout.farm(a).Position - Layout.farm(b).Position).Magnitude < FarmConfig.COLUMNS * Layout.STEP + 20 then
+			if (Layout.farm(a).Position - Layout.farm(b).Position).Magnitude < half * math.sqrt(2) * 2 + 20 then
 				apart = false
 			end
 		end
 	end
-	check("farms don't overlap", apart)
+	check("farms' territories never overlap", apart)
 	local f = Layout.farm(3)
-	check("each farm faces the square", (f.Position + f.LookVector * FarmConfig.RING).Magnitude < 0.01)
-	local back = true
-	for farm = 1, FarmConfig.FARMS do
-		for tile = 1, Land.MAX do
-			local a, b = Layout.tileAt(Layout.tile(farm, tile).Position + Vector3.new(0.5, 0, -0.3))
-			if a ~= farm or b ~= tile then
-				back = false
+	check("each farm faces the town", (f.Position + f.LookVector * FarmConfig.RING).Magnitude < 0.01)
+	-- every lot that can ever be bought is inside the walls, behind the yard
+	local inside = true
+	for cx = -FarmConfig.LOTS_WIDE, FarmConfig.LOTS_WIDE do
+		for cz = 0, FarmConfig.LOTS_DEEP do
+			for _, corner in { { -1, -1 }, { 1, 1 } } do
+				local p = Layout.farm(2):PointToObjectSpace((Layout.lot(2, cx, cz) * CFrame.new(corner[1] * Layout.LOT_SIZE / 2, 0, corner[2] * Layout.LOT_SIZE / 2)).Position)
+				if math.abs(p.X) > half - 4 or p.Z > half - 4 or p.Z < -half + FarmConfig.YARD - 1 then
+					inside = false
+				end
 			end
 		end
 	end
+	check("all the land fits inside the walls", inside)
+	local back = true
+	for _, t in { { 0, 0 }, { 3, 3 }, { -5, 2 }, { 17, 40 }, { -44, 83 } } do
+		local farm, tx, tz = Layout.tileAt(Layout.tile(4, t[1], t[2]).Position + Vector3.new(0.4, 0, -0.3))
+		if farm ~= 4 or tx ~= t[1] or tz ~= t[2] then
+			back = false
+		end
+	end
 	check("a point on a tile maps back to it", back)
-	check("nothing between the farms", Layout.tileAt(Vector3.new(0, 0, 0)) == nil)
-	local front = (Layout.tile(1, 1).Position - Vector3.zero).Magnitude < (Layout.tile(1, 31).Position - Vector3.zero).Magnitude
-	check("the first tiles are at the front (near the square)", front)
-	check("the spawn is in front of the farm, outside the tiles", Layout.tileAt(Layout.spawn(2).Position) == nil and (Layout.spawn(2).Position - Vector3.zero).Magnitude < FarmConfig.RING)
-	check("the barn is beside the tiles", Layout.tileAt(Layout.barn(4).Position) == nil and (Layout.barn(4).Position - Layout.farm(4).Position).Magnitude < 50)
+	check("nothing in the town", Layout.tileAt(Vector3.new(0, 0, 0)) == nil)
+	local lotMiddle = Layout.lot(1, 0, 0).Position
+	local tilesMiddle = (Layout.tile(1, 1, 1).Position + Layout.tile(1, 2, 2).Position) / 2
+	check("a lot's middle is the middle of its tiles", (lotMiddle - tilesMiddle).Magnitude < 0.01)
+	local yard = { Layout.barn(1), Layout.house(1), Layout.stand(1), Layout.tractor(1), Layout.spawn(1) }
+	local clear = true
+	for _, cf in yard do
+		if Layout.tileAt(cf.Position) ~= nil then
+			clear = false
+		end
+	end
+	check("the buildings are in the yard, never on land", clear)
 end
 
 -- brick models

@@ -1,6 +1,6 @@
 --!strict
 -- Chat commands for trying the game quickly in Roblox Studio (they do nothing in the published game):
---   /coins N   /level N   /tiles N   /grow (everything planted is ready)   /seeds key N   /guide   /help
+--   /coins N   /level N   /lots N   /grow (everything planted is ready)   /seeds key N   /guide   /help
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,7 +16,7 @@ local DataService = require(script.Parent.DataService)
 
 local StudioTools = {}
 
-local HELP = "/coins N  /level N  /tiles N  /grow  /seeds carrot 10  /guide"
+local HELP = "/coins N  /level N  /lots N  /grow  /seeds carrot 10  /guide"
 
 -- Runs one command; true if it was one. `show(player)` puts their farm back on its tiles (FarmService)
 function StudioTools.command(player: Player, text: string, show: (Player) -> ()): boolean
@@ -37,9 +37,15 @@ function StudioTools.command(player: Player, text: string, show: (Player) -> ())
 	elseif word == "level" and number then
 		data.xp = Level.total(math.clamp(math.floor(number), 1, Level.MAX))
 		say("level: " .. math.floor(number))
-	elseif word == "tiles" and number then
-		data.tiles = math.clamp(math.floor(number), Land.START, Land.MAX)
-		say("tiles: " .. data.tiles)
+	elseif word == "lots" and number then
+		-- (that many more lots, free, wherever they'd go first)
+		for _ = 1, math.clamp(math.floor(number), 0, 50) do
+			local spot = Land.frontier(data.lots)[1]
+			if spot then
+				data.lots[Land.key(spot.cx, spot.cz)] = true
+			end
+		end
+		say("lots: " .. Land.count(data.lots))
 	elseif word == "grow" then
 		for _, planted in data.plots do
 			planted.t = 0

@@ -12,8 +12,8 @@ export type Planted = { c: string, t: number } -- the crop, and when it was plan
 export type Data = {
 	coins: number,
 	xp: number,
-	tiles: number, -- how many tiles of land they have
-	plots: { [string]: Planted }, -- what grows where (by tile number, as text so it saves)
+	lots: { [string]: boolean }, -- the lots of land they have ("cx,cz", Logic/Land)
+	plots: { [string]: Planted }, -- what grows where (by tile, "x,z")
 	seeds: { [string]: number },
 	barn: { [string]: number }, -- harvested, waiting to be sold
 	stats: { planted: number, harvested: number, sold: number, earned: number },
@@ -32,7 +32,7 @@ function Farm.unlocked(data: Data, key: string): boolean
 end
 
 local function validTile(data: Data, tile: any): boolean
-	return type(tile) == "number" and tile == math.floor(tile) and tile >= 1 and tile <= data.tiles
+	return Land.owns(data.lots, tile)
 end
 
 function Farm.plant(data: Data, tile: any, key: any, now: number): (boolean, string?)
@@ -42,7 +42,7 @@ function Farm.plant(data: Data, tile: any, key: any, now: number): (boolean, str
 	if type(key) ~= "string" or not Crops.byKey[key] then
 		return false, "crop"
 	end
-	if data.plots[tostring(tile)] then
+	if data.plots[tile] then
 		return false, "taken"
 	end
 	if (data.seeds[key] or 0) <= 0 then
@@ -52,7 +52,7 @@ function Farm.plant(data: Data, tile: any, key: any, now: number): (boolean, str
 	if data.seeds[key] <= 0 then
 		data.seeds[key] = nil
 	end
-	data.plots[tostring(tile)] = { c = key, t = now }
+	data.plots[tile] = { c = key, t = now }
 	data.stats.planted += 1
 	return true, nil
 end
@@ -62,7 +62,7 @@ function Farm.harvest(data: Data, tile: any, now: number): (Crops.Crop?, number,
 	if not validTile(data, tile) then
 		return nil, 0, 0, false
 	end
-	local planted = data.plots[tostring(tile)]
+	local planted = data.plots[tile]
 	if not planted then
 		return nil, 0, 0, false
 	end
@@ -70,7 +70,7 @@ function Farm.harvest(data: Data, tile: any, now: number): (Crops.Crop?, number,
 	if not crop or not Growth.ready(planted.t, crop.grow, now) then
 		return nil, 0, 0, false
 	end
-	data.plots[tostring(tile)] = nil
+	data.plots[tile] = nil
 	data.barn[crop.key] = (data.barn[crop.key] or 0) + crop.yield
 	local before = Farm.level(data)
 	data.xp += crop.xp
@@ -115,14 +115,26 @@ function Farm.sell(data: Data, key: any): number
 	return coins
 end
 
-function Farm.expand(data: Data): (boolean, string?)
-	local ok, why = Land.canExpand(data.tiles, data.coins, Farm.level(data))
-	if not ok then
-		return false, why
+-- Buys the lot cx, cz (next to land they have)
+function Farm.expand(data: Data, cx: any, cz: any): (boolean, string?)
+	if type(cx) ~= "number" or type(cz) ~= "number" or cx ~= math.floor(cx) or cz ~= math.floor(cz) then
+		return false, "lot"
 	end
-	data.coins -= Land.cost(data.tiles + 1)
-	data.tiles += 1
+	if not Land.buyable(data.lots, cx, cz) then
+		return false, "Buy land next to yours"
+	end
+	local cost = Land.cost(Land.count(data.lots))
+	if data.coins < cost then
+		return false, "Not enough coins yet"
+	end
+	data.coins -= cost
+	data.lots[Land.key(cx, cz)] = true
 	return true, nil
+end
+
+-- How many tiles of land they have
+function Farm.tiles(data: Data): number
+	return Land.count(data.lots) * Land.LOT * Land.LOT
 end
 
 -- How many tiles are ready now

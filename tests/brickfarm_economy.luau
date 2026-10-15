@@ -23,7 +23,7 @@ end
 local START_SEEDS = 6 -- (a new farm gets this many carrot seeds; DataService)
 local START_COINS = 20
 local function newData(): any
-	return { coins = START_COINS, xp = 0, tiles = Land.START, plots = {}, seeds = { carrot = START_SEEDS }, barn = {}, stats = { planted = 0, harvested = 0, sold = 0, earned = 0 } }
+	return { coins = START_COINS, xp = 0, lots = { [Land.FIRST] = true }, plots = {}, seeds = { carrot = START_SEEDS }, barn = {}, stats = { planted = 0, harvested = 0, sold = 0, earned = 0 } }
 end
 
 -- the best crop to plant now if they'll look again in `away` seconds: the most profit a second of the time
@@ -43,22 +43,35 @@ local function choose(data: any, away: number): any
 end
 
 -- one look at the farm: harvest, sell, buy land, plant every empty tile
+local function allTiles(data: any): { string }
+	local list = {}
+	for lot in data.lots do
+		local cx, cz = Land.parse(lot)
+		for _, key in Land.tiles(cx :: number, cz :: number) do
+			table.insert(list, key)
+		end
+	end
+	return list
+end
+
 local function tend(data: any, now: number, away: number)
-	for tile = 1, data.tiles do
+	for _, tile in allTiles(data) do
 		Farm.harvest(data, tile, now)
 	end
 	Farm.sell(data, "all")
 	-- (land, but not with the money for seeds)
-	local reserve = 0
 	local crop = choose(data, away)
-	if crop then
-		reserve = crop.seed * data.tiles
+	local function reserve(): number
+		return if crop then crop.seed * Farm.tiles(data) else 0
 	end
-	while data.tiles < Land.MAX and data.coins - Land.cost(data.tiles + 1) >= reserve and Farm.expand(data) do
-		reserve = if crop then crop.seed * data.tiles else 0
+	while data.coins - Land.cost(Land.count(data.lots)) >= reserve() do
+		local spot = Land.frontier(data.lots)[1]
+		if not spot or not Farm.expand(data, spot.cx, spot.cz) then
+			break
+		end
 	end
-	for tile = 1, data.tiles do
-		if not data.plots[tostring(tile)] then
+	for _, tile in allTiles(data) do
+		if not data.plots[tile] then
 			local crop = choose(data, away)
 			if not crop then
 				break
@@ -90,13 +103,13 @@ do
 			level5 = t
 		end
 	end
-	print(string.format("an hour straight: first sale %ss, level 2 at %.1f min, level 5 at %s min, after an hour level %d, %d tiles, %d coins",
-		tostring(firstSale), (level2 or 0) / 60, if level5 then string.format("%.1f", level5 / 60) else "never", Farm.level(data), data.tiles, data.coins))
+	print(string.format("an hour straight: first sale %ss, level 2 at %.1f min, level 5 at %s min, after an hour level %d, %d lots, %d coins",
+		tostring(firstSale), (level2 or 0) / 60, if level5 then string.format("%.1f", level5 / 60) else "never", Farm.level(data), Land.count(data.lots), data.coins))
 	check("the first sale comes within a minute", firstSale ~= nil and firstSale <= 60, tostring(firstSale))
 	check("level 2 within 3 minutes", level2 ~= nil and level2 <= 180, tostring(level2))
 	check("level 5 in 15 to 45 minutes", level5 ~= nil and level5 >= 900 and level5 <= 2700, tostring(level5))
-	check("more land within the hour", data.tiles > Land.START + 2)
-	check("but nowhere near all of it", data.tiles < Land.MAX - 10, tostring(data.tiles))
+	check("a second lot within the hour", Land.count(data.lots) >= 2, tostring(Land.count(data.lots)))
+	check("but not many more", Land.count(data.lots) <= 4, tostring(Land.count(data.lots)))
 end
 
 -- two 15-minute sessions a day, for two weeks
@@ -113,11 +126,11 @@ do
 				tend(data, t, away)
 			end
 		end
-		table.insert(log, string.format("day %d: level %d, %d tiles", d + 1, Farm.level(data), data.tiles))
+		table.insert(log, string.format("day %d: level %d, %d lots", d + 1, Farm.level(data), Land.count(data.lots)))
 	end
 	print("two sessions a day: " .. log[1] .. " | " .. log[3] .. " | " .. log[7] .. " | " .. log[14])
 	check("a week in: past level 10", Farm.level(data) >= 10, tostring(Farm.level(data)))
-	check("two weeks in: still something to buy (land)", data.tiles < Land.MAX, tostring(data.tiles))
+	check("two weeks in: the farm keeps growing (more land every few days)", Land.count(data.lots) >= 6 and Land.count(data.lots) <= 16, tostring(Land.count(data.lots)))
 	check("two weeks in: the slowest crop is unlocked or nearly", Farm.level(data) >= Crops.LIST[#Crops.LIST].level - 4, tostring(Farm.level(data)))
 	local _ = Growth
 end
