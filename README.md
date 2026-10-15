@@ -1,8 +1,6 @@
-# Cubeling Nest
+# Upscalforge Games
 
-لعبة Roblox: تفقس مخلوقات مكعبة في جزيرتك، وهوما يجيبولك الدراهم. المشروع: Upscalforge Games.
+مشروع ألعاب Roblox. هذا الفرع (`claude/new-game`) فارغ من الألعاب: نبدا فيه لعبة جديدة من الصفر.
 
-- **[اللعبة](docs/game.md):** الماب، كيفاش تتلعب، والإعدادات
-- **[الـ Art](art/README.md):** الموديلات 3D وكيفاش تدخل للعبة
-
-الكود في `game/`، يتبنى بـ Rojo (`default.project.json`). الاختبارات: `lune run tests/game.luau` و `lune run tests/game_world.luau`.
+- `tests/loader.luau`: أداة تحمّل كود Luau خارج Roblox باش نختبرو القواعد بـ Lune.
+- الألعاب القديمة (Cubeling Nest، Gem Dig، Glowspire، Cubedash) محفوظة في تاريخ git، ونقدر نرجعوها كي تحب.
