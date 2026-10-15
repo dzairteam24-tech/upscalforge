@@ -1,0 +1,32 @@
+{
+  "name": "BrickFarm",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": { "$path": "brickfarm/shared" }
+    },
+    "ServerScriptService": {
+      "Server": { "$path": "brickfarm/server" }
+    },
+    "StarterPlayer": {
+      "$properties": {
+        "CameraMaxZoomDistance": 80
+      },
+      "StarterPlayerScripts": {
+        "Client": { "$path": "brickfarm/client" }
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "ClockTime": 14,
+        "Brightness": 2.4,
+        "GlobalShadows": true
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "FallenPartsDestroyHeight": -200
+      }
+    }
+  }
+}
