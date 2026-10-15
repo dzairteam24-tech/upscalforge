@@ -11,12 +11,27 @@ local EVENTS = {
 	"Sell", -- (cropKey or "all"): sell from the barn (they must be at it)
 	"Expand", -- buy the next tile of land
 	"GuideDone", -- (step): the first-minutes guide has shown this far
+	"Deliver", -- (order index): hand an order in at the town's board
+	"SwapOrder", -- (order index): swap it for another (free, now and then)
+	"StandPut", -- (cropKey, amount, price): put crops from the barn on their stand
+	"StandTake", -- (cropKey): take them back
+	"StandBuy", -- (farm index, cropKey, amount): buy from someone's stand
+	"TradeAsk", -- (userId): ask someone nearby to trade
+	"TradeAnswer", -- (userId, accept)
+	"TradeOffer", -- ({ [cropKey]: amount }, coins): their side of the trade
+	"TradeReady", -- (ready)
+	"TradeCancel",
+	"CallTractor", -- bring their tractor to them
 	-- server -> client
 	"Data", -- (snapshot: Logic/Snapshot)
 	"Notify", -- (text, kind: "info", "good", "bad", "gold")
 	"Harvested", -- (tileIndex, cropKey, amount, xp): for the effect
 	"LevelUp", -- (level, unlocked crop keys)
 	"OpenBarn", -- the barn's prompt was used
+	"OpenOrders", -- the orders board's prompt was used
+	"OpenStand", -- (farm index, farmer's name, its stock { [cropKey]: { n, p } }, whether it's their own)
+	"TradeAsked", -- (userId, name): someone wants to trade
+	"TradeState", -- (state or nil when it ends): { with, mine, theirs, myReady, theirReady }
 }
 
 local FOLDER = "Remotes"

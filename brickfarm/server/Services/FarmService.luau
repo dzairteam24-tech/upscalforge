@@ -15,6 +15,7 @@ local Game = require(Shared.Config.Game)
 local Farm = require(Shared.Logic.Farm)
 local Land = require(Shared.Logic.Land)
 local Layout = require(Shared.Logic.Layout)
+local Level = require(Shared.Logic.Level)
 local Net = require(Shared.Net)
 
 local DataService = require(script.Parent.DataService)
@@ -32,6 +33,28 @@ end
 
 function FarmService.farmOf(player: Player): number?
 	return farmOf[player]
+end
+
+function FarmService.ownerOf(index: number): Player?
+	return owners[index]
+end
+
+-- Tells them of a new level (and the seeds it unlocked), if their XP passed one since `before`
+function FarmService.levelUp(player: Player, before: number)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	local from, to = Level.of(before), Farm.level(data)
+	if to > from then
+		local unlocked = {}
+		for _, c in Crops.LIST do
+			if c.level > from and c.level <= to then
+				table.insert(unlocked, c.key)
+			end
+		end
+		Net.event("LevelUp"):FireClient(player, to, unlocked)
+	end
 end
 
 function FarmService.model(index: number): Model?
@@ -79,6 +102,11 @@ local function clear(index: number)
 	if model then
 		model:SetAttribute("Owner", 0)
 		Village.setOwner(model, nil)
+		local stand = model:FindFirstChild("Stand")
+		local goods = stand and stand:FindFirstChild("Goods")
+		if goods then
+			goods:Destroy()
+		end
 	end
 end
 
@@ -150,22 +178,13 @@ function FarmService.tap(player: Player, n: any, key: any): string?
 	end
 	local now = os.time()
 	if data.plots[tostring(n)] then
-		local before = Farm.level(data)
-		local crop, amount, xp, up = Farm.harvest(data, n, now)
+		local before = data.xp
+		local crop, amount, xp = Farm.harvest(data, n, now)
 		if not crop then
 			return nil
 		end
 		Net.event("Harvested"):FireClient(player, n, crop.key, amount, xp)
-		if up then
-			local level = Farm.level(data)
-			local unlocked = {}
-			for _, c in Crops.LIST do
-				if c.level > before and c.level <= level then
-					table.insert(unlocked, c.key)
-				end
-			end
-			Net.event("LevelUp"):FireClient(player, level, unlocked)
-		end
+		FarmService.levelUp(player, before)
 		FarmService.show(player)
 		DataService.push(player)
 		return "harvest"

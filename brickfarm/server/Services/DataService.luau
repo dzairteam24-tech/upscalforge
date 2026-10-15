@@ -23,7 +23,10 @@ export type Data = {
 	plots: { [string]: { c: string, t: number } }, -- what grows on each tile, and when it was planted (os.time)
 	seeds: { [string]: number },
 	barn: { [string]: number }, -- harvested, not sold yet
-	stats: { planted: number, harvested: number, sold: number, earned: number },
+	stand: { [string]: { n: number, p: number } }, -- on their farm stand for visitors (Logic/Stand)
+	orders: { { c: string, n: number, coins: number, xp: number } }, -- the town's orders for them (Logic/Orders)
+	swapAt: number, -- os.time() they may swap an order for free again
+	stats: { [string]: number }, -- planted, harvested, sold, earned, orders, standSold, standEarned, trades
 	receipts: { string }, -- the last purchases handled (so a receipt is never paid twice)
 	guide: number, -- how far the first-minutes guide has got
 	lastSeen: number,
@@ -67,6 +70,9 @@ local function fresh(): Data
 		plots = {},
 		seeds = { carrot = DataService.START_SEEDS },
 		barn = {},
+		stand = {},
+		orders = {},
+		swapAt = 0,
 		stats = { planted = 0, harvested = 0, sold = 0, earned = 0 },
 		receipts = {},
 		guide = 0,
@@ -100,9 +106,23 @@ local function reconcile(saved: any): Data
 	counts(saved.seeds, data.seeds)
 	counts(saved.barn, data.barn)
 	if type(saved.stats) == "table" then
-		for k in data.stats :: any do
-			if type(saved.stats[k]) == "number" then
-				(data.stats :: any)[k] = saved.stats[k]
+		for k, v in saved.stats do
+			if type(k) == "string" and type(v) == "number" then
+				data.stats[k] = v
+			end
+		end
+	end
+	if type(saved.stand) == "table" then
+		for k, lot in saved.stand do
+			if type(k) == "string" and Crops.byKey[k] and type(lot) == "table" and type(lot.n) == "number" and lot.n >= 1 and type(lot.p) == "number" and lot.p >= 1 then
+				data.stand[k] = { n = math.floor(lot.n), p = math.floor(lot.p) }
+			end
+		end
+	end
+	if type(saved.orders) == "table" then
+		for _, o in saved.orders do
+			if type(o) == "table" and type(o.c) == "string" and Crops.byKey[o.c] and type(o.n) == "number" and type(o.coins) == "number" and type(o.xp) == "number" and #data.orders < 3 then
+				table.insert(data.orders, { c = o.c, n = o.n, coins = o.coins, xp = o.xp })
 			end
 		end
 	end

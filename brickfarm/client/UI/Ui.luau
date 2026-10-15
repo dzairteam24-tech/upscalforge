@@ -122,7 +122,7 @@ end
 
 -- A centered window with a colored title bar and a close button; `body` is the area to fill
 export type Window = { frame: Frame, body: Frame, open: () -> (), close: () -> (), toggle: () -> (), isOpen: () -> boolean }
-function Ui.window(screen: Instance, title: string, color: Color3, size: UDim2): Window
+function Ui.window(screen: Instance, title: string, color: Color3, size: UDim2, onClose: (() -> ())?): Window
 	local frame = Ui.panel(screen, size, UDim2.fromScale(0.5, 0.5))
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
 	frame.Visible = false
@@ -149,7 +149,11 @@ function Ui.window(screen: Instance, title: string, color: Color3, size: UDim2):
 	head.ZIndex = 12
 	Ui.outlined(head)
 	local close = function()
+		local was = frame.Visible
 		frame.Visible = false
+		if was and onClose then
+			onClose()
+		end
 	end
 	local x = Ui.button(bar, "X", UDim2.fromOffset(40, 40), UDim2.new(1, -50, 0, 8), Ui.red, close)
 	x.ZIndex = 13

@@ -17,7 +17,7 @@ local Hud = {}
 
 local KIND_COLORS: { [string]: Color3 } = { info = Color3.new(1, 1, 1), good = Ui.green, bad = Ui.red, gold = Ui.yellow }
 
-export type Buttons = { seeds: () -> (), barn: () -> (), land: () -> (), select: (key: string) -> () }
+export type Buttons = { seeds: () -> (), barn: () -> (), land: () -> (), tractor: () -> (), select: (key: string) -> () }
 export type Hud = {
 	banner: (title: string, sub: string?, color: Color3?) -> (),
 	info: (text: string) -> (),
@@ -74,6 +74,7 @@ function Hud.new(screen: ScreenGui, buttons: Buttons): Hud
 	local barnButton = Ui.button(screen, "BARN", UDim2.fromOffset(150, 56), UDim2.new(1, -164, 0, 78), Ui.red, buttons.barn)
 	local landButton = Ui.button(screen, "LAND", UDim2.fromOffset(150, 56), UDim2.new(1, -164, 0, 142), Ui.orange, buttons.land)
 	local landCost = Ui.label(screen, "", UDim2.fromOffset(150, 20), UDim2.new(1, -164, 0, 200))
+	Ui.button(screen, "TRACTOR", UDim2.fromOffset(150, 48), UDim2.new(1, -164, 0, 228), Ui.blue, buttons.tractor)
 	Ui.outlined(landCost)
 	local barnCount = Instance.new("Frame")
 	barnCount.Size = UDim2.fromOffset(34, 26)

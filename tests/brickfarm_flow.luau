@@ -52,6 +52,22 @@ local services = {
 		GetPlayers = function()
 			return players
 		end,
+		GetPlayerByUserId = function(_self, id)
+			for _, p in players do
+				if p.UserId == id then
+					return p
+				end
+			end
+			return nil
+		end,
+		GetPlayerFromCharacter = function(_self, character)
+			for _, p in players do
+				if p.Character == character then
+					return p
+				end
+			end
+			return nil
+		end,
 	},
 	RunService = { IsStudio = function() return studio end, IsServer = function() return true end },
 	DataStoreService = {
@@ -73,8 +89,17 @@ Loader.extraEnv = {
 	workspace = workspaceInstance,
 	task = task,
 	os = { time = function() return clock end, clock = os.clock },
+	PhysicalProperties = roblox.PhysicalProperties,
+	Random = { new = function() local n = 0 return { NextInteger = function(_self, a, b) n += 1 return a + (n * 7919) % (b - a + 1) end } end },
+	__pivot = function(model, cf)
+		model.PrimaryPart.CFrame = cf
+	end,
+	__occupant = function(seat, fn)
+		occupantHooks[seat] = fn
+	end,
 }
 local fired, handlers = {}, {}
+occupantHooks = {}
 Loader.extraEnv.fired, Loader.extraEnv.handlers = fired, handlers
 Loader.transform = function(path: string, source: string): string
 	if string.find(path, "shared/Net.luau", 1, true) then
@@ -89,6 +114,11 @@ return {
 	end,
 }]]
 	end
+	if string.find(path, "TractorService.luau", 1, true) then
+		source = string.gsub(source, 'seat:GetPropertyChangedSignal%("Occupant"%):Connect%(function%(%)', "__occupant(seat, function()")
+		-- (Lune's models can't be pivoted: move the base)
+		source = string.gsub(source, "model:PivotTo%(", "__pivot(model, ")
+	end
 	return source
 end
 
@@ -102,6 +132,10 @@ local Farm = Loader.require(Shared.Logic.Farm)
 local DataService = Loader.require(Server.Services.DataService)
 local FarmService = Loader.require(Server.Services.FarmService)
 local StudioTools = Loader.require(Server.Services.StudioTools)
+local MarketService = Loader.require(Server.Services.MarketService)
+local TractorService = Loader.require(Server.Services.TractorService)
+local Orders = Loader.require(Shared.Logic.Orders)
+local Stand = Loader.require(Shared.Logic.Stand)
 
 local passed, failed = 0, 0
 local function check(name: string, ok: boolean, detail: string?)
@@ -115,6 +149,8 @@ end
 
 Net.init()
 FarmService.init()
+MarketService.init(FarmService.farmOf, FarmService.ownerOf, FarmService.levelUp)
+TractorService.init(FarmService.farmOf, DataService.onLoaded, DataService.onLeaving)
 DataService.init()
 
 local function newPlayer(id: number, name: string): any
@@ -122,6 +158,7 @@ local function newPlayer(id: number, name: string): any
 	local character = {
 		FindFirstChild = function(_self, n) return if n == "HumanoidRootPart" then root else nil end,
 		PivotTo = function(_self, cf) root.CFrame = cf end,
+		WaitForChild = function() return nil end,
 	}
 	return { UserId = id, Name = name, DisplayName = name, Parent = true, Character = character, CharacterAdded = signal(), root = root }
 end
@@ -142,7 +179,7 @@ local function standBy(player: any, farm: number, tile: number)
 end
 
 local village = workspaceInstance:FindFirstChild("Village")
-check("the village is built", village ~= nil and village:FindFirstChild("Farm8") ~= nil and village.Farm1.Tiles:FindFirstChild("Tile36") ~= nil and village:FindFirstChild("Square") ~= nil)
+check("the village is built", village ~= nil and village:FindFirstChild("Farm6") ~= nil and village:FindFirstChild("Farm7") == nil and village.Farm1.Tiles:FindFirstChild("Tile36") ~= nil and village:FindFirstChild("Town") ~= nil)
 check("it's a sunny day", lighting.ClockTime == 14 and lighting:FindFirstChildOfClass("Atmosphere") ~= nil)
 
 local alice = newPlayer(1, "Alice")
@@ -228,12 +265,78 @@ check("/seeds", StudioTools.command(alice, "/seeds corn 3", FarmService.show) an
 check("not a command", not StudioTools.command(alice, "hello", FarmService.show))
 studio = false
 
+-- the town's orders
+check("three orders waiting", #data.orders == Orders.COUNT)
+local order = data.orders[1]
+data.barn[order.c] = order.n
+standBy(alice, 1, 1)
+check("not handed in far from the board", not MarketService.deliver(alice, 1) and data.barn[order.c] == order.n)
+alice.root.CFrame = Layout.board() * CFrame.new(0, 3, -6)
+local coinsBefore = data.coins
+check("handed in at the board", MarketService.deliver(alice, 1) and data.coins == coinsBefore + order.coins and #data.orders == Orders.COUNT)
+check("swap an order", MarketService.swap(alice, 2) and not MarketService.swap(alice, 2))
+promptTriggered:fire({ Name = "OrdersPrompt" }, alice)
+wait()
+check("the board's prompt opens the orders", #sent("OpenOrders", alice) == 1)
+
+-- Alice's stand: she puts corn out, Bob comes and buys
+data.barn.corn = 9
+check("Alice stocks her stand", MarketService.put(alice, "corn", 6, 60) and data.stand.corn.n == 6)
+check("the corn shows on her counter", village.Farm1.Stand:FindFirstChild("Goods") ~= nil and #village.Farm1.Stand.Goods:GetChildren() == 2)
+local bdata2 = DataService.get(bob)
+bdata2.coins = 1000
+bob.root.CFrame = Layout.tile(2, 1) * CFrame.new(0, 3, 0)
+check("Bob can't buy from afar", not MarketService.buy(bob, 1, "corn", 2))
+bob.root.CFrame = Layout.stand(1) * CFrame.new(0, 3, -6)
+local aliceCoins = data.coins
+check("Bob buys 2 corn at Alice's stand", MarketService.buy(bob, 1, "corn", 2) and bdata2.coins == 880 and bdata2.barn.corn == 2 and data.coins == aliceCoins + 120 and data.stand.corn.n == 4)
+local told = sent("Notify", alice)
+check("Alice is told, wherever she is", string.find(told[#told].args[1], "bought 2 Corn") ~= nil)
+check("Alice can't buy from her own stand", not MarketService.buy(alice, 1, "corn", 1))
+check("nobody's stand on a free farm", not MarketService.buy(bob, 5, "corn", 1))
+promptTriggered:fire({ Name = "StandPrompt", FindFirstAncestorWhichIsA = function() return village.Farm1 end }, bob)
+wait()
+local opened = sent("OpenStand", bob)
+check("Bob opens Alice's stand: her name, her stock, not his", #opened >= 1 and opened[#opened].args[1] == 1 and opened[#opened].args[2] == "Alice" and opened[#opened].args[4] == false)
+check("Alice takes the rest back", MarketService.take(alice, "corn") and data.stand.corn == nil and data.barn.corn == 7)
+
+-- a trade: Alice and Bob together
+alice.root.CFrame = CFrame.new(0, 3, 10)
+bob.root.CFrame = CFrame.new(0, 3, 16)
+data.barn.pumpkin = 2
+bdata2.barn.tomato = 10
+MarketService.ask(alice, 2)
+check("Bob is asked", #sent("TradeAsked", bob) == 1)
+MarketService.answer(bob, 1, true)
+check("the trade starts", MarketService.session(alice) ~= nil and MarketService.session(alice) == MarketService.session(bob))
+MarketService.offer(alice, { pumpkin = 1 }, 50)
+MarketService.offer(bob, { tomato = 6 }, 0)
+MarketService.ready(alice, true)
+check("one ready, nothing yet", data.barn.tomato == nil)
+local aCoins, bCoins = data.coins, bdata2.coins
+MarketService.ready(bob, true)
+check("both ready: it's done", data.barn.tomato == 6 and data.barn.pumpkin == 1 and bdata2.barn.pumpkin == 1 and bdata2.barn.tomato == 4 and data.coins == aCoins - 50 and bdata2.coins == bCoins + 50)
+check("and over", MarketService.session(alice) == nil and MarketService.session(bob) == nil)
+-- too far apart: no trade
+bob.root.CFrame = CFrame.new(300, 3, 300)
+MarketService.ask(alice, 2)
+check("too far to ask", #sent("TradeAsked", bob) == 1)
+
+-- the tractor
+local tractor = TractorService.of(alice)
+check("Alice has a tractor by her gate", tractor ~= nil and (tractor.PrimaryPart.CFrame.Position - Layout.tractor(1).Position).Magnitude < 3)
+check("it has its seat and movers", tractor:FindFirstChild("DriverSeat") ~= nil and tractor.PrimaryPart:FindFirstChild("Move") ~= nil and tractor.PrimaryPart:FindFirstChild("Turn") ~= nil)
+alice.root.CFrame = CFrame.new(50, 3, 50)
+check("call it: it comes", TractorService.call(alice) and (tractor.PrimaryPart.CFrame.Position - Vector3.new(50, 1.2, 50)).Magnitude < 12)
+check("Bob has his own", TractorService.of(bob) ~= nil and TractorService.of(bob) ~= tractor)
+
 -- Alice leaves with a corn planted; her farm is freed and saved
 standBy(alice, 1, 4)
 FarmService.tap(alice, 4, "corn")
 playerRemoving:fire(alice)
 wait()
 check("saved", saved["p1"] ~= nil and saved["p1"].plots["4"].c == "corn")
+check("her tractor is gone", TractorService.of(alice) == nil and tractor.Parent == nil)
 check("her farm is freed", village.Farm1:GetAttribute("Owner") == 0 and village.Farm1.Tiles.Tile4:GetAttribute("Crop") == "" and village.Farm1.NameBoard:FindFirstChildOfClass("SurfaceGui").Owner.Text == "Free farm")
 
 -- she comes back the next day: the corn grew while she was away
@@ -248,7 +351,8 @@ check("on the free farm", FarmService.farmOf(alice2) == 1)
 local welcome = sent("Notify", alice2)
 check("told what's ready", #welcome > 0 and string.find(welcome[#welcome].args[1], "ready") ~= nil)
 standBy(alice2, 1, 4)
-check("and harvests it", FarmService.tap(alice2, 4) == "harvest" and again.barn.corn == Crops.byKey.corn.yield)
+local cornBefore = again.barn.corn or 0
+check("and harvests it", FarmService.tap(alice2, 4) == "harvest" and again.barn.corn == cornBefore + Crops.byKey.corn.yield)
 
 -- a broken save is mended
 saved["p3"] = { coins = "lots", tiles = 999, seeds = { carrot = 5, banana = 3, corn = -2 }, plots = { ["1"] = { c = "corn", t = 5 }, ["2"] = { c = "nope", t = 1 }, ["50"] = { c = "corn", t = 1 } } }

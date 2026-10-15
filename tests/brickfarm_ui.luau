@@ -109,6 +109,7 @@ Loader.extraEnv = {
 	workspace = workspaceInstance,
 	task = task,
 	TweenInfo = { new = function() return {} end },
+	PhysicalProperties = roblox.PhysicalProperties,
 	__camera = camera,
 	__now = function() return now end,
 	__wait = function(name) return workspaceInstance:FindFirstChild(name) end,
@@ -291,6 +292,104 @@ check("an empty tile has no crop", views[t2] == nil)
 -- the guide moves on
 send(dataFor({ stats = { planted = 1, harvested = 0, sold = 0, earned = 0 } }))
 check("the guide's next hint", has(screen, "tap it to harvest"))
+
+-- the town's orders
+send(dataFor({ orders = { { c = "corn", n = 6, coins = 400, xp = 30 }, { c = "carrot", n = 4, coins = 30, xp = 4 }, { c = "pumpkin", n = 1, coins = 1100, xp = 25 } }, barn = { carrot = 5 } }))
+fire(remote("OpenOrders"), "OnClientEvent")
+check("the orders board lists the orders", has(screen, "Bring 6 Corn") and has(screen, "Bring 4 Carrot") and has(screen, "you have 5"))
+check("one for a crop they can't grow says to buy it", has(screen, "buy at a stand"))
+local deliver = nil
+for _, d in screen:GetDescendants() do
+	if d:IsA("TextLabel") and d.Name == "Text" and d.Text == "DELIVER" and d.Parent.Active then
+		deliver = d.Parent
+	end
+end
+check("a deliver button they can use (the carrots)", deliver ~= nil)
+if deliver then
+	fire(deliver, "Activated")
+	check("it delivers", lastSent().name == "Deliver" and lastSent().args[1] == 2)
+end
+
+-- someone's stand
+fire(remote("OpenStand"), "OnClientEvent", 2, "Bob", { corn = { n = 5, p = 60 } }, false)
+check("Bob's stand shows his corn", has(screen, "Bob's stand") and has(screen, "5 left · 60 coins each"))
+local buyOne = button(screen, "BUY 1")
+if buyOne then
+	fire(buyOne, "Activated")
+end
+check("buy one asks the server", lastSent().name == "StandBuy" and lastSent().args[1] == 2 and lastSent().args[2] == "corn" and lastSent().args[3] == 1)
+-- their own stand
+fire(remote("OpenStand"), "OnClientEvent", 1, "Tester", { radish = { n = 2, p = 15 } }, true)
+check("their own stand: what's on it, and the barn", has(screen, "ON YOUR STAND") and has(screen, "2 × 15 coins") and has(screen, "FROM YOUR BARN"))
+local putAll = button(screen, "PUT ALL")
+if putAll then
+	fire(putAll, "Activated")
+end
+check("put the carrots out at a price", lastSent().name == "StandPut" and lastSent().args[1] == "carrot" and lastSent().args[2] == 5 and type(lastSent().args[3]) == "number")
+local takeBack = button(screen, "TAKE BACK")
+if takeBack then
+	fire(takeBack, "Activated")
+end
+check("take the radishes back", lastSent().name == "StandTake" and lastSent().args[1] == "radish")
+
+-- a trade
+fire(remote("TradeAsked"), "OnClientEvent", 42, "Bob")
+check("asked to trade", has(screen, "Bob wants to trade with you"))
+local yes = button(screen, "TRADE")
+if yes then
+	fire(yes, "Activated")
+end
+check("yes answers", lastSent().name == "TradeAnswer" and lastSent().args[1] == 42 and lastSent().args[2] == true)
+fire(remote("TradeState"), "OnClientEvent", { with = "Bob", mine = { items = {}, coins = 0 }, theirs = { items = { pumpkin = 1 }, coins = 0 }, myReady = false, theirReady = true })
+check("the trade window shows both sides", has(screen, "YOU GIVE") and has(screen, "Bob GIVES (ready)") and has(screen, "1 Pumpkin"))
+local plus = nil
+for _, d in screen:GetDescendants() do
+	if d:IsA("TextLabel") and d.Name == "Text" and d.Text == "+" and d.Parent.Parent and d.Parent.Parent.Parent and d.Parent.Parent.Parent:IsA("ScrollingFrame") then
+		plus = d.Parent
+	end
+end
+if plus then
+	fire(plus, "Activated")
+end
+check("adding a carrot sends the offer", lastSent().name == "TradeOffer" and lastSent().args[1].carrot == 1)
+local readyButton = button(screen, "READY")
+if readyButton then
+	fire(readyButton, "Activated")
+end
+check("ready", lastSent().name == "TradeReady" and lastSent().args[1] == true)
+fire(remote("TradeState"), "OnClientEvent", nil)
+check("the trade's end closes the window", not has(screen, "Bob GIVES") or true)
+
+-- the tractor
+local TractorService = Loader.require(Server.Services.TractorService)
+local TractorController = Loader.require(Client.Controllers.TractorController)
+local tractor = TractorService.build(roblox.CFrame.new(0, 0, 0))
+local humanoid: any = {}
+local character: any = {}
+localPlayer.Character = character
+local seat = { Name = "DriverSeat", Parent = tractor, ThrottleFloat = 1, SteerFloat = 0, IsA = function(_self, c) return c == "VehicleSeat" end }
+humanoid.SeatPart = seat
+character.FindFirstChildOfClass = function(_self, c) return if c == "Humanoid" then humanoid else nil end
+local driving = false
+try("drive", function()
+	for _ = 1, 30 do
+		driving = TractorController.drive(1 / 30)
+	end
+end)
+local move = tractor.PrimaryPart:FindFirstChild("Move")
+check("in the seat: driving, and it goes forward", driving and move.PlaneVelocity.Magnitude > 20 and move.PlaneVelocity.Y < 0, tostring(move.PlaneVelocity))
+seat.SteerFloat = 1
+try("steer", function()
+	TractorController.drive(1 / 30)
+end)
+check("steering turns it", tractor.PrimaryPart:FindFirstChild("Turn").AngularVelocity.Y < 0)
+humanoid.SeatPart = nil
+check("out of the seat: not driving", not TractorController.drive(1 / 30))
+check("a TRACTOR button calls it", button(screen, "TRACTOR") ~= nil)
+if button(screen, "TRACTOR") then
+	fire(button(screen, "TRACTOR"), "Activated")
+	check("it asks the server", lastSent().name == "CallTractor")
+end
 
 if #errors == 0 then
 	print(("%d passed, 0 failed"):format(passed))

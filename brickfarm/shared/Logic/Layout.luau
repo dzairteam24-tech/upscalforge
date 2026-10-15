@@ -1,6 +1,6 @@
 --!strict
--- Where things are in the village: farms in a ring around the square, each facing it. In a farm's own frame -Z
--- points at the square; tile 1 is at the front left, tiles go along the front row first, then back.
+-- Where things are in the world: farms in a wide ring around the town, each facing it. In a farm's own frame -Z
+-- points at the town (its gate is that way); tile 1 is at the front left, tiles go along the front row first, then back.
 
 local FarmConfig = require(script.Parent.Parent.Config.Farm)
 
@@ -33,6 +33,38 @@ end
 -- The barn, behind the tiles
 function Layout.barn(farm: number): CFrame
 	return Layout.farm(farm) * CFrame.new(-FarmConfig.COLUMNS * Layout.STEP / 2 - 12, 0, 0) * CFrame.Angles(0, -math.pi / 2, 0) -- (its door faces the tiles)
+end
+
+local HALF = FarmConfig.ENCLOSURE / 2
+
+-- A point in a farm's own frame, in the world
+function Layout.point(farm: number, x: number, z: number): CFrame
+	return Layout.farm(farm) * CFrame.new(x, 0, z)
+end
+
+-- The middle of the gap in its wall, facing the town
+function Layout.gate(farm: number): CFrame
+	return Layout.farm(farm) * CFrame.new(0, 0, -HALF)
+end
+
+-- The house: behind the land, on the right
+function Layout.house(farm: number): CFrame
+	return Layout.farm(farm) * CFrame.new(38, 0, 46) -- (its door faces the gate)
+end
+
+-- The stand where visitors buy: just inside the gate, on the right
+function Layout.stand(farm: number): CFrame
+	return Layout.farm(farm) * CFrame.new(22, 0, -HALF + 14) * CFrame.Angles(0, math.pi / 2, 0) -- (facing the way in)
+end
+
+-- Where the farm's tractor waits: just inside the gate, on the left
+function Layout.tractor(farm: number): CFrame
+	return Layout.farm(farm) * CFrame.new(-24, 0, -HALF + 18)
+end
+
+-- The town's orders board: on the square, facing the way most people come in
+function Layout.board(): CFrame
+	return CFrame.new(0, 0, -FarmConfig.TOWN + 14)
 end
 
 -- Where its farmer stands when they arrive: in front of the tiles, looking at them
