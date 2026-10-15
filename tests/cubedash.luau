@@ -53,9 +53,10 @@ end
 do
 	check("the base stat walks at the minimum", math.abs(Speed.walk(Speed.stat(0)) - SpeedConfig.WALK_MIN) < 1e-9)
 	check("faster stat, faster walking", Speed.walk(100) < Speed.walk(200) and Speed.walk(200) < Speed.walk(1000))
-	check("but never past the ceiling", Speed.walk(1e9) <= SpeedConfig.WALK_MAX + 1e-9 and Speed.walk(1e9) > SpeedConfig.WALK_MAX - 1)
+	check("but never past the ceiling", Speed.walk(1e30) == SpeedConfig.WALK_MAX and Speed.walk(1e9) < SpeedConfig.WALK_MAX)
+	check("each stage's wall is a step quicker to run", Speed.walk(Economy.needs(5)) - Speed.walk(Economy.needs(4)) > 2)
 	check("the view widens with speed, within its limits", Speed.fov(SpeedConfig.BASE) == SpeedConfig.FOV_MIN and Speed.fov(1e9) <= SpeedConfig.FOV_MAX and Speed.fov(300) > Speed.fov(50))
-	check("how fast it feels is 0..1", Speed.feel(SpeedConfig.BASE) == 0 and Speed.feel(1e9) <= 1 and Speed.feel(300) > 0.2)
+	check("how fast it feels is 0..1", Speed.feel(SpeedConfig.BASE) == 0 and Speed.feel(1e30) == 1 and Speed.feel(Economy.needs(5)) > 0.2)
 end
 
 -- Obstacles: each kind, hit and miss at known moments
@@ -108,6 +109,15 @@ do
 		end
 		check("stage " .. k .. ": every obstacle is inside the run-up and the end stretch", inside)
 		check("stage " .. k .. ": obstacles in order", sorted)
+		local clearOfCheckpoints = true
+		for _, o in s.obstacles do
+			for i = 1, 2 do
+				if math.abs(o.d - Stage.checkpoint(k, i)) < 12 then
+					clearOfCheckpoints = false
+				end
+			end
+		end
+		check("stage " .. k .. ": nothing right on a checkpoint", clearOfCheckpoints)
 		local clean = true
 		for _, orb in s.orbs do
 			if math.abs(orb.x) > CourseConfig.WIDTH / 2 - 2 or orb.d < 0 or orb.d > s.length - 10 then
@@ -176,12 +186,15 @@ do
 	local d = newData()
 	local gain, coins = Progress.pickup(d, 100)
 	check("an orb gives speed and coins", gain == 1 and coins >= 1 and d.speed == 1 and d.coins == coins and d.stats.orbs == 1)
+	local worth = Economy.orbWorth(5)
+	check("later stages' orbs are worth more", worth > Economy.orbWorth(4) and Economy.orbWorth(1) == 1 and Progress.orbValue(d, 5) == worth)
 	d.upgrades.orb = 4
-	check("Orb Power raises an orb's worth", Progress.orbValue(d) == 5)
+	check("Orb Power raises an orb's worth", Progress.orbValue(d, 5) == math.floor(worth * 1.6))
 	d.rebirths = 2
-	check("rebirths raise it more", Progress.orbValue(d) == math.floor(5 * (1 + 2 * Economy.REBIRTH_BONUS)))
+	check("rebirths raise it more", Progress.orbValue(d, 5) == math.floor(worth * 1.6 * (1 + 2 * Economy.REBIRTH_BONUS)))
 	d.passes.Orbs2 = true
-	check("2x Orbs doubles it", Progress.orbValue(d) == math.floor(5 * 1.5 * 2))
+	check("2x Orbs doubles it", Progress.orbValue(d, 5) == math.floor(worth * 1.6 * 1.5 * 2))
+	check("an orb is always worth at least 1", Progress.orbValue(d, 1) >= 1)
 	local c = newData()
 	check("can't smash a wall without the speed", not Progress.canSmash(c, 1) and Progress.smash(c, 1, 0) == nil and c.stage == 1)
 	c.speed = Stage.generate(1).needs

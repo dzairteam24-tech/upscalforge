@@ -4,11 +4,11 @@
 
 return {
 	BASE = 10, -- the stat at the very start
-	PER_UPGRADE = 4, -- each speed upgrade adds this
-	REBIRTH_BONUS = 0.25, -- each rebirth adds this share of the whole stat (+25%)
 	WALK_MIN = 16, -- the walking speed of a stat of BASE...
-	WALK_MAX = 90, -- ...easing up to this, never more
-	WALK_CURVE = 700, -- bigger = slower to reach the ceiling
+	WALK_MAX = 90, -- ...growing with the log of the stat, never more than this
+	WALK_LOG = 2.75, -- studs a second for each doubling-and-a-bit (e) of the stat above the base...
+	WALK_SCALE = 15, -- ...counted in steps of this
+	FEEL_TOP = 60, -- the walking speed that feels flat out (the view at its widest)
 	FOV_MIN = 70, -- the camera's field of view standing still...
 	FOV_MAX = 108, -- ...and flat out
 	JUMP_HEIGHT = 7.5,

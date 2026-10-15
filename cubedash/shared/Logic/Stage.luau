@@ -76,6 +76,12 @@ local function addFalling(list: { Obstacles.Obstacle }, d: number, u: number, rn
 	end
 end
 
+-- Where a stage's checkpoints are, 1 and 2 (studs along it): a runner who crashes starts again at the last one
+-- they passed. (Nothing is ever built right on one.)
+function Stage.checkpoint(stage: number, index: number): number
+	return math.floor(Economy.stageLength(stage) * index / 3)
+end
+
 function Stage.generate(stage: number): Stage
 	local cached = cache[stage]
 	if cached then
@@ -92,8 +98,14 @@ function Stage.generate(stage: number): Stage
 	local kinds = kindsFor(stage)
 	local obstacles: { Obstacles.Obstacle } = {}
 	local last = ""
+	local checkpoints = { Stage.checkpoint(stage, 1), Stage.checkpoint(stage, 2) }
 	for i = 1, count do
 		local d = zoneStart + (i - 0.5) * spacing + Rng.range(rng, -spacing * 0.1, spacing * 0.1)
+		for _, c in checkpoints do
+			if math.abs(d - c) < 14 then
+				d = if d < c then c - 14 else c + 14
+			end
+		end
 		local kind = Rng.pick(rng, kinds)
 		if kind == last and #kinds > 1 then
 			kind = kinds[(table.find(kinds, kind) :: number) % #kinds + 1]
@@ -105,6 +117,9 @@ function Stage.generate(stage: number): Stage
 			table.insert(obstacles, Stage.make(kind, d, u, rng))
 		end
 	end
+	table.sort(obstacles, function(a, b)
+		return a.d < b.d
+	end)
 	-- the distances that are an obstacle's (orbs keep out of them)
 	local zones: { number } = {}
 	for _, o in obstacles do

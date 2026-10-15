@@ -4,7 +4,6 @@
 
 local Economy = require(script.Parent.Economy)
 local Speed = require(script.Parent.Speed)
-local Stage = require(script.Parent.Stage)
 
 export type Data = {
 	coins: number,
@@ -19,10 +18,10 @@ export type Data = {
 
 local Progress = {}
 
--- How much one orb is worth in speed now
-function Progress.orbValue(data: Data): number
+-- How much one orb of a stage is worth in speed now (the stage they are on if not said)
+function Progress.orbValue(data: Data, stage: number?): number
 	local level = data.upgrades.orb or 0
-	local value = (1 + level) * (1 + Economy.REBIRTH_BONUS * data.rebirths)
+	local value = Economy.orbWorth(stage or math.min(data.stage, Economy.STAGES)) * (1 + Economy.ORB_UPGRADE * level) * (1 + Economy.REBIRTH_BONUS * data.rebirths)
 	if data.passes.Orbs2 then
 		value *= 2
 	end
@@ -48,14 +47,32 @@ function Progress.coins(base: number, data: Data, now: number): number
 	return math.max(1, math.floor(base * Progress.coinMultiplier(data, now) + 0.5))
 end
 
--- An orb picked up: speed and coins. Returns the speed gained and the coins
-function Progress.pickup(data: Data, now: number): (number, number)
-	local gain = Progress.orbValue(data)
+-- An orb of a stage picked up: speed and coins. Returns the speed gained and the coins
+function Progress.pickup(data: Data, now: number, stage: number?): (number, number)
+	local gain = Progress.orbValue(data, stage)
 	data.speed += gain
 	data.stats.orbs += 1
-	local coins = Progress.coins(math.max(1, gain // 2), data, now)
+	local coins = Progress.coins(Economy.orbCoins(stage or math.min(data.stage, Economy.STAGES)), data, now)
 	data.coins += coins
 	return gain, coins
+end
+
+-- How close an orb must be to fly to them
+function Progress.magnet(data: Data): number
+	return Economy.magnetReach(data.upgrades.magnet or 0, data.passes.Magnet == true)
+end
+
+-- The stage they are running for (their furthest, or the last once the course is done)
+function Progress.frontier(data: Data): number
+	return math.min(data.stage, Economy.STAGES)
+end
+
+-- About how many coins a minute they make running their furthest stage (for the coin packs and daily reward)
+function Progress.perMinute(data: Data, now: number): number
+	local k = Progress.frontier(data)
+	local perRun = Economy.orbsIn(k) * Economy.PLAN_SHARE * Economy.orbCoins(k) + Economy.finishCoins(k)
+	local minutes = Economy.RUN_SECONDS * 1.5 / 60
+	return math.floor(perRun * Progress.coinMultiplier(data, now) / minutes)
 end
 
 -- The speed stat now
@@ -65,7 +82,7 @@ end
 
 -- Whether they can smash stage k's wall
 function Progress.canSmash(data: Data, stage: number): boolean
-	return stage == data.stage and Progress.stat(data) >= Stage.generate(stage).needs
+	return stage == data.stage and Progress.stat(data) >= Economy.needs(stage)
 end
 
 -- Smashes the wall: the next stage opens, coins. Returns the coins, or nil if they can't
