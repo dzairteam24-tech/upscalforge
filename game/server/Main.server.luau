@@ -42,8 +42,9 @@ TrailService.init()
 DataService.init()
 
 ArtService.init(function(name, model)
-	if name == "TownModel" or name == "PropsModel" then -- (the gardens' corner props)
+	if name == "TownModel" or name == "PropsModel" then -- (the gardens' corner props, and the Wild's biomes)
 		PropService.decorate()
+		PropService.decorateWild()
 	elseif name == "CreatureModels" then
 		IslandService.redraw()
 		WildService.redraw()
