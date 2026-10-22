@@ -101,8 +101,8 @@
 
 ## الاقتصاد (على قياس Steal an Egg)
 
-- **المخلوقات:** الندرة تفرق بزاف كيما تاعهم: في كل بيضة Common ×1، Uncommon ×3.5، Rare ×14، Epic ×57 (Meadow: Dog 4/s، Cat 14/s، Bunny 56/s، Bear 230/s)، وكل منطقة ×5 على اللي قبلها (Pixel Epic 450M/s، Legendary حتى 1B/s).
-- **البيض:** Meadow 500، Flower 5K، Forest 50K … كل بيضة ×10 (Legendary 10T). البيضة الأولى تخلّص روحها في أقل من دقيقة، والكبار في سوايع.
+- **المخلوقات:** الندرة تفرق بزاف كيما تاعهم: في كل بيضة Common ×1، Uncommon ×3.5، Rare ×14، Epic ×57 (Meadow: Dog 4/s، Cat 14/s، Bunny 56/s، Bear 230/s)، وكل منطقة ×5 على اللي قبلها (Pixel Epic 450M/s، Legendary حتى 2.5B/s).
+- **البيض:** Meadow 500، Flower 5K، Forest 50K … كل بيضة ×10 (Legendary 5T). البيضة الأولى تخلّص روحها في أقل من دقيقة، والكبار في سوايع.
 - **كلش غالي:** البلايص، الفقاسات، المرعى، المخزن، الـ Treadmill، المضارب والفخاخ (250K) كبرو بزاف.
 
 ## المخلوقات الجدد (ستايل Steal an Egg)
@@ -112,12 +112,19 @@
 - **Flower (مفتوحة):** Common: 🐝 **Bee** (20/s، 32%)، 🐞 **Ladybug** (25/s، 28%)؛ Uncommon: 🦋 **Butterfly** (70/s، 16%)، 🐌 **Snail** (80/s، 14%)؛ Rare: 🐸 **Frog** (280/s، 5%)، 🐤 **Duckling** (320/s، 4%)؛ Epic: 🦊 **Fox** (1150/s، 0.6%)، 🦌 **Deer** (1300/s، 0.4%).
 - **Forest (مفتوحة):** Common: 🐿️ **Squirrel** (100/s، 32%)، 🦔 **Hedgehog** (125/s، 28%)؛ Uncommon: 🦉 **Owl** (350/s، 16%)، 🦝 **Raccoon** (400/s، 14%)؛ Rare: 🐺 **Wolf** (1400/s، 5%)، 🫎 **Moose** (1600/s، 4%)؛ Epic: **Lynx** (5750/s، 0.6%)، 🦌 **Stag** (6500/s، 0.4%).
 - **Beach (مفتوحة):** Common: 🦀 **Crab** (500/s، 32%)، ⭐ **Starfish** (625/s، 28%)؛ Uncommon: 🐢 **Turtle** (1750/s، 16%)، 🕊️ **Seagull** (2000/s، 14%)؛ Rare: 🐙 **Octopus** (7000/s، 5%)، 🐬 **Dolphin** (8000/s، 4%)؛ Epic: 🦈 **Shark** (28750/s، 0.6%)، 🐋 **Whale** (32500/s، 0.4%). آخر حيوان في كل ماب هو حارسها في البرية.
-- **الماب اللي من بعد Beach: 🔒 Coming Soon** (`Config/Island` → `OPEN_TIER = 4`): من Cave لقدّام البيض تاعهم ما يتباعش، المناطق في البرية مسكّرة بحيط مكتوب عليه COMING SOON (بلا عشوش وبلا حراس)، صفحاتهم في الـ Index مسكّرة، والجوايز (Heist، Mother Cube) تعطي بيض من المفتوحين. كي نكملو ماب، نزيدو `OPEN_TIER` بواحد.
+- **Cave (مفتوحة):** Common: 🦇 **Bat** (2500/s، 32%)، **Mole** (3125/s، 28%)؛ Uncommon: 🕷️ **Spider** (8750/s، 16%)، **Newt** (10000/s، 14%)؛ Rare: 🦂 **Scorpion** (35000/s، 5%)، **Panther** (40000/s، 4%)؛ Epic: **Golem** (143750/s، 0.6%)، 🐉 **Dragon** (162500/s، 0.4%).
+- **Desert (مفتوحة):** Common: 🐪 **Camel** (12500/s، 32%)، **Meerkat** (15625/s، 28%)؛ Uncommon: **Fennec** (43750/s، 16%)، **Vulture** (50000/s، 14%)؛ Rare: 🐍 **Cobra** (175000/s، 5%)، **Hyena** (200000/s، 4%)؛ Epic: 🦁 **Lion** (718750/s، 0.6%)، **Anubis** (812500/s، 0.4%).
+- **Snow (مفتوحة):** Common: **Lemming** (62500/s، 32%)، 🐧 **Penguin** (78125/s، 28%)؛ Uncommon: 🦭 **Seal** (218750/s، 16%)، 🐇 **Hare** (250000/s، 14%)؛ Rare: **Yak** (875000/s، 5%)، **Walrus** (1M/s، 4%)؛ Epic: **Narwhal** (3593750/s، 0.6%)، **Yeti** (4062500/s، 0.4%).
+- **Volcano (مفتوحة):** Common: 🦎 **Gecko** (312500/s، 32%)، **Iguana** (390625/s، 28%)؛ Uncommon: **Beetle** (1093750/s، 16%)، **Salamander** (1250000/s، 14%)؛ Rare: 🔥 **Phoenix** (4375000/s، 5%)، **Cerberus** (5000000/s، 4%)؛ Epic: **Basilisk** (17968750/s، 0.6%)، **Hydra** (20312500/s، 0.4%).
+- **Ice (بيضة محل، بلا منطقة في البرية):** Common: **Puffin** (1562500/s، 32%)، 🦦 **Otter** (1953125/s، 28%)؛ Uncommon: **SnowLeopard** (5468750/s، 16%)، 🐻‍❄️ **PolarBear** (6250000/s، 14%)؛ Rare: **Sabertooth** (21875000/s، 5%)، 🦣 **Mammoth** (25000000/s، 4%)؛ Epic: **FrostWolf** (89843750/s، 0.6%)، **FrostDragon** (101562500/s، 0.4%).
+- **Pixel (بيضة محل، بلا منطقة في البرية):** Common: 🐭 **Mouse** (7812500/s، 32%)، 🤖 **Bot** (9765625/s، 28%)؛ Uncommon: **Drone** (27343750/s، 16%)، **Sprite** (31250000/s، 14%)؛ Rare: **Glitch** (109375000/s، 5%)، **Mecha** (125000000/s، 4%)؛ Epic: **Quantum** (449218750/s، 0.6%)، **Mainframe** (507812500/s، 0.4%).
+- **Legendary (بيضة محل، بلا منطقة في البرية):** Common: 🦄 **Unicorn** (39062500/s، 32%)، **Pegasus** (48828125/s، 28%)؛ Uncommon: **Griffin** (136718750/s، 16%)، 🦊 **Kitsune** (156250000/s، 14%)؛ Rare: **Chimera** (546875000/s، 5%)، 🦑 **Kraken** (625000000/s، 4%)؛ Epic: **Leviathan** (2246093750/s، 0.6%)، 🐉 **ElderDragon** (2539062500/s، 0.4%).
+- **المابات كامل مفتوحين دروك** (`Config/Island` → `OPEN_TIER = 11`): المناطق الثمانية في البرية (Meadow حتى Volcano) بعشوشهم وحراسهم وديكورهم، وبيض المحل الأخيرة (Ice، Pixel، Legendary) تتباع وتفقس عادي. ما بقى حتى حيط COMING SOON، وصفحات الـ Index والجوايز (Heist، Mother Cube) يشملو كل شي.
 
 ## الندرة في كل ماب
 
 - **8 حيوانات في كل ماب**، زوج من كل ندرة. الماب المتوسطة تبدّل زوج بـ **Legendary** (1 من 200)، والعالية فيها حتى **Mythic** (1 من 1000).
-- دروك **Meadow وFlower وForest وBeach** مصممين (Common، Uncommon، Rare، Epic)، ومن Cave لقدّام مازال ما تصمموش. المخلوقات القدام (المكعبات) تنحاو كامل، والحفظات القدام ينحالهم المخلوقات اللي ما بقاتش.
+- دروك **المابات والبيض كامل مصممين** (Common، Uncommon، Rare، Epic): 11 بيضة، 88 مخلوق. المخلوقات القدام (المكعبات) تنحاو كامل، والحفظات القدام ينحالهم المخلوقات اللي ما بقاتش.
 
 ## كيما Steal an Egg (من الصور)
 
@@ -158,4 +165,4 @@
 - الأصول 3D: `Art.luau` (الـ IDs) و `CreatureLooks` و `TownLooks` و `PropLooks` و `SeatLooks`.
 
 ## الاختبارات
-`lune run tests/game.luau` و `lune run tests/game_world.luau`
+`lune run tests/game.luau` و `lune run tests/game_world.luau` و `lune run tests/game_island.luau` و `lune run tests/game_ui.luau`

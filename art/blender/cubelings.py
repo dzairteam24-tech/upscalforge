@@ -14,7 +14,7 @@ Outputs per creature (name / zone / legendary modes):
     art/models/<Name>.fbx      same model as FBX (scratch output, not committed)
     art/models/<Name>_palette.png / _palette.json   the palette and which part role each cell is
 
-The `roblox` mode writes art/models/Cubelings_Roblox.glb (all 50 creatures, split in parts) and
+The `roblox` mode writes art/models/Cubelings_Roblox.glb (all 88 creatures, split in parts) and
 game/shared/Config/CreatureLooks.luau. That is what the game imports.
 
 Units: the body is 2 x 2 x 1.9 (Blender units = studs once imported at scale 1). Front faces -Y.
@@ -1849,7 +1849,7 @@ def anim_name(obj):
 
 
 def export_roblox():
-    """All 53 creatures (40 zone creatures, 10 Legendaries, 3 Mythics) in one .glb for Roblox Studio's 3D importer.
+    """All 88 creatures (the eleven eggs' rosters in species_zoo.ZONES, in egg order) in one .glb for Roblox Studio's 3D importer.
     Each creature is a group named after the species; inside, one mesh per part role ("Kitty__body",
     "Kitty__eye"...), so the game can recolor every role for the variants. Also writes game/shared/Config/CreatureLooks.luau with each role's normal color."""
     reset()

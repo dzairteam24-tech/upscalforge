@@ -6,8 +6,10 @@ return {
 	ISLANDS = 6, -- one per player (a server holds 6)
 	START_COINS = 500,
 	-- The maps (eggs and Wild biomes) open so far, by egg tier: the others say Coming Soon (their eggs aren't sold,
-	-- their biomes are walled off, and prizes give eggs of the open ones). Meadow to Beach are open, with their animals.
-	OPEN_TIER = 4,
+	-- their biomes are walled off, and prizes give eggs of the open ones). All of them are open now, with their
+	-- animals: the Wild's eight biomes (tiers 1-8), and the Egg Shop's last eggs (tiers 9-11), which have no
+	-- biome of their own, so nothing is walled off and every egg is sold.
+	OPEN_TIER = 11,
 	FRIEND_BOOST = 0.1, -- each friend in the same server: +10% coins...
 	FRIEND_MAX = 5, -- ...for up to this many friends
 	-- Testing in Studio only: every player starts the session with this many coins (0: off). Studio then doesn't
