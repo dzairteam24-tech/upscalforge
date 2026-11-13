@@ -1,0 +1,26 @@
+{
+  "agent": "story-studio",
+  "permissions": {
+    "deny": [
+      "Edit(.claude/skills/**)",
+      "Edit(.claude/hooks/**)",
+      "Edit(//{{MASTER_PATH_NO_LEADING_SLASH}}/**)"
+    ],
+    "allow": [
+      "Read(//{{MASTER_PATH_NO_LEADING_SLASH}}/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-skills.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

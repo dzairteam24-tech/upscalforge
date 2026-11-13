@@ -1,6 +1,6 @@
 # Studio Skill: story production master library
 
-Version 0.1.0 (draft). Four general-purpose Skills for animated-story production, to be coordinated by a Project Agent.
+Version 0.2.0 (draft). Four general-purpose Skills for animated-story production, coordinated by a Project Agent.
 
 | Skill | Writes | Does |
 |---|---|---|
@@ -11,24 +11,26 @@ Version 0.1.0 (draft). Four general-purpose Skills for animated-story production
 
 ## State of this version
 
-- The Skills are drafts. They have not been tested.
-- The research behind them is unverified: see the "Limits" section at the top of each file in `research/`.
-- The Project Agent, the install step, and `QUICKSTART.md` do not exist yet. See `BUILD-STATUS.md`.
+- The Skills and the Project Agent are drafts. Test results and known problems are in `tests/REPORT.md`.
+- The research behind the Skills is unverified: see the "Limits" section at the top of each file in `research/`.
+- What remains is listed in `BUILD-STATUS.md`.
 
-## Using a Skill by hand, until the Project Agent exists
+## Installing on a computer
 
-1. Copy the Skill's folder from `skills/` into your project's `.claude/skills/` folder.
-2. Start `claude` in the project folder.
-3. Ask for the work in plain words, or type `/` and the Skill's name.
+1. Clone this repository.
+2. In a terminal, go into the `studio skill` folder and run: `sh install.sh`
+3. Open the terminal in a project folder (not this one) and run: `claude --agent story-studio`
+
+The install step writes two files in your user folder: `~/.claude/agents/story-studio.md` and `~/.claude/commands/studio-setup.md`. It changes nothing else. On Windows, run it from Git Bash or WSL.
 
 Do not copy the Skills into your personal `~/.claude/skills/` folder: personal Skills override project copies of the same name.
 
-## Installing on another computer
-
-Not available yet. It will be: clone this repository, then run the install step, which places the Project Agent in the user-level agents folder with the path of the local clone.
+See `QUICKSTART.md` for the sentences to say.
 
 ## Files
 
+- `agent/`: the Project Agent, its playbook, and project templates.
+- `tests/`: sample input and the test report.
 - `CONTRACT.md`: folder names, file names, headers, and IDs that everything relies on.
 - `research/`: findings behind each Skill, and the platform constraints check.
 - `CHANGELOG.md`, `VERSION`, `BUILD-STATUS.md`.

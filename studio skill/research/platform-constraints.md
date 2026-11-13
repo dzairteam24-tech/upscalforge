@@ -18,4 +18,6 @@ Checked 2026-11-13 with Claude Code 2.1.323 against the official pages (skills, 
 
 ## Smoke tests
 
-**None were run.** This build ran in a temporary cloud container, not on the user's computer. The four smoke tests in the brief (Agent launched from an unrelated folder, `agent` setting, protection block test, `/clear` behaviour) must be run on the user's computer before the Project Agent is built.
+Run in headless mode on 2026-11-13; see `tests/REPORT.md`. Passed: `agent` setting, `CLAUDE.md` imports, Skills listed, subagent spawn, protection against Edit, `echo >>`, `cp`, `mv`, and `rm`. Not tested (need an interactive session): the Agent asking a question, and `/clear`.
+
+Two additions from the tests: the Agent needs read permission for the master library (an allow rule is in the settings template; a new folder prompts once), and allow rules in project settings are ignored until the folder's trust dialog is accepted.

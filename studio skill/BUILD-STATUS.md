@@ -11,19 +11,21 @@ The user asked for all four Skills to be built at once, inside the folder `studi
 - Claude Code documentation read; constraints confirmed or corrected (`research/platform-constraints.md`).
 - Folder and file contract (`CONTRACT.md`).
 - Four master Skills drafted, each with a rejection checklist (`skills/`).
-- Research files, one per Skill (`research/`).
-- `README.md`, `CHANGELOG.md`, `VERSION` 0.1.0.
+- Research files, one per Skill (`research/`), from search summaries only.
+- Project Agent (`agent/story-studio.md`, `agent/playbook.md`), project templates (`agent/templates/`), `install.sh`, `QUICKSTART.md`.
+- Sample screenplay (`tests/sample-screenplay.md`); not yet approved by the user.
+- Smoke tests, trigger test, and one Director test (`tests/REPORT.md`).
 
 ## Not done
 
-1. **Research is unverified.** The build session's network blocked every external site. No source page was opened. Findings are search summaries. Redo the research in a session with open network access, then revise rules and checklist source labels.
-2. **Smoke tests not run** (Agent from another folder, `agent` setting, protection block test, `/clear`). They need the user's own computer.
-3. **Skill tests not run**: two test cases and six trigger requests per Skill; pass criteria to be proposed to the user in Arabic.
-4. **One-page sample screenplay** for the Director's test: not written, not approved.
-5. **Arabic research summaries**: a short one exists in `research/SUMMARY-AR.md`; redo after real research.
-6. **Project Agent**, install step, personal launch command, `QUICKSTART.md`: not started.
-7. **Full test** (cases A and B): not started.
-8. Permission-prompt explanation and proposed project settings for the user: not done.
+1. **Research is unverified.** The session's network blocks every external site, and two requests to open it were rejected by the service. The user must change Network access in the environment settings, or run the build on their own computer. Then redo the research and revise rules and source labels.
+2. **Interactive smoke tests**: the Agent asking a question; `/clear`. Need the user's computer.
+3. **Hook over-blocking**: read-only shell commands naming `.claude/skills` are refused. Fix the hook or the playbook's validation step.
+4. **Skill tests** for the Writer, Researcher, and Packaging; a second Director case; pass criteria to be agreed with the user in Arabic.
+5. **Project Agent end to end**: setup, production, memory, and cleaning have not been run.
+6. **Full test** (cases A and B): not started. Needs the user's real first video.
+7. Install on the user's computer (`sh install.sh`); not tested on Windows or macOS.
+8. Arabic research summaries to redo after real research.
 
 ## Environment notes
 
@@ -33,4 +35,4 @@ The user asked for all four Skills to be built at once, inside the folder `studi
 
 ## Sentence to paste into a new session
 
-> Read `studio skill/BUILD-STATUS.md` and continue the build from item 1 of "Not done". Speak to me in Arabic.
+> Read `studio skill/BUILD-STATUS.md` and continue the build from "Not done". Speak to me in Arabic.

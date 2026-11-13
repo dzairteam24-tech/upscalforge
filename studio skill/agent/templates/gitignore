@@ -1,0 +1,13 @@
+_trash/
+_inbox/
+videos/*/media/
+*.mp4
+*.mov
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.wav
+*.mp3
+*.psd
+*.blend
