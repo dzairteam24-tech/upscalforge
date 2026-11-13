@@ -1,0 +1,9 @@
+_trash/
+_inbox/*
+!_inbox/.gitkeep
+*.mp4
+*.mov
+*.wav
+*.mp3
+*.psd
+*.blend
