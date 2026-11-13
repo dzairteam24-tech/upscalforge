@@ -18,3 +18,4 @@ Production method, tools, time budget: (not set)
 ## Open issues
 
 - Skill research is unverified (network blocked during the build).
+- Master is 0.2.1; the copies in `.claude/` are 0.2.0. Upgrade waits for the user's approval.

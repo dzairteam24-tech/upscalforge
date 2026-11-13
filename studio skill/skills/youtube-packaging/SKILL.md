@@ -14,7 +14,7 @@ description: Creates the YouTube packaging for a finished animated story. Produc
 5. Check current official YouTube Help pages in this session before writing. If you cannot open them, say so at the top of the file and label all guidance `unverified this session`.
 6. Do not change the story or the visuals. Thumbnail art uses the bible's characters and style by ID.
 7. One clear idea per thumbnail.
-8. The file starts with the header: version, status (draft or approved), and upstream versions.
+8. The file starts with the header: version, status (exactly `draft` or `approved`, no other words), and upstream versions.
 9. Speak to the user in the user's chat language. Write the file in English; write titles and description in the publishing language set in `profile.md`.
 10. Before saving, run [references/rejection-checklist.md](references/rejection-checklist.md) and quote every offending line.
 

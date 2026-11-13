@@ -12,13 +12,13 @@ description: Turns an approved screenplay into a video bible and a purposeful sh
 3. Every shot must pass the shot test below. A shot that fails is cut, merged, or redesigned, and the reason is noted.
 4. Never rewrite the story. List narrative problems under "Returned to Writer" and stop on those scenes.
 5. Reuse each canonical prompt block verbatim. Never paraphrase a character, location, or prop description in a shot row; reference its ID.
-6. Every output file starts with the header: version, status (draft or approved), and the upstream versions it was based on.
+6. Every output file starts with the header: version, status (exactly `draft` or `approved`, no other words), and the upstream versions it was based on.
 7. Speak to the user in the user's chat language. Write all files in English.
 8. Before saving, run the rejection checklist in [references/rejection-checklist.md](references/rejection-checklist.md) and quote every offending shot.
 
 ## Step 1: Video bible (`03-bible.md`)
 
-Build it from the Writer's character and world facts and the series `bible.md`. Reference series entries by ID; add only video-specific entries. IDs are unique across the project (`C01` characters, `L01` locations, `P01` props).
+Build it from the Writer's character and world facts and the series `bible.md`. If a scene heading names a location or character with no entry in the facts, do not invent one silently: add a minimal entry, mark it `not in facts`, and list it under "Returned to Writer". Reference series entries by ID; add only video-specific entries. IDs are unique across the project (`C01` characters, `L01` locations, `P01` props).
 
 Contents:
 

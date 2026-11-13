@@ -13,7 +13,7 @@ description: Writes the screenplay for an animated story from an approved concep
 4. No camera decisions: no shot sizes, angles, lenses, or movement. Write what is seen and heard.
 5. Every scene must change something. A scene where nothing changes is cut or merged.
 6. Scenes carry stable IDs (`S01`, `S02`). Never renumber approved scenes; insert as `S03a`.
-7. The file starts with the header: version, status (draft or approved), and the upstream versions it was based on.
+7. The file starts with the header: version, status (exactly `draft` or `approved`, no other words), and the upstream versions it was based on.
 8. Speak to the user in the user's chat language. Write all files in English, unless `profile.md` sets another script language.
 9. Before saving, run [references/rejection-checklist.md](references/rejection-checklist.md) and quote every offending line.
 
@@ -42,7 +42,7 @@ Sections, in order:
 2. **Logline**: one sentence with protagonist, want, obstacle, stakes.
 3. **Synopsis**: one paragraph, including the ending.
 4. **Structure note**: the structure chosen and why; estimated runtime.
-5. **Character and world facts**: each with an ID (`C01`, `L01`, `P01`), reusing series bible IDs where they exist. Only facts that affect how something looks or behaves. For fact-based stories, mark each as fact (with source from the concept) or dramatized.
+5. **Character and world facts**: each with an ID (`C01`, `L01`, `P01`), reusing series bible IDs where they exist. Every character who appears and every location named in a scene heading has an entry. Only facts that affect how something looks or behaves. For fact-based stories, mark each as fact (with source from the concept) or dramatized.
 6. **Scenes**: numbered, in screenplay format:
 
 ```

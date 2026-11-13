@@ -25,7 +25,7 @@ Read with `CONTRACT.md`. The agent file holds the rules that always apply; this 
 10. Only after copying, add protection from the master `agent/templates/`: copy `protect-skills.sh` to `.claude/hooks/`, make it executable, and write `.claude/settings.json` from `settings.json` (replace `{{MASTER_PATH}}`). Write `CLAUDE.md` and `.gitignore` from the templates. Commit.
 11. Propose `profile.md`: each adaptation with its reason. Cover genre and subject (stricter sourcing for history, accuracy for science), format, production method, and the fingerprint traits. Apply after approval and log it in `changelog.md`.
 12. Before first adapting to a production method, research its strengths, limits, and common problems, and save that in the project's `references/`. If research sources cannot be opened, say so and mark the notes unverified. If no method is chosen, recommend one from the story, the format, and the time budget.
-13. Validate: run `claude plugin validate .claude/skills`, and compare the copies with the master (`diff -r`). Report any difference.
+13. Validate: run `claude plugin validate .claude/skills`, and compare the copies with the master (`diff -r`). The protection hook allows these plain read-only commands. Report any difference.
 14. Tell the user to exit and run `claude` in this folder. In the next session, confirm the Skills are visible before continuing.
 
 ## Production (per video, one stage per session)

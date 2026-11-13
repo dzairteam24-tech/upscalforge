@@ -15,12 +15,13 @@ The user asked for all four Skills to be built at once, inside the folder `studi
 - Project Agent (`agent/story-studio.md`, `agent/playbook.md`), project templates (`agent/templates/`), `install.sh`, `QUICKSTART.md`.
 - Sample screenplay (`tests/sample-screenplay.md`); not yet approved by the user.
 - Smoke tests, trigger test, and one Director test (`tests/REPORT.md`).
+- Version 0.2.1: hook over-blocking fixed in the template and tested; fixes from the Director test applied to the Skills.
 
 ## Not done
 
 1. **Research is unverified.** The session's network blocks every external site, and two requests to open it were rejected by the service. The user must change Network access in the environment settings, or run the build on their own computer. Then redo the research and revise rules and source labels.
 2. **Interactive smoke tests**: the Agent asking a question; `/clear`. Need the user's computer.
-3. **Hook over-blocking**: read-only shell commands naming `.claude/skills` are refused. Fix the hook or the playbook's validation step.
+3. **Project copies are behind the master.** The master is 0.2.1 (hook fix and three Skill rule fixes, see `CHANGELOG.md`); the copies in the repository's `.claude/` are still 0.2.0. Syncing them is an upgrade and needs the user's approval.
 4. **Skill tests** for the Writer, Researcher, and Packaging; a second Director case; pass criteria to be agreed with the user in Arabic.
 5. **Project Agent end to end**: setup, production, memory, and cleaning have not been run.
 6. **Full test** (cases A and B): not started. Needs the user's real first video.

@@ -14,7 +14,7 @@ description: Finds, checks, and rates story concepts for animated videos from hi
 5. Separate fact from dramatization in every candidate.
 6. Do not write the story: no scenes, no dialogue, no script.
 7. A search cannot guarantee originality. Report similarity risks; never claim an idea is unique.
-8. Each output file starts with the header: version, status (draft or approved), and upstream versions.
+8. Each output file starts with the header: version, status (exactly `draft` or `approved`, no other words), and upstream versions.
 9. Speak to the user in the user's chat language. Write all files in English.
 10. Before saving, run [references/rejection-checklist.md](references/rejection-checklist.md) and quote every offending line.
 

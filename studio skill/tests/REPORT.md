@@ -20,7 +20,7 @@ Run with Claude Code 2.1.323 in headless mode (`claude -p`) inside temporary fol
 ### Problems found
 
 1. **The Agent cannot read the master library without permission.** In a new folder the first read of the playbook asks for approval; the user must accept it. After setup the project settings carry an allow rule for it. In an untrusted folder that allow rule is ignored until the trust dialog is accepted once.
-2. **The hook blocks more than needed.** Any shell command that names `.claude/skills` is refused, including read-only `ls`, `cat`, and `diff`. The playbook's validation step (`claude plugin validate`, `diff -r`) must therefore run before protection is added, or use the Read tool. Not yet fixed.
+2. **The hook blocks more than needed.** Any shell command that names `.claude/skills` is refused, including read-only `ls`, `cat`, and `diff`. The playbook's validation step (`claude plugin validate`, `diff -r`) must therefore run before protection is added, or use the Read tool. Fixed in 0.2.1: the hook template now allows one plain read-only command and refuses the rest (6 allowed and 14 refused cases run against the template). The project copy still needs an approved upgrade.
 3. The hook is a shell script. On Windows it needs Git Bash or WSL. Not tested on Windows or macOS.
 
 ## Trigger test
