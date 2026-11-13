@@ -21,7 +21,7 @@ The user asked for all four Skills to be built at once, inside the folder `studi
 
 1. **Research is unverified.** The session's network blocks every external site, and two requests to open it were rejected by the service. The user must change Network access in the environment settings, or run the build on their own computer. Then redo the research and revise rules and source labels.
 2. **Interactive smoke tests**: the Agent asking a question; `/clear`. Need the user's computer.
-3. **Project copies are behind the master.** The master is 0.2.1 (hook fix and three Skill rule fixes, see `CHANGELOG.md`); the copies in the repository's `.claude/` are still 0.2.0. Syncing them is an upgrade and needs the user's approval.
+3. **Project copies are behind the master.** The master is 0.2.1 (hook fix and three Skill rule fixes, see `CHANGELOG.md`); the copies in the repository's `.claude/` are still 0.2.0. The user approved the upgrade on 2026-11-13, but the cloud session's own safety check refused both ways of doing it (copying over the protected folders, and removing the protection in the settings file). It must be done outside a cloud session: on a computer, or by editing the files on GitHub.
 4. **Skill tests** for the Writer, Researcher, and Packaging; a second Director case; pass criteria to be agreed with the user in Arabic.
 5. **Project Agent end to end**: setup, production, memory, and cleaning have not been run.
 6. **Full test** (cases A and B): not started. Needs the user's real first video.
